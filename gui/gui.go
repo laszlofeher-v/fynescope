@@ -35,6 +35,7 @@ import (
 	"psgo/ps2000sim"
 	"strconv"
 	"strings"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -59,7 +60,6 @@ type (
 		FirstRange                                  ps2000a.RangeEnum
 		LastRange                                   ps2000a.RangeEnum
 		SignalGenerator                             bool
-		Ets                                         bool
 		ChannelCount                                ps2000a.NumOfChannelEnum
 		MaxChannel                                  ps2000a.ChannelId
 		MaxValue                                    int16
@@ -72,6 +72,10 @@ type (
 		overSample                                  int16
 		channelPanels                               []*fyne.Container
 		genPanel                                    *fyne.Container
+		etsPanel                                    *fyne.Container
+		etsCycles                                   *widget.Entry
+		etsInterleave                               *widget.Entry
+		etsSampleCountEntry                         *widget.Entry
 		samplePanel                                 *fyne.Container
 		Language                                    int
 		themeVariant                                fyne.ThemeVariant
@@ -85,6 +89,8 @@ type (
 		signals                                     *signalDesc
 		timeUnit                                    float64 // 1: ns, 1000: us, 1000000:ms
 		timeDiv                                     float64
+		EtsMode                                     bool
+		screenLocker                                sync.Mutex
 	}
 	PsDesc struct {
 		ps2000a.PsDesc
@@ -106,6 +112,7 @@ type (
 
 func (ps *PsDesc) SetDefaults() (err error) {
 	_, err = ps.SetEts(ps2000a.EtsOff, 0, 0)
+	//ps.EtsMode = false
 	if err != nil {
 		return
 	}
@@ -141,6 +148,9 @@ func getX() (pixelTime float64, resX, resY, hSpan, vSpan int64) {
 func (ps *PsDesc) adcToMv(raw int32, ch ps2000a.RangeEnum) int32 {
 	return int32(math.Round(float64(raw) * float64(ps2000a.InputRanges(ch)) / float64(ps.MaxValue)))
 }
+func (ps *PsDesc) mvToAdc(raw int32, ch ps2000a.RangeEnum) int16 {
+	return int16(math.Round(float64(raw)*float64(ps.MaxValue)) / float64(ps2000a.InputRanges(ch)))
+}
 
 func (ps *PsDesc) Str(id int) string {
 	return inter.Str(ps.Language, id)
@@ -148,7 +158,7 @@ func (ps *PsDesc) Str(id int) string {
 
 func (ps *PsDesc) GetInfo() (err error) {
 	ps.SignalGenerator = true
-	ps.Ets = false
+	ps.EtsMode = false
 	ps.FirstRange = ps2000a.Range_20mv
 	ps.LastRange = ps2000a.Range_20v
 	ps.ChannelCount = ps2000a.QuadScope
@@ -210,7 +220,6 @@ func (ps *PsDesc) Menu() (err error) {
 	}
 	os.Setenv("FYNE_THEME", "dark")
 	ps.ChannelColors = []color.Color{chaColor, red, green, yellow}
-	//	ps.SetDefaults()
 	myApp := app.New()
 	ps.themeVariant = fyne.CurrentApp().Settings().ThemeVariant()
 	// ps.ThemeVariant = ps.myApp.Settings().ThemeVariant()
@@ -236,35 +245,9 @@ func (ps *PsDesc) Menu() (err error) {
 	ps.setChannels(right)
 	ps.setGen(right)
 	ps.setSample(right)
+	ps.setEtsPanel(right)
 
 	left := widget.NewButton("VNA", ps.vna)
-	// widget.NewButton("VNA", func() {
-	// 	const nOfSamples = 32768 * 1024
-	// 	ps.signals = &signalDesc{time: 1.0e9, length: nOfSamples} // 1E9 ns = 1 s
-	// 	ps.signals.signal = make([][]int32, 4)
-	// 	ps.signals.signal[0] = make([]int32, nOfSamples)
-	// 	ps.signals.signal[1] = make([]int32, nOfSamples)
-	// 	ps.signals.signal[2] = make([]int32, nOfSamples)
-	// 	ps.signals.signal[3] = make([]int32, nOfSamples)
-	// 	v := 0
-	// 	d := 1
-	// 	for i, _ := range ps.signals.signal[0] {
-	// 		ps.signals.signal[0][i] = int32(100 * math.Cos(float64(i)/float64(100)))
-	// 		ps.signals.signal[1][i] = int32(100 * (1 + math.Sin(float64(i)/float64(100))))
-	// 		y := 0
-	// 		if i%128 > 64 {
-	// 			y = 1
-	// 		}
-	// 		ps.signals.signal[2][i] = int32(100 * y)
-	// 		if i%100 == 0 {
-	// 			d = -d
-	// 		}
-	// 		v = v + d
-	// 		ps.signals.signal[3][i] = int32(10 * v)
-	// 	}
-	// 	ps.raster.Refresh()
-	// 	//ps.vna()
-	// })
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.DocumentCreateIcon(), func() {
 			log.Println("New document")
@@ -292,6 +275,7 @@ func (ps *PsDesc) Menu() (err error) {
 	content := container.NewBorder(toolbar, bottom, left, right, ps.raster)
 	myWindow.SetContent(content)
 	myWindow.Resize(fyne.NewSize(1024, 768))
+	ps.SetDefaults()
 	myWindow.ShowAndRun()
 	fmt.Println("run")
 	return

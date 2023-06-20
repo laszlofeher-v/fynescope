@@ -45,7 +45,7 @@ func (ps *PsDesc) genOff() {
 func (ps *PsDesc) genOn() {
 	var (
 		offsetVoltage  int32                   = 0
-		pkToPK         uint32                  = 1000000 // microvolts = 1V
+		pkToPK         uint32                  = 2000000 // microvolts
 		waveType       ps2000a.WaveTypeEnum    = ps2000a.Sine
 		sweepType      ps2000a.SweepTypeEnum   = ps2000a.SweepUp
 		operation      ps2000a.ExtraOperations = ps2000a.EsOff
@@ -90,24 +90,24 @@ func (ps *PsDesc) newGenSettings() *fyne.Container {
 			ps.genOff()
 		}
 	}
-	freqStepChanged := func(v float64) {
-		fmt.Println("freqStepChanged Gen", v)
-		ps.GenFreqStep = v
-		if check.Checked {
-			ps.genOn()
-		} else {
-			ps.genOff()
-		}
-	}
-	freqDelayChanged := func(v float64) {
-		fmt.Println("freqDelayChanged Gen", v)
-		ps.GenFreqDelay = v
-		if check.Checked {
-			ps.genOn()
-		} else {
-			ps.genOff()
-		}
-	}
+	// freqStepChanged := func(v float64) {
+	// 	fmt.Println("freqStepChanged Gen", v)
+	// 	ps.GenFreqStep = v
+	// 	if check.Checked {
+	// 		ps.genOn()
+	// 	} else {
+	// 		ps.genOff()
+	// 	}
+	// }
+	// freqDelayChanged := func(v float64) {
+	// 	fmt.Println("freqDelayChanged Gen", v)
+	// 	ps.GenFreqDelay = v
+	// 	if check.Checked {
+	// 		ps.genOn()
+	// 	} else {
+	// 		ps.genOff()
+	// 	}
+	// }
 	// inverted := func(c bool) {
 	// 	fmt.Println("inverted ", chIndex, chName, c)
 	// }
@@ -137,16 +137,17 @@ func (ps *PsDesc) newGenSettings() *fyne.Container {
 	// freqSet := widget.NewSliderWithData(0.0, 1.0e6, ps.GenFreq)
 	// freqStep := widget.NewSliderWithData(0.0, 1.0e4, ps.GenFreqStep)
 	// freqDelay := widget.NewSliderWithData(0.1, 1.0e3, ps.GenFreqDelay)
-	freqSetEntry := widget.NewEntry()
-	freqStepEntry := widget.NewEntry()
-	freqDelayEntry := widget.NewEntry()
+	//	freqSetEntry := widget.NewEntry()
+	// freqStepEntry := widget.NewEntry()
+	// freqDelayEntry := widget.NewEntry()
 	freqSet := widget.NewSlider(ps2000a.MinFrequency, ps2000a.SineMaxFrequency)
 	freqSet.OnChanged = freqChanged
-	freqStep := widget.NewSlider(0.0, 1.0e4)
-	freqStep.OnChanged = freqStepChanged
-	freqDelay := widget.NewSlider(0.1, 1.0e3)
-	freqDelay.OnChanged = freqDelayChanged
-	box := container.New(layout.NewVBoxLayout(), check, freqSetEntry, freqSet, freqStepEntry, freqStep, freqDelayEntry, freqDelay)
+	// freqStep := widget.NewSlider(0.0, 1.0e4)
+	// freqStep.OnChanged = freqStepChanged
+	// freqDelay := widget.NewSlider(0.1, 1.0e3)
+	// freqDelay.OnChanged = freqDelayChanged
+	// box := container.New(layout.NewVBoxLayout(), check, freqSetEntry, freqSet, freqStepEntry, freqStep, freqDelayEntry, freqDelay)
+	box := container.New(layout.NewVBoxLayout(), check, freqSet)
 	return box
 }
 

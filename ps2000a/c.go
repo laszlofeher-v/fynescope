@@ -362,7 +362,7 @@ func (ps *PsDesc) SetSimpleTrigger(enable bool, source ChannelId, threshold int1
 }
 
 func (ps *PsDesc) SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uint32,
-	mode RatioMode) (buffer []int16, err error) {
+	mode RatioMode) (err error) {
 
 	stat := C.ps2000aSetDataBuffer((C.short)(ps.handle), (C.int)(ch), (*C.short)(&bufferIn[0]),
 		(C.int)(len(bufferIn)), (C.uint)(segmentIndex),
@@ -370,7 +370,6 @@ func (ps *PsDesc) SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uin
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffer:  %s", psc.StatStr(int(stat)))
 	}
-	buffer = bufferIn[0:]
 	return
 }
 
@@ -382,6 +381,18 @@ func (ps *PsDesc) SetDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, seg
 		(C.PS2000A_RATIO_MODE)(mode))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffers:  %s", psc.StatStr(int(stat)))
+	}
+	return
+}
+
+func (ps *PsDesc) SetUnscaledDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
+	fmt.Println("handle=", ps.handle, " channel=", ch, " &bufferMax[0]", &bufferMin[0], " &bufferMax[0]", &bufferMin[0],
+		" len=", len(bufferMax), "segmentIndex", segmentIndex, " RatioMode=", mode)
+	stat := C.ps2000aSetDataBuffers((C.short)(ps.handle), (C.int)(ch), (*C.short)(&bufferMax[0]),
+		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
+		(C.PS2000A_RATIO_MODE)(mode))
+	if stat != C.PICO_OK {
+		err = fmt.Errorf("SetUnscaledDataBuffers:  %s", psc.StatStr(int(stat)))
 	}
 	return
 }

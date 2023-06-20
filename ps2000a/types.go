@@ -83,8 +83,9 @@ type (
 			overviewBufferSize uint32) (sampleInterval uint32, err error)
 		SetChannel(channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error)
 		SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uint32,
-			mode RatioMode) (buffer []int16, err error)
+			mode RatioMode) (err error)
 		SetDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error)
+		SetUnscaledDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error)
 		SetDigitalAnalogTriggerOperand(operand TriggerOperand) (err error)
 		SetDigitalPort(port DigitalPort, enabled bool, logiclevel int16) (err error)
 		SetEts(mode EtsMode, etsCycles int16, etsInterLeave int16) (sampleTimePicoseconds int32, err error)

@@ -7,7 +7,7 @@ package ps2000a
 int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter)
 {
-	printf("C.lpDataReady(): called");
+//	printf("C.lpDataReady(): called\n");
 	int lpDataReadyGo(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter);
 	return lpDataReadyGo(handle, status, noOfSamples, overflow, pParameter);
@@ -15,7 +15,7 @@ int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 
 int lpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter)
 {
-	printf("C.lpBlockReady(): called");
+//	printf("C.lpBlockReady(): called\n");
 	int lpBlockReadyGo(int16_t handle, PICO_STATUS status, void * pParameter);
 	return lpBlockReadyGo(handle, status,  pParameter);
 }

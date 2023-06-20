@@ -99,7 +99,7 @@ func (ps *PsDesc) newChannelSettings(chIndex int) *fyne.Container {
 	vRange.SetSelected("±1V")
 	acdc := newSelectScroll([]string{ps.Str(inter.Ac), ps.Str(inter.Dc)}, cChanged,
 		ps.Str(inter.Ac))
-	acdc.SetSelected(ps.Str(inter.Dc))
+	acdc.SetSelected(ps.Str(inter.Ac))
 	nameInvert := container.New(layout.NewHBoxLayout(), check, invert)
 	couplingRange := container.New(layout.NewHBoxLayout(), acdc, vRange)
 	box := container.New(layout.NewVBoxLayout(), nameInvert, couplingRange)

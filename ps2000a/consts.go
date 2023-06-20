@@ -184,6 +184,10 @@ const (
 	EtsSlow EtsMode = C.PS2000A_ETS_SLOW
 	EtsMax  EtsMode = C.PS2000A_ETS_MODES_MAX
 )
+const (
+	Ps2207MaxEtsCyscles       = C.PS2207_MAX_ETS_CYCLES
+	Ps2207MaxEtsMaxInterleave = C.PS2207_MAX_INTERLEAVE
+)
 
 type DigitalChannel int
 

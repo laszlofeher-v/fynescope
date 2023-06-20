@@ -276,10 +276,13 @@ func (ps *PsDesc) drawSignals(leftMargin, w, h float64) (err error) {
 		fmt.Println("ps.signals == nil!!!!!!!!!!!!!!!!!!!")
 		return
 	}
-	fmt.Println("ps.signals.length:", ps.signals.length, "ps.signals.time:", ps.signals.time)
+	// fmt.Println("ps.signals.length:", ps.signals.length, "ps.signals.time:", ps.signals.time)
 	maxScreenTime := ps.timeDiv * float64(ps.timeUnit) * 10 // 10 divs
-	fmt.Println("ps.timeDiv:", ps.timeDiv, "ps.timeUnit:", ps.timeUnit)
-	fmt.Println("ps.signals.length:", ps.signals.length, "ps.signals.time:", ps.signals.time, "maxScreenTime", maxScreenTime)
+	// if ps.EtsMode {
+	// 	maxScreenTime=maxScreenTime/1000.0
+	// }
+	// fmt.Println("ps.timeDiv:", ps.timeDiv, "ps.timeUnit:", ps.timeUnit)
+	// fmt.Println("ps.signals.length:", ps.signals.length, "ps.signals.time:", ps.signals.time, "maxScreenTime", maxScreenTime)
 	// maxTimeIndex := (maxScreenTime / ps.signals.time) * float64(ps.signals.length)
 	// dt := maxTimeIndex / math.Round(w)
 
@@ -290,6 +293,7 @@ func (ps *PsDesc) drawSignals(leftMargin, w, h float64) (err error) {
 	}
 	minY := int(math.Round(defaultTopMargin))
 	maxY := int(math.Round(h + defaultTopMargin))
+	//	fmt.Println("screen ps.ChannelSettings[ch].Range:", ps.ChannelSettings[0].Range, " RangeValuesMv:", ps2000a.RangeValuesMv[ps.ChannelSettings[0].Range])
 	for ch := range ps.signals.signal {
 		if ps.ChannelSettings[ch].Enabled {
 			col := ps.ChannelColors[ch]
@@ -297,6 +301,7 @@ func (ps *PsDesc) drawSignals(leftMargin, w, h float64) (err error) {
 			var prev int
 			t := 0.0
 			for i := 0; t < maxTimeIndex; i = i + 1 {
+				// TODO Race condition exists with block callback funtion
 				s := ps.signals.signal[ch][int(math.Round(t))]
 				t += dt
 				if ps.ChannelSettings[ch].Inverted {
@@ -333,7 +338,7 @@ func (ps *PsDesc) drawSignals(leftMargin, w, h float64) (err error) {
 }
 
 func (ps *PsDesc) switchUpTimeUnit(dt, timeUnit float64) (newDt float64, unitName string) {
-	fmt.Println("up:", timeUnit)
+	//	fmt.Println("up:", timeUnit)
 	switch timeUnit {
 	case 0.1:
 		newDt = dt / 1000.0
@@ -375,6 +380,7 @@ func (ps *PsDesc) getTimeUnitName(timeUnit float64) (unitName string) {
 	return
 }
 func (ps *PsDesc) drawTimeLabels(leftMargin, w, h float64, textColor color.Color) {
+	//TODO call only when changes
 	var unitName string
 	dt := ps.timeDiv
 	switch dt {
@@ -479,6 +485,8 @@ func (ps *PsDesc) setColors() (bgColor, textColor color.Color) {
 	return
 }
 func (ps *PsDesc) generator(wInt int, hInt int) image.Image {
+	defer ps.screenLocker.Unlock()
+	ps.screenLocker.Lock()
 	w := float64(wInt)
 	h := float64(hInt)
 	rect := ps.scopeScreen.Bounds()
