@@ -19,6 +19,7 @@ import (
 	"image"
 	"log"
 	"math"
+	"psgo/psi"
 
 	//	"math"
 
@@ -32,10 +33,12 @@ import (
 	"os/exec"
 	"psgo/gui/inter"
 	"psgo/ps2000a"
-	"psgo/ps2000sim"
+
+	// "psgo/ps2000asim"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -56,14 +59,64 @@ type (
 		time         float64
 		timeInterval float64
 	}
-	GuiDesc struct {
+	ChannelSetMsg struct {
+		channel      ps2000a.ChannelId
+		enabled      bool
+		couplingType ps2000a.Coupling
+		voltageRange ps2000a.RangeEnum
+		analogOffset float32
+	}
+	// GuiDesc struct {
+	// 	con                                         *psi.ConnectionDesc
+	// 	FirstRange                                  ps2000a.RangeEnum
+	// 	LastRange                                   ps2000a.RangeEnum
+	// 	SignalGenerator                             bool
+	// 	ChannelCount                                ps2000a.NumOfChannelEnum
+	// 	MaxChannel                                  ps2000a.ChannelId
+	// 	MaxValue                                    int16
+	// 	ChannelSettings                             [ps2000a.MaxChannels]ps2000a.ChannelDesc
+	// 	DigitalPorts                                int16
+	// 	AwgBufferSize                               int16
+	// 	AwgDACFrequency                             float64
+	// 	scaleVoltages                               bool
+	// 	timeBase                                    uint32
+	// 	overSample                                  int16
+	// 	channelPanels                               []*fyne.Container
+	// 	genPanel                                    *fyne.Container
+	// 	etsPanel                                    *fyne.Container
+	// 	etsCycles                                   *widget.Entry
+	// 	etsInterleave                               *widget.Entry
+	// 	etsSampleCountEntry                         *widget.Entry
+	// 	samplePanel                                 *fyne.Container
+	// 	Language                                    int
+	// 	themeVariant                                fyne.ThemeVariant
+	// 	ChannelColors                               []color.Color
+	// 	raster                                      *canvas.Raster
+	// 	GenFreq                                     float64
+	// 	GenFreqStep                                 float64
+	// 	GenFreqDelay                                float64
+	// 	GenFreqStr, GenFreqStepStr, GenFreqDelayStr string
+	// 	scopeScreen                                 screenImage
+	// 	signals                                     *signalDesc
+	// 	timeUnit                                    float64 // 1: ns, 1000: us, 1000000:ms
+	// 	timeDiv                                     float64
+	// 	EtsMode                                     bool
+	// 	screenLocker                                sync.Mutex
+	// 	refreshTime                                 time.Time
+	// 	Window                                      fyne.Window
+	// 	stopChannel                                 chan struct{}
+	// }
+	PsDesc struct {
+		//		ps2000a.PsDesc
+		Con                                         *psi.ConnectionDesc
 		FirstRange                                  ps2000a.RangeEnum
 		LastRange                                   ps2000a.RangeEnum
 		SignalGenerator                             bool
 		ChannelCount                                ps2000a.NumOfChannelEnum
 		MaxChannel                                  ps2000a.ChannelId
 		MaxValue                                    int16
-		ChannelSettings                             [ps2000a.MaxChannels]ps2000a.ChannelDesc
+		MinValue                                    int16
+		ChannelSettings                             []ps2000a.ChannelDesc
 		DigitalPorts                                int16
 		AwgBufferSize                               int16
 		AwgDACFrequency                             float64
@@ -91,15 +144,18 @@ type (
 		timeDiv                                     float64
 		EtsMode                                     bool
 		screenLocker                                sync.Mutex
+		refreshTime                                 time.Time
+		Window                                      fyne.Window
+		stopChannel                                 chan struct{}
+		runLock                                     chan struct{}
+		buffers                                     [][]int16
+		ratioMode                                   ps2000a.RatioMode
+		segmentIndex                                uint32
 	}
-	PsDesc struct {
-		ps2000a.PsDesc
-		GuiDesc
-	}
-	DemoDesc struct {
-		ps2000sim.Ps2000sim
-		GuiDesc
-	}
+	// DemoDesc struct {
+	// 	//		ps2000asim.SimDesc
+	// 	GuiDesc
+	// }
 )
 type (
 	appInfo struct {
@@ -111,20 +167,20 @@ type (
 )
 
 func (ps *PsDesc) SetDefaults() (err error) {
-	_, err = ps.SetEts(ps2000a.EtsOff, 0, 0)
-	//ps.EtsMode = false
+	//_, err = ps.SetEts(ps2000a.EtsOff, 0, 0)
+	ps.EtsMode = false
 	if err != nil {
 		return
 	}
-	for channel := ps2000a.ChA; channel < ps.MaxChannel; channel++ {
-		err = ps.SetChannel(channel,
-			ps.ChannelSettings[channel].Enabled,
-			ps.ChannelSettings[channel].CoupleType,
-			ps.ChannelSettings[channel].Range, 0.0)
-		if err != nil {
-			return
-		}
-	}
+	// for channel := ps2000a.ChA; channel <= ps.MaxChannel; channel++ {
+	// 	err = ps.SetChannel(channel,
+	// 		ps.ChannelSettings[channel].Enabled,
+	// 		ps.ChannelSettings[channel].CoupleType,
+	// 		ps.ChannelSettings[channel].Range, 0.0)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// }
 	return
 }
 
@@ -167,10 +223,17 @@ func (ps *PsDesc) GetInfo() (err error) {
 	ps.scaleVoltages = true
 	ps.timeBase = 0
 	ps.overSample = 1
-	info, err := ps.GetUnitInfo(ps2000a.PicoVariantInfo)
+	// info, err := ps.GetUnitInfo(ps2000a.PicoVariantInfo)
+	err = ps.Con.Send(&psi.GetUnitInfoMsg{Info: ps2000a.PicoVariantInfo})
 	if err != nil {
 		return
 	}
+	resp, err := ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println("GetInfo:", err, resp.Status())
+	}
+	info := resp.(*psi.GetUnitInfoRsp).InfoString
+	fmt.Println("info:", info)
 	switch string(info[1]) {
 	case "2":
 		if len(info) == 4 || (len(info) == 5 && info[4] == 'A' || info == "2205MSO") {
@@ -189,29 +252,90 @@ func (ps *PsDesc) GetInfo() (err error) {
 	if strings.Contains(info, "MSO") {
 		ps.DigitalPorts = 2
 	}
+	fmt.Println("ChannelCount:", ps.ChannelCount, " MaxChannel:", ps.MaxChannel)
+	ps.ChannelSettings = make([]ps2000a.ChannelDesc, ps.ChannelCount)
+	ps.buffers = make([][]int16, ps.ChannelCount)
+	ps.signals = &signalDesc{time: 0}
+	ps.signals.signal = make([][]int32, ps.ChannelCount)
+
 	// for ch := ps2000a.ChA; ch <= ps.MaxChannel; ch++ {
 	// 	ps.ChannelSettings[ch].Enabled = true
 	// 	ps.ChannelSettings[ch].CoupleType = ps2000a.Dc
 	// 	ps.ChannelSettings[ch].Range = ps2000a.Range_2v
 	// }
-	ps.MaxValue, err = ps.MaximumValue()
-	fmt.Println("........................................maxValue=", ps.MaxValue)
+	// ps.MaxValue, err = ps.MaximumValue()
+	// fmt.Println("........................................maxValue=", ps.MaxValue)
+	// if err != nil {
+	// 	return
+	// }
+	err = ps.Con.Send(&psi.MaximumValueMsg{})
 	if err != nil {
-		return
+		fmt.Println("MaximumValueMsg", err)
 	}
+	resp, err = ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println("MaximumValueMResp", err, resp.Status())
+	}
+	ps.MaxValue = resp.(*psi.MaximumValueRsp).Value
+
+	err = ps.Con.Send(&psi.MinimumValueMsg{})
+	if err != nil {
+		fmt.Println("MinimumValueMsg", err)
+	}
+	resp, err = ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println("MinimumValueResp", err, resp.Status())
+	}
+	ps.MinValue = resp.(*psi.MinimumValueResp).Value
+	fmt.Println("ps.MinValue:", ps.MinValue, "ps.MaxValue", ps.MaxValue)
 	return
 }
 
+func (ps *PsDesc) halt() {
+	fmt.Println("Stop ")
+	select {
+	case ps.stopChannel <- struct{}{}:
+	case <-time.After(100 * time.Millisecond):
+	}
+	fmt.Println("Stop sent")
+	err := ps.Con.Send(&psi.StopMsg{})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	resp, err := ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println(err, resp.Status())
+		return
+	}
+}
 func (ps *PsDesc) Menu() (err error) {
+	var (
+		runblockButton *widget.Button
+		running        bool
+	)
+	runButtonHandler := func() {
+		if !running {
+			running = true
+			runblockButton.SetText("Stop")
+			ps.BlockMode()
+		} else {
+			running = false
+			runblockButton.SetText("Run")
+			ps.halt()
+		}
+	}
+	ps.stopChannel = make(chan struct{})
+	ps.runLock = make(chan struct{}, 1)
 	dryRun := false
 	//	os.Setenv("FYNE_THEME", "dark")
 	//	os.Setenv("FYNE_THEME", "light")
 	if !dryRun {
-		err = ps.OpenUnit("")
-		if err != nil {
-			fmt.Println("Menu open err=", err)
-			return
-		}
+		// err = ps.OpenUnit("")
+		// if err != nil {
+		// 	fmt.Println("Menu open err=", err)
+		// 	return
+		// }
 		err = ps.GetInfo()
 		if err != nil {
 			fmt.Println("Menu GetInfo err=", err)
@@ -222,32 +346,22 @@ func (ps *PsDesc) Menu() (err error) {
 	ps.ChannelColors = []color.Color{chaColor, red, green, yellow}
 	myApp := app.New()
 	ps.themeVariant = fyne.CurrentApp().Settings().ThemeVariant()
-	// ps.ThemeVariant = ps.myApp.Settings().ThemeVariant()
-	// fmt.Println(ps.ThemeVariant)
-	myWindow := myApp.NewWindow("Border Layout")
-	//	myApp.Settings().SetTheme(theme.DarkTheme())
-	// top := widget.NewLabel("top")
-	//	top.Resize()
-	//left := widget.NewLabel("left")
+	ps.Window = myApp.NewWindow("Border Layout")
 	bottom := widget.NewLabel("bottom")
-	//right := widget.NewLabel("right")
-	// scopeScreen = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{1024, 768}})
 	ps.scopeScreen = ps.newScopeScreen(image.Point{1024, 768})
-	//	draw.Draw(scopeScreen, scopeScreen.Bounds(), &image.Uniform{blue}, image.ZP, draw.Src)
 	ps.raster = canvas.NewRaster(ps.generator)
-	// cha := widget.NewCheck("CH A", func(c bool) {
-	// 	raster.Refresh()
-	// })
-
-	// right := container.New(layout.NewVBoxLayout(), cha, layout.NewSpacer(), chb, layout.NewSpacer(),
-	// 	chc, layout.NewSpacer(), chd, layout.NewSpacer())
 	right := container.New(layout.NewVBoxLayout())
 	ps.setChannels(right)
 	ps.setGen(right)
 	ps.setSample(right)
 	ps.setEtsPanel(right)
-
-	left := widget.NewButton("VNA", ps.vna)
+	left := container.New(layout.NewVBoxLayout())
+	// vna := widget.NewButton("VNA", ps.vna)
+	runblockButton = widget.NewButton("Run", runButtonHandler)
+	stop := widget.NewButton("STOP", ps.halt)
+	// left.Add(vna)
+	left.Add(runblockButton)
+	left.Add(stop)
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.DocumentCreateIcon(), func() {
 			log.Println("New document")
@@ -257,8 +371,8 @@ func (ps *PsDesc) Menu() (err error) {
 		widget.NewToolbarAction(theme.ContentCopyIcon(), func() {}),
 		widget.NewToolbarAction(theme.ContentPasteIcon(), func() {}),
 		widget.NewToolbarSpacer(),
-		widget.NewToolbarAction(theme.ViewFullScreenIcon(), func() { myWindow.SetFullScreen(true) }),
-		widget.NewToolbarAction(theme.ViewRestoreIcon(), func() { myWindow.SetFullScreen(false) }),
+		widget.NewToolbarAction(theme.ViewFullScreenIcon(), func() { ps.Window.SetFullScreen(true) }),
+		widget.NewToolbarAction(theme.ViewRestoreIcon(), func() { ps.Window.SetFullScreen(false) }),
 		widget.NewToolbarAction(theme.SettingsIcon(), func() {}),
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
 			log.Println("Display help")
@@ -273,10 +387,11 @@ func (ps *PsDesc) Menu() (err error) {
 		}),
 	)
 	content := container.NewBorder(toolbar, bottom, left, right, ps.raster)
-	myWindow.SetContent(content)
-	myWindow.Resize(fyne.NewSize(1024, 768))
+	ps.Window.SetContent(content)
+	ps.Window.Resize(fyne.NewSize(1024, 768))
+	ps.refreshTime = time.Now()
 	ps.SetDefaults()
-	myWindow.ShowAndRun()
+	ps.Window.ShowAndRun()
 	fmt.Println("run")
 	return
 }

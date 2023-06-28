@@ -1,8 +1,6 @@
 package ps2000a
 
-import (
-	"psgo/psi"
-)
+//"psgo/psi"
 
 type (
 	PwqConditions struct {
@@ -28,6 +26,7 @@ type (
 		Range      RangeEnum
 		Enabled    bool
 		Inverted   bool
+		Offset     float32
 	}
 	PsDesc struct {
 		handle int16
@@ -38,11 +37,17 @@ type (
 		triggeredAt uint32, triggered, autoStop int16, param interface{}) (err error)
 
 	Picoscope2000Handler interface {
-		psi.Picoscope
-		EnumerateUnits() (count int16, serials string, serialLth int16, err error)
+		Handle() int16
+		OpenUnit(serial string) (err error)
+		OpenUnitAsync(serial string) (err error)
+		OpenUnitProgress() (retHandle, progressPercent, complete int16, err error)
+		// EnumerateUnits() (count int16, serials string, serialLth int16, err error)
+		CloseUnit() (err error)
+		FlashLed(start int16) (err error)
+		PingUnit() (err error)
 		GetAnalogueOffset(voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error)
 		GetChannelInformation(info int16, probe int32, ranges []int32, channels ChannelId) (lengthOfRanges int32, err error)
-		GetMaxDownSampleRatio(noOfUnaggregatedSamples uint32, downSampleRatioMode int, segmentIndex int32) (maxDownSampleRatio uint32, err error)
+		GetMaxDownSampleRatio(noOfUnaggregatedSamples uint32, downSampleRatioMode RatioMode, segmentIndex int32) (maxDownSampleRatio uint32, err error)
 		GetMaxSegments() (maxSegments uint32, err error)
 		GetNoOfCaptures() (nCaptures uint32, err error)
 		GetNoOfProcessedCaptures() (nCaptures uint32, err error)
@@ -55,14 +60,14 @@ type (
 		GetValues(startIndex, reqNoOfSamples, downSampleRatio uint32,
 			downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error)
 		GetValuesAsync(startIndex, noOfSamples, downSampleRatio uint32,
-			downSampleRatioMode int, lpDataReadyGoPar DataReady, segmentIndex uint32,
+			downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 			param interface{}) (err error)
 		GetValuesBulk(reqNoOfSamples uint32, fromSegmentIndex, toSegmentIndex, downSampleRatio uint32,
 			downSampleRatioMode RatioMode, overflow []int16) (noSamples uint32, err error)
 		GetValuesOverlapped(startIndex, reqNoOfSamples, downSampleRatio uint32,
-			downSampleRatioMode int, segmentIndex uint32, overflow []int16) (noSamples uint32, err error)
+			downSampleRatioMode RatioMode, segmentIndex uint32, overflow []int16) (noSamples uint32, err error)
 		GetValuesOverlappedBulk(startIndex, reqNoOfSamples, downSampleRatio uint32,
-			downSampleRatioMode int, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error)
+			downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error)
 		GetValuesTriggerTimeOffsetBulk(timesUpper, timesLower []uint32, timeUnits []TimeUnits,
 			fromSegmentIndex, toSegmentIndex uint32) (err error)
 		GetValuesTriggerTimeOffsetBulk64(times []int64, timeUnits []TimeUnits,
@@ -79,7 +84,7 @@ type (
 			param interface{}) (timeIndisposedMs int32, err error)
 		RunStreaming(reqSampleInterval uint32, sampleIntervalTimeUnits TimeUnits,
 			maxPreTriggerSamples, maxPostTriggerSamples uint32,
-			autoStop bool, downSampleRation uint32, downSampleRationMode RatioMode,
+			autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 			overviewBufferSize uint32) (sampleInterval uint32, err error)
 		SetChannel(channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error)
 		SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uint32,
@@ -132,6 +137,7 @@ type (
 		SigGenFrequencyToPhase(frequency float64, indexMode IndexMode, bufferLength uint32) (phase uint32, err error)
 		Stop() (err error)
 		TriggerOrPulseWidthQualifierEnabled() (triggerEnabled, pulseWidthQualifierEnabledint16 int16, err error)
+		SigGenSoftwareControl(state int16) (err error)
 	}
 	TriggerChannelProperties struct {
 		ThresholdUpper           int16

@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"psgo/gui/inter"
+	"psgo/psi"
 
 	"psgo/ps2000a"
 
@@ -26,17 +27,26 @@ func (ps *PsDesc) newEtsSettings() *fyne.Container {
 	checked := func(c bool) {
 		fmt.Println("Checked ETS", c)
 		ps.EtsMode = c
-		if !c {
-			_, err := ps.SetEts(ps2000a.EtsOff, 20, 4)
-			if err != nil {
-				fmt.Println("checked SetEts:", err)
-				return
-			}
-			err = ps.Stop()
-			if err != nil {
-				fmt.Println("checked Stop:", err)
-				return
-			}
+		mode := ps2000a.EtsOff
+		if c {
+			ps.halt()
+			mode = ps2000a.EtsSlow
+		}
+		//		_, err := ps.SetEts(ps2000a.EtsOff, 20, 4)
+		err := ps.Con.Send(&psi.SetEtsMsg{Mode: mode, EtsCycles: 40, EtsInterleave: 4})
+		if err != nil {
+			fmt.Println("checked SetEts:", err)
+			return
+		}
+		resp, err := ps.Con.Receive()
+		sampleTimePs := resp.(*psi.SetEtsRsp).SampleTimePicoseconds
+		if err != nil || resp.Status() != nil {
+			fmt.Println("checked SetEts:", err, resp.Status())
+			return
+		}
+		fmt.Println("sampleTimePs:", sampleTimePs)
+		if c {
+
 		}
 	}
 	check := widget.NewCheck(ps.Str(inter.Ets), checked)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"psgo/gui/inter"
 	"psgo/ps2000a"
+	"psgo/psi"
 
 	// "psgo/ps2000a"
 	// "sort"
@@ -16,55 +17,83 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var ()
-
 func (ps *PsDesc) genOff() {
-	var (
-		offsetVoltage  int32                   = 0
-		pkToPK         uint32                  = 0 // microvolts = 0V
-		waveType       ps2000a.WaveTypeEnum    = ps2000a.DcVoltage
-		sweepType      ps2000a.SweepTypeEnum   = ps2000a.SweepUp
-		operation      ps2000a.ExtraOperations = ps2000a.EsOff
-		shots          uint32                  = 0
-		sweeps         uint32                  = 0
-		triggerType    ps2000a.SigGenTrigType
-		triggerSource  ps2000a.SigGenTrigSource = ps2000a.SigGenNone
-		extInThreshold int16
-	)
-	startFrequency := ps.GenFreq
-	stopFrequency := startFrequency + 10000.0 // +100 kHz
-	increment := ps.GenFreqStep
-	dwellTime := ps.GenFreqDelay
-	err := ps.SetSigGenBuiltInV2(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
-		sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
+	// var (
+	// 	offsetVoltage  int32                   = 0
+	// 	pkToPK         uint32                  = 0 // microvolts = 0V
+	// 	waveType       ps2000a.WaveTypeEnum    = ps2000a.DcVoltage
+	// 	sweepType      ps2000a.SweepTypeEnum   = ps2000a.SweepUp
+	// 	operation      ps2000a.ExtraOperations = ps2000a.EsOff
+	// 	shots          uint32                  = 0
+	// 	sweeps         uint32                  = 0
+	// 	triggerType    ps2000a.SigGenTrigType
+	// 	triggerSource  ps2000a.SigGenTrigSource = ps2000a.SigGenNone
+	// 	extInThreshold int16
+	// )
+	msg := &psi.SetSigGenBuiltInV2Msg{OffsetVoltage: 0, PkToPK: 0, WaveType: ps2000a.DcVoltage,
+		StartFrequency: ps.GenFreq, StopFrequency: ps.GenFreq, Increment: ps.GenFreqStep, DwellTime: ps.GenFreqDelay,
+		SweepType: ps2000a.SweepUp, Operation: ps2000a.EsOff, Shots: 0, Sweeps: 0, TriggerType: ps2000a.SigGenRising, TriggerSource: ps2000a.SigGenNone}
+	err := ps.Con.Send(msg)
 	if err != nil {
-		fmt.Println("genOff", err)
+		fmt.Println(err)
+		return
 	}
+	resp, err := ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println(err, resp.Status())
+		return
+	}
+
+	// startFrequency := ps.GenFreq
+	// stopFrequency := startFrequency + 10000.0 // +100 kHz
+	// increment := ps.GenFreqStep
+	// dwellTime := ps.GenFreqDelay
+	// err := ps.SetSigGenBuiltInV2(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
+	// 	sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
+	// if err != nil {
+	// 	fmt.Println("genOff", err)
+	// }
 }
 
 func (ps *PsDesc) genOn() {
-	var (
-		offsetVoltage  int32                   = 0
-		pkToPK         uint32                  = 2000000 // microvolts
-		waveType       ps2000a.WaveTypeEnum    = ps2000a.Sine
-		sweepType      ps2000a.SweepTypeEnum   = ps2000a.SweepUp
-		operation      ps2000a.ExtraOperations = ps2000a.EsOff
-		shots          uint32                  = 0
-		sweeps         uint32                  = 0
-		triggerType    ps2000a.SigGenTrigType
-		triggerSource  ps2000a.SigGenTrigSource = ps2000a.SigGenNone
-		extInThreshold int16
-	)
-	startFrequency := ps.GenFreq
-	stopFrequency := startFrequency
-	increment := ps.GenFreqStep
-	dwellTime := ps.GenFreqDelay
-	fmt.Println(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
-		sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
-	err := ps.SetSigGenBuiltInV2(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
-		sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
+	// var (
+	// 	offsetVoltage  int32                   = 0
+	// 	pkToPK         uint32                  = 2000000 // microvolts
+	// 	waveType       ps2000a.WaveTypeEnum    = ps2000a.Sine
+	// 	sweepType      ps2000a.SweepTypeEnum   = ps2000a.SweepUp
+	// 	operation      ps2000a.ExtraOperations = ps2000a.EsOff
+	// 	shots          uint32                  = 0
+	// 	sweeps         uint32                  = 0
+	// 	triggerType    ps2000a.SigGenTrigType
+	// 	triggerSource  ps2000a.SigGenTrigSource = ps2000a.SigGenNone
+	// 	extInThreshold int16
+	// )
+	// startFrequency := ps.GenFreq
+	// stopFrequency := startFrequency
+	// increment := ps.GenFreqStep
+	// dwellTime := ps.GenFreqDelay
+	// fmt.Println(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
+	// 	sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
+	// err := ps.SetSigGenBuiltInV2(offsetVoltage, pkToPK, waveType, startFrequency, stopFrequency, increment, dwellTime,
+	// 	sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold)
+	// if err != nil {
+	// 	fmt.Println("genOn", err)
+	// }
+	defer func() { <-ps.runLock }()
+	ps.runLock <- struct{}{}
+	ps.quit()
+	msg := &psi.SetSigGenBuiltInV2Msg{OffsetVoltage: 0, PkToPK: 2000000, WaveType: ps2000a.Sine,
+		StartFrequency: ps.GenFreq, StopFrequency: ps.GenFreq, Increment: ps.GenFreqStep, DwellTime: ps.GenFreqDelay,
+		SweepType: ps2000a.SweepUp, Operation: ps2000a.EsOff, Shots: 0, Sweeps: 0, TriggerType: ps2000a.SigGenRising, TriggerSource: ps2000a.SigGenNone}
+	err := ps.Con.Send(msg)
 	if err != nil {
-		fmt.Println("genOn", err)
+		fmt.Println(err)
+		return
+	}
+	resp, err := ps.Con.Receive()
+	if err != nil || resp.Status() != nil {
+		fmt.Println(err, resp.Status())
+		return
 	}
 }
 
@@ -82,7 +111,7 @@ func (ps *PsDesc) newGenSettings() *fyne.Container {
 	}
 	check := widget.NewCheck(ps.Str(inter.Gen), checked)
 	freqChanged := func(v float64) {
-		fmt.Println("freqChanged Gen", v)
+		//		fmt.Println("freqChanged Gen", v)
 		ps.GenFreq = v
 		if check.Checked {
 			ps.genOn()

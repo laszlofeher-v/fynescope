@@ -8,31 +8,49 @@ import (
 	"psgo/gui"
 	"psgo/gui/inter"
 	"psgo/ps2000acon"
-	// "psgo/psgen"
+	"psgo/psi"
 	//	"time"
 )
 
 func main() {
 	console := false
 	if !console {
-		ps := &gui.PsDesc{}
+		con, err := psi.OpenUnit("")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		ps := &gui.PsDesc{Con: con}
+		// if err := con.Send(&psi.PingUnitMsg{}); err != nil {
+		// 	fmt.Println(err)
+		// } else {
+		// 	resp, ok := <-con.RespCh
+		// 	fmt.Println(resp, ok)
+		// }
+		// if err := con.Send(&psi.FlashLedMsg{Start: 7}); err != nil {
+		// 	fmt.Println(err)
+		// } else {
+		// 	resp, ok := <-con.RespCh
+		// 	fmt.Println(resp, ok)
+		// }
+
 		ps.ChannelCount = 4
 		ps.Language = inter.Eng
 		ps.GenFreq = ps2000a.MinFrequency
-		_ = ps2000a.Picoscope2000Handler(ps) //check if object implements the interface
+		//_ = ps2000a.Picoscope2000Handler(ps) //check if object implements the interface
 
 		// sim := &gui.DemoDesc{}
 		// _ = ps2000a.Picoscope2000Handler(sim) //check if object implements the interface
 
-		err := ps.Menu()
-		err = ps.CloseUnit()
+		err = ps.Menu()
+		//err = ps.CloseUnit()
 		if err != nil {
 			fmt.Println("main close err=", err)
 		}
 	} else {
 		ps := &ps2000acon.PsDesc{}
 		_ = ps2000a.Picoscope2000Handler(ps) //check if object implements the interface
-		count, serials, serialTh, err := ps.EnumerateUnits()
+		count, serials, serialTh, err := ps2000a.EnumerateUnits()
 		fmt.Println("main enum ", count, serials, serialTh, err)
 		if err != nil {
 			return

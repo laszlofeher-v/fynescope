@@ -319,7 +319,7 @@ const (
 type HoldOffType C.PS2000A_HOLDOFF_TYPE
 
 const (
-	time           HoldOffType = C.PS2000A_TIME
+	hofTime        HoldOffType = C.PS2000A_TIME
 	maxHoldOffTime HoldOffType = C.PS2000A_MAX_HOLDOFF_TYPE
 )
 

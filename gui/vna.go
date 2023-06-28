@@ -1,8 +1,12 @@
+//go:build notnow
+
 package gui
 
 import (
 	"fmt"
 	"strconv"
+
+	"time"
 
 	//	"math"
 	"psgo/ps2000a"
@@ -20,6 +24,7 @@ func (ps *PsDesc) vna() {
 	// measure frequency
 	//    calculate bode points
 	//    step frequency
+	const autoTriggerMs = 1000
 	var (
 		channelProperties []ps2000a.TriggerChannelProperties
 		timeInterval      int32
@@ -41,12 +46,13 @@ func (ps *PsDesc) vna() {
 		return
 	}
 	ps.signals = &signalDesc{time: 0, length: sampleCount}
-	ps.signals.signal = make([][]int32, 2)
-	ps.signals.signal[0] = make([]int32, sampleCount)
-	ps.signals.signal[1] = make([]int32, sampleCount)
+	ps.signals.signal = make([][]int32, 4)
+	// ps.signals.signal[0] = make([]int32, sampleCount)
+	// ps.signals.signal[1] = make([]int32, sampleCount)
 	callbackChannel = make(chan bool)
 	// func callbackBlock
 	callbackBlock := func(handle int16, status int, param interface{}) {
+		// Must not call ps2000 function from here
 		callbackChannel <- true
 	}
 	//Get data
@@ -57,52 +63,49 @@ func (ps *PsDesc) vna() {
 				return
 			}
 			max := int32(0)
-			// defer ps.genOff()
-			// fmt.Println("Callback status:", status)
 			ps.screenLocker.Lock()
 			var err error
-			ps.MaxValue, err = ps.MaximumValue()
-			fmt.Println("........................................maxValue=", ps.MaxValue)
-			if err != nil {
-				fmt.Println("VNA getData:", err, " ps.MaxValue:", ps.MaxValue)
-			}
-			for channel := ps2000a.ChA; channel <= ps2000a.ChB; channel++ {
-				if ps.ChannelSettings[int(channel)].Enabled {
+			for channel := ps2000a.ChA; channel <= ps2000a.ChD; channel++ {
+				//	if ps.ChannelSettings[int(channel)].Enabled {
+				if buffers[channel] == nil || len(buffers[channel]) != int(sampleCount) {
 					buffers[channel] = make([]int16, sampleCount)
-					buffer := make([]int16, sampleCount)
-					//	err = ps.SetDataBuffer(channel, buffers[channel], segmentIndex, ratioMode)
-					err = ps.SetUnscaledDataBuffers(channel, buffers[channel], buffer, segmentIndex, ratioMode)
-					if err != nil {
-						fmt.Println("vna SetDataBuffers:", channel, err)
-						return
-					}
+					ps.signals.signal[channel] = make([]int32, sampleCount)
+					ps.signals.signal[channel] = make([]int32, sampleCount)
 				}
+				if ps.signals.signal[channel] == nil || len(ps.signals.signal[channel]) != int(sampleCount) {
+					ps.signals.signal[channel] = make([]int32, sampleCount)
+				}
+				err = ps.SetDataBuffer(channel, buffers[channel], segmentIndex, ratioMode)
+				if err != nil {
+					fmt.Println("vna SetDataBuffers:", channel, err)
+					return
+				}
+				//	}
 			}
 			noSamples, overflow, err := ps.GetValues(0, uint32(sampleCount), 1, ratioMode, 0)
 			if err != nil {
 				fmt.Println("VNA MaxValue:", err, " overflow:", overflow)
 			}
 			ps.Stop()
-			// fmt.Println("noSamples=", noSamples, overflow, err)
-			//		callbackChannel <- true
-			//		fmt.Println("Callback cha range:", ps.ChannelSettings[ps2000a.ChA].Range)
-			for channel := ps2000a.ChA; channel <= ps2000a.ChB; channel++ {
+
+			for channel := ps2000a.ChA; channel <= ps2000a.ChD; channel++ {
 				if ps.ChannelSettings[channel].Enabled {
-					// fmt.Println("Copy ch:", channel)
-					// for i, v := range buffers[channel*2] {
 					for i := 0; i < int(noSamples); i++ {
 						v := int32(buffers[channel][i])
 						if v > max {
 							max = v
 						}
 						ps.signals.signal[channel][i] = ps.adcToMv(int32(buffers[channel][i]), ps.ChannelSettings[channel].Range)
-						// ps.signals.signal[channel][i] = int32(buffers[channel][i])
 					}
 				}
 			}
 			fmt.Println("raw max=", max)
 			ps.screenLocker.Unlock()
-			ps.raster.Refresh()
+			since := time.Since(ps.refreshTime)
+			if since > 10*time.Millisecond {
+				ps.Window.Canvas().Refresh(ps.raster)
+				ps.refreshTime = time.Now()
+			}
 			// TODO change settings if needed
 			// timeIndisposed, err = ps.RunBlock(0, sampleCount, ps.timeBase, ps.overSample, 0, callbackBlock, nil)
 			// if err != nil {
@@ -110,8 +113,45 @@ func (ps *PsDesc) vna() {
 			// 	fmt.Println("timeIndisposed:", timeIndisposed)
 			// 	return
 			// }
+			timeIndisposed, err = ps.RunBlock(0, sampleCount, ps.timeBase, ps.overSample, 0, callbackBlock, nil)
+
 		}
 	}
+	setChannels := func() {
+		ranges := make([]int32, 32)
+		lengthOfRanges, err := ps.GetChannelInformation(ps2000a.ChannelInfoRanges, 0, ranges, ps2000a.ChA)
+		if err != nil {
+			fmt.Println("vna GetChannelInformation:", err)
+			return
+		}
+		// time.Sleep(1 * time.Second)
+		fmt.Println("ranges=", ranges, "length=", lengthOfRanges)
+		//		ps.Stop()
+		err = ps.SetChannel(ps2000a.ChA, ps.ChannelSettings[ps2000a.ChA].Enabled, ps.ChannelSettings[ps2000a.ChA].CoupleType, ps.ChannelSettings[ps2000a.ChA].Range, 0.0)
+		if err != nil {
+			fmt.Println("vna SetChannel:", err)
+			return
+		}
+		// time.Sleep(1 * time.Second)
+		err = ps.SetChannel(ps2000a.ChB, ps.ChannelSettings[ps2000a.ChB].Enabled, ps.ChannelSettings[ps2000a.ChB].CoupleType, ps.ChannelSettings[ps2000a.ChB].Range, 0.0)
+		if err != nil {
+			fmt.Println("vna SetChannel:", err)
+			return
+		}
+		// time.Sleep(1 * time.Second)
+		err = ps.SetChannel(ps2000a.ChC, ps.ChannelSettings[ps2000a.ChC].Enabled, ps.ChannelSettings[ps2000a.ChC].CoupleType, ps.ChannelSettings[ps2000a.ChC].Range, 0.0)
+		if err != nil {
+			fmt.Println("vna SetChannel:", err)
+			return
+		}
+		// time.Sleep(1 * time.Second)
+		err = ps.SetChannel(ps2000a.ChD, ps.ChannelSettings[ps2000a.ChD].Enabled, ps.ChannelSettings[ps2000a.ChD].CoupleType, ps.ChannelSettings[ps2000a.ChD].Range, 0.0)
+		if err != nil {
+			fmt.Println("vna SetChannel:", err)
+			return
+		}
+	} // end setChannels
+
 	go getData()
 	setTrigger := func() (err error) {
 
@@ -123,7 +163,7 @@ func (ps *PsDesc) vna() {
 		triggerVoltage := int16(ps.mvToAdc(0, ps.ChannelSettings[ps2000a.ChA].Range))
 		channelProperties = []ps2000a.TriggerChannelProperties{{triggerVoltage, uint16(1024),
 			triggerVoltage, uint16(1024), ps2000a.ChA, ps2000a.Level}}
-		err = ps.SetTriggerChannelProperties(channelProperties, false, 0)
+		err = ps.SetTriggerChannelProperties(channelProperties, false, autoTriggerMs)
 		if err != nil {
 			fmt.Println("vna SetTriggerChannelProperties:", err)
 			fmt.Println("channelProperties:", channelProperties)
@@ -144,31 +184,18 @@ func (ps *PsDesc) vna() {
 			return
 		}
 		return
-	}
+	} //end getData
 	//	ps.SetDefaults()
-	simpleTrigger := true
+	if ps.EtsMode {
+		ps.overSample = 0
+	} else {
+		ps.overSample = 1
+	}
+	simpleTrigger := false
 	//	ps.GenFreq = 1000000.0
 	//ps.genOn()
-	err = ps.SetChannel(ps2000a.ChA, true, ps.ChannelSettings[ps2000a.ChA].CoupleType, ps.ChannelSettings[ps2000a.ChA].Range, 0.0)
-	ranges := make([]int32, 32)
-	lengthOfRanges, err := ps.GetChannelInformation(ps2000a.ChannelInfoRanges, 0, ranges, ps2000a.ChA)
-	if err != nil {
-		fmt.Println("vna GetChannelInformation:", err)
-		return
-	}
-	fmt.Println("ranges=", ranges, "length=", lengthOfRanges)
-
-	err = ps.SetChannel(ps2000a.ChA, ps.ChannelSettings[ps2000a.ChA].Enabled, ps.ChannelSettings[ps2000a.ChA].CoupleType, ps.ChannelSettings[ps2000a.ChA].Range, 0.0)
-	if err != nil {
-		fmt.Println("vna SetChannel:", err)
-		return
-	}
-	err = ps.SetChannel(ps2000a.ChB, ps.ChannelSettings[ps2000a.ChB].Enabled, ps.ChannelSettings[ps2000a.ChB].CoupleType, ps.ChannelSettings[ps2000a.ChB].Range, 0.0)
-	if err != nil {
-		fmt.Println("vna SetChannel:", err)
-		return
-	}
-	_, err = ps.SetEts(ps2000a.EtsOff, 20, 4)
+	//	setChannels()
+	//	_, err = ps.SetEts(ps2000a.EtsOff, 20, 4)
 	ps.timeBase = 0
 	for {
 		timeInterval, maxSamples, err = ps.GetTimebase(ps.timeBase, sampleCount, ps.overSample, 0)
@@ -182,17 +209,14 @@ func (ps *PsDesc) vna() {
 	ps.signals.time = float64(timeInterval) * float64(maxSamples)
 	ps.signals.timeInterval = float64(timeInterval)
 	if ps.EtsMode {
-		if ps.etsInterleave.Text == "" {
-			ps.etsInterleave.Text = "10"
-		}
 		if ps.etsSampleCountEntry.Text == "" {
 			ps.etsSampleCountEntry.Text = "4096"
 		}
 		if ps.etsInterleave.Text == "" {
-			ps.etsInterleave.Text = "10"
+			ps.etsInterleave.Text = "4"
 		}
 		if ps.etsCycles.Text == "" {
-			ps.etsCycles.Text = "40"
+			ps.etsCycles.Text = "20"
 		}
 		sc, err := strconv.Atoi(ps.etsSampleCountEntry.Text)
 		if err != nil {
@@ -210,7 +234,7 @@ func (ps *PsDesc) vna() {
 			ps.etsInterleave.Text = "10"
 			interleave, err = strconv.Atoi(ps.etsInterleave.Text)
 		}
-		timeInterval, err = ps.SetEts(ps2000a.EtsFast, int16(cycles), int16(interleave)) //max 109 40 ?
+		timeInterval, err = ps.SetEts(ps2000a.EtsSlow, int16(cycles), int16(interleave)) //max 109 40 ?
 		if err != nil {
 			fmt.Println("vna SetEts:", err)
 			fmt.Println("timeInterval:", timeInterval)
@@ -227,23 +251,10 @@ func (ps *PsDesc) vna() {
 			fmt.Println("vna SetEtsTimeBuffer:", err)
 			return
 		}
-		// } else {
-		// _, err = ps.SetEts(ps2000a.EtsOff, 20, 4)
-		// ps.timeBase = 0
-		// for {
-		// 	timeInterval, maxSamples, err = ps.GetTimebase(ps.timeBase, sampleCount, ps.overSample, 0)
-		// 	if err == nil {
-		// 		break
-		// 	}
-		// 	fmt.Println(err)
-		// 	ps.timeBase++
-		// }
-		// fmt.Println("timeInterval:", timeInterval, " maxSamples:", maxSamples, "ps.timeBase=", ps.timeBase, " ps.overSample=", ps.overSample)
-		// ps.signals.time = float64(timeInterval) * float64(maxSamples)
-		// ps.signals.timeInterval = float64(timeInterval)
+		setChannels()
 	}
 	if simpleTrigger {
-		err = ps.SetSimpleTrigger(true, ps2000a.ChA, 0, ps2000a.TriggerRaising, 0, 10)
+		err = ps.SetSimpleTrigger(true, ps2000a.ChA, 0, ps2000a.TriggerRaising, 0, autoTriggerMs)
 	} else {
 		err = setTrigger()
 	}
@@ -261,5 +272,5 @@ func (ps *PsDesc) vna() {
 	}
 	fmt.Println("timeIndisposed:", timeIndisposed)
 	// func printResult
-	ps.raster.Refresh()
+	//ps.raster.Refresh()
 }

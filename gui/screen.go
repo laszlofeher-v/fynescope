@@ -295,14 +295,17 @@ func (ps *PsDesc) drawSignals(leftMargin, w, h float64) (err error) {
 	maxY := int(math.Round(h + defaultTopMargin))
 	//	fmt.Println("screen ps.ChannelSettings[ch].Range:", ps.ChannelSettings[0].Range, " RangeValuesMv:", ps2000a.RangeValuesMv[ps.ChannelSettings[0].Range])
 	for ch := range ps.signals.signal {
-		if ps.ChannelSettings[ch].Enabled {
+		if ps.signals.signal[ch] != nil && ps.ChannelSettings[ch].Enabled {
 			col := ps.ChannelColors[ch]
 			yScale := h / (2.0 * ps2000a.RangeValuesMv[ps.ChannelSettings[ch].Range])
 			var prev int
 			t := 0.0
 			for i := 0; t < maxTimeIndex; i = i + 1 {
-				// TODO Race condition exists with block callback funtion
-				s := ps.signals.signal[ch][int(math.Round(t))]
+				index := int(math.Round(t))
+				if index >= len(ps.signals.signal[ch]) {
+					break
+				}
+				s := ps.signals.signal[ch][index]
 				t += dt
 				if ps.ChannelSettings[ch].Inverted {
 					s = -s

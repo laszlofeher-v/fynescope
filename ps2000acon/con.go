@@ -153,8 +153,8 @@ func (ps *PsDesc) BlockDataHandler(text string, offset int32,
 	)
 
 	// func callbackBlock
-	callbackBlock := func(handle int16, status int, param interface{}) {
-		callbackChannel <- true
+	callbackBlock := func(handle int16, status int, callbackChannel interface{}) {
+		callbackChannel.(chan bool) <- true
 	}
 
 	// func setBuffers
@@ -253,7 +253,7 @@ func (ps *PsDesc) BlockDataHandler(text string, offset int32,
 	// }
 	defer ps.Stop()
 	callbackChannel = make(chan bool)
-	timeIndisposed, err = ps.RunBlock(0, sampleCount, ps.timeBase, ps.overSample, 0, callbackBlock, nil)
+	timeIndisposed, err = ps.RunBlock(0, sampleCount, ps.timeBase, ps.overSample, 0, callbackBlock, &callbackChannel)
 	select {
 	case <-terminal:
 		fmt.Println("data collection aborted, press a key\n")

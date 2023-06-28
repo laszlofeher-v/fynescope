@@ -1,7 +1,7 @@
 package gui
 
 import (
-	//	"fmt"
+	"fmt"
 	"psgo/gui/inter"
 	"psgo/ps2000a"
 	"sort"
@@ -62,33 +62,53 @@ func sortMapString(strInt map[string]ps2000a.RangeEnum) []string {
 
 func (ps *PsDesc) newChannelSettings(chIndex int) *fyne.Container {
 	chName := channelNames[chIndex]
+	setChannel := func() {
+		// err := ps.SetChannel(ps2000a.ChannelId(chIndex), ps.ChannelSettings[chIndex].Enabled, ps.ChannelSettings[chIndex].CoupleType, ps.ChannelSettings[chIndex].Range, 0.0)
+		// if err != nil {
+		// 	fmt.Println("vna SetChannel:", err)
+		// 	return
+		// }
+	}
 	cChanged := func(option string) {
+		defer func() { <-ps.runLock }()
+		ps.runLock <- struct{}{}
+		ps.quit()
 		switch option {
 		case "AC":
 			ps.ChannelSettings[chIndex].CoupleType = ps2000a.Ac
-			//			fmt.Println("AC Changed ", chIndex, chName, option)
+			fmt.Println("AC Changed ", chIndex, chName, option)
 		case "DC":
 			ps.ChannelSettings[chIndex].CoupleType = ps2000a.Dc
-			//			fmt.Println("DC Changed ", chIndex, chName, option)
+			fmt.Println("DC Changed ", chIndex, chName, option)
 		default:
 		}
 		ps.raster.Refresh()
+		setChannel()
 	}
 	vChanged := func(option string) {
+		defer func() { <-ps.runLock }()
+		ps.runLock <- struct{}{}
+		ps.quit()
 		v := vRanges[option]
 		//		fmt.Println("Changed ", chIndex, chName, option, v)
 		ps.ChannelSettings[chIndex].Range = v
 		ps.raster.Refresh()
+		setChannel()
 	}
 	checked := func(c bool) {
+		defer func() { <-ps.runLock }()
+		ps.runLock <- struct{}{}
+		ps.quit()
 		ps.ChannelSettings[chIndex].Enabled = c
 		ps.raster.Refresh()
+		setChannel()
 		//		fmt.Println("Checked ", chIndex, chName, c)
 	}
 	inverted := func(c bool) {
 		ps.ChannelSettings[chIndex].Inverted = c
 		//		fmt.Println("inverted ", chIndex, chName, c)
 		ps.raster.Refresh()
+		setChannel()
 	}
 	//TODO new widget type: left click check, right click color picker
 	// check := widget.NewCheck(chName, checked)

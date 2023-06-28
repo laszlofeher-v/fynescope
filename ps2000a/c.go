@@ -31,7 +31,11 @@ func boolToint16(b bool) int16 {
 	}
 	return int16(0)
 }
-func (ps *PsDesc) EnumerateUnits() (count int16, serials string, serialLth int16, err error) {
+func (ps *PsDesc) Handle() int16 {
+	return ps.handle
+}
+
+func EnumerateUnits() (count int16, serials string, serialLth int16, err error) {
 	const listLen = 1024
 	var cstrPtr *C.schar
 	cstrPtr = (*C.schar)(C.malloc(C.sizeof_schar * listLen))
@@ -68,7 +72,7 @@ func (ps *PsDesc) OpenUnitAsync(serial string) (err error) {
 		p = (*C.schar)(C.CString(serial))
 		defer C.free(unsafe.Pointer(p))
 	}
-	stat := C.ps2000aOpenUnit((*C.short)(&ps.handle), (*C.schar)(p))
+	stat := C.ps2000aOpenUnitAsync((*C.short)(&ps.handle), (*C.schar)(p))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("OpenUnit:  %s", psc.StatStr(int(stat)))
 		return
@@ -134,7 +138,7 @@ func lpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16,
 }
 
 func (ps *PsDesc) GetValuesAsync(startIndex, noOfSamples, downSampleRatio uint32,
-	downSampleRatioMode int, lpDataReadyGoPar DataReady, segmentIndex uint32,
+	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 	param interface{}) (err error) {
 	regLpDataReadyGo = lpDataReadyGoPar
 	stat := C.ps2000aGetValuesAsync((C.short)(ps.handle),
@@ -184,7 +188,7 @@ func (ps *PsDesc) GetValuesBulk(reqNoOfSamples uint32, fromSegmentIndex, toSegme
 }
 
 func (ps *PsDesc) GetValuesOverlapped(startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode int, segmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
+	downSampleRatioMode RatioMode, segmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
 	stat := C.ps2000aGetValuesOverlapped((C.short)(ps.handle),
 		(C.uint)(startIndex),
 		(*C.uint)(&reqNoOfSamples),
@@ -200,7 +204,7 @@ func (ps *PsDesc) GetValuesOverlapped(startIndex, reqNoOfSamples, downSampleRati
 }
 
 func (ps *PsDesc) GetValuesOverlappedBulk(startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode int, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
+	downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
 	stat := C.ps2000aGetValuesOverlappedBulk((C.short)(ps.handle),
 		(C.uint)(startIndex),
 		(*C.uint)(&reqNoOfSamples),
@@ -236,7 +240,7 @@ func (ps *PsDesc) GetChannelInformation(info int16, probe int32, ranges []int32,
 	return
 }
 
-func (ps *PsDesc) GetMaxDownSampleRatio(noOfUnaggregatedSamples uint32, downSampleRatioMode int, segmentIndex int32) (maxDownSampleRatio uint32, err error) {
+func (ps *PsDesc) GetMaxDownSampleRatio(noOfUnaggregatedSamples uint32, downSampleRatioMode RatioMode, segmentIndex int32) (maxDownSampleRatio uint32, err error) {
 	stat := C.ps2000aGetMaxDownSampleRatio((C.short)(ps.handle), (C.uint)(noOfUnaggregatedSamples),
 		(*C.uint)(&maxDownSampleRatio), (C.PS2000A_RATIO_MODE)(downSampleRatioMode), (C.uint)(segmentIndex))
 	if stat != C.PICO_OK {
@@ -351,6 +355,7 @@ func (ps *PsDesc) MinimumValue() (value int16, err error) {
 
 func (ps *PsDesc) SetSimpleTrigger(enable bool, source ChannelId, threshold int16,
 	direction ThresholdDirection, delay uint32, autoTriggerMs int16) (err error) {
+	fmt.Println("autoTriggerMs:", autoTriggerMs)
 	stat := C.ps2000aSetSimpleTrigger((C.short)(ps.handle), (C.short)(boolToint16(enable)),
 		(C.PS2000A_CHANNEL)(source), (C.short)(threshold),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint)(delay),
@@ -426,12 +431,12 @@ func (ps *PsDesc) SetEts(mode EtsMode, etsCycles int16, etsInterLeave int16) (sa
 
 func (ps *PsDesc) RunStreaming(reqSampleInterval uint32, sampleIntervalTimeUnits TimeUnits,
 	maxPreTriggerSamples, maxPostTriggerSamples uint32,
-	autoStop bool, downSampleRation uint32, downSampleRationMode RatioMode,
+	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 	overviewBufferSize uint32) (sampleInterval uint32, err error) {
 	stat := C.ps2000aRunStreaming((C.short)(ps.handle), (*C.uint)(&reqSampleInterval),
 		(C.PS2000A_TIME_UNITS)(sampleIntervalTimeUnits), (C.uint)(maxPreTriggerSamples),
-		(C.uint)(maxPostTriggerSamples), (C.short)(boolToint16(autoStop)), (C.uint)(downSampleRation),
-		(C.PS2000A_RATIO_MODE)(downSampleRationMode), (C.uint)(overviewBufferSize))
+		(C.uint)(maxPostTriggerSamples), (C.short)(boolToint16(autoStop)), (C.uint)(downSampleRatio),
+		(C.PS2000A_RATIO_MODE)(downSampleRatioMode), (C.uint)(overviewBufferSize))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("RunStreaming:  %s", psc.StatStr(int(stat)))
 	}
@@ -462,8 +467,8 @@ func (ps *PsDesc) RunBlock(noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
-	fmt.Println("noOfPreTriggerSamples=", noOfPreTriggerSamples, " noOfPostTriggerSamples=", noOfPostTriggerSamples,
-		" timeBase=", timeBase, " overSample=", overSample, " segmentIndex=", segmentIndex)
+	//	fmt.Println("noOfPreTriggerSamples=", noOfPreTriggerSamples, " noOfPostTriggerSamples=", noOfPostTriggerSamples,
+	//		" timeBase=", timeBase, " overSample=", overSample, " segmentIndex=", segmentIndex)
 	stat := C.ps2000aRunBlock((C.short)(ps.handle), (C.int)(noOfPreTriggerSamples),
 		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase), (C.short)(overSample),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps2000aBlockReady)(C.lpBlockReady),
@@ -477,6 +482,7 @@ func (ps *PsDesc) RunBlock(noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 func (ps *PsDesc) SetTriggerChannelProperties(channelProperties []TriggerChannelProperties, auxOutputEnable bool,
 	autoTriggerMs int32) (err error) {
 	var cTriggerChannelProperties []C.PS2000A_TRIGGER_CHANNEL_PROPERTIES
+	fmt.Println("SetTriggerChannelProperties autoTriggerMs:", autoTriggerMs)
 	if len(channelProperties) > 0 {
 		cTriggerChannelProperties = make([]C.PS2000A_TRIGGER_CHANNEL_PROPERTIES, len(channelProperties))
 		for i := range channelProperties {
