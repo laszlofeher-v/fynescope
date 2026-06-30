@@ -1,0 +1,16 @@
+This software uses the following third-party libraries:
+
+* fyne.io/fyne/v2 (BSD 3-Clause)
+* gonum.org/v1/gonum (BSD 3-Clause)
+* golang.org/x/image (BSD 3-Clause)
+* golang.org/x/net (BSD 3-Clause)
+* golang.org/x/sys (BSD 3-Clause)
+* golang.org/x/text (BSD 3-Clause)
+* github.com/stretchr/testify (MIT)
+* gopkg.in/yaml.v3 (MIT)
+* PicoScope 2000 Series PC Oscilloscopes API (ps2000.h)
+  Copyright (c) 2005 - 2026 Pico Technology Ltd. All rights reserved.
+
+For the full text of the respective licenses, please refer to:
+- BSD 3-Clause: https://opensource.org/licenses/BSD-3-Clause
+- MIT: https://opensource.org/licenses/MIT

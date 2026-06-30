@@ -1,0 +1,1324 @@
+package gui
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"log/slog"
+	"time"
+
+	"math"
+	"math/cmplx"
+	"fynescope/genericps"
+	"fynescope/selectscroll"
+	"fynescope/settings"
+	"strconv"
+
+	"fyne.io/fyne/v2/driver/desktop"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
+	"gonum.org/v1/gonum/dsp/fourier"
+	"gonum.org/v1/gonum/dsp/window"
+)
+
+type dftViewer struct {
+	rasterPartition
+	scp                 *ScpDesc
+	selected            bool
+	showInspector       bool
+	mouseX, mouseY      float32
+	inspectorLastX      float32
+	inspectorLastY      float32
+	magnitudesCache     [][]float64
+	mCache              int
+	fsCache             float64
+	inspectorSumV       []float64
+	inspectorSumVCur    []float64
+	inspectorDispV      []float64
+	inspectorDispVCur   []float64
+	inspectorSamples    int
+	inspectorLastUpdate time.Time
+}
+
+var (
+	fft       *fourier.FFT
+	samples   []float64
+	fftResult []complex128
+	m         int
+)
+
+type (
+	frqLabelViewer struct {
+		rasterPartition
+		scp      *ScpDesc
+		selected bool
+	}
+)
+
+func niceStep(span float64) float64 {
+	if span <= 0 || math.IsNaN(span) || math.IsInf(span, 0) {
+		return 1
+	}
+	exp := math.Floor(math.Log10(span))
+	frac := span / math.Pow(10, exp)
+	var niceFrac float64
+	switch {
+	case frac < 1.5:
+		niceFrac = 1
+	case frac < 3.5:
+		niceFrac = 2
+	case frac < 7.5:
+		niceFrac = 5
+	default:
+		niceFrac = 10
+	}
+	return niceFrac * math.Pow(10, exp)
+}
+
+var (
+	_ mouser     = (*frqLabelViewer)(nil)
+	_ dragger    = (*frqLabelViewer)(nil)
+	_ scroller   = (*frqLabelViewer)(nil)
+	_ keyer      = (*frqLabelViewer)(nil)
+	_ cursorable = (*frqLabelViewer)(nil)
+	_ drawer     = (*frqLabelViewer)(nil)
+)
+
+func (frql *frqLabelViewer) cursor(x, y float32) (desktop.Cursor, bool) {
+	if frql.mousIn(x, y) {
+		return desktop.PointerCursor, true
+	}
+	return desktop.DefaultCursor, false
+}
+
+func (frql *frqLabelViewer) mouseMoved(x, y float32) {
+}
+func (frql *frqLabelViewer) mousIn(x, y float32) bool {
+	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
+	if p.In(frql.rect()) {
+		return true
+	}
+	return false
+}
+func (frql *frqLabelViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+	frql.selected = frql.mousIn(x, y)
+}
+func (tl *frqLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+	tl.selected = false
+}
+
+func (frql *frqLabelViewer) setDispFreqOffset(dx float32) {
+	span := frql.scp.Settings.Dft.MaxFreq
+	w := float32(frql.scp.dftScopeSignalScreen.Bounds().Dx()) - 1
+	if w > 0 {
+		freqDelta := (float64(-dx) / float64(w)) * span
+		newMin := frql.scp.Settings.Dft.MinFreq + freqDelta
+		fs := 1.0 / float64(frql.scp.psControl.SamplingTimeInterval)
+		if newMin < 0 {
+			newMin = 0
+		}
+		if newMin > fs/2-span {
+			newMin = fs/2 - span
+		}
+		if newMin < 0 {
+			newMin = 0
+		}
+		frql.scp.Settings.Dft.MinFreq = newMin
+		frql.scp.setDftHDivsX()
+		frql.enableRefresh()
+		frql.scp.refreshRasters()
+	}
+}
+
+func (frql *frqLabelViewer) dragged(dx, dy, x, y float32) {
+	if frql.selected {
+		frql.setDispFreqOffset(dx)
+	}
+}
+
+func (frql *frqLabelViewer) scrolled(delta, x, y float32) {
+	if !frql.mousIn(x, y) {
+		return
+	}
+	nX := (float32(frql.scp.dftScopeSignalScreen.Bounds().Dx()) / float32(numberOfDivs)) / 10
+	frql.setDispFreqOffset(delta * nX)
+}
+
+func (frql *frqLabelViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	switch keyName {
+	case fyne.KeyLeft:
+		frql.scrolled(-scrollDelta, x, y)
+	case fyne.KeyRight:
+		frql.scrolled(scrollDelta, x, y)
+	}
+}
+
+func (frql *frqLabelViewer) clear() {
+	draw.Draw(frql.img, frql.rect(), &image.Uniform{theme.BackgroundColor()}, image.ZP, draw.Src)
+}
+
+func (frql *frqLabelViewer) draw() {
+	if !frql.refreshFlag {
+		return
+	}
+	if !frql.scp.shouldDrawRaster(dftTabIndex) {
+		return
+	}
+	bounds := frql.scp.dftScopeSignalScreen.Bounds()
+	w := float32(bounds.Dx()) - 1
+	if w < 1 {
+		return
+	}
+	l, t, r, b := frql.scp.boundString("100M")
+	maxLblWidth := r - l
+	lblHeight := b - t
+
+	// Frequency steps: avoid overlapping by calculating based on width
+	labelSpacing := maxLblWidth + 10 // add some padding between labels
+	if labelSpacing < 10 {
+		labelSpacing = 50 // fallback
+	}
+
+	numDivs := int(w / labelSpacing)
+	if numDivs > 10 {
+		numDivs = 10
+	}
+	if numDivs < 2 {
+		numDivs = 2
+	}
+	labelBounds := bounds
+	labelBounds.Min.Y = bounds.Max.Y
+	labelBounds.Max.Y += int(math.Ceil(float64(lblHeight))) + 8
+	labelBounds.Max.X += int(math.Ceil(float64(maxLblWidth)))
+	draw.Draw(frql.scp.dftScopeFullScreen, labelBounds,
+		&image.Uniform{frql.scp.theme.Color(ColorNameSignalBackground, 0)},
+		image.ZP, draw.Src)
+
+	minFreq := frql.scp.Settings.Dft.MinFreq
+	maxFreqPlot := frql.scp.Settings.Dft.MaxFreq
+
+	if numDivs <= 0 {
+		numDivs = 1
+	}
+	step := niceStep(maxFreqPlot / float64(numDivs))
+	firstFreq := math.Floor(minFreq/step) * step
+
+	for i := 0; i < 20; i++ { // Draw up to 20 potential labels
+		freq := firstFreq + float64(i)*step
+		if freq < 0 {
+			continue
+		}
+
+		fraction := (freq - minFreq) / maxFreqPlot
+		x := float32(bounds.Min.X) + float32(fraction)*w
+
+		if x < float32(bounds.Min.X)-maxLblWidth/2 {
+			continue
+		}
+		if x > float32(bounds.Max.X)+maxLblWidth/2 {
+			break
+		}
+
+		label := formatFreq(freq)
+		lblL, _, lblR, _ := frql.scp.boundString(label)
+		lblW := lblR - lblL
+
+		frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
+			bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+	}
+	frql.disableRefresh()
+}
+
+func newFrqLabelViewer(img rasterImage, imgRect image.Rectangle, scp *ScpDesc) *frqLabelViewer {
+	frql := &frqLabelViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect, refreshFlag: true},
+		scp: scp}
+	return frql
+}
+func newDftViewer(img rasterImage, imgRect image.Rectangle, scp *ScpDesc) *dftViewer {
+	return &dftViewer{
+		rasterPartition: rasterPartition{img: img, imgRect: imgRect, refreshFlag: true},
+		scp:             scp,
+		magnitudesCache: make([][]float64, 4),
+	}
+}
+
+var (
+	_ mouser     = (*dftViewer)(nil)
+	_ dragger    = (*dftViewer)(nil)
+	_ scroller   = (*dftViewer)(nil)
+	_ keyer      = (*dftViewer)(nil)
+	_ cursorable = (*dftViewer)(nil)
+	_ drawer     = (*dftViewer)(nil)
+)
+
+func (dv *dftViewer) cursor(x, y float32) (desktop.Cursor, bool) {
+	if dv.mousIn(x, y) {
+		return desktop.CrosshairCursor, true
+	}
+	return desktop.DefaultCursor, false
+}
+
+func (dv *dftViewer) mouseMoved(x, y float32) {
+	if dv.showInspector {
+		dv.mouseX = x
+		dv.mouseY = y
+		if dv.mouseX < float32(dv.imgRect.Min.X) {
+			dv.mouseX = float32(dv.imgRect.Min.X)
+		}
+		if dv.mouseX > float32(dv.imgRect.Max.X-1) {
+			dv.mouseX = float32(dv.imgRect.Max.X - 1)
+		}
+		if dv.mouseY < float32(dv.imgRect.Min.Y) {
+			dv.mouseY = float32(dv.imgRect.Min.Y)
+		}
+		if dv.mouseY > float32(dv.imgRect.Max.Y-1) {
+			dv.mouseY = float32(dv.imgRect.Max.Y - 1)
+		}
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+	}
+}
+
+func (dv *dftViewer) mousIn(x, y float32) bool {
+	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
+	return p.In(dv.rect())
+}
+
+func (dv *dftViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+	if button == desktop.RightMouseButton && dv.mousIn(x, y) {
+		dv.showInspector = true
+		dv.mouseX = x
+		dv.mouseY = y
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+		return
+	}
+	dv.selected = dv.mousIn(x, y)
+}
+
+func (dv *dftViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+	if button == desktop.RightMouseButton {
+		dv.showInspector = false
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+		return
+	}
+	dv.selected = false
+}
+
+func (dv *dftViewer) dragged(dx, dy, x, y float32) {
+	if dv.showInspector {
+		dv.mouseX = x
+		dv.mouseY = y
+		if dv.mouseX < float32(dv.imgRect.Min.X) {
+			dv.mouseX = float32(dv.imgRect.Min.X)
+		}
+		if dv.mouseX > float32(dv.imgRect.Max.X-1) {
+			dv.mouseX = float32(dv.imgRect.Max.X - 1)
+		}
+		if dv.mouseY < float32(dv.imgRect.Min.Y) {
+			dv.mouseY = float32(dv.imgRect.Min.Y)
+		}
+		if dv.mouseY > float32(dv.imgRect.Max.Y-1) {
+			dv.mouseY = float32(dv.imgRect.Max.Y - 1)
+		}
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+	}
+	if dv.selected {
+		dv.scp.dftBottomLabelViewer.(*frqLabelViewer).setDispFreqOffset(dx)
+	}
+}
+
+func (dv *dftViewer) scrolled(delta, x, y float32) {
+	// dv.scp.dftBottomLabelViewer.(*frqLabelViewer).scrolled(delta, x, y)
+}
+
+func (dv *dftViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	dv.scp.dftBottomLabelViewer.(*frqLabelViewer).typedKey(x, y, keyName)
+}
+func (scp *ScpDesc) snapYToDftN(y float64) int {
+	h := scp.dftScopeSignalScreen.Bounds().Dy()
+	yRasterDiv := (float64(h) / float64(numberOfDivs)) / 5
+	n := int(math.Round((y / yRasterDiv)))
+	return n
+}
+
+func (dv *dftViewer) draw() {
+	if !dv.scp.shouldDrawRaster(dftTabIndex) {
+		return
+	}
+
+	fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
+	maxFreqAvailable := fs / 2
+	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+	if maxFreqPlot > maxFreqAvailable {
+		maxFreqPlot = maxFreqAvailable
+	}
+
+	bounds := dv.scp.dftScopeSignalScreen.Bounds()
+	h := float32(bounds.Dy())
+	w := float32(bounds.Dx()) - 1
+	if w < 1 {
+		return
+	}
+
+	// Draw divisions (optional, or simplified)
+	dv.scp.drawDftDivisions()
+	// Use selected bins for FFT
+
+	// bins := dv.scp.Settings.Dft.Bins
+	// if bins < 1 {
+	// 	bins = 1024
+	// }
+
+	for chIdx := range dv.scp.channelViewers {
+		channel := &dv.scp.Settings.Channels[chIdx]
+		if !channel.Enabled {
+			dv.magnitudesCache[chIdx] = nil
+			continue
+		}
+
+		displayBuffer := dv.scp.displayBuffers[chIdx]
+		if len(displayBuffer) < 2 {
+			slog.Debug("dftdraw", "chIdx", chIdx, "len", len(displayBuffer))
+			continue
+		}
+
+		// // Use selected bins for FFT
+		// bins := dv.scp.Settings.Dft.Bins
+		// if bins < 1 {
+		// 	bins = 1024
+		// }
+		// m := bins * 2
+
+		if m == 0 || fft == nil || len(samples) != m || len(fftResult) != m/2+1 {
+			bins := dv.scp.Settings.Dft.Bins
+			if bins < 128 {
+				bins = 128
+				dv.scp.Settings.Dft.Bins = bins
+			}
+			m = bins * 2
+			fft = fourier.NewFFT(m)
+			samples = make([]float64, m)
+			fftResult = make([]complex128, m/2+1)
+		}
+
+		nsig := len(displayBuffer)
+		if nsig > m {
+			nsig = m
+		}
+
+		for i := range samples {
+			if i < nsig {
+				samples[i] = float64(displayBuffer[i])
+			} else {
+				// Zero padding
+				samples[i] = 0
+			}
+		}
+
+		applyWindow(samples[:nsig], dv.scp.Settings.Dft.Window)
+
+		// fft := fourier.NewFFT(m)
+		fftResult = fft.Coefficients(fftResult, samples)
+
+		magnitudes := make([]float64, m/2)
+		const dbFloor = -100.0
+
+		// Determine max voltage range for the channel to normalize visualization
+		// genericps.InputRanges[channel.VRange] gives the full range in mV (e.g. 10000 for +/- 5V?)
+		// Actually inputRanges string array has values like "±5V", but genericps.InputRanges is an array of ints.
+		// Let's assume genericps.InputRanges[channel.VRange] is the max voltage in mV.
+		// Wait, looking at gui.go: adcToMv uses genericps.InputRanges.
+		// Let's use the channel's set range as the full scale for display.
+		// The FFT magnitude is normalized such that a pure sine wave of amplitude A has peak magnitude A.
+
+		normFactor := float64(nsig) / 2.0
+		normFactor *= dv.scp.getCoherentGain(dv.scp.Settings.Dft.Window, nsig)
+
+		// maxRangeMv := float64(genericps.InputRanges[channel.VRange])
+		// yScale here is normalized to the channel's max voltage (Peak)
+		yScale := 1.0 / float32(genericps.RangeValuesMv[channel.VRange])
+		for i := 0; i < m/2; i++ {
+			mag := cmplx.Abs(fftResult[i]) / normFactor // Magnitude in mV (since input samples are in mV)
+			val := float64(float32(mag) * yScale)
+
+			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				// Linear plot
+				// Scale relative to the channel's max range
+				// if val > 1.0 {
+				// 	val = 1.0
+				// }
+				magnitudes[i] = val
+			} else {
+				// dB plot
+				if mag < 1e-10 { // Avoid log(0)
+					magnitudes[i] = dbFloor
+				} else {
+					// 20*log10(mag/ref). Let's treat 1V (1000mV) as 0dB reference?
+					// Or just relative dB?
+					// Existing code:
+					// db := 20 * math.Log10(mag)
+					// This means 1mV is 0dB, 1000mV is 60dB.
+					// And dbFloor is -100dB (0.00001 mV)
+
+					db := 20 * math.Log10(val)
+					if db < dbFloor {
+						db = dbFloor
+					}
+					magnitudes[i] = db
+				}
+			}
+		}
+		dv.magnitudesCache[chIdx] = magnitudes
+		// slog.Debug("dft draw", "magnitudes", magnitudes)
+
+		col := channel.Col[dv.scp.Settings.ChannelColorIndex]
+		yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
+		prevX := float32(bounds.Min.X)
+
+		minFreq := dv.scp.Settings.Dft.MinFreq
+		fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
+		maxFreqAvailable := fs / 2
+		maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+		if maxFreqPlot <= 0 {
+			maxFreqPlot = 1e6 // Default to 1MHz if 0
+		}
+		if maxFreqPlot > maxFreqAvailable {
+			maxFreqPlot = maxFreqAvailable
+		}
+		if minFreq > maxFreqAvailable-maxFreqPlot {
+			minFreq = maxFreqAvailable - maxFreqPlot
+		}
+		if minFreq < 0 {
+			minFreq = 0
+		}
+
+		minBinIdx := int(math.Round((minFreq / maxFreqAvailable) * float64(m/2)))
+		if minBinIdx < 0 {
+			minBinIdx = 0
+		}
+
+		var startY float32
+		if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			// Linear: 0 is at bottom, 1 is at top
+			// y = bounds.Min.Y + h - (mag * h) + yOffset?
+			// Wait, scope normally plots -V to +V. FFT magnitude is 0 to +V.
+			// Let's plot 0 at the vertical center (like 0V in scope) or bottom?
+			// Usually spectrum Analyzers plot 0 Hz at left.
+			// For Y axis:
+			// If we align with scope grid, 0V is usually center.
+			// But magnitude is always positive.
+			// Let's put 0 at the bottom of the screen area for that channel?
+			// Or just use the full height 0 to 1.
+
+			// Let's map 0 to bounds.Max.Y (bottom) and maxRange to bounds.Min.Y (top)
+			// y = bounds.Max.Y - (mag * h)
+			// But we need to account for offsets?
+			// In scope mode, yOffset shifts the zero level.
+			// Let's stick to a simple 0..1 mapping to the full screen height for now, modified by offset?
+			// Re-using the logic from dB mode logic which seemed to map min..max to h.
+
+			// In dB mode: y = bounds.Min.Y + (db/dbFloor)*h + yOffset
+			// db goes from -100 to +X.
+			// db/dbFloor goes from 1 (at -100dB) to negative (at >0dB).
+			// Wait, dbFloor is negative (-100).
+			// If db = -100, fraction = 1. y = MinY + h (Bottom). Correct.
+			// If db = 0, fraction = 0. y = MinY (Top). Correct.
+
+			// y = bounds.Min.Y + (1.0 - magnitude_fraction) * h
+			startY = float32(float64(bounds.Min.Y) + (1.0-magnitudes[minBinIdx])*float64(h) + yOffset)
+		} else {
+			startY = float32(float64(bounds.Min.Y) + (magnitudes[minBinIdx]/dbFloor)*float64(h) + yOffset)
+		}
+
+		maxBinIdxPlot := int(math.Round(((minFreq + maxFreqPlot) / maxFreqAvailable) * float64(m/2)))
+		// slog.Debug("dft draw 1", "minBinIdx", minBinIdx, "maxBinIdxPlot", maxBinIdxPlot)
+		if maxBinIdxPlot > m/2 {
+			maxBinIdxPlot = m / 2
+		}
+		if maxBinIdxPlot <= minBinIdx {
+			maxBinIdxPlot = minBinIdx + 1
+		}
+		// slog.Debug("dft draw 2", "minBinIdx", minBinIdx, "maxBinIdxPlot", maxBinIdxPlot)
+
+		prevY := startY
+		for i := minBinIdx; i < maxBinIdxPlot; i++ {
+			if i >= len(magnitudes) {
+				break
+			}
+			binFreq := float64(i) * (maxFreqAvailable / float64(m/2))
+			fraction := (binFreq - minFreq) / maxFreqPlot
+			x := float32(bounds.Min.X) + float32(fraction)*w
+
+			var y float32
+
+			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				y = float32(float64(bounds.Min.Y) + (1.0-magnitudes[i])*float64(h) + yOffset)
+			} else {
+				y = float32(float64(bounds.Min.Y) + (magnitudes[i]/dbFloor)*float64(h) + yOffset)
+			}
+			if i > minBinIdx {
+				drawLine(dv.scp.dftScopeSignalScreen, prevX, prevY, x, y, col)
+			}
+			prevX = x
+			prevY = y
+		}
+	}
+	dv.mCache = m
+	dv.fsCache = fs
+
+	if dv.showInspector {
+		dv.drawInspector(float64(w), float64(h), bounds)
+	}
+}
+
+func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
+	if dv.fsCache == 0 || dv.mCache == 0 {
+		return
+	}
+
+	crosscol := color.RGBA{180, 180, 180, 180}
+	mx := int(dv.mouseX)
+	my := int(dv.mouseY)
+	for i := bounds.Min.X; i < bounds.Max.X; i++ {
+		dv.scp.dftScopeFullScreen.Set(i, my, crosscol)
+	}
+	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+		dv.scp.dftScopeFullScreen.Set(mx, i, crosscol)
+	}
+
+	// Map mouseX to frequency
+	minFreq := dv.scp.Settings.Dft.MinFreq
+	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+	fs := dv.fsCache
+	maxFreqAvailable := fs / 2
+	if maxFreqPlot <= 0 {
+		maxFreqPlot = 1e6
+	}
+	if maxFreqPlot > maxFreqAvailable {
+		maxFreqPlot = maxFreqAvailable
+	}
+
+	fractionAtCursor := (float64(dv.mouseX) - float64(bounds.Min.X)) / w
+	freqAtCursor := minFreq + fractionAtCursor*maxFreqPlot
+
+	var info []struct {
+		text string
+		col  color.Color
+	}
+	info = append(info, struct {
+		text string
+		col  color.Color
+	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
+
+	moved := false
+	if dv.mouseX != dv.inspectorLastX || dv.mouseY != dv.inspectorLastY {
+		moved = true
+		dv.inspectorLastX = dv.mouseX
+		dv.inspectorLastY = dv.mouseY
+	}
+
+	if dv.inspectorSumV == nil || len(dv.inspectorSumV) != len(dv.scp.channelViewers) {
+		dv.inspectorSumV = make([]float64, len(dv.scp.channelViewers))
+		dv.inspectorSumVCur = make([]float64, len(dv.scp.channelViewers))
+		dv.inspectorDispV = make([]float64, len(dv.scp.channelViewers))
+		dv.inspectorDispVCur = make([]float64, len(dv.scp.channelViewers))
+	}
+
+	if moved {
+		for i := range dv.inspectorSumV {
+			dv.inspectorSumV[i] = 0
+			dv.inspectorSumVCur[i] = 0
+		}
+		dv.inspectorSamples = 0
+	}
+
+	instV := make([]float64, len(dv.scp.channelViewers))
+	instVCur := make([]float64, len(dv.scp.channelViewers))
+
+	binIdx := int(math.Round((freqAtCursor / maxFreqAvailable) * float64(dv.mCache/2)))
+
+	for chIdx := range dv.scp.channelViewers {
+		channel := &dv.scp.Settings.Channels[chIdx]
+		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
+			magnitudes := dv.magnitudesCache[chIdx]
+			var val float64
+			if binIdx >= 0 && binIdx < len(magnitudes) {
+				val = magnitudes[binIdx]
+			}
+
+			// Calculate cursor-level amplitude
+			yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
+			var v_cursor float64
+			dbFloor := -100.0
+			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				v_cursor = (float64(bounds.Min.Y) + h + yOffset - float64(dv.mouseY)) / h
+			} else {
+				v_cursor = (float64(dv.mouseY) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
+			}
+
+			instV[chIdx] = val
+			instVCur[chIdx] = v_cursor
+		}
+	}
+
+	for i := range dv.scp.channelViewers {
+		dv.inspectorSumV[i] += instV[i]
+		dv.inspectorSumVCur[i] += instVCur[i]
+	}
+	dv.inspectorSamples++
+
+	now := time.Now()
+	updateDisplay := false
+	if moved || now.Sub(dv.inspectorLastUpdate) >= 500*time.Millisecond {
+		updateDisplay = true
+		dv.inspectorLastUpdate = now
+	}
+
+	if updateDisplay {
+		for i := range dv.scp.channelViewers {
+			if dv.inspectorSamples > 0 {
+				dv.inspectorDispV[i] = dv.inspectorSumV[i] / float64(dv.inspectorSamples)
+				dv.inspectorDispVCur[i] = dv.inspectorSumVCur[i] / float64(dv.inspectorSamples)
+			}
+			dv.inspectorSumV[i] = 0
+			dv.inspectorSumVCur[i] = 0
+		}
+		dv.inspectorSamples = 0
+	}
+
+	for chIdx := range dv.scp.channelViewers {
+		channel := &dv.scp.Settings.Channels[chIdx]
+		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
+			v := dv.inspectorDispV[chIdx]
+			v_cursor := dv.inspectorDispVCur[chIdx]
+			col := channel.Col[dv.scp.Settings.ChannelColorIndex]
+
+			var valStr, curStr string
+			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				mv := v * float64(genericps.RangeValuesMv[channel.VRange])
+				mvCur := v_cursor * float64(genericps.RangeValuesMv[channel.VRange])
+				valStr = formatVoltageFloat64(mv, channel.VRange)
+				curStr = formatVoltageFloat64(mvCur, channel.VRange)
+			} else {
+				valStr = fmt.Sprintf("%.1fdB", v)
+				curStr = fmt.Sprintf("%.1fdB", v_cursor)
+			}
+
+			info = append(info, struct {
+				text string
+				col  color.Color
+			}{fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, valStr, curStr), col})
+		}
+	}
+
+	// Draw the box
+	lineHeight := 20
+	maxW := float32(0)
+	for _, item := range info {
+		left, _, right, _ := dv.scp.boundString(item.text)
+		if right-left > maxW {
+			maxW = right - left
+		}
+	}
+	boxWidth := int(maxW) + 15
+	boxHeight := len(info)*lineHeight + 10
+
+	xBox := int(dv.mouseX) + 10
+	yBox := int(dv.mouseY)
+
+	if xBox+boxWidth > bounds.Max.X-2 {
+		xBox = int(dv.mouseX) - boxWidth - 10
+	}
+	if xBox < bounds.Min.X+2 {
+		xBox = bounds.Min.X + 2
+	}
+	if yBox+boxHeight > bounds.Max.Y-2 {
+		yBox = bounds.Max.Y - boxHeight - 2
+	}
+	if yBox < bounds.Min.Y+2 {
+		yBox = bounds.Min.Y + 2
+	}
+
+	rect := image.Rect(xBox, yBox, xBox+boxWidth, yBox+boxHeight)
+	draw.Draw(dv.scp.dftScopeFullScreen, rect, &image.Uniform{color.RGBA{20, 20, 20, 220}}, image.ZP, draw.Over)
+	for i := 0; i < boxWidth; i++ {
+		dv.scp.dftScopeFullScreen.Set(xBox+i, yBox, color.White)
+		dv.scp.dftScopeFullScreen.Set(xBox+i, yBox+boxHeight-1, color.White)
+	}
+	for i := 0; i < boxHeight; i++ {
+		dv.scp.dftScopeFullScreen.Set(xBox, yBox+i, color.White)
+		dv.scp.dftScopeFullScreen.Set(xBox+boxWidth-1, yBox+i, color.White)
+	}
+
+	for i, item := range info {
+		dv.scp.addLabel(dv.scp.dftScopeFullScreen, xBox+8, yBox+10+i*lineHeight+15, item.text, item.col)
+	}
+}
+
+func formatVoltageFloat64(mv float64, vRange genericps.RangeEnum) string {
+	if genericps.RangeValuesMv[vRange] >= 1000 {
+		return fmt.Sprintf("%.1fV", mv/1000.0)
+	}
+	return fmt.Sprintf("%.0fmV", mv)
+}
+
+func formatFreq(f float64) string {
+	if f == 0 {
+		return "0"
+	}
+	if f >= 1e6 {
+		return fmt.Sprintf("%.3gM", f/1e6)
+	}
+	if f >= 1e3 {
+		return fmt.Sprintf("%.3gk", f/1e3)
+	}
+	return fmt.Sprintf("%.3g", f)
+}
+
+func formatTime(t float64) string {
+	if t >= 1.0 {
+		return fmt.Sprintf("%.3gs", t)
+	}
+	if t >= 1e-3 {
+		return fmt.Sprintf("%.3gms", t*1e3)
+	}
+	if t >= 1e-6 {
+		return fmt.Sprintf("%.3gµs", t*1e6)
+	}
+	if t >= 1e-9 {
+		return fmt.Sprintf("%.3gns", t*1e9)
+	}
+	return fmt.Sprintf("%.3gps", t*1e12)
+}
+
+func (scp *ScpDesc) updateBinWidth() {
+	if scp.binWidthLabel == nil {
+		return
+	}
+	if scp.psControl.SamplingTimeInterval == 0 {
+		fyne.Do(func() { scp.binWidthLabel.SetText("BW: -") })
+		return
+	}
+	fs := 1.0 / float64(scp.psControl.SamplingTimeInterval)
+	bw := fs / float64(2*scp.Settings.Dft.Bins)
+	text := fmt.Sprintf("BW: %sHz", formatFreq(bw))
+	fyne.Do(func() { scp.binWidthLabel.SetText(text) })
+}
+
+func (scp *ScpDesc) updateDftDataCollectionTime() {
+	if scp.dftDataCollectionTimeLabel == nil {
+		return
+	}
+	// maxScreenTime is N/fs in DFT mode
+	text := fmt.Sprintf("Coll: %s", formatTime(scp.maxScreenTime))
+	fyne.Do(func() { scp.dftDataCollectionTimeLabel.SetText(text) })
+}
+
+func (scp *ScpDesc) dftSampleUnitUp() {
+	if scp.dftSampleUnitSelect == nil || scp.dftSampleRateSelect == nil {
+		return
+	}
+	index := scp.dftSampleUnitSelect.SelectedIndex()
+	if index < len(scp.dftSampleUnitSelect.Options)-1 {
+		scp.dftSampleRateSelect.SilentSetSelectedIndex(0) // Set to "1"
+		scp.Settings.Dft.SampleRate = scp.dftSampleRateSelect.Selected
+		scp.dftSampleUnitSelect.SetSelectedIndex(index + 1)
+		scp.Settings.Dft.SampleRateUnit = scp.dftSampleUnitSelect.Selected
+	}
+}
+
+func (scp *ScpDesc) dftSampleUnitDown() {
+	if scp.dftSampleUnitSelect == nil || scp.dftSampleRateSelect == nil {
+		return
+	}
+	index := scp.dftSampleUnitSelect.SelectedIndex()
+	if index > 0 {
+		scp.dftSampleRateSelect.SilentSetSelectedIndex(len(scp.dftSampleRateSelect.Options) - 1) // Set to "500"
+		scp.Settings.Dft.SampleRate = scp.dftSampleRateSelect.Selected
+		scp.dftSampleUnitSelect.SetSelectedIndex(index - 1)
+		scp.Settings.Dft.SampleRateUnit = scp.dftSampleUnitSelect.Selected
+	}
+}
+
+func (scp *ScpDesc) dftMaxFreqUnitUp() {
+	if scp.dftMaxFreqUnitSelect == nil || scp.dftMaxFreqValSelect == nil {
+		return
+	}
+	index := scp.dftMaxFreqUnitSelect.SelectedIndex()
+	if index < len(scp.dftMaxFreqUnitSelect.Options)-1 {
+		scp.dftMaxFreqValSelect.SilentSetSelectedIndex(0) // Set to "1"
+		scp.dftMaxFreqUnitSelect.SetSelectedIndex(index + 1)
+	}
+}
+
+func (scp *ScpDesc) dftMaxFreqUnitDown() {
+	if scp.dftMaxFreqUnitSelect == nil || scp.dftMaxFreqValSelect == nil {
+		return
+	}
+	index := scp.dftMaxFreqUnitSelect.SelectedIndex()
+	if index > 0 {
+		scp.dftMaxFreqValSelect.SilentSetSelectedIndex(len(scp.dftMaxFreqValSelect.Options) - 1) // Set to "500"
+		scp.dftMaxFreqUnitSelect.SetSelectedIndex(index - 1)
+	}
+}
+
+func applyWindow(samples []float64, windowType string) {
+	n := len(samples)
+	if n <= 1 {
+		return
+	}
+	switch windowType {
+	case settings.WindowBartlettHann:
+		window.BartlettHann(samples)
+	case settings.WindowBlackman:
+		window.Blackman(samples)
+	case settings.WindowBlackmanHarris:
+		window.BlackmanHarris(samples)
+	case settings.WindowBlackmanNuttall:
+		window.BlackmanNuttall(samples)
+	case settings.WindowFlatTop:
+		window.FlatTop(samples)
+	case settings.WindowHamming:
+		window.Hamming(samples)
+	case settings.WindowHann:
+		window.Hann(samples)
+	case settings.WindowNuttall:
+		window.Nuttall(samples)
+	case settings.WindowLanczos:
+		window.Lanczos(samples)
+	case settings.WindowTriangular:
+		window.Triangular(samples)
+	case settings.WindowRectangular:
+		// Do nothing
+	}
+}
+
+func (scp *ScpDesc) getCoherentGain(windowType string, n int) float64 {
+	if windowType == settings.WindowRectangular || n <= 0 {
+		return 1.0
+	}
+	temp := make([]float64, n)
+	for i := range temp {
+		temp[i] = 1.0
+	}
+	applyWindow(temp, windowType)
+	sum := 0.0
+	for _, v := range temp {
+		sum += v
+	}
+	return sum / float64(n)
+}
+
+func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
+	// FFT specific controls
+	chControls := container.NewVBox()
+	chControls.Add(widget.NewLabel("Channels:"))
+
+	for i := 0; i < int(scp.channelCount); i++ {
+		chIdx := genericps.ChannelId(i)
+		chName := channelNames[chIdx]
+		channel := &scp.Settings.Channels[chIdx]
+		channelViewer := &scp.channelViewers[chIdx]
+
+		// Enable Checkbox
+		check := widget.NewCheck("", func(checked bool) {
+			scp.EnableChannel(chIdx, checked)
+		})
+		check.SetChecked(channel.Enabled)
+		channelViewer.dftCheckbox = check
+
+		// Channel Label
+		text := "Ch " + chName + ":"
+		if scp.isDigitalFilterEnabled(chIdx) {
+			text += " ⚠️"
+		}
+		label := canvas.NewText(text, channel.Col[scp.Settings.ChannelColorIndex])
+		label.TextStyle = fyne.TextStyle{Bold: true}
+		label.TextSize = theme.TextSize()
+		channelViewer.dftNameLabel = label
+
+		// Input Range Selector
+		rangesEnum, err := scp.psControl.ChannelRanges(chIdx)
+		var ranges []string
+		if err == nil {
+			for idx := range rangesEnum {
+				ranges = append(ranges, inputRanges[rangesEnum[idx]])
+			}
+		} else {
+			ranges = inputRanges
+		}
+
+		vRange := selectscroll.NewSelectScroll(ranges, func(option string, e selectscroll.Exception) {
+			scp.changeChannelRange(chIdx, option)
+		}, "±200mV")
+
+		vr := scp.Settings.Channels[chIdx].VRange
+		if s, ok := rangeEnumToString[vr]; ok {
+			vRange.SilentSetSelected(s)
+		}
+
+		// Add to synchronization list
+		channelViewer.vRangeSelects = append(channelViewer.vRangeSelects, vRange)
+
+		// X10 Checkbox
+		x10Check := widget.NewCheck("X10", func(c bool) {
+			scp.changeChannelX10(chIdx, c)
+		})
+		x10Check.SetChecked(scp.Settings.Channels[chIdx].X10)
+		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10Check)
+
+		// Each channel gets its own row
+		chRow := container.NewHBox(check, label, vRange, x10Check)
+		chControls.Add(chRow)
+	}
+
+	// Window selector row
+
+	windowSelector := selectscroll.NewSelectScroll([]string{settings.WindowBartlettHann,
+		settings.WindowBlackman, settings.WindowBlackmanHarris, settings.WindowBlackmanNuttall, settings.WindowFlatTop, settings.WindowHamming, settings.WindowHann,
+		settings.WindowLanczos, settings.WindowNuttall, settings.WindowTriangular, settings.WindowRectangular}, func(selected string, _ selectscroll.Exception) {
+		scp.Settings.Dft.Window = selected
+		if scp.dftRaster != nil {
+			scp.dftRaster.Refresh()
+		}
+		scp.SaveSettings()
+	}, settings.WindowRectangular)
+	windowSelector.SilentSetSelected(scp.Settings.Dft.Window)
+	// Display mode selector row
+	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDB, settings.ModeVoltage}, func(selected string, _ selectscroll.Exception) {
+		scp.Settings.Dft.DisplayMode = selected
+		for i := range scp.channelViewers {
+			scp.channelViewers[i].dftLabel.enableRefresh()
+		}
+		if scp.dftRaster != nil {
+			scp.dftRaster.Refresh()
+		}
+		scp.SaveSettings()
+	}, settings.ModeVoltage)
+	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayMode)
+
+	// Freq Range Selector
+	valLabels := []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
+	unitLabels := []string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}
+	unitVals := map[string]float64{settings.UnitHz: 1, settings.UnitKHz: 1e3, settings.UnitMHz: 1e6}
+
+	updateMaxFreq := func() {
+		v, _ := strconv.ParseFloat(scp.dftMaxFreqValSelect.Selected, 64)
+		u := unitVals[scp.dftMaxFreqUnitSelect.Selected]
+		scp.Settings.Dft.MaxFreq = v * u
+		scp.setDftHDivsX()
+		if scp.dftBottomLabelViewer != nil {
+			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
+		}
+		if scp.dftRaster != nil {
+			scp.dftRaster.Refresh()
+		}
+		scp.SaveSettings()
+	}
+
+	scp.dftMaxFreqValSelect = selectscroll.NewSelectScroll(valLabels, func(selected string, ex selectscroll.Exception) {
+		if ex == selectscroll.Over {
+			scp.dftMaxFreqUnitUp()
+			return
+		}
+		if ex == selectscroll.Under {
+			scp.dftMaxFreqUnitDown()
+			return
+		}
+		updateMaxFreq()
+	}, "500")
+
+	scp.dftMaxFreqUnitSelect = selectscroll.NewSelectScroll(unitLabels, func(selected string, _ selectscroll.Exception) {
+		updateMaxFreq()
+	}, "MHz")
+
+	// Initialize selectors from current MaxFreq
+	currentMaxFreq := scp.Settings.Dft.MaxFreq
+	bestVal := "1"
+	bestUnit := "MHz"
+	if currentMaxFreq > 0 {
+		// Find best match
+		for _, u := range unitLabels {
+			uv := unitVals[u]
+			for _, v := range valLabels {
+				vv, _ := strconv.ParseFloat(v, 64)
+				if math.Abs(vv*uv-currentMaxFreq) < 1e-6 {
+					bestVal = v
+					bestUnit = u
+					goto found
+				}
+			}
+		}
+	found:
+	}
+	scp.dftMaxFreqValSelect.SilentSetSelected(bestVal)
+	scp.dftMaxFreqUnitSelect.SilentSetSelected(bestUnit)
+
+	// Bins Selector
+	binLabels := []string{"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072", "262144", "524288", "1048576"}
+	binSelector := selectscroll.NewSelectScroll(binLabels, func(selected string, _ selectscroll.Exception) {
+		val, _ := strconv.Atoi(selected)
+		scp.Settings.Dft.Bins = val
+		m = scp.Settings.Dft.Bins * 2
+		fft = fourier.NewFFT(scp.Settings.Dft.Bins * 2)
+		samples = make([]float64, m)
+		fftResult = make([]complex128, fft.Len()/2+1)
+		scp.updateBinWidth()
+		scp.updateAcquisitionParameters()
+		if scp.dftRaster != nil {
+			scp.dftRaster.Refresh()
+		}
+		scp.SaveSettings()
+	}, "1024")
+	binSelector.SilentSetSelected(strconv.Itoa(scp.Settings.Dft.Bins))
+
+	scp.binWidthLabel = widget.NewLabel("BW: -")
+	scp.updateBinWidth()
+
+	scp.dftDataCollectionTimeLabel = widget.NewLabel("Coll: -")
+	scp.updateDftDataCollectionTime()
+
+	// Sample Rate Selector
+	dftSampleRates := []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
+	dftSampleUnits := []string{"S/s", "kS/s", "MS/s", "GS/s"}
+
+	scp.dftSampleRateSelect = selectscroll.NewSelectScroll(dftSampleRates, func(selected string, ex selectscroll.Exception) {
+		if ex == selectscroll.Over {
+			scp.dftSampleUnitUp()
+			return
+		}
+		if ex == selectscroll.Under {
+			scp.dftSampleUnitDown()
+			return
+		}
+		scp.Settings.Dft.SampleRate = selected
+		scp.syncTimeDivToDft()
+		scp.updateAcquisitionParameters()
+	}, "100")
+
+	scp.dftSampleUnitSelect = selectscroll.NewSelectScroll(dftSampleUnits, func(selected string, _ selectscroll.Exception) {
+		scp.Settings.Dft.SampleRateUnit = selected
+		scp.syncTimeDivToDft()
+		scp.updateAcquisitionParameters()
+	}, "MS/s")
+
+	scp.dftSampleRateSelect.SilentSetSelected(scp.Settings.Dft.SampleRate)
+	scp.dftSampleUnitSelect.SilentSetSelected(scp.Settings.Dft.SampleRateUnit)
+
+	windowCol := container.NewVBox()
+	windowCol.Add(widget.NewLabel("Window:"))
+	windowCol.Add(windowSelector)
+	windowCol.Add(widget.NewLabel("Mode:"))
+	windowCol.Add(modeSelector)
+	windowCol.Add(widget.NewLabel("Range:"))
+	windowCol.Add(container.NewHBox(scp.dftMaxFreqValSelect, scp.dftMaxFreqUnitSelect))
+	windowCol.Add(widget.NewLabel("Sample Rate:"))
+	windowCol.Add(container.NewHBox(scp.dftSampleRateSelect, scp.dftSampleUnitSelect))
+	windowCol.Add(widget.NewLabel("Bins:"))
+	windowCol.Add(binSelector)
+	windowCol.Add(scp.binWidthLabel)
+	windowCol.Add(scp.dftDataCollectionTimeLabel)
+
+	layout.Add(container.NewVBox(chControls, windowCol))
+}
+
+func (scp *ScpDesc) offsetNToDftY(n int) float64 {
+	if scp.dftScopeSignalScreen == nil {
+		return 0
+	}
+	h := float64(scp.dftScopeSignalScreen.Bounds().Dy())
+	yRasterDiv := (h / float64(numberOfDivs)) / 5.0
+	return float64(n) * yRasterDiv
+}
+
+func (scp *ScpDesc) setDftVDivsY() {
+	if scp.dftScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.dftScopeSignalScreen.Bounds()
+	h := float32(bounds.Dy())
+	dh := (h - 1) / numberOfDivs
+	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y); i, y = i+1, y+dh {
+		scp.dftDivsY[i] = y
+	}
+}
+
+func (scp *ScpDesc) setDftHDivsX() {
+	if scp.dftScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.dftScopeSignalScreen.Bounds()
+	w := float64(bounds.Dx()) - 1
+	if w < 1 {
+		return
+	}
+	span := scp.Settings.Dft.MaxFreq
+	minFreq := scp.Settings.Dft.MinFreq
+
+	// Calculate nice step for approximately 10 divisions
+	step := niceStep(span / 10.0)
+	firstFreq := math.Floor(minFreq/step) * step
+
+	for i := range scp.dftDivsX {
+		freq := firstFreq + float64(i)*step
+		x := float32(bounds.Min.X) + float32((freq-minFreq)/span*w)
+		scp.dftDivsX[i] = x
+	}
+}
+
+func (scp *ScpDesc) drawDftDivisions() {
+	if scp.dftScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.dftScopeSignalScreen.Bounds()
+	drawDivs := func(yOffset float32, col color.Color) {
+		// draw.Draw(scp.dftScopeFullScreen, bounds, &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		for _, v := range scp.dftDivsY {
+			counter := 0
+			for x := float64(bounds.Min.X); x < float64(bounds.Max.X); x = x + 1.0 {
+				if counter%10 < 4 {
+					scp.dftScopeSignalScreen.Set(int(math.Round(x)), int(math.Round(float64(v+yOffset))), col)
+				}
+				counter++
+			}
+		}
+		for _, v := range scp.dftDivsX {
+			counter := 0
+			for y := float64(bounds.Min.Y); y < float64(bounds.Max.Y); y = y + 1.0 {
+				if counter%10 < 4 {
+					scp.dftScopeSignalScreen.Set(int(math.Round(float64(v))), int(math.Round(float64(y))), col)
+				}
+				counter++
+			}
+		}
+	}
+
+	channellIndex := scp.displayMovedDivs - 1
+	col := scp.theme.Color(ColorNameDivision, 0)
+	if channellIndex >= 0 {
+		if scp.displayMovedDivs > 0 && scp.channelViewers[channellIndex].dftDisplayOffsetInt != 0 {
+			drawDivs(0, gray)
+			yOffset := scp.offsetNToDftY(scp.channelViewers[channellIndex].dftDisplayOffsetInt)
+			drawDivs(float32(yOffset), scp.Settings.Channels[channellIndex].Col[scp.Settings.ChannelColorIndex])
+		} else {
+			drawDivs(0, col)
+		}
+	} else {
+		drawDivs(0, col)
+	}
+}
+
+func (scp *ScpDesc) clipDftChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
+	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	if numberOfEnabledChannels == 0 {
+		leftMargin = defaultLeftMargin
+		rightMargin = defaultRightMargin
+		return
+	}
+	leftColumnCount := numberOfEnabledChannels / 2
+	rightColumnCount := numberOfEnabledChannels / 2
+	if numberOfEnabledChannels%2 != 0 {
+		leftColumnCount++
+	}
+	leftMargin = float32(leftColumnCount) * scp.rangeMargin
+	if rightColumnCount == 0 {
+		rightMargin = defaultRightMargin
+	} else {
+		rightMargin = float32(rightColumnCount) * scp.rangeMargin
+	}
+	start := float32(0)
+	end := scp.rangeMargin
+	for channelIndex := range scp.channelViewers {
+		channel := &scp.Settings.Channels[channelIndex]
+		channelViewer := &scp.channelViewers[channelIndex]
+		if channel.Enabled {
+			channelViewer.dftLabel = newDftChannelLabelViewer(scp.dftScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				channelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), scp)
+			scp.addDftDrawer(&channelViewer.dftLabel)
+			switch {
+			case leftColumnCount > 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				channelViewer.leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+			channelViewer.hasScreenPartition = true
+		} else {
+			channelViewer.hasScreenPartition = false
+		}
+	}
+	return
+}
+
+func (scp *ScpDesc) partitionDftScreen(w, h float32) {
+	ip := scp.dftScopeFullScreen.(*image.RGBA)
+	scp.dftDrawers = nil
+	leftMargin, rightMargin := scp.clipDftChRangeScrs(w, h)
+	scp.dftScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
+		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
+		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
+	scp.dftBottomLabelViewer = newFrqLabelViewer(scp.dftScopeFullScreen,
+		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
+			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp)
+	scp.addDftDrawer(scp.dftBottomLabelViewer)
+	scp.addDftDrawer(newDftViewer(scp.dftScopeFullScreen, scp.dftScopeSignalScreen.Bounds(), scp))
+}
+
+func (scp *ScpDesc) dftRasterGenerator(wInt int, hInt int) image.Image {
+	ws := scp.Window.Canvas().Size()
+	scp.Settings.Window.Height = ws.Height
+	scp.Settings.Window.Width = ws.Width
+	defer scp.screenLocker.Unlock()
+	scp.screenLocker.Lock()
+	w := float32(wInt)
+	h := float32(hInt)
+	rect := scp.dftScopeFullScreen.Bounds()
+	if wInt != rect.Max.X-rect.Min.X || hInt != rect.Max.Y-rect.Min.Y { // window resized
+		scp.dftScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
+		rect = scp.dftScopeFullScreen.Bounds()
+		w = float32(rect.Dx())
+		h = float32(rect.Dy())
+		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.partitionDftScreen(w, h)
+		scp.setDftVDivsY()
+		scp.setDftHDivsX()
+	} else if getFlag(scp.repartition) {
+		scp.partitionDftScreen(w, h)
+		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.setDftVDivsY()
+		scp.setDftHDivsX()
+	} else if scp.dftScopeSignalScreen == nil {
+		scp.setDftVDivsY()
+		scp.setDftHDivsX()
+	} else if getFlag(scp.themeChanged) {
+		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+	} else {
+		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeSignalScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+	}
+	scp.setDftVDivsY()
+	scp.setDftHDivsX()
+	for i := range scp.dftDrawers {
+		// slog.Debug("dftDrawers", "i", i)
+		scp.dftDrawers[i].draw()
+	}
+	return scp.dftScopeFullScreen
+}

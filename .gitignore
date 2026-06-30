@@ -1,0 +1,16 @@
+go.sum
+*.prof
+*.png
+*.kra
+*.pclx
+*.debug
+*~
+_debug*
+vendor
+scopesetting*.yaml
+output_verify.txt
+fynescope
+fynescope.test
+*.log
+.gitignore
+
