@@ -1,10 +1,10 @@
 package gui
 
 import (
+	"fynescope/genericps"
 	"image"
 	"log/slog"
 	"math"
-	"fynescope/genericps"
 
 	// "fynescope/config"
 	// "fynescope/psi"
@@ -12,9 +12,6 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
-
-// TODO trigger: none,single,repeat, auto
-// none, auto already implemented, auto time is constant however
 
 type (
 	advTriggerPointViewer struct {
@@ -101,15 +98,12 @@ func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float3
 	}
 }
 func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
-	// slog.Debug("SetTriggerUpperHysteresis 1")
 	if scp.triggerSettingMsg.UpperHysteresis != mv {
 		scp.triggerSettingMsg.UpperHysteresis = mv
-		// scp.triggerSetting.HysteresisADC = uint16(scp.mvToAdc(mv, scp.channels[scp.triggerSource].settings.VRange))
 		scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
 		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 		<-scp.triggerSettingMsg.Done
 	}
-	// slog.Debug("SetTriggerUpperHysteresis 2")
 }
 
 func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
@@ -129,9 +123,7 @@ func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
 		channel.Trigger.Hysteresis += d
 	}
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
-	// tp.scp.cfg.Channels[tp.scp.triggerSource].Trigger.Hysteresis = channel.trigger.hysteresis
 	tp.enableRefresh()
-	// tp.scp.psControl.Restart()
 	tp.scp.ftRaster.Refresh()
 }
 
@@ -139,16 +131,12 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	// slog.Info("adv", "dy", dy, "y", y)
 	tp.triggerPointViewer.dragged(dx, dy, x, y) // call base class method
 	if !tp.uhSelected {                         // mouse down/up set it
-		// slog.Info("adv not selected")
 		return // 								   cursor is somewhere else
 	}
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	newH := int32(math.Round(tp.y2mv(float64(y))))
-	// slog.Info("adv  selected", "newH", newH)
-	// slog.Info("adv  selected", "Hysteresis", channel.Trigger.Hysteresis)
 	switch {
 	case channel.Trigger.TriggerDirection == genericps.TriggerRaising:
 		if newH <= channel.Trigger.Mv {
@@ -161,16 +149,9 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	default:
 		slog.Error("advTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 	}
-	// slog.Info("adv  selected", "Hysteresis", channel.Trigger.Hysteresis)
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
-	// tp.scp.cfg.Channels[tp.scp.triggerSource].Trigger.Hysteresis = channel.trigger.hysteresis
-	// tp.scp.triggerHysteresisDisp.SetValue(int(channel.trigger.hysteresis))
-	// tp.scp.triggerHysteresisDisp.Refresh()
-	// tp.scp.psControl.Sync()
 	tp.enableRefresh()
 	tp.scp.ftRaster.Refresh()
-	// tp.scp.psControl.Restart()
-	// tp.scp.psControl.Sync()
 }
 
 func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {

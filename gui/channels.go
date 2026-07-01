@@ -1,13 +1,13 @@
 package gui
 
 import (
-	"image/color"
-	"log/slog"
 	"fynescope/checkcolorpick"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
 	"fynescope/settings"
+	"image/color"
+	"log/slog"
 	"sort"
 
 	"fyne.io/fyne/v2"
@@ -363,8 +363,6 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		channel.Trigger.TriggerDirection = direction
 		scp.Settings.Channels[chIndex].Trigger.TriggerDirection = direction
 		if scp.triggerSource == chIndex && channelViewer.triggerCheckbox.Checked {
-			// scp.setTrigger(true, chIndex, channel.Trigger.Mv, direction, 1000,
-			// 	scp.xOffset.ratio)
 			scp.setTrigger(true, chIndex, channel.Trigger.Mv, direction, 1000,
 				scp.Settings.Time.TriggerTimeOffset)
 		}
@@ -406,9 +404,6 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.triggerThresholdDisp.Refresh()
 		scp.triggerHysteresisDisp.Refresh()
 		scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
-		// scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
-		// 	channel.Trigger.TriggerDirection,
-		// 	1000, scp.xOffset.ratio)
 		scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection,
 			1000, scp.Settings.Time.TriggerTimeOffset)
@@ -433,11 +428,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.channelViewers[chIndex].offset.SetFloatValue(float64(channel.Offset),
 			3)
 		scp.channelViewers[chIndex].offset.OnChanged = func(v float64) {
-			// ps2000aGetAnalogueOffset()
 			channel.Offset = float32(v) / 1000.0
 			setChannel()
 		}
-		// addControl(scp.channelViewers[chIndex].maxV, maxVId)
 		channelOffsetBox = container.New(layout.NewHBoxLayout(),
 			scp.channelViewers[chIndex].offset)
 		addToTest(scp.channelViewers[chIndex].offset, chOffsetId+chId)
@@ -464,7 +457,6 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	addToTest(invert, invertId+chId)
 	trigger = widget.NewCheck("Trigger", triggerSelected)
 	channelViewer.triggerCheckbox = trigger
-	// trigger.Checked = config.Cf.Channels[chIndex].TriggerSource
 	scp.triggerCheck = append(scp.triggerCheck, trigger)
 	addToTest(trigger, triggerCheckId+chId)
 	rangesEnum, err := scp.psControl.ChannelRanges(chIndex)
@@ -573,7 +565,7 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 	channelViewer.label.enableRefresh()
 	channelViewer.dftLabel.enableRefresh()
 	scp.Settings.Channels[chIndex].VRange = vRanges[option]
-	if scp.Settings.Channels[chIndex].VRange<0 {
+	if scp.Settings.Channels[chIndex].VRange < 0 {
 		panic("<0")
 	}
 	// Synchronize all range selectors for this channel
@@ -586,8 +578,6 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 	if chIndex == scp.triggerSource &&
 		scp.triggerCheck[chIndex].Checked {
 		slog.Debug("vRange -> trigger")
-		// scp.setTrigger(true, chIndex, channel.Trigger.Mv,
-		// 	channel.Trigger.TriggerDirection, 1000, scp.xOffset.ratio)
 		scp.setTrigger(true, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection, 1000, scp.Settings.Time.TriggerTimeOffset)
 	}

@@ -2,12 +2,11 @@ package control
 
 import (
 	"fmt"
+	"fynescope/genericps"
 	"log/slog"
 	"math"
-	"fynescope/genericps"
 
 	"time"
-	// "fynescope/psi"
 )
 
 const minEtsRefreshTime = 100 * time.Millisecond
@@ -119,7 +118,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 		// here we need the npre and npost values
 		// and have to modify triggerTimeOffset
-		// etscallback alse needs triggerTimeOffset
+		// etscallback also needs triggerTimeOffset
 		psControl.NPre = int32(math.Round(psControl.triggerSetting.XOffset / psControl.SamplingTimeInterval))
 		psControl.NPro = psControl.SampleCountRequired - psControl.NPre
 		slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
@@ -132,9 +131,6 @@ func etsBlockMode(psControl *PscDesc) state {
 	}
 
 	runBlock := func() error {
-		// nPre := int32(math.Round(float64(psControl.SampleCountRequired) * psControl.triggerSetting.TriggerPreRatio)))
-		// nPro := psControl.SampleCountRequired - nPre
-
 		_, err := psControl.Con.RunBlock(psControl.NPre, psControl.NPro, psControl.timeBase, psControl.overSample, 0, callbackBlock, nil)
 		if err != nil {
 			slog.Error("ETS runBlock failed", "error", err)

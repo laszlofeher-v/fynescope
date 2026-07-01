@@ -1,10 +1,10 @@
 package gui
 
 import (
-	"log/slog"
-	"math"
 	"fynescope/control"
 	"fynescope/genericps"
+	"log/slog"
+	"math"
 
 	"fyne.io/fyne/v2/theme"
 
@@ -20,10 +20,14 @@ import (
 )
 
 const (
-	fractionWidth = 2
+	fractionWidth     = 2
+	dwellTimeScale    = 10_000_000 // Dwelltime stored in seconds; display unit is 100ns steps
+	minDwellTimeNs    = 500        // Minimum dwell time in 100ns units
+	dwellTimeDigits   = 11
+	dwellTimeFraction = 7
+	voltageDigits     = 7
+	voltageFraction   = 6
 )
-
-//TODO change literals to constants
 
 var pow10tab [32]int
 
@@ -189,23 +193,23 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 
 		addToTest(check, genCheckId)
 		dwellTimeChanged := func(v float64) {
-			scp.Settings.GenPanel.Dwelltime = v / 10000000
+			scp.Settings.GenPanel.Dwelltime = v / dwellTimeScale
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		freqChanged := func(v float64) {
-			scp.Settings.GenPanel.Frequency = v / 100
+			scp.Settings.GenPanel.Frequency = v / float64(pow10tab[fractionWidth])
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		startFreqChanged := func(v float64) {
-			scp.Settings.GenPanel.StartFrequency = v / 100
+			scp.Settings.GenPanel.StartFrequency = v / float64(pow10tab[fractionWidth])
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		stopFreqChanged := func(v float64) {
-			scp.Settings.GenPanel.StopFrequency = v / 100
+			scp.Settings.GenPanel.StopFrequency = v / float64(pow10tab[fractionWidth])
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		stepFreqChanged := func(v float64) {
-			scp.Settings.GenPanel.Increment = v / 100
+			scp.Settings.GenPanel.Increment = v / float64(pow10tab[fractionWidth])
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		setOffsetMinMax := func() {
@@ -282,9 +286,9 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 					scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genTab.Content)
 					check.Checked = scp.Settings.GenPanel.On
 					stepFreq.SilentSetFloatValue(scp.Settings.GenPanel.Increment, fractionWidth)
-					dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * 10000000))
-					startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency * 100))
-					stopFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StopFrequency * 100))
+					dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * dwellTimeScale))
+					startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency * float64(pow10tab[fractionWidth])))
+					stopFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StopFrequency * float64(pow10tab[fractionWidth])))
 					scp.dockTab(scp.genTab)
 					scp.controlTab.SelectIndex(ftTabIndex)
 					fyne.Do(scp.genTab.Content.Refresh)
@@ -337,8 +341,8 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		frequency.SilentSetValue(int(scp.Settings.GenPanel.Frequency) * pow10tab[fractionWidth])
 		addToTest(frequency, genFreqId)
 
-		dwellTime, err = disp7.NewCustomDisp7Array(11, 7,
-			int(genericps.MaxDwellTime)*1000, int(500),
+		dwellTime, err = disp7.NewCustomDisp7Array(dwellTimeDigits, dwellTimeFraction,
+			int(genericps.MaxDwellTime)*1000, minDwellTimeNs,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
@@ -348,11 +352,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			return
 		}
 		dwellTime.OnChanged = dwellTimeChanged
-		dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * 10000000))
+		dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * dwellTimeScale))
 		addToTest(dwellTime, genDwellTimeId)
 
 		startFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*100,
+			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
 			int(genericps.MinFrequency)*pow10tab[fractionWidth],
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),

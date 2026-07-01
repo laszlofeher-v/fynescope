@@ -1,9 +1,9 @@
 package gui
 
 import (
-	"log/slog"
 	"fynescope/control"
 	"fynescope/genericps"
+	"log/slog"
 
 	"fyne.io/fyne/v2"
 )
@@ -230,17 +230,12 @@ func measureFrq(receiveBuffer []float32, mean, hTop, hBottom float32, timeInterv
 	}
 	halfPeriodCount--
 	t := end - start
-	// slog.Debug("measureFrq", "start", timeInterval*float32(start), "end", timeInterval*float32(end))
-	// slog.Debug("measureFrq", "t", t, "halfPeriodCount", halfPeriodCount)
 	period = (float64(timeInterval) * float64(t)) / (float64(halfPeriodCount) / 2)
-	// period = int(math.Round(periodf * 1e9))
 	if period == 0 {
 		frq = 0
 	} else {
 		frq = 1 / period
 	}
-	// slog.Debug("frq", "mean", mean, "count", count, "t", t, "frq", frq)
-	// slog.Debug("frq", "mean", mean, "count", count, "t", t, "frq", frq)
 	return
 }
 

@@ -1,10 +1,10 @@
 package gui
 
 import (
+	"fynescope/genericps"
 	"image"
 	"image/draw"
 	"math"
-	"fynescope/genericps"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -76,10 +76,7 @@ func (cl *dftChannelLabelViewer) mouseUp(button desktop.MouseButton, x, y float3
 
 func (cl *dftChannelLabelViewer) setChDispYOffset(dy, x, y float64, scroll bool) {
 	p := image.Point{X: int(x), Y: int(y)}
-	// h := float64(cl.scp.ftScopeSignalScreen.Bounds().Dy())
 	h := float64(cl.img.Bounds().Dy())
-	// for channelIndex := range cl.scp.channels {
-	// channel := &cl.scp.channels[channelIndex]
 	channel := &cl.scp.Settings.Channels[cl.channelIndex]
 	channelViewer := &cl.scp.channelViewers[cl.channelIndex]
 	if channel.Enabled {
@@ -109,7 +106,6 @@ func (cl *dftChannelLabelViewer) setChDispYOffset(dy, x, y float64, scroll bool)
 			cl.scp.refreshRasters()
 		}
 	}
-	// }
 }
 func (cl *dftChannelLabelViewer) dragged(dx, dy, x, y float32) {
 	if cl.selected {
@@ -118,7 +114,6 @@ func (cl *dftChannelLabelViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (cl *dftChannelLabelViewer) scrolled(delta, x, y float32) {
-	// nY := (float64(cl.scp.ftScopeSignalScreen.Bounds().Dy()) / float64(numberOfDivs)) / 10
 	nY := (float64(cl.img.Bounds().Dy()) / float64(numberOfDivs)) / 10
 	cl.setChDispYOffset(float64(-delta)*nY, float64(x), float64(y), true)
 }

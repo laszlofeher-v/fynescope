@@ -8,11 +8,8 @@ import (
 	"log/slog"
 	"math"
 
-	// "fynescope/config"
 	"fynescope/control"
 	"fynescope/disp7"
-
-	// "fynescope/psi"
 	"fynescope/selectscroll"
 	"strconv"
 
@@ -21,7 +18,6 @@ import (
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
-	// "fyne.io/fyne/v2/widget"
 )
 
 const (
@@ -166,9 +162,6 @@ func switchUpTimeUnit(dt float32, timeUnit int) (newDt float32, unitName string)
 	case 0:
 		newDt = dt / 60
 		unitName = min
-	// case 1.0e9:
-	// 	newDt = dt
-	// 	unitName = sec
 	default:
 		slog.Error("switchUpTimeUnit", "timeUnit", timeUnit)
 		newDt = dt
@@ -177,7 +170,6 @@ func switchUpTimeUnit(dt float32, timeUnit int) (newDt float32, unitName string)
 	return
 }
 
-// TODO change method to function
 func getTimeUnitName(timeUnit int) (unitName string) {
 	switch timeUnit {
 	case -12:
@@ -204,7 +196,6 @@ func (tl *timeLabelViewer) draw() {
 	if tl.scp.controlTab.SelectedIndex() == dftTabIndex {
 		return
 	}
-	// slog.Debug("timeLabelViewer draw", "tl.scp.timeDiv", tl.scp.timeDiv)
 	tl.clear()
 	var unitName string
 	dt := float32(tl.scp.timeDiv)
@@ -241,7 +232,6 @@ func (tl *timeLabelViewer) draw() {
 		if i == 0 { // 											first label
 			vstr = vstr + " " + unitName
 		}
-		//TODO Skip label if does not fit
 		left, _, right, _ := tl.scp.boundString(vstr)
 		tl.scp.addLabel(tl.scp.ftScopeFullScreen, int(math.Round(float64(x-(right+left)/2))), y, vstr, theme.ForegroundColor())
 		v += float32(dt)
@@ -276,8 +266,6 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 	vRange := scp.Settings.Channels[genericps.ChA].VRange
 	if scp.triggerSource != dontCare {
 		vRange = scp.Settings.Channels[scp.triggerSource].VRange
-		// slog.Debug("trigger ok", "triggerSource", scp.triggerSource, "mv",
-		// mv, "vRange", vRange)
 	}
 	hysteresisADC := uint16(scp.mvToUAdc(scp.triggerSettingMsg.UpperHysteresis, vRange))
 	triggerADC := int16(scp.mvToAdc(mv, vRange))
@@ -300,7 +288,6 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		scp.triggerSettingMsg.XOffset = xOffset
 		scp.triggerSettingMsg.ThresholdDirection = direction
 		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-		// slog.Debug("new trigger", "new triggerADC", scp.triggerSettingMsg.TriggerADC)
 		<-scp.triggerSettingMsg.Done
 	} else {
 		slog.Debug("not new trigger")
@@ -432,11 +419,9 @@ func (scp *ScpDesc) onSampleRateChange(_ string, ex selectscroll.Exception) {
 		}
 	default:
 	}
-	// scp.actualSampleTime.SetText(scp.sampleRateSelect.Selected + " " + scp.sampleUnitSelect.Selected)
 }
 
 func (scp *ScpDesc) onSampleUnitChange(_ string, _ selectscroll.Exception) {
-	// scp.actualSampleTime.SetText(scp.sampleRateSelect.Selected + " " + scp.sampleUnitSelect.Selected)
 }
 
 func (scp *ScpDesc) setETSTimeDiv() {
@@ -492,7 +477,6 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	} else {
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
-			// if scp.running {
 			for i := range scp.channelViewers {
 				scp.channelViewers[i].triggerCheckbox.Enable()
 			}
@@ -506,7 +490,6 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				slog.Error("onTriggerModeChange", "SetBlockMode error:", err)
 				return
 			}
-			// }
 		}
 		if triggerModes[option] == control.Single {
 			if scp.running {
@@ -592,15 +575,6 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	addToTest(scp.ipmSelect, ipmId)
 	return container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
 }
-
-// func (scp *ScpDesc) newSamplingUI() *fyne.Container {
-// 	scp.sampleRateSelect = selectscroll.NewSelectScroll(sampleRates, scp.onSampleRateChange, "900")
-// 	scp.sampleRateSelect.SilentSetSelectedIndex(0)
-// 	scp.sampleUnitSelect = selectscroll.NewSelectScroll(sampleUnits, scp.onSampleUnitChange, "MS/s")
-// 	scp.sampleUnitSelect.SilentSetSelectedIndex(0)
-// 	scp.actualSampleTime = widget.NewLabel(scp.sampleRateSelect.Selected + " " + scp.sampleUnitSelect.Selected)
-// 	return container.New(layout.NewHBoxLayout(), scp.sampleRateSelect, scp.sampleUnitSelect, scp.actualSampleTime)
-// }
 
 func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	triggerColor := scp.theme.Color(ColorNameGeneratorDisp, 0)

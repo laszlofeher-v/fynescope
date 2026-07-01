@@ -2,9 +2,7 @@ package control
 
 import (
 	"fynescope/genericps"
-	// "fmt"
 	"log/slog"
-	// "fynescope/psi"
 )
 
 func (psControl *PscDesc) setEtsBuffer(sampleCount int32, segmentIndex uint32) (err error) {
@@ -24,7 +22,6 @@ func (psControl *PscDesc) setEtsBuffer(sampleCount int32, segmentIndex uint32) (
 	} else {
 		psControl.EtsInBuffer = psControl.EtsInBuffer[:sampleCount]
 	}
-	// _, err = psControl.Con.Send(&genericps.SetEtsTimeBufferMsg{Buffer: psControl.EtsInBuffer})
 	err = psControl.Con.SetEtsTimeBuffer(psControl.EtsInBuffer)
 	if err != nil {
 		slog.Error("SetEtsTimeBufferMsg", "error:", err)
@@ -34,11 +31,9 @@ func (psControl *PscDesc) setEtsBuffer(sampleCount int32, segmentIndex uint32) (
 }
 
 func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (err error) {
-	// var resp psi.Responder
 	for chIndex := range psControl.receiveBuffer {
 		if len(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
 			if cap(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
-				// log.Println("*************Allocate r buffer 2 sampleCount:", sampleCount, cap(channel.ReceiveBuffer), len(channel.ReceiveBuffer))
 				psControl.receiveBuffer[chIndex] = make([]int16, sampleCount)
 			} else {
 				psControl.receiveBuffer[chIndex] = psControl.receiveBuffer[chIndex][:sampleCount]
@@ -48,7 +43,6 @@ func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (er
 		}
 		if len(psControl.displayBuffer[chIndex]) < int(sampleCount) {
 			if cap(psControl.displayBuffer[chIndex]) < int(sampleCount) {
-				// log.Println("*************Allocate d buffer 2 sampleCount:", sampleCount, cap(channel.ReceiveBuffer), len(channel.ReceiveBuffer))
 				psControl.displayBuffer[chIndex] = make([]float32, sampleCount)
 			} else {
 				psControl.displayBuffer[chIndex] = psControl.displayBuffer[chIndex][:sampleCount]
@@ -56,8 +50,6 @@ func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (er
 		} else {
 			psControl.displayBuffer[chIndex] = psControl.displayBuffer[chIndex][:sampleCount]
 		}
-
-		// _, err = psControl.Con.Send(&genericps.SetDataBufferMsg{Ch: genericps.ChannelId(chIndex), BufferIn: psControl.receiveBuffer[chIndex][:sampleCount], SegmentIndex: segmentIndex, Mode: psControl.downSampleRatioMode})
 		err = psControl.Con.SetDataBuffer(genericps.ChannelId(chIndex),
 			psControl.receiveBuffer[chIndex][:sampleCount], segmentIndex,
 			psControl.downSampleRatioMode)
@@ -70,16 +62,11 @@ func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (er
 }
 
 func (psControl *PscDesc) memorySegments(numberOfSegments uint32) (sampleCount int32, err error) {
-	// resp, err = psControl.Con.Send(&genericps.MemorySegmentsMsg{NSegments: numberOfSegments})
 	sampleCount, err = psControl.Con.MemorySegments(numberOfSegments)
 	if err != nil {
 		slog.Error("memorySegments", "error:", err)
 		return
 	}
-	// sampleCount = resp.(*genericps.MemorySegmentsRsp).NMaxSamples
-	// if n, _ := scp.numberOfEnabledChannels(); sampleCount == 0 && n == 0 {
-	// 	sampleCount = minSampleCount
-	// }
 	return
 }
 
@@ -90,7 +77,6 @@ func (psControl *PscDesc) checkOverflow(overflow int16) {
 		for i, ch := 0, 'A'; i < len(psControl.chEnabled); i, ch = i+1, ch+1 {
 			if overflow&(1<<i) != 0 && psControl.chEnabled[i].Load() {
 				chNames = chNames + string(ch) + " "
-				// slog.Debug("chk", "overflow", overflow, "i", i, "ch", ch, "chNames", chNames)
 			}
 		}
 		s := "Overflow error on channel"
@@ -131,11 +117,7 @@ func (psControl *PscDesc) getData(sampleCount int32, segmentIndex uint32, ets bo
 		}
 		psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
 			(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
-		// slog.Error("getData", "timeUnits", timeUnits, "v", genericps.TimeUnitToVal(timeUnits))
-		// slog.Debug("getData", "XRoundError", float64(psControl.XRoundError))
-		// slog.Debug("getData", "psControl.triggerTimeOffset:", psControl.triggerTimeOffset)
 		psControl.RefreshCallback(psControl.receiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
-		// psControl.RefreshCallback(psControl.receiveBuffer, 0, psControl.SamplingTimeInterval)
 	}
 	return
 }

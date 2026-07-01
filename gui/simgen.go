@@ -2,11 +2,11 @@ package gui
 
 import (
 	"fmt"
+	"fynescope/control"
+	"fynescope/genericps"
 	"image/color"
 	"log/slog"
 	"math"
-	"fynescope/control"
-	"fynescope/genericps"
 
 	"fyne.io/fyne/v2/theme"
 
@@ -118,14 +118,10 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			"HalfSine":  genericps.HalfSine,
 			"DcVoltage": genericps.DcVoltage,
 		}
-		// log.Println("Wave consts:", genericps.Sine, genericps.Square,
-		//genericps.Triangle, genericps.RampUp, genericps.RampDown, genericps.SinC,
-		// genericps.Gaussian, genericps.HalfSine, genericps.DcVoltage)
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
 			keyVal = append(keyVal, keyValDesc{key, val})
 		}
-		// log.Println("keyVal:", keyVal)
 		sort.Slice(keyVal, func(i, j int) bool {
 			return keyVal[i].val < keyVal[j].val
 		})
@@ -133,7 +129,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		for i, kv := range keyVal {
 			waveTypeOptions[i] = kv.key
 		}
-		// log.Println(waveTypeOptions)
 	}
 
 	onTriggerCalculationModeChange := func(option string, ex selectscroll.Exception) {
@@ -232,7 +227,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			genSettings.OffsetVoltage = int32(v)
 			scp.applySimGenSettings(ch, genSettings)
 		}
-		// if scp.psControl.Con.ID == genericps.SimId {
 		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 		raiseFallTimeDisp, err = disp7.NewCustomDisp7Array(5, 2,
 			10000, 0,
@@ -292,7 +286,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			scp.applySimGenSettings(ch, genSettings)
 		}
 		phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
-		// }
 		phaseDisp, err = disp7.NewCustomDisp7Array(3, 0,
 			360, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -312,9 +305,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		phaseDisp.SilentSetValue(int(genSettings.Phase))
 
 		waveTypeChanged := func(option string, e selectscroll.Exception) {
-			// scp.waveType = waveTypeMap[option]
 			genSettings.WaveType = waveTypeMap[option]
-			// if scp.psControl.Con.ID == genericps.SimId {
 			switch genSettings.WaveType {
 			case genericps.Square:
 				fallthrough
@@ -325,7 +316,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			default:
 				raiseFallTimeDisp.Hide()
 			}
-			// }
 			scp.applySimGenSettings(ch, genSettings)
 		}
 		sweepChanged := func(option string, e selectscroll.Exception) {
@@ -368,12 +358,9 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 					freqSetAnalog.SilentSetValue(genSettings.Frequency * float64(pow10tab[fractionWidth]))
 					amp.SilentSetValue(int(genSettings.Amplitude))
 					offset.SilentSetValue(int(genSettings.OffsetVoltage))
-					// if scp.psControl.Con.ID == genericps.SimId && raiseFallTimeDisp != nil {
 					raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
-					// triggerTimeOffsetDisp.SilentSetValue(int(genSettings.TriggerTimeOffset))
 					noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
 					phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
-					// }
 					scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genTab.Content)
 					check.Checked = genSettings.On
 					stepFreq.SilentSetFloatValue(genSettings.Increment, fractionWidth)
@@ -400,7 +387,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 
 				fyne.Do(undockButton.Refresh)
 				fyne.Do(genControls.Refresh)
-				// scp.genFunc.Content.Refresh()
 			})
 		}
 		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
@@ -410,7 +396,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		ampSetAnalog.SilentSetValue(float64(genSettings.Amplitude))
 		addToTest(ampSetAnalog, genAmpdSetId)
 		ampSetAnalog.OnChanged = ampChanged
-		// fractionWidth := 2
 		disp7Width := fractionWidth
 		f := int(math.Round(genericps.SineMaxFrequency))
 		for f > 0 {
@@ -439,7 +424,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			chCol,
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "∆t   :", " s") //TODO change unit
+			disp7.DefaultVCursorSpace, "∆t   :", " s")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, dwellTime)
 		addToTest(dwellTime, genDwellTimeId)
 		if err != nil {
@@ -491,7 +476,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		addToTest(stepFreq, genStepFreqId)
 		stepFreq.OnChanged = stepFreqChanged
 		stepFreq.SilentSetValue(int(genSettings.Increment) * pow10tab[fractionWidth])
-		//TODO  arbitrary waveform
 		amp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
 			disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
 			chCol,
@@ -543,7 +527,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Sweep "), sweepMenu)
 
-		// if scp.psControl.Con.ID == genericps.SimId {
 		scp.triggerCalculationModeSelect = selectscroll.NewSelectScroll(triggerCalculationOptions, onTriggerCalculationModeChange, triggerCalculationOptions[0])
 		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId)
 		scp.triggerCalculationModeSelect.SetSelected(triggerCalculationOptions[scp.Settings.Trigger.CalculationMode])
@@ -555,11 +538,6 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
 			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp /*triggerTimeOffsetDisp,*/, noiseAmplitudeDisp, phaseNoiseDisp, calcBox)
-		// } else {
-		// 	digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-		// 		sweepBox, amp, offset)
-		// }
-
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)
 		show.SetChecked(genSettings.Digital)
 		showChanged(genSettings.Digital)

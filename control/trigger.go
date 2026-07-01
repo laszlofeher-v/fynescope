@@ -1,8 +1,8 @@
 package control
 
 import (
-	"log/slog"
 	"fynescope/genericps"
+	"log/slog"
 	// "fynescope/psi"
 )
 
@@ -30,12 +30,10 @@ func (psControl *PscDesc) triggerMonitor() {
 		eventHandlerFunc func() (nextFunc eventHandlerFunc)
 	)
 	var (
-		unchanged, changed   eventHandlerFunc
-		triggerSetting TriggerDesc
+		unchanged, changed eventHandlerFunc
+		triggerSetting     TriggerDesc
 	)
 	storeSettings := func(setMsg *TriggerDescMsg) (nextFunc eventHandlerFunc) {
-		// setMsg.TriggerADC = int16(psControl.mvToAdc(psControl.triggerSetting.Mv, psControl.channels[psControl.triggerSetting.Source].VoltageRange))
-		// setMsg.HysteresisADC = uint16(psControl.mvToAdc(psControl.triggerSetting.UpperHysteresis, psControl.channels[psControl.triggerSetting.Source].VoltageRange))
 		if setMsg.TriggerDesc != triggerSetting {
 			slog.Debug("trigger new", "TriggerADC", setMsg.TriggerADC)
 			triggerSetting = setMsg.TriggerDesc
@@ -75,8 +73,6 @@ func (psControl *PscDesc) triggerMonitor() {
 		eventHandler = eventHandler()
 	}
 }
-
-
 
 func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 
@@ -118,23 +114,18 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		return
 	}
 
-	//TODO switch does nothing
 	var triggerConditions []genericps.TriggerConditions
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-
 		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondTrue, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: genericps.CondDontCare, Digital: genericps.CondDontCare}}
 	case genericps.ChB:
-
 		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondTrue, ChannelC: genericps.CondDontCare,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: genericps.CondDontCare, Digital: genericps.CondDontCare}}
 	case genericps.ChC:
-
 		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondTrue,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: genericps.CondDontCare, Digital: genericps.CondDontCare}}
 	case genericps.ChD:
-
 		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
 			ChannelD: genericps.CondTrue, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: genericps.CondDontCare, Digital: genericps.CondDontCare}}
 	}

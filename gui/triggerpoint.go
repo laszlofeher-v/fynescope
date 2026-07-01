@@ -1,10 +1,10 @@
 package gui
 
 import (
+	"fynescope/genericps"
 	"image"
 	"log/slog"
 	"math"
-	"fynescope/genericps"
 
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
@@ -135,14 +135,10 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 	channel.Trigger.Mv = int32(math.Round(float64(mv)))
-	// log.Println("triggerPointViewer setDispOffset")
-	// tp.scp.triggerThresholdDisp.SetValue(int(channel.trigger.mv))
 	tp.scp.triggerSettingMsg.TriggerADC = int16(tp.scp.mvToAdc(channel.Trigger.Mv, channel.VRange))
-	// tp.scp.triggerThresholdDisp.Refresh()
 	tp.scp.triggerSettingMsg.Mv = channel.Trigger.Mv
 	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
 	<-tp.scp.triggerSettingMsg.Done
-	// tp.scp.psControl.SetTriggerThreshold(channel.trigger.mv)
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	lw.enableRefresh()
 	tp.enableRefresh()

@@ -2,14 +2,14 @@ package gui
 
 import (
 	"fmt"
+	"fynescope/control"
+	"fynescope/genericps"
+	"fynescope/settings"
 	"image"
 	"image/color"
 	"image/draw"
 	"log/slog"
 	"math"
-	"fynescope/control"
-	"fynescope/genericps"
-	"fynescope/settings"
 	"time"
 
 	"fyne.io/fyne/v2/canvas"
@@ -146,11 +146,6 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 	fMinX := float64(bounds.Min.X)
 	fMaxX := float64(bounds.Max.X)
 	unit := (w) / float64(sv.scp.maxScreenTime)
-	// floatDelta := float64(len(sv.scp.etsBuffer)) / float64(w)
-	// if floatDelta < 1 {
-	// 	floatDelta = 1
-	// }
-	// delta := int(floatDelta)
 	for channelIndex := range sv.scp.channelViewers {
 		channelViewer := &sv.scp.channelViewers[channelIndex]
 		channel := &sv.scp.Settings.Channels[channelIndex]
@@ -200,7 +195,6 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				// Raw drawer
 				etsDrawRaw := func() {
 					startX := float64(bounds.Min.X) //+ float64(sv.scp.controlXRoundError)*unit
-					// slog.Debug("etsDrawRaw", "controlXRoundError", sv.scp.controlXRoundError)
 					offsetFloat := float64(zeroOffset) + yOffset
 					prevX := startX
 					s := displayBuffer[0]
@@ -227,8 +221,7 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 							y = fMinY
 						}
 						x := sv.scp.Settings.Time.TriggerTimeOffset*unit + (float64(sv.scp.etsBuffer[i]))*etsDx + startX
-						// slog.Debug("draw", "i", i, "etsBuffer", sv.scp.etsBuffer[i], "etsDx", etsDx, "x", x)
-						switch { // TODO not real clip
+						switch {
 						case x > fMaxX:
 							x = fMaxX
 						case x < fMinX:
@@ -321,20 +314,16 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				}
 
 				// t0 is the pixel position of the first sample (index 0) relative to bounds.Min.X
-				// slog.Debug("etsDrawRaw", "controlXRoundError", sv.scp.controlXRoundError)
 				t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
 					float64(sv.scp.controlXRoundError) +
 					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
 				t0 -= extra * deltaT
 
 				drawDot := func() {
-					// var prevX float64 = t0 + float64(bounds.Min.X)
 					s0 := displayBuffer[0]
 					if channel.Inverted {
 						s0 = -s0
 					}
-					// var prevY float64 = -yScale*float64(s0) + offsetFloat
-
 					for i := 1; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						s := displayBuffer[i]

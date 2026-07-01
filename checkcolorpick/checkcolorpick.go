@@ -13,7 +13,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// TODO TAB focus, space check
 type (
 	CheckColorPick struct {
 		widget.BaseWidget

@@ -129,35 +129,10 @@ func snapN(v float32, snap float32) float32 {
 	return v
 }
 
-// func (scp *ScpDesc) setXOffset(xOff float32) {
-// 	var offset float32
-// 	w := float32(scp.ftScopeSignalScreen.Bounds().Dx())
-// 	switch {
-// 	case xOff < 0:
-// 		offset = 0
-// 	case xOff > w:
-// 		offset = w
-// 	default:
-// 		offset = xOff
-// 	}
-// 	scp.Settings.Time.TriggerTimeOffset = float64(offset/w) * scp.maxScreenTime
-// 	slog.Debug("setXOffset", "XOffset", scp.Settings.Time.TriggerTimeOffset)
-// }
-
 func (raster *screenRaster) Tapped(event *fyne.PointEvent) {
-	// fmt.Println("Tapped", event.Position.X, event.Position.Y)
-	// raster.triggerX = event.Position.X
-	// raster.triggerY = event.Position.Y
-	// raster.Refresh()
-	// fmt.Println(event.Scrolled, event.Position, event.AbsolutePosition)
 }
 
 func (raster *screenRaster) TappedSecondary(event *fyne.PointEvent) {
-	// fmt.Println("TappedSecondary", event.Position.X, event.Position.Y)
-	// raster.triggerX = event.Position.X
-	// raster.triggerY = event.Position.Y
-	// raster.Refresh()
-	// fmt.Println(event.Scrolled, event.Position, event.AbsolutePosition)
 }
 func (raster *screenRaster) MouseIn(event *desktop.MouseEvent) {
 	raster.Window.Canvas().Focus(raster)

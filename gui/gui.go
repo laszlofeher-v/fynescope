@@ -23,8 +23,8 @@ import (
 	"fynescope/settings"
 	"image"
 	"log/slog"
-	"strings"
 	"math"
+	"strings"
 
 	// "fynescope/sim"
 	"strconv"
@@ -209,14 +209,6 @@ type (
 		useExtGenCheck             *widget.Check
 	}
 )
-
-// type (
-// 	appInfo struct {
-// 		name string
-// 		icon fyne.Resource
-// 		run  func(fyne.Window) fyne.CanvasObject
-// 	}
-//)
 
 func createFlag() (ch chan struct{}) {
 	ch = make(chan struct{}, 1)
@@ -804,14 +796,8 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.displayBuffers = make([][]float32, scp.channelCount)
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
-	// for i := range scp.channels {
-	// 	scp.channels[i].settings.Done = make(chan struct{})
-	// }
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
-	//TODO if strings.Contains(scp.psControl.Info, "MSO") {
-	// 	scp.DigitalPorts = 2
-	// }
 	switch scp.psControl.Info {
 	case "2107SIM", "2207SIM", "2307SIM", "2407SIM":
 		scp.maxSamplingRate = maxSampling1G
@@ -885,8 +871,6 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	scp.ffRaster = scp.newScreenRaster(scp.ffRasterGenerator, scp.Window, false, false, true)
 	scp.fvViewer = newFvViewer(scp.fvScopeFullScreen, image.Rect(0, 0, 1024, 768), scp)
 	scp.addFvDrawer(scp.fvViewer)
-	// ffViewer initialization will be deferred or handled similarly
-
 	addToTest(scp.ftRaster, ftRasterId)
 	addToTest(scp.dftRaster, dftRasterId)
 	addToTest(scp.fvRaster, fvRasterId)

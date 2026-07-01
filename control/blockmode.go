@@ -1,10 +1,10 @@
 package control
 
 import (
-	"log/slog"
-	"math"
 	"fynescope/genericps"
 	"fynescope/settings"
+	"log/slog"
+	"math"
 	"time"
 )
 
@@ -28,7 +28,6 @@ func blockMode(psControl *PscDesc) state {
 	} //end callbackBlock
 
 	prepare := func() (err error) {
-		// slog.Debug("runblock prepare")
 		err = psControl.setEverything()
 		if err != nil {
 			return
@@ -71,14 +70,12 @@ func blockMode(psControl *PscDesc) state {
 			psControl.timeBase = 0
 		}
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(psControl.SampleCountRequired)
-		// slog.Debug("blockmode", "timeIntervalNanoseconds", timeIntervalNanoseconds)
 		psControl.SampleCountRequired = int32(math.Round(psControl.maxScreenTime/float64(timeIntervalNanoseconds*1e-9))) + 2
 		if psControl.ipmode == settings.Sinc {
 			psControl.SampleCountRequired = SincWMultiplier * psControl.SampleCountRequired
 		} else {
 			psControl.SampleCountRequired = 2 * psControl.SampleCountRequired
 		}
-		// slog.Debug("", "psControl.SampleCount", psControl.SampleCountRequired, "scopeScreenWidth", psControl.scopeScreenWidth)
 		if psControl.SampleCountRequired > maxSampleCount || psControl.SampleCountRequired <= 0 {
 			slog.Debug("samplecount decreased:", "SampleCount", psControl.SampleCountRequired, " to :", maxSampleCount)
 			psControl.SampleCountRequired = maxSampleCount
@@ -92,7 +89,6 @@ func blockMode(psControl *PscDesc) state {
 			slog.Debug("samplecount increased to minimum:", "from", psControl.SampleCountRequired, "to", minSampleCount)
 			psControl.SampleCountRequired = minSampleCount
 		}
-		// slog.Debug("blockmode prepare", "samplecount:", psControl.SampleCount)
 		psControl.SamplingTimeInterval = float64(timeIntervalNanoseconds) * 1e-9
 		if psControl.SampleCountRequired == 0 {
 			slog.Error("runblock setBuffers sampleCount == 0")
@@ -103,7 +99,6 @@ func blockMode(psControl *PscDesc) state {
 			slog.Error("runblock setBuffers:", "err", err)
 			return
 		}
-		// delta := float64(psControl.scopeScreenWidth) / float64(psControl.SampleCountRequired)
 		psControl.BufferCallback(int(psControl.SampleCountRequired)) // set buffer size
 		if psControl.ipmode == settings.Sinc {
 			displayRange := float64(psControl.SampleCountRequired) / SincWMultiplier
@@ -127,8 +122,6 @@ func blockMode(psControl *PscDesc) state {
 		if psControl.NPro < 0 { //TODO Why?
 			psControl.NPro = 0
 		}
-
-		// slog.Debug("pre", "delta", delta)
 		slog.Debug("pre", "XRoundError", psControl.XRoundError)
 		callbackChannel = make(chan struct{}, 1)
 		return
@@ -139,7 +132,6 @@ func blockMode(psControl *PscDesc) state {
 			psControl.timeBase, psControl.overSample, 0, callbackBlock, nil)
 		if err != nil {
 			slog.Error("runblock msg", "error", err)
-			//TODO Why psControl.NPro<0 NPre=18474 NPro=-5362 timeBase=1 overSample=1
 			slog.Error("runblock", "NPre", psControl.NPre, "NPro", psControl.NPro,
 				"timeBase", psControl.timeBase, "overSample", psControl.overSample)
 			psControl.DisplayStatus(err.Error(), Fatal)
@@ -161,11 +153,9 @@ func blockMode(psControl *PscDesc) state {
 		// initialize block mode
 		start = func() eventHandlerFunc {
 			// if no channel is enabled then just wait
-			// slog.Debug("runblock start 1", "goid", goid())
 			for n := psControl.numberOfEnabledChannels(); n == 0; {
 				select {
 				case <-psControl.restartChannel:
-					// slog.Debug("runblock start restart received", "goid", goid())
 					psControl.quit()
 					return start
 				case <-psControl.stopChannel:
@@ -173,7 +163,6 @@ func blockMode(psControl *PscDesc) state {
 					return nil
 				}
 			}
-			// slog.Debug("runblock start 2", "goid", goid())
 			err := prepare()
 			if err != nil {
 				psControl.DisplayStatus(err.Error(), Fatal)
@@ -183,13 +172,11 @@ func blockMode(psControl *PscDesc) state {
 				nextState = streamMode
 				return nil
 			}
-			// slog.Debug("runblock start 3", "goid", goid())
 			return run
 		}
 
 		//		run block mode
 		run = func() eventHandlerFunc {
-			// slog.Debug("run!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			err := runBlock() //
 			if err != nil {
 				psControl.DisplayStatus(err.Error(), Fatal)
@@ -197,19 +184,13 @@ func blockMode(psControl *PscDesc) state {
 			}
 			select {
 			case <-psControl.restartChannel:
-				// slog.Debug("runblock run restart received  ******************", "goid", goid())
 				psControl.quit()
 				return start
 			case <-psControl.stopChannel:
 				slog.Info("runblock run stop received ")
-				// psControl.quit()
 				return nil
 			case <-callbackChannel: // 				scope finished
-				// slog.Info("callback received ")
-				return get //							continue with get data
-				// case <-time.After((2*time.Duration(timeIndisposedMs) + 2) * time.Millisecond):
-				// 	slog.Error("runblock run timeout", "timeout", timeIndisposedMs*2)
-				// 	return start
+				return get //						continue with get data
 			}
 		}
 

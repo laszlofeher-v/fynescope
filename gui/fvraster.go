@@ -11,6 +11,7 @@ import (
 
 	"fynescope/genericps"
 	"fynescope/settings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -412,7 +413,6 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 }
 
-
 func (fv *fvViewer) formatVoltage(mv float32, vRange genericps.RangeEnum) string {
 	if genericps.RangeValuesMv[vRange] >= 1000 {
 		return fmt.Sprintf("%.1fV", mv/1000.0)
@@ -595,11 +595,6 @@ func (fv *fvViewer) scrolled(delta, x, y float32) {
 }
 
 func (scp *ScpDesc) fvRasterGenerator(wInt int, hInt int) image.Image {
-	// if wInt > hInt {
-	// 	wInt = hInt
-	// } else if hInt > wInt {
-	// 	hInt = wInt
-	// }
 	ws := scp.Window.Canvas().Size()
 	scp.Settings.Window.Height = ws.Height
 	scp.Settings.Window.Width = ws.Width
@@ -632,10 +627,10 @@ func (scp *ScpDesc) fvRasterGenerator(wInt int, hInt int) image.Image {
 	bottomMargin := float64(defaultBottomMargin)
 
 	ip := scp.fvScopeFullScreen.(*image.RGBA)
-	
+
 	wSigMax := w - leftMargin - rightMargin
 	hSigMax := h - topMargin - bottomMargin
-	
+
 	sigDim := math.Min(wSigMax, hSigMax)
 	if sigDim < 0 {
 		sigDim = 0

@@ -209,7 +209,6 @@ func randTap(name string) {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
 }
 func randScroll(name string, n int) {
@@ -231,7 +230,6 @@ func randScroll(name string, n int) {
 			e.Scrolled.DY = delta
 			e.AbsolutePosition = ap
 			e.Position = p
-			//e.PointEvent=
 			fyne.DoAndWait(func() {
 				c.Scrolled(e)
 			})
@@ -252,9 +250,6 @@ func randScroll(name string, n int) {
 			wait()
 		}
 	case *disp7.DigitArray:
-		// if name != "amp" {
-		// 	log.Println("===============>", name, n)
-		// }
 		for ; n > 0; n-- {
 			wait()
 			ap := c.Position() // The absolute position of the event
@@ -273,7 +268,6 @@ func randScroll(name string, n int) {
 			})
 		}
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
 }
 func randDrag(name string, delta float32) {
@@ -302,10 +296,7 @@ func randDrag(name string, delta float32) {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
-	// drag := &fyne.DragEvent{Dragged: fyne.NewDelta(10, 2)}
-	// slider.Dragged(drag)
 }
 func tap(name string) {
 	switch c := controls[name].(type) {
@@ -339,7 +330,6 @@ func tap(name string) {
 				}
 			}
 		})
-		// log.Printf("tab item %s type %T\n", name, c)
 	case *selectscroll.SelectScroll:
 		wait()
 		fyne.DoAndWait(func() {
@@ -356,8 +346,6 @@ func tap(name string) {
 				}
 			}
 		})
-		// n := rand.Intn(len(c.Options))
-		// c.SetSelectedIndex(n)
 		wait()
 		wait()
 		fyne.DoAndWait(func() {
@@ -415,13 +403,9 @@ func scroll(name string, n int) {
 			})
 		}
 	case *disp7.DigitArray:
-		// if name != "amp" {
-		// 	log.Println("===============>", name, n)
-		// }
 		for ; n > 0; n-- {
 			wait()
 			ap := c.Position() // The absolute position of the event
-			// log.Println(int(c.Size().Width))
 			if int(c.Size().Width) <= 0 {
 				return
 			}
@@ -438,7 +422,6 @@ func scroll(name string, n int) {
 			})
 		}
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
 }
 func drag(name string, delta float32) {
@@ -466,10 +449,7 @@ func drag(name string, delta float32) {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
-	// drag := &fyne.DragEvent{Dragged: fyne.NewDelta(10, 2)}
-	// slider.Dragged(drag)
 }
 
 func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
@@ -518,12 +498,8 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		wait()
 		wait()
 		tap(changeSideId)
-		// log.Println(3)
-		// tap(runblockButtonId)
 		tap(changeSideId)
-		// log.Println(4)
 		tap(runblockButtonId)
-		// log.Println(5)
 	}
 
 	fyne.DoAndWait(func() {
@@ -581,9 +557,6 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 	if bufLen != 0 {
 		log.Fatalf("FAIL: expected bode buffers to be empty after clear, got: %d", bufLen)
 	}
-
-	// log.Println("almost done")
-	// w.Done()
 }
 
 func (scp *ScpDesc) Random(duration time.Duration) {

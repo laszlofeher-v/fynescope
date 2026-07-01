@@ -8,11 +8,11 @@ import (
 	"log/slog"
 	"time"
 
-	"math"
-	"math/cmplx"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
 	"fynescope/settings"
+	"math"
+	"math/cmplx"
 	"strconv"
 
 	"fyne.io/fyne/v2/driver/desktop"
@@ -336,7 +336,6 @@ func (dv *dftViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (dv *dftViewer) scrolled(delta, x, y float32) {
-	// dv.scp.dftBottomLabelViewer.(*frqLabelViewer).scrolled(delta, x, y)
 }
 
 func (dv *dftViewer) typedKey(x, y float32, keyName fyne.KeyName) {
@@ -370,13 +369,6 @@ func (dv *dftViewer) draw() {
 
 	// Draw divisions (optional, or simplified)
 	dv.scp.drawDftDivisions()
-	// Use selected bins for FFT
-
-	// bins := dv.scp.Settings.Dft.Bins
-	// if bins < 1 {
-	// 	bins = 1024
-	// }
-
 	for chIdx := range dv.scp.channelViewers {
 		channel := &dv.scp.Settings.Channels[chIdx]
 		if !channel.Enabled {
@@ -389,14 +381,6 @@ func (dv *dftViewer) draw() {
 			slog.Debug("dftdraw", "chIdx", chIdx, "len", len(displayBuffer))
 			continue
 		}
-
-		// // Use selected bins for FFT
-		// bins := dv.scp.Settings.Dft.Bins
-		// if bins < 1 {
-		// 	bins = 1024
-		// }
-		// m := bins * 2
-
 		if m == 0 || fft == nil || len(samples) != m || len(fftResult) != m/2+1 {
 			bins := dv.scp.Settings.Dft.Bins
 			if bins < 128 {
@@ -424,10 +408,7 @@ func (dv *dftViewer) draw() {
 		}
 
 		applyWindow(samples[:nsig], dv.scp.Settings.Dft.Window)
-
-		// fft := fourier.NewFFT(m)
 		fftResult = fft.Coefficients(fftResult, samples)
-
 		magnitudes := make([]float64, m/2)
 		const dbFloor = -100.0
 
@@ -442,32 +423,18 @@ func (dv *dftViewer) draw() {
 		normFactor := float64(nsig) / 2.0
 		normFactor *= dv.scp.getCoherentGain(dv.scp.Settings.Dft.Window, nsig)
 
-		// maxRangeMv := float64(genericps.InputRanges[channel.VRange])
-		// yScale here is normalized to the channel's max voltage (Peak)
 		yScale := 1.0 / float32(genericps.RangeValuesMv[channel.VRange])
 		for i := 0; i < m/2; i++ {
 			mag := cmplx.Abs(fftResult[i]) / normFactor // Magnitude in mV (since input samples are in mV)
 			val := float64(float32(mag) * yScale)
 
 			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-				// Linear plot
-				// Scale relative to the channel's max range
-				// if val > 1.0 {
-				// 	val = 1.0
-				// }
 				magnitudes[i] = val
 			} else {
 				// dB plot
 				if mag < 1e-10 { // Avoid log(0)
 					magnitudes[i] = dbFloor
 				} else {
-					// 20*log10(mag/ref). Let's treat 1V (1000mV) as 0dB reference?
-					// Or just relative dB?
-					// Existing code:
-					// db := 20 * math.Log10(mag)
-					// This means 1mV is 0dB, 1000mV is 60dB.
-					// And dbFloor is -100dB (0.00001 mV)
-
 					db := 20 * math.Log10(val)
 					if db < dbFloor {
 						db = dbFloor
@@ -477,7 +444,6 @@ func (dv *dftViewer) draw() {
 			}
 		}
 		dv.magnitudesCache[chIdx] = magnitudes
-		// slog.Debug("dft draw", "magnitudes", magnitudes)
 
 		col := channel.Col[dv.scp.Settings.ChannelColorIndex]
 		yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
@@ -507,46 +473,18 @@ func (dv *dftViewer) draw() {
 
 		var startY float32
 		if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-			// Linear: 0 is at bottom, 1 is at top
-			// y = bounds.Min.Y + h - (mag * h) + yOffset?
-			// Wait, scope normally plots -V to +V. FFT magnitude is 0 to +V.
-			// Let's plot 0 at the vertical center (like 0V in scope) or bottom?
-			// Usually spectrum Analyzers plot 0 Hz at left.
-			// For Y axis:
-			// If we align with scope grid, 0V is usually center.
-			// But magnitude is always positive.
-			// Let's put 0 at the bottom of the screen area for that channel?
-			// Or just use the full height 0 to 1.
-
-			// Let's map 0 to bounds.Max.Y (bottom) and maxRange to bounds.Min.Y (top)
-			// y = bounds.Max.Y - (mag * h)
-			// But we need to account for offsets?
-			// In scope mode, yOffset shifts the zero level.
-			// Let's stick to a simple 0..1 mapping to the full screen height for now, modified by offset?
-			// Re-using the logic from dB mode logic which seemed to map min..max to h.
-
-			// In dB mode: y = bounds.Min.Y + (db/dbFloor)*h + yOffset
-			// db goes from -100 to +X.
-			// db/dbFloor goes from 1 (at -100dB) to negative (at >0dB).
-			// Wait, dbFloor is negative (-100).
-			// If db = -100, fraction = 1. y = MinY + h (Bottom). Correct.
-			// If db = 0, fraction = 0. y = MinY (Top). Correct.
-
-			// y = bounds.Min.Y + (1.0 - magnitude_fraction) * h
 			startY = float32(float64(bounds.Min.Y) + (1.0-magnitudes[minBinIdx])*float64(h) + yOffset)
 		} else {
 			startY = float32(float64(bounds.Min.Y) + (magnitudes[minBinIdx]/dbFloor)*float64(h) + yOffset)
 		}
 
 		maxBinIdxPlot := int(math.Round(((minFreq + maxFreqPlot) / maxFreqAvailable) * float64(m/2)))
-		// slog.Debug("dft draw 1", "minBinIdx", minBinIdx, "maxBinIdxPlot", maxBinIdxPlot)
 		if maxBinIdxPlot > m/2 {
 			maxBinIdxPlot = m / 2
 		}
 		if maxBinIdxPlot <= minBinIdx {
 			maxBinIdxPlot = minBinIdx + 1
 		}
-		// slog.Debug("dft draw 2", "minBinIdx", minBinIdx, "maxBinIdxPlot", maxBinIdxPlot)
 
 		prevY := startY
 		for i := minBinIdx; i < maxBinIdxPlot; i++ {
@@ -1180,7 +1118,6 @@ func (scp *ScpDesc) drawDftDivisions() {
 	}
 	bounds := scp.dftScopeSignalScreen.Bounds()
 	drawDivs := func(yOffset float32, col color.Color) {
-		// draw.Draw(scp.dftScopeFullScreen, bounds, &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
 		for _, v := range scp.dftDivsY {
 			counter := 0
 			for x := float64(bounds.Min.X); x < float64(bounds.Max.X); x = x + 1.0 {

@@ -2,13 +2,13 @@ package gui
 
 import (
 	"fmt"
-	"log/slog"
-	"math"
 	"fynescope/control"
 	"fynescope/control/scpi"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
+	"log/slog"
+	"math"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -134,7 +134,6 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 	}
 
 	createChannelColumn := func(chIdx int, scpiCh scpi.ChType) *fyne.Container {
-		// chLabel := widget.NewLabelWithStyle(fmt.Sprintf("Channel %d", chIdx+1), fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 		chName := fmt.Sprintf("Channel %d", chIdx+1)
 		onOffCheck := widget.NewCheck(chName, func(b bool) {
 			scp.Settings.ExtGen[chIdx].On = b

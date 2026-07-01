@@ -3,12 +3,11 @@ package control
 // No fyne dependency allowed in this package
 import (
 	"fmt"
-	"log/slog"
 	"fynescope/genericps"
 	"fynescope/settings"
+	"log/slog"
 	"sync/atomic"
 
-	// "fynescope/psi"
 	"runtime"
 	"strconv"
 	"strings"
@@ -30,8 +29,8 @@ type ScopeError int
 
 const (
 	Fatal   ScopeError = iota // Fallback to idle
-	Warning                  // continue
-	Info                     // continue
+	Warning                   // continue
+	Info                      // continue
 )
 
 const (
@@ -358,31 +357,23 @@ func (psControl *PscDesc) UnitBatchAndSerialInfo() (info string, err error) {
 }
 
 func (psControl *PscDesc) MinMaxValues() (min, max int16, err error) {
-	// var resp genericps.RespBase
-	// resp, err := psControl.Con.Send(&genericps.MaximumValueMsg{})
 	max, err = psControl.Con.MaximumValue()
 	if err != nil {
 		slog.Error("MaximumValue", "error", err)
 	}
-	// max = resp.(*genericps.MaximumValueRsp).Value
-	// resp, err = psControl.Con.Send(&genericps.MinimumValueMsg{})
 	if err != nil {
 		slog.Error("MinimumValue", "error", err)
 		return
 	}
 	min, err = psControl.Con.MinimumValue()
-	// min = resp.(*genericps.MinimumValueResp).Value
-	//TODO remove below or remove max,min
 	psControl.maxValue = max
 	psControl.minValue = min
 	return
 }
 
 func (psControl *PscDesc) Stop() (err error) {
-	// slog.Debug("================ Stop! ===================")
 	select {
 	case psControl.stopChannel <- struct{}{}:
-		// slog.Info("================ Stop sent ===================")
 	case <-time.After(haltTimeout):
 		err = fmt.Errorf("Halt send timeout")
 		slog.Error("Halt send timeout", "error", err)

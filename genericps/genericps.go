@@ -844,44 +844,6 @@ type (
 		Range_10v() RangeEnum
 		Range_20v() RangeEnum
 		Range_50v() RangeEnum
-		// Level, Window                              ThresholdModeId
-		// CondDontCare, CondTrue, CondFalse, CondMax TriggerRespBase
-		// TriggerAbove, TriggerBelow, TriggerRaising, TriggerFalling, TriggerRisingOrFalling,
-		// TriggerAboveLower, TriggerBelowLower, TriggerRisingLower, TriggerFallingLower,
-		// TriggerOutside, TriggerInside, TriggerEnter, TriggerExit, TriggerEnterOrExit,
-		// TriggerPositiveRunt, TriggerNegativeRunt, TriggerNone ThresholdDirection
-		// Dch0, Dch1, Dch2, Dch3, Dch4, Dch5, Dch6, Dch7,
-		// Dch8, Dch9, Dch10, Dch11, Dch12, Dch13, Dch14, Dch15,
-		// Dch16, Dch17, Dch18, Dch19, Dch20, Dch21, Dch22, Dch23,
-		// Dch24, Dch25, Dch26, Dch27, Dch28, Dch29, Dch30, Dch31, DchMax DigitalChannel
-		// DigitalDontCare, DigitalDirectionLow, DigitalDirectionHigh, DigitalDirectionRising,
-		// DigitalDirectionFalling, DigitalDirectionRisingOrFalling, DigitalMaxDirection DigitalDirection
-		// SweepUp, SweepDown, SweepUpDown, SweepDownUp, SweepMaxTypes           SweepTypeEnum
-		// EsOff, WhiteNoise, Prbs                                               ExtraOperations
-		// Single, Dual, Quad, MaxIndexModes                                     IndexMode
-		// SigGenRising, SigGenFalling, SigGenGateHigh, SigGenGateLow            SigGenTrigType
-		// SigGenNone, SigGenScopeTrig, SigGenAuxIn, SigGenExtIn, SigGenSoftTrig SigGenTrigSource
-		// TuFs, TuPs, TuNs, TuUs, TuMs, TuS                                     TimeUnits
-		// HofTime, MaxHoldOffTime                                               HoldOffType
-		// OperandNone, OperandOr, OperandAnd, OperandThen                       TriggerOperand
-		// Port0, Port1, Port2, Port3, MaxDigitalPorts                           DigitalPort
-		// PicoDriverVersion, PicoUsbVersion, PicoHardwareVersion, PicoVariantInfo,
-		// PicoBatchAndSerial, PicoCalDate, PicoKernelVersion, PicoDigitalHardwareVersion,
-		// PicoAnalogueHardwareVersion, PicoFirmwareVersion1, PicoFirmwareVersion2,
-		// PicoMacAddress, PicoShadowCall, PicoIppVersion, PicoDriverPath,
-		// PicoFirmwareVersion3, PicoFrontPanelFirmwareVersion3, PicoBootloaderVersion PicoInfo
-		// EtsOff, EtsFast, EtsSlow, EtsMax EtsMode
-		// PwTypeNone, PwTypeLessThan, PwTypeGreaterThan,
-		// PwTypeInRange, PwTypeOutOfRange PulseWidthType
-		// Sine, Square, Triangle, RampUp, RampDown,
-		// SinC, Gaussian, HalfSine, DcVoltage WaveTypeEnum
-		// inputRanges       []int32
-		// ChannelInfoRanges int16
-		// RangeValuesMv     map[RangeEnum]float32
-		// SineMaxFrequency, SquareMaxFrequency, TriangleMaxFrequency, SinCMaxFrequency,
-		// RampMaxFrequency, HalfSineMaxFrequency, GaussianMaxFrequency,
-		// PrbsMaxFrequency, PrbsMinFrequency, MinFrequency float64
-		// AwgMinSigGenBufferSize, AwgMaxSigGenBufferSize int16
 	}
 )
 
@@ -939,15 +901,6 @@ func NewConnection() (con *Connection) {
 	return
 }
 
-// func (c Connection) EnumerateUnits() (count int16, serials string, serialLth int16, err error) {
-// 	msg := &EnumerateUnitMsg{}
-// 	msg.rsp = &EnumerateUnitsRsp{}
-// 	c.Send(msg)
-// 	rsp := msg.Rsp().(*EnumerateUnitsRsp)
-// 	err = rsp.Status()
-// 	return
-// }
-
 func OpenUnitAsync(serial string) (err error) {
 	return
 }
@@ -981,11 +934,6 @@ func (c Connection) CloseUnit() (err error) {
 	c.Send(msg)
 	rsp := msg.Rsp().(*CloseUnitRsp)
 	err = rsp.Status()
-	// switch r := resp.(type) {
-	// case *CloseUnitRsp:
-	// 	err = r.Status()
-	// default:
-	// }
 	return
 }
 
@@ -1499,7 +1447,6 @@ func (c Connection) SetSimDigitalFilter(channel ChannelId, lpEnabled bool, lpFc 
 	return
 }
 
-
 func (c Connection) SetSigGenPropertiesArbitrary(offsetVoltage int32,
 	startDeltaPhase, stopDeltaPhase, deltaPhaseIncrement, dwellCount uint32,
 	sweepType SweepTypeEnum, operation ExtraOperations,
@@ -1674,9 +1621,3 @@ func TimeUnitToVal(tu TimeUnits) float64 {
 	}
 	return 0
 }
-
-// type (
-// 	InputRangesFunc = func(r RangeEnum) int32
-// )
-
-// var InputRanges InputRangesFunc
