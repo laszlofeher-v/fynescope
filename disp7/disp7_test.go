@@ -376,7 +376,6 @@ func TestSilentSetFloatValue(t *testing.T) {
 	assertSegments(t, disp)
 
 	// Test bounds (should not change value if out of bounds)
-	// currentValue := disp.Value
 	currentDpPos := 2
 	disp.SilentSetFloatValue(1000.0, currentDpPos) // Above max
 	assert.Equal(t, max, disp.Value)
@@ -723,9 +722,7 @@ func TestMouseInAndOut(t *testing.T) {
 	}
 
 	// Mouse In
-	disp.Tapped(&fyne.PointEvent{Position: fyne.Position{100, 0}})
-	// disp.MouseIn(&fyne.PointEvent{AbsolutePosition: fyne.Position{c.Position().X, c.Position().Y}, Position: fyne.Position{0, 0}})
-	// disp.MouseIn(&desktop.MouseEvent{fyne.PointEvent{AbsolutePosition: fyne.NewPos(70, 10).X, fyne.NewPos(70, 10).Y}}) // Should target index 1
+	disp.Tapped(&fyne.PointEvent{Position: fyne.Position{X: 100, Y: 0}})
 	assert.Equal(t, 1, disp.digitCursor, "MouseIn should set cursor")
 
 	// Mouse Out
@@ -734,8 +731,7 @@ func TestMouseInAndOut(t *testing.T) {
 
 	// Readonly check
 	disp.Readonly = true
-	disp.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{0, 0}, Position: fyne.Position{0, 0}})
-	// disp.MouseIn(&desktop.MouseEvent{Position: fyne.NewPos(70, 10)})
+	disp.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 	assert.Equal(t, digitCursorOut, disp.digitCursor, "MouseIn should do nothing when readonly")
 	disp.MouseOut() // Should also do nothing
 	assert.Equal(t, digitCursorOut, disp.digitCursor)
