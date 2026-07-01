@@ -1556,6 +1556,7 @@ func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64
 // approach of relying on the simulator's SweepController.
 func (scp *ScpDesc) startFfSweep() {
 	scp.stopFfSweep() // stop any existing sweep
+	scp.ResetFfSweep() // clear old sweep data
 
 	scp.ffSweepQuit = make(chan struct{})
 	scp.ffSweepDataReady = make(chan struct{}, 1)

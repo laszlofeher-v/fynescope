@@ -66,6 +66,13 @@ func (scp *ScpDesc) applySimGenSettings(ch genericps.ChannelId, genSettings *set
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
 	msg.Phase = genSettings.Phase
+	
+	if genSettings.On {
+		sim.SetNoiseAmplitude(genSettings.NoiseAmplitude)
+		sim.SetPhaseNoiseDegree(genSettings.PhaseNoiseDegree)
+		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
+	}
+	
 	if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
 		scp.psControl.SetSimGenCh <- msg
 	}

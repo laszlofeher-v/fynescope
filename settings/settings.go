@@ -59,6 +59,7 @@ type (
 		FvMode            FvMode              `yaml:"fvmode"`
 		TriggerSource     bool                `yaml:"triggersource"`
 		Persistence       bool                `yaml:"persistence"`
+		DftPersistence    bool                `yaml:"dftpersistence"`
 		Trigger           ChTriggerSettings   `yaml:"triggersettings"`
 		// SimGen             GeneratorSettings     `yaml:"simgen"`
 		// SimGenBackup       GeneratorSettings     `yaml:"simgenbackup"`

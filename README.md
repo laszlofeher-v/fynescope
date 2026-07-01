@@ -6,8 +6,8 @@
 
 Once the application is running, you can navigate between different visualization and control modes using the main tabs:
 
-- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, and offset).
-- **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. 
+- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time.
+- **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
 - **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually.
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
@@ -181,7 +181,6 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 - **English only UI**: The application interface is available only in English; localization to other languages is not supported.
 - **No zoom**: There is no waveform zoom or multi-zoom viewport support.
 - **No rulers**: On-screen measurement rulers/cursors are not available.
-- **No persistence modes**: Fast, time, or frequency persistence waveform overlay is not implemented.
 - **No multiple viewports**: Only a single view of each signal domain is shown at a time.
 
 **Measurements & Analysis**

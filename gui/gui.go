@@ -108,6 +108,7 @@ type (
 		ftScopeFullScreen                   rasterImage
 		ftScopeSignalScreen                 rasterImage
 		ftPersistentLayers                  []*image.RGBA
+		dftPersistentLayers                 []*image.RGBA
 		GenFreqDelayStr                     string
 		GenFreqStepStr                      string
 		GenFreqStr                          string
@@ -258,6 +259,18 @@ func (scp *ScpDesc) clearFtPersistentLayer(chIndex genericps.ChannelId) {
 func (scp *ScpDesc) clearAllFtPersistentLayers() {
 	for i := range scp.ftPersistentLayers {
 		scp.ftPersistentLayers[i] = nil
+	}
+}
+
+func (scp *ScpDesc) clearDftPersistentLayer(chIndex genericps.ChannelId) {
+	if int(chIndex) < len(scp.dftPersistentLayers) {
+		scp.dftPersistentLayers[chIndex] = nil
+	}
+}
+
+func (scp *ScpDesc) clearAllDftPersistentLayers() {
+	for i := range scp.dftPersistentLayers {
+		scp.dftPersistentLayers[i] = nil
 	}
 }
 
@@ -810,6 +823,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
 	scp.ftPersistentLayers = make([]*image.RGBA, scp.channelCount)
+	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount)
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
 	switch scp.psControl.Info {

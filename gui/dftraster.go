@@ -130,6 +130,7 @@ func (frql *frqLabelViewer) setDispFreqOffset(dx float32) {
 		}
 		frql.scp.Settings.Dft.MinFreq = newMin
 		frql.scp.setDftHDivsX()
+		frql.scp.clearAllDftPersistentLayers()
 		frql.enableRefresh()
 		frql.scp.refreshRasters()
 	}
@@ -470,6 +471,14 @@ func (dv *dftViewer) draw() {
 		if minBinIdx < 0 {
 			minBinIdx = 0
 		}
+		
+		var targetImg rasterImage = dv.scp.dftScopeSignalScreen
+		if channel.DftPersistence {
+			if dv.scp.dftPersistentLayers[chIdx] == nil || dv.scp.dftPersistentLayers[chIdx].Bounds() != bounds {
+				dv.scp.dftPersistentLayers[chIdx] = image.NewRGBA(bounds)
+			}
+			targetImg = dv.scp.dftPersistentLayers[chIdx]
+		}
 
 		var startY float32
 		if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
@@ -503,10 +512,17 @@ func (dv *dftViewer) draw() {
 				y = float32(float64(bounds.Min.Y) + (magnitudes[i]/dbFloor)*float64(h) + yOffset)
 			}
 			if i > minBinIdx {
-				drawLine(dv.scp.dftScopeSignalScreen, prevX, prevY, x, y, col)
+				drawLine(targetImg, prevX, prevY, x, y, col)
 			}
 			prevX = x
 			prevY = y
+		}
+		
+		if channel.DftPersistence && dv.scp.dftPersistentLayers[chIdx] != nil {
+			img, ok := dv.scp.dftScopeSignalScreen.(draw.Image)
+			if ok {
+				draw.Draw(img, bounds, dv.scp.dftPersistentLayers[chIdx], bounds.Min, draw.Over)
+			}
 		}
 	}
 	dv.mCache = m
@@ -872,6 +888,19 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		})
 		check.SetChecked(channel.Enabled)
 		channelViewer.dftCheckbox = check
+		
+		persSelected := func(checked bool) {
+			channel.DftPersistence = checked
+			scp.Settings.Channels[chIdx].DftPersistence = checked
+			if !checked {
+				scp.clearDftPersistentLayer(chIdx)
+			}
+			scp.refreshRasters()
+			scp.SaveSettings()
+		}
+		persCheck := widget.NewCheck("Pers", persSelected)
+		persCheck.SetChecked(channel.DftPersistence)
+		channelViewer.dftPersistenceCheckbox = persCheck
 
 		// Channel Label
 		text := "Ch " + chName + ":"
@@ -914,7 +943,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10Check)
 
 		// Each channel gets its own row
-		chRow := container.NewHBox(check, label, vRange, x10Check)
+		chRow := container.NewHBox(check, label, vRange, x10Check, persCheck)
 		chControls.Add(chRow)
 	}
 
@@ -924,6 +953,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		settings.WindowBlackman, settings.WindowBlackmanHarris, settings.WindowBlackmanNuttall, settings.WindowFlatTop, settings.WindowHamming, settings.WindowHann,
 		settings.WindowLanczos, settings.WindowNuttall, settings.WindowTriangular, settings.WindowRectangular}, func(selected string, _ selectscroll.Exception) {
 		scp.Settings.Dft.Window = selected
+		scp.clearAllDftPersistentLayers()
 		if scp.dftRaster != nil {
 			scp.dftRaster.Refresh()
 		}
@@ -933,6 +963,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	// Display mode selector row
 	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDB, settings.ModeVoltage}, func(selected string, _ selectscroll.Exception) {
 		scp.Settings.Dft.DisplayMode = selected
+		scp.clearAllDftPersistentLayers()
 		for i := range scp.channelViewers {
 			scp.channelViewers[i].dftLabel.enableRefresh()
 		}
@@ -953,6 +984,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		u := unitVals[scp.dftMaxFreqUnitSelect.Selected]
 		scp.Settings.Dft.MaxFreq = v * u
 		scp.setDftHDivsX()
+		scp.clearAllDftPersistentLayers()
 		if scp.dftBottomLabelViewer != nil {
 			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
 		}
@@ -1011,6 +1043,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		fftResult = make([]complex128, fft.Len()/2+1)
 		scp.updateBinWidth()
 		scp.updateAcquisitionParameters()
+		scp.clearAllDftPersistentLayers()
 		if scp.dftRaster != nil {
 			scp.dftRaster.Refresh()
 		}

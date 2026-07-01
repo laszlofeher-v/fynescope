@@ -41,6 +41,7 @@ type (
 		dftCheckbox              *widget.Check
 		triggerCheckbox          *widget.Check
 		persistenceCheckbox      *widget.Check
+		dftPersistenceCheckbox   *widget.Check
 		minV                     *disp7.DigitArray
 		maxV                     *disp7.DigitArray
 		offset                   *disp7.DigitArray
@@ -321,6 +322,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		}
 		scp.ResetFfSweep()
 		scp.clearFtPersistentLayer(chIndex)
+		scp.clearDftPersistentLayer(chIndex)
 		scp.SaveSettings()
 	}
 	cChanged := func(option string, e selectscroll.Exception) {
@@ -347,6 +349,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		//		fmt.Println("inverted ", chIndex, chName, c)
 		scp.ResetFfSweep()
 		scp.clearFtPersistentLayer(chIndex)
+		scp.clearDftPersistentLayer(chIndex)
 		scp.SaveSettings()
 		//		setChannel()
 	}
@@ -605,6 +608,8 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 		int(max*1000))
 	slog.Debug("AnalogueOffset", "max", max, "min", min, "err", err)
 	scp.ResetFfSweep()
+	scp.clearFtPersistentLayer(chIndex)
+	scp.clearDftPersistentLayer(chIndex)
 
 	// Update the device
 	channelCopy := scp.Settings.Channels[chIndex]
@@ -622,6 +627,8 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	channel := &scp.Settings.Channels[chIndex]
 
 	scp.Settings.Channels[chIndex].X10 = c
+	scp.clearFtPersistentLayer(chIndex)
+	scp.clearDftPersistentLayer(chIndex)
 
 	rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
 	var ranges []string

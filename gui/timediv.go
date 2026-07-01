@@ -118,6 +118,7 @@ func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 		tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
 		tl.enableRefresh()
 		tl.scp.clearAllFtPersistentLayers()
+		tl.scp.clearAllDftPersistentLayers()
 		tl.scp.refreshRasters()
 	}
 }
@@ -354,6 +355,7 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 	scp.setMaxScreenTime()
 	scp.syncDftToTimeDiv()
 	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.timeSelect.Refresh()
 	scp.timeUnitSelect.Refresh()
 	scp.refreshRasters()
@@ -383,6 +385,7 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	scp.setMaxScreenTime()
 	scp.syncDftToTimeDiv()
 	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.timeSelect.Refresh()
 	scp.refreshRasters()
 	mul *= float64(scp.timeDiv) / float64(prevTime)
@@ -511,6 +514,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	<-scp.triggerSettingMsg.Done                         // wait for done
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
@@ -544,6 +548,8 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
 	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
@@ -556,6 +562,8 @@ func (scp *ScpDesc) onHysteresisChange(v float64) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.Hysteresis = intV
 	scp.SetTriggerUpperHysteresis(intV)
 	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.refreshRasters()
 	scp.SaveSettings()
 }

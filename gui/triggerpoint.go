@@ -140,6 +140,8 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
 	<-tp.scp.triggerSettingMsg.Done
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
+	tp.scp.clearAllFtPersistentLayers()
+	tp.scp.clearAllDftPersistentLayers()
 	lw.enableRefresh()
 	tp.enableRefresh()
 	slog.Debug("setDispOffset")
