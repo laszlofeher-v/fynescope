@@ -327,7 +327,13 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo)
 
 	// Track which device is currently selected
 	var selectedIndex int
-	radio := widget.NewRadioGroup(options, func(value string) {
+	var radio *widget.RadioGroup
+	radio = widget.NewRadioGroup(options, func(value string) {
+		if value == "" {
+			// User clicked the already-selected item — revert to keep it selected
+			radio.SetSelected(options[selectedIndex])
+			return
+		}
 		// Update selectedIndex when user changes selection
 		for i, opt := range options {
 			if opt == value {
