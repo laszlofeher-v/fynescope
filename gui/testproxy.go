@@ -203,7 +203,7 @@ func randTap(name string) {
 	case fyne.Tappable:
 		wait()
 		fyne.DoAndWait(func() {
-			if obj, ok := controls[name].(fyne.CanvasObject); ok && !obj.Visible() {
+			if obj, ok := controls[name]; ok && !obj.Visible() {
 				return
 			}
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
