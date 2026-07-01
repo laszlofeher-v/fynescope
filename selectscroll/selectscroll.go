@@ -66,88 +66,28 @@ func parseOptionToValue(s string) (float64, bool) {
 	s = strings.ReplaceAll(s, " ", "")
 	s = strings.ReplaceAll(s, "/div", "")
 
+	units := []struct {
+		suffix     string
+		multiplier float64
+	}{
+		{"GS/s", 1e9}, {"MS/s", 1e6}, {"kS/s", 1e3}, {"KS/s", 1e3}, {"S/s", 1.0},
+		{"MHz", 1e6}, {"kHz", 1e3}, {"Hz", 1.0},
+		{"mV", 1e-3}, {"V", 1.0},
+		{"ms", 1e-3}, {"us", 1e-6}, {"µs", 1e-6}, {"ns", 1e-9}, {"ps", 1e-12}, {"s", 1.0},
+		{"MΩ", 1e6}, {"kΩ", 1e3}, {"mΩ", 1e-3}, {"Ω", 1.0},
+		{"µH", 1e-6}, {"uH", 1e-6}, {"mH", 1e-3}, {"H", 1.0},
+		{"mF", 1e-3}, {"µF", 1e-6}, {"uF", 1e-6}, {"nF", 1e-9}, {"pF", 1e-12},
+	}
+
 	multiplier := 1.0
 	valStr := s
 
-	if strings.HasSuffix(s, "GS/s") {
-		multiplier = 1e9
-		valStr = strings.TrimSuffix(s, "GS/s")
-	} else if strings.HasSuffix(s, "MS/s") {
-		multiplier = 1e6
-		valStr = strings.TrimSuffix(s, "MS/s")
-	} else if strings.HasSuffix(s, "kS/s") || strings.HasSuffix(s, "KS/s") {
-		multiplier = 1e3
-		valStr = strings.TrimSuffix(s, "kS/s")
-		valStr = strings.TrimSuffix(valStr, "KS/s")
-	} else if strings.HasSuffix(s, "S/s") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "S/s")
-	} else if strings.HasSuffix(s, "MHz") {
-		multiplier = 1e6
-		valStr = strings.TrimSuffix(s, "MHz")
-	} else if strings.HasSuffix(s, "kHz") {
-		multiplier = 1e3
-		valStr = strings.TrimSuffix(s, "kHz")
-	} else if strings.HasSuffix(s, "Hz") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "Hz")
-	} else if strings.HasSuffix(s, "mV") {
-		multiplier = 1e-3
-		valStr = strings.TrimSuffix(s, "mV")
-	} else if strings.HasSuffix(s, "V") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "V")
-	} else if strings.HasSuffix(s, "ms") {
-		multiplier = 1e-3
-		valStr = strings.TrimSuffix(s, "ms")
-	} else if strings.HasSuffix(s, "us") || strings.HasSuffix(s, "µs") {
-		multiplier = 1e-6
-		valStr = strings.TrimSuffix(s, "us")
-		valStr = strings.TrimSuffix(valStr, "µs")
-	} else if strings.HasSuffix(s, "ns") {
-		multiplier = 1e-9
-		valStr = strings.TrimSuffix(s, "ns")
-	} else if strings.HasSuffix(s, "ps") {
-		multiplier = 1e-12
-		valStr = strings.TrimSuffix(s, "ps")
-	} else if strings.HasSuffix(s, "s") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "s")
-	} else if strings.HasSuffix(s, "MΩ") {
-		multiplier = 1e6
-		valStr = strings.TrimSuffix(s, "MΩ")
-	} else if strings.HasSuffix(s, "kΩ") {
-		multiplier = 1e3
-		valStr = strings.TrimSuffix(s, "kΩ")
-	} else if strings.HasSuffix(s, "mΩ") {
-		multiplier = 1e-3
-		valStr = strings.TrimSuffix(s, "mΩ")
-	} else if strings.HasSuffix(s, "Ω") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "Ω")
-	} else if strings.HasSuffix(s, "µH") || strings.HasSuffix(s, "uH") {
-		multiplier = 1e-6
-		valStr = strings.TrimSuffix(s, "µH")
-		valStr = strings.TrimSuffix(valStr, "uH")
-	} else if strings.HasSuffix(s, "mH") {
-		multiplier = 1e-3
-		valStr = strings.TrimSuffix(s, "mH")
-	} else if strings.HasSuffix(s, "H") {
-		multiplier = 1.0
-		valStr = strings.TrimSuffix(s, "H")
-	} else if strings.HasSuffix(s, "mF") {
-		multiplier = 1e-3
-		valStr = strings.TrimSuffix(s, "mF")
-	} else if strings.HasSuffix(s, "µF") || strings.HasSuffix(s, "uF") {
-		multiplier = 1e-6
-		valStr = strings.TrimSuffix(s, "µF")
-		valStr = strings.TrimSuffix(valStr, "uF")
-	} else if strings.HasSuffix(s, "nF") {
-		multiplier = 1e-9
-		valStr = strings.TrimSuffix(s, "nF")
-	} else if strings.HasSuffix(s, "pF") {
-		multiplier = 1e-12
-		valStr = strings.TrimSuffix(s, "pF")
+	for _, u := range units {
+		if strings.HasSuffix(s, u.suffix) {
+			multiplier = u.multiplier
+			valStr = strings.TrimSuffix(s, u.suffix)
+			break
+		}
 	}
 
 	val, err := strconv.ParseFloat(valStr, 64)
@@ -155,35 +95,10 @@ func parseOptionToValue(s string) (float64, bool) {
 		return val * multiplier, true
 	}
 
-	unitOnlyMultipliers := map[string]float64{
-		"s":    1.0,
-		"ms":   1e-3,
-		"us":   1e-6,
-		"µs":   1e-6,
-		"ns":   1e-9,
-		"ps":   1e-12,
-		"Hz":   1.0,
-		"kHz":  1e3,
-		"MHz":  1e6,
-		"S/s":  1.0,
-		"kS/s": 1e3,
-		"KS/s": 1e3,
-		"MS/s": 1e6,
-		"GS/s": 1e9,
-		"mΩ":   1e-3,
-		"Ω":    1.0,
-		"kΩ":   1e3,
-		"MΩ":   1e6,
-		"µH":   1e-6,
-		"mH":   1e-3,
-		"H":    1.0,
-		"pF":   1e-12,
-		"nF":   1e-9,
-		"µF":   1e-6,
-		"mF":   1e-3,
-	}
-	if m, ok := unitOnlyMultipliers[s]; ok {
-		return m, true
+	for _, u := range units {
+		if s == u.suffix {
+			return u.multiplier, true
+		}
 	}
 
 	return 0, false
