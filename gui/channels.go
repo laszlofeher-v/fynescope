@@ -40,6 +40,7 @@ type (
 		enableChecks             []*widget.Check
 		dftCheckbox              *widget.Check
 		triggerCheckbox          *widget.Check
+		persistenceCheckbox      *widget.Check
 		minV                     *disp7.DigitArray
 		maxV                     *disp7.DigitArray
 		offset                   *disp7.DigitArray
@@ -319,6 +320,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			<-scp.triggerSettingMsg.Done
 		}
 		scp.ResetFfSweep()
+		scp.clearFtPersistentLayer(chIndex)
 		scp.SaveSettings()
 	}
 	cChanged := func(option string, e selectscroll.Exception) {
@@ -344,6 +346,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		// channel.inverted = c
 		//		fmt.Println("inverted ", chIndex, chName, c)
 		scp.ResetFfSweep()
+		scp.clearFtPersistentLayer(chIndex)
 		scp.SaveSettings()
 		//		setChannel()
 	}
@@ -452,13 +455,28 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	addToTest(channelViewer.enableCheckbox, chEnableId+chId)
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
-	invert = widget.NewCheck("Invert", inverted)
+	invert = widget.NewCheck("Inv:", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
 	addToTest(invert, invertId+chId)
-	trigger = widget.NewCheck("Trigger", triggerSelected)
+	trigger = widget.NewCheck("Trig:", triggerSelected)
 	channelViewer.triggerCheckbox = trigger
 	scp.triggerCheck = append(scp.triggerCheck, trigger)
 	addToTest(trigger, triggerCheckId+chId)
+
+	persSelected := func(checked bool) {
+		channel.Persistence = checked
+		scp.Settings.Channels[chIndex].Persistence = checked
+		if !checked {
+			scp.clearFtPersistentLayer(chIndex)
+		}
+		scp.refreshRasters()
+		scp.SaveSettings()
+	}
+	pers := widget.NewCheck("Pers:", persSelected)
+	pers.SetChecked(scp.Settings.Channels[chIndex].Persistence)
+	channelViewer.persistenceCheckbox = pers
+	addToTest(pers, persId+chId)
+
 	rangesEnum, err := scp.psControl.ChannelRanges(chIndex)
 	switch {
 	case err != nil:
@@ -489,13 +507,12 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	triggerDirection.SetSelected(
 		triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection])
 	invertTriggerIpm = container.New(layout.NewHBoxLayout(), invert, trigger,
-		triggerDirection)
+		triggerDirection, pers)
 	enableCouplingRange := container.New(layout.NewHBoxLayout(), enableCh, acdc,
 		vRange, x10)
 	minMaxBox := scp.minMaxDisp(chIndex)
 	frqPeriodBox := scp.frqPeriodDisp(chIndex)
 	voltageBox := container.New(layout.NewVBoxLayout(), offsetBox, minMaxBox)
-	//TODO change negative padding
 	vfBox := container.New(layout.NewCustomPaddedHBoxLayout(-20), voltageBox, frqPeriodBox)
 	setChannel()
 	box := container.New(layout.NewVBoxLayout(), enableCouplingRange,

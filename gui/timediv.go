@@ -117,6 +117,7 @@ func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 		// tl.scp.setTriggerTimeRatio(tl.scp.Settings.Time.XOffsetRatio)
 		tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
 		tl.enableRefresh()
+		tl.scp.clearAllFtPersistentLayers()
 		tl.scp.refreshRasters()
 	}
 }
@@ -352,6 +353,7 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 	scp.Settings.Time.TimeDiv = scp.timeSelect.Selected
 	scp.setMaxScreenTime()
 	scp.syncDftToTimeDiv()
+	scp.clearAllFtPersistentLayers()
 	scp.timeSelect.Refresh()
 	scp.timeUnitSelect.Refresh()
 	scp.refreshRasters()
@@ -380,6 +382,7 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	tl.enableRefresh()
 	scp.setMaxScreenTime()
 	scp.syncDftToTimeDiv()
+	scp.clearAllFtPersistentLayers()
 	scp.timeSelect.Refresh()
 	scp.refreshRasters()
 	mul *= float64(scp.timeDiv) / float64(prevTime)
@@ -507,6 +510,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg // send to control
 	<-scp.triggerSettingMsg.Done                         // wait for done
 	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
 	scp.refreshRasters()
 	scp.SaveSettings()
 }

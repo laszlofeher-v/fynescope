@@ -107,6 +107,7 @@ type (
 		dftScopeSignalScreen                rasterImage
 		ftScopeFullScreen                   rasterImage
 		ftScopeSignalScreen                 rasterImage
+		ftPersistentLayers                  []*image.RGBA
 		GenFreqDelayStr                     string
 		GenFreqStepStr                      string
 		GenFreqStr                          string
@@ -246,6 +247,18 @@ func (scp *ScpDesc) deleteFtDrawer(d drawer) {
 		}
 	}
 	scp.ftDrawers = scp.ftDrawers[:i+copy(scp.ftDrawers[i:], scp.ftDrawers[i+1:])]
+}
+
+func (scp *ScpDesc) clearFtPersistentLayer(chIndex genericps.ChannelId) {
+	if int(chIndex) < len(scp.ftPersistentLayers) {
+		scp.ftPersistentLayers[chIndex] = nil
+	}
+}
+
+func (scp *ScpDesc) clearAllFtPersistentLayers() {
+	for i := range scp.ftPersistentLayers {
+		scp.ftPersistentLayers[i] = nil
+	}
 }
 
 func (scp *ScpDesc) addDftDrawer(d drawer) {
@@ -796,6 +809,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.displayBuffers = make([][]float32, scp.channelCount)
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
+	scp.ftPersistentLayers = make([]*image.RGBA, scp.channelCount)
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
 	switch scp.psControl.Info {

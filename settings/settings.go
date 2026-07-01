@@ -58,6 +58,7 @@ type (
 		Offset            float32             `yaml:"offset"`
 		FvMode            FvMode              `yaml:"fvmode"`
 		TriggerSource     bool                `yaml:"triggersource"`
+		Persistence       bool                `yaml:"persistence"`
 		Trigger           ChTriggerSettings   `yaml:"triggersettings"`
 		// SimGen             GeneratorSettings     `yaml:"simgen"`
 		// SimGenBackup       GeneratorSettings     `yaml:"simgenbackup"`

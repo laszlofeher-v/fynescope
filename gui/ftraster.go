@@ -158,6 +158,15 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				if channelViewer.displayOffsetInt != 0 {
 					yOffset = sv.scp.offsetNToFtY(channel.DisplayVOffset)
 				}
+				
+				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+				if channel.Persistence {
+					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
+						sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+					}
+					targetImg = sv.scp.ftPersistentLayers[channelIndex]
+				}
+				
 				etsDrawDot := func() {
 					startX := float64(bounds.Min.X) //+ float64(sv.scp.controlXRoundError)*unit
 					// slog.Debug("etsDrawRaw", "controlXRoundError", sv.scp.controlXRoundError)
@@ -187,9 +196,9 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 							x = fMinX
 						}
 						const r = 5.0
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r, col)
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r-1, col)
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r-2, col)
+						drawCircle(targetImg, float32(x), float32(y), r, col)
+						drawCircle(targetImg, float32(x), float32(y), r-1, col)
+						drawCircle(targetImg, float32(x), float32(y), r-2, col)
 					}
 				}
 				// Raw drawer
@@ -227,12 +236,12 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 						case x < fMinX:
 							x = fMinX
 						}
-						err := drawLine(sv.scp.ftScopeSignalScreen, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
+						err := drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
 						if err != nil {
 							slog.Debug("ets", "x", x, "y", y, "fMinX", fMinX, "fMaxX", fMaxX, "fMinY", fMinY, "fMaxY", fMaxY)
 							panic("draw error")
 						}
-						err = drawLine(sv.scp.ftScopeSignalScreen, float32(x), float32(prevY), float32(x), float32(y), col)
+						err = drawLine(targetImg, float32(x), float32(prevY), float32(x), float32(y), col)
 						prevX = x
 						if err != nil {
 							slog.Debug("ets", "x", x, "y", y, "fMinX", fMinX, "fMaxX", fMaxX)
@@ -259,7 +268,7 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 						}
 						y := -yScale*float64(s) + offsetFloat
 						x := sv.scp.Settings.Time.TriggerTimeOffset*unit + (float64(sv.scp.etsBuffer[i]))*etsDx + startX
-						drawLine(sv.scp.ftScopeSignalScreen, float32(prevX), float32(prevY), float32(x), float32(y), col)
+						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
 						prevX = x
 						prevY = y
 					}
@@ -277,6 +286,10 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 					etsDrawLinear()
 				default:
 					panic("Undefine interpolation mode")
+				}
+				
+				if channel.Persistence {
+					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
 			}
 		}
@@ -318,6 +331,14 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					float64(sv.scp.controlXRoundError) +
 					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
 				t0 -= extra * deltaT
+				
+				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+				if channel.Persistence {
+					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
+						sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+					}
+					targetImg = sv.scp.ftPersistentLayers[channelIndex]
+				}
 
 				drawDot := func() {
 					s0 := displayBuffer[0]
@@ -332,9 +353,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 						y := -yScale*float64(s) + offsetFloat
 						const r = 5.0
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r, col)
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r-1, col)
-						drawCircle(sv.scp.ftScopeSignalScreen, float32(x), float32(y), r-2, col)
+						drawCircle(targetImg, float32(x), float32(y), r, col)
+						drawCircle(targetImg, float32(x), float32(y), r-1, col)
+						drawCircle(targetImg, float32(x), float32(y), r-2, col)
 					}
 				} //drawPoint
 
@@ -355,9 +376,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						y := -yScale*float64(s) + offsetFloat
 
 						// Horizontal segment (from prev sample to current sample x)
-						drawLine(sv.scp.ftScopeSignalScreen, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
+						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
 						// Vertical segment
-						drawLine(sv.scp.ftScopeSignalScreen, float32(x), float32(prevY), float32(x), float32(y), col)
+						drawLine(targetImg, float32(x), float32(prevY), float32(x), float32(y), col)
 
 						prevX, prevY = x, y
 					}
@@ -380,7 +401,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 						y := -yScale*float64(s) + offsetFloat
 
-						drawLine(sv.scp.ftScopeSignalScreen, float32(prevX), float32(prevY), float32(x), float32(y), col)
+						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
 						prevX, prevY = x, y
 					}
 				} //drawLinear
@@ -425,7 +446,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						currX := float32(x)
 						currY := float32(ys)
 						if !first {
-							drawLine(sv.scp.ftScopeSignalScreen, prevX, prevY, currX, currY, col)
+							drawLine(targetImg, prevX, prevY, currX, currY, col)
 						}
 						prevX, prevY = currX, currY
 						first = false
@@ -443,6 +464,10 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					drawSinc()
 				default:
 					panic("Undefined interpolation mode")
+				}
+				
+				if channel.Persistence {
+					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
 			}
 		}
