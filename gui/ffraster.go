@@ -15,6 +15,7 @@ import (
 
 	"gonum.org/v1/gonum/dsp/fourier"
 
+	"fynescope/control/scpi"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
 	"fynescope/settings"
@@ -1434,9 +1435,15 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.Settings.Ff.UseExternalGen = checked
 		scp.updateFfWidgetLimits()
 		scp.SaveSettings()
+		
+		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
+			scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
+		} else {
+			scp.applyFfGenSettings(scp.Settings.FfGen.On)
+		}
 	})
 	scp.useExtGenCheck.SetChecked(scp.Settings.Ff.UseExternalGen)
-	if !scp.extGen.Connected() {
+	if !scp.ExtGenEnabled || !scp.extGen.Connected() {
 		scp.useExtGenCheck.Hide()
 	}
 
@@ -2058,7 +2065,9 @@ func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
 	scp.ffAmpDisp.OnChanged = func(v float64) {
 		scp.Settings.FfGen.Amplitude = uint32(v)
 		scp.SaveSettings()
-		if scp.running {
+		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+		} else if scp.running {
 			scp.applyFfGenSettings(check.Checked)
 		}
 	}
@@ -2077,7 +2086,9 @@ func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
 	scp.ffOffsetDisp.OnChanged = func(v float64) {
 		scp.Settings.FfGen.OffsetVoltage = int32(v)
 		scp.SaveSettings()
-		if scp.running {
+		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+		} else if scp.running {
 			scp.applyFfGenSettings(check.Checked)
 		}
 	}
@@ -2113,7 +2124,11 @@ func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
 	scp.ffAmpDisp.OnChanged = func(v float64) {
 		scp.Settings.FfGen.Amplitude = uint32(v)
 		scp.SaveSettings()
-		scp.applyFfSimGenSettings(check.Checked)
+		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+		} else {
+			scp.applyFfSimGenSettings(check.Checked)
+		}
 	}
 
 	scp.ffOffsetDisp, err = disp7.NewCustomDisp7Array(7, 6,
@@ -2130,7 +2145,11 @@ func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
 	scp.ffOffsetDisp.OnChanged = func(v float64) {
 		scp.Settings.FfGen.OffsetVoltage = int32(v)
 		scp.SaveSettings()
-		scp.applyFfSimGenSettings(check.Checked)
+		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+		} else {
+			scp.applyFfSimGenSettings(check.Checked)
+		}
 	}
 
 

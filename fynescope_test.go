@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 		_ = settings.Save(settingFileName, cfg)
 	}()
 
-	scp = &gui.ScpDesc{}
+	scp = &gui.ScpDesc{ExtGenEnabled: true}
 	scp.App = app.New()
 
 	if err := scp.Menu(con, cfg, settingFileName); err != nil {

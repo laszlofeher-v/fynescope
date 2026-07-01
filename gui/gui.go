@@ -17,6 +17,7 @@ SCOPE
 import (
 	"fmt"
 	"fynescope/control"
+	"fynescope/control/scpi"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
@@ -208,6 +209,7 @@ type (
 		dftMaxFreqUnitSelect       *selectscroll.SelectScroll
 		SettingFileName            string
 		extGen                     control.ExtGenDesc
+		ExtGenEnabled              bool
 		useExtGenCheck             *widget.Check
 	}
 )
@@ -387,6 +389,9 @@ func (scp *ScpDesc) build2000Gui() {
 	if scp.psControl != nil && scp.psControl.Con.ID != genericps.SimId {
 		scp.controlTab.Remove(scp.rlcTab)
 	}
+	if !scp.ExtGenEnabled {
+		scp.controlTab.Remove(scp.extgenTab)
+	}
 
 	activeRasterContainer := container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
@@ -501,7 +506,9 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.newFfPanel(ffLayout)
 	scp.newRlcPanel(scp.rlcLayout)
 	scp.newDigitalFilterPanel(scp.filterLayout)
-	scp.extgenLayout.Add(scp.newExtGenTab(true))
+	if scp.ExtGenEnabled {
+		scp.extgenLayout.Add(scp.newExtGenTab(true))
+	}
 	left := container.New(layout.NewVBoxLayout())
 	themeChangeAction = widget.NewButtonWithIcon("", theme.CheckButtonIcon(), func() {
 		if scp.theme == Theme(settings.DarkTheme) {
@@ -1130,12 +1137,9 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 		return
 	}
 
-	if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 		scp.setExtGenFrequency(f)
-		if scp.psControl.Con == nil || scp.psControl.Con.ID != genericps.SimId {
-			// Skip sending to internal generator on real hardware.
-			return
-		}
+		return
 	}
 
 	if scp.controlTab.SelectedIndex() == ffTabIndex {
@@ -1294,6 +1298,25 @@ func (scp *ScpDesc) updateStreamButtonState() {
 }
 
 func (scp *ScpDesc) applyFfGenSettings(on bool) {
+	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+		if on {
+			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+			scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
+			scp.extGen.SetOutput(scpi.Ch1, true)
+		} else {
+			scp.extGen.SetOutput(scpi.Ch1, false)
+		}
+		
+		// Ensure internal generator is turned off
+		msg := &control.GeneratorDescMsg{}
+		msg.Operation = genericps.EsOff
+		if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
+			scp.psControl.SetGeneratorCh <- msg
+		}
+		return
+	}
+
 	msg := &control.GeneratorDescMsg{}
 	if on {
 		msg.StartFrequency = scp.Settings.Ff.MinFreq
@@ -1302,7 +1325,7 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 		msg.DwellTime = scp.Settings.Ff.DeltaT
 		msg.SweepType = genericps.SweepUp
 		msg.WaveType = genericps.Sine
-		msg.OffsetVoltage = 0
+		msg.OffsetVoltage = scp.Settings.FfGen.OffsetVoltage
 		msg.PkToPK = scp.Settings.FfGen.Amplitude * 2
 	} else {
 		msg.DwellTime = 0
@@ -1324,6 +1347,28 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 }
 
 func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
+	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+		if on {
+			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+			scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
+			scp.extGen.SetOutput(scpi.Ch1, true)
+		} else {
+			scp.extGen.SetOutput(scpi.Ch1, false)
+		}
+		
+		// Ensure internal simulator generators are turned off
+		for i := 0; i < int(scp.channelCount); i++ {
+			msg := &control.GeneratorDescMsg{}
+			msg.Channel = genericps.ChannelId(i)
+			msg.Operation = genericps.EsOff
+			if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
+				scp.psControl.SetSimGenCh <- msg
+			}
+		}
+		return
+	}
+
 	if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
 		activeGens := make([]bool, scp.channelCount)
 		var missingGenChannels []string
@@ -1344,8 +1389,10 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 		}
 
 		if len(missingGenChannels) > 0 {
-			scp.status.SetText("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input")
-		} else if strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
+			if scp.status != nil {
+				scp.status.SetText("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input")
+			}
+		} else if scp.status != nil && strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
 			scp.status.SetText("")
 		}
 
@@ -1360,7 +1407,7 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 				msg.DwellTime = scp.Settings.Ff.DeltaT
 				msg.SweepType = genericps.SweepUp
 				msg.WaveType = genericps.Sine
-				msg.OffsetVoltage = 0
+				msg.OffsetVoltage = scp.Settings.FfGen.OffsetVoltage
 				msg.PkToPK = scp.Settings.FfGen.Amplitude * 2
 				msg.Phase = 0
 			} else {
@@ -1411,7 +1458,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 			}
 		}
 
-		if scp.extgenLayout != nil {
+		if scp.extgenLayout != nil && scp.ExtGenEnabled {
 			scp.extgenLayout.RemoveAll()
 			scp.extgenLayout.Add(scp.newExtGenTab(true))
 		}

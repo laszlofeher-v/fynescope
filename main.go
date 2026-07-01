@@ -212,12 +212,14 @@ func startProfile(n int) error {
 //	-loglevel: Sets logging verbosity (debug, info, warning, error)
 //	-profile:  Enables CPU profiling when set to true
 //	-sim:      Runs in simulator-only mode when set to true
-func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool) {
+func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	simulator = flag.Bool("sim", false, "-sim=true")
 	chCount = flag.Int("chcount", sim.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (simulator only)", sim.MinChannels, sim.MaxChannels))
 	about := flag.Bool("about", false, "show version, build date and license")
+	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
+	extGenFlag := flag.Bool("extgen", inTestMode, "enable external generator (-extgen=true/false)")
 	flag.Parse()
 
 	if *about {
@@ -237,6 +239,7 @@ func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chC
 		os.Exit(1)
 	}
 
+	extGenEnabled = *extGenFlag
 	return
 }
 
@@ -428,7 +431,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, logLevel, chCount, chCountExplicit := parseFlags()
+	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled := parseFlags()
 	setLogging(logLevel)
 
 	err = sim.SetChannelCount(*chCount, chCountExplicit)
@@ -443,7 +446,9 @@ func main() {
 	}
 
 	// Initialize the GUI application
-	scp := &gui.ScpDesc{}
+	scp := &gui.ScpDesc{
+		ExtGenEnabled: extGenEnabled,
+	}
 	scp.App = app.New()
 
 	// Determine which devices to show in the selection dialog
