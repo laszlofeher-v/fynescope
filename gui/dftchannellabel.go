@@ -103,7 +103,7 @@ func (cl *dftChannelLabelViewer) setChDispYOffset(dy, x, y float64, scroll bool)
 			channelViewer.label.enableRefresh()
 			channelViewer.dftLabel.enableRefresh()
 
-			cl.scp.clearDftPersistentLayer(genericps.ChannelId(cl.channelIndex))
+			cl.scp.clearAllDftPersistentLayers()
 			cl.scp.refreshRasters()
 		}
 	}

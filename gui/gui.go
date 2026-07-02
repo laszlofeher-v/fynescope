@@ -113,6 +113,7 @@ type (
 		ftScopeSignalScreen                 rasterImage
 		ftPersistentLayers                  []*image.RGBA
 		dftPersistentLayers                 []*image.RGBA
+		delayedClearTimer                   *time.Timer
 		GenFreqDelayStr                     string
 		GenFreqStepStr                      string
 		GenFreqStr                          string
@@ -263,56 +264,57 @@ func (scp *ScpDesc) deleteFtDrawer(d drawer) {
 	scp.ftDrawers = scp.ftDrawers[:i+copy(scp.ftDrawers[i:], scp.ftDrawers[i+1:])]
 }
 
-func (scp *ScpDesc) clearFtPersistentLayer(chIndex genericps.ChannelId) {
-	if int(chIndex) < len(scp.ftPersistentLayers) {
-		scp.ftPersistentLayers[chIndex] = nil
+func clearRGBA(img *image.RGBA) {
+	if img == nil {
+		return
 	}
-	time.AfterFunc(500*time.Millisecond, func() {
+	for i := range img.Pix {
+		img.Pix[i] = 0
+	}
+}
+
+func (scp *ScpDesc) scheduleClearAllPersistentLayers() {
+	if scp.delayedClearTimer != nil {
+		scp.delayedClearTimer.Stop()
+	}
+	scp.delayedClearTimer = time.AfterFunc(500*time.Millisecond, func() {
 		fyne.Do(func() {
-			if int(chIndex) < len(scp.ftPersistentLayers) {
-				scp.ftPersistentLayers[chIndex] = nil
+			for i := range scp.ftPersistentLayers {
+				clearRGBA(scp.ftPersistentLayers[i])
+			}
+			for i := range scp.dftPersistentLayers {
+				clearRGBA(scp.dftPersistentLayers[i])
 			}
 		})
 	})
+}
+
+func (scp *ScpDesc) clearFtPersistentLayer(chIndex genericps.ChannelId) {
+	if int(chIndex) < len(scp.ftPersistentLayers) {
+		clearRGBA(scp.ftPersistentLayers[chIndex])
+	}
+	scp.scheduleClearAllPersistentLayers()
 }
 
 func (scp *ScpDesc) clearAllFtPersistentLayers() {
 	for i := range scp.ftPersistentLayers {
-		scp.ftPersistentLayers[i] = nil
+		clearRGBA(scp.ftPersistentLayers[i])
 	}
-	time.AfterFunc(500*time.Millisecond, func() {
-		fyne.Do(func() {
-			for i := range scp.ftPersistentLayers {
-				scp.ftPersistentLayers[i] = nil
-			}
-		})
-	})
+	scp.scheduleClearAllPersistentLayers()
 }
 
 func (scp *ScpDesc) clearDftPersistentLayer(chIndex genericps.ChannelId) {
 	if int(chIndex) < len(scp.dftPersistentLayers) {
-		scp.dftPersistentLayers[chIndex] = nil
+		clearRGBA(scp.dftPersistentLayers[chIndex])
 	}
-	time.AfterFunc(500*time.Millisecond, func() {
-		fyne.Do(func() {
-			if int(chIndex) < len(scp.dftPersistentLayers) {
-				scp.dftPersistentLayers[chIndex] = nil
-			}
-		})
-	})
+	scp.scheduleClearAllPersistentLayers()
 }
 
 func (scp *ScpDesc) clearAllDftPersistentLayers() {
 	for i := range scp.dftPersistentLayers {
-		scp.dftPersistentLayers[i] = nil
+		clearRGBA(scp.dftPersistentLayers[i])
 	}
-	time.AfterFunc(500*time.Millisecond, func() {
-		fyne.Do(func() {
-			for i := range scp.dftPersistentLayers {
-				scp.dftPersistentLayers[i] = nil
-			}
-		})
-	})
+	scp.scheduleClearAllPersistentLayers()
 }
 
 func (scp *ScpDesc) addDftDrawer(d drawer) {

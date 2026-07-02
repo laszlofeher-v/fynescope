@@ -105,16 +105,14 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	} else {
 
 	}
-	propMsg := &genericps.SetTriggerChannelPropertiesMsg{ChannelProperties: nil, AuxOutputEnable: false, AutoTriggerMs: at}
-
 	channelProperties := []genericps.TriggerChannelProperties{{ThresholdUpper: psControl.triggerSetting.TriggerADC,
 		ThresholdUpperHysteresis: psControl.triggerSetting.HysteresisADC, ThresholdLower: psControl.triggerSetting.TriggerADC,
 		ThresholdLowerHysteresis: psControl.triggerSetting.HysteresisADC, Channel: psControl.triggerSetting.Source, ThresholdMode: genericps.Level}}
 
-	slog.Debug("Prop", "prop", propMsg.ChannelProperties)
+	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", propMsg.ChannelProperties)
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
 
