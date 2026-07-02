@@ -33,6 +33,7 @@ import (
 	// "fynescope/psi"
 	// "fynescope/selectscroll"
 	"sync"
+	"time"
 
 	"gonum.org/v1/gonum/dsp/fourier"
 
@@ -266,24 +267,52 @@ func (scp *ScpDesc) clearFtPersistentLayer(chIndex genericps.ChannelId) {
 	if int(chIndex) < len(scp.ftPersistentLayers) {
 		scp.ftPersistentLayers[chIndex] = nil
 	}
+	time.AfterFunc(500*time.Millisecond, func() {
+		fyne.Do(func() {
+			if int(chIndex) < len(scp.ftPersistentLayers) {
+				scp.ftPersistentLayers[chIndex] = nil
+			}
+		})
+	})
 }
 
 func (scp *ScpDesc) clearAllFtPersistentLayers() {
 	for i := range scp.ftPersistentLayers {
 		scp.ftPersistentLayers[i] = nil
 	}
+	time.AfterFunc(500*time.Millisecond, func() {
+		fyne.Do(func() {
+			for i := range scp.ftPersistentLayers {
+				scp.ftPersistentLayers[i] = nil
+			}
+		})
+	})
 }
 
 func (scp *ScpDesc) clearDftPersistentLayer(chIndex genericps.ChannelId) {
 	if int(chIndex) < len(scp.dftPersistentLayers) {
 		scp.dftPersistentLayers[chIndex] = nil
 	}
+	time.AfterFunc(500*time.Millisecond, func() {
+		fyne.Do(func() {
+			if int(chIndex) < len(scp.dftPersistentLayers) {
+				scp.dftPersistentLayers[chIndex] = nil
+			}
+		})
+	})
 }
 
 func (scp *ScpDesc) clearAllDftPersistentLayers() {
 	for i := range scp.dftPersistentLayers {
 		scp.dftPersistentLayers[i] = nil
 	}
+	time.AfterFunc(500*time.Millisecond, func() {
+		fyne.Do(func() {
+			for i := range scp.dftPersistentLayers {
+				scp.dftPersistentLayers[i] = nil
+			}
+		})
+	})
 }
 
 func (scp *ScpDesc) addDftDrawer(d drawer) {
