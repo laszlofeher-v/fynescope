@@ -88,6 +88,18 @@ For more options, including displaying version, build date, and license informat
 ./fynescope -about
 ```
 
+#### Available Command-Line Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-sim` | `false` | Run in simulator mode only (no hardware required) |
+| `-ctrigger` | `false` | Enable the experimental Complex Trigger mode |
+| `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
+| `-extgen` | `false` | Enable external SCPI signal generator tab |
+| `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
+| `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
+| `-about` | — | Print version, build date, and license info, then exit |
+
 ## Interaction & Controls
 
 ### Visual Indicators
@@ -112,6 +124,69 @@ For more options, including displaying version, build date, and license informat
   - Use left click on the buttons/checkboxes to toggle the value.
 - **Sliders**:
   - Use left click or mouse wheel on the sliders to adjust the value. 
+
+## Triggering
+
+### Simple Trigger
+The standard single-channel edge trigger. Select **Simple** in the trigger type selector to use basic rising or falling edge detection with a configurable threshold and auto-trigger fallback.
+
+### Advanced Trigger
+Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes a configurable hysteresis setting alongside the threshold.
+
+### Complex Trigger ⚠️ Experimental
+
+> **This feature is experimental and enabled separately via the `-ctrigger` command-line flag.**
+
+Complex triggering allows you to define trigger conditions across **multiple channels simultaneously**, using AND logic. It maps directly onto the PicoScope 2000 Series API calls `ps2000aSetTriggerChannelProperties`, `ps2000aSetTriggerChannelConditions`, and `ps2000aSetTriggerChannelDirections`.
+
+#### Enabling Complex Trigger
+
+```bash
+./fynescope -ctrigger=true
+```
+
+or in simulator mode:
+
+```bash
+./fynescope -sim -ctrigger=true
+```
+
+When enabled, a **Complex** option appears in the trigger type selector alongside **Simple** and **Advanced**.
+
+#### Configuration Dialog
+
+Selecting **Complex** opens a configuration dialog with a row for each enabled channel (A, B, C, D). Each row allows you to configure:
+
+| Column | Description |
+|--------|-------------|
+| **Channel** | The analog channel (A, B, C, D) |
+| **Condition** | `Don't Care` / `True` / `False` — whether this channel must participate in the trigger |
+| **Direction** | `Rising` / `Falling` / `RisingOrFalling` — the required edge direction |
+| **Threshold (mV)** | Trigger voltage level in millivolts |
+| **Hysteresis** | Hysteresis voltage in millivolts to avoid false re-triggers |
+| **Mode** | `Level` (standard threshold) or `Window` (upper/lower bounds) |
+
+Click **Apply** to commit the configuration. The settings are persisted in the device's YAML settings file and restored on next launch.
+
+#### Trigger Logic
+
+With Complex mode, a trigger fires only when **all** channels with a `True` condition simultaneously satisfy their edge/level requirement (AND logic). Channels set to `Don't Care` are ignored.
+
+**Example**: Trigger when Channel A has a rising edge above 500 mV **and** Channel B is below −200 mV:
+- ChA: `Condition=True`, `Direction=Rising`, `Threshold=500`
+- ChB: `Condition=True`, `Direction=Falling`, `Threshold=-200`
+- ChC, ChD: `Condition=Don't Care`
+
+#### Simulator Support
+
+The software simulator fully supports complex trigger evaluation. At each simulated time step, all active channel conditions are evaluated simultaneously. The trigger fires at the first time step where all `True` conditions are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
+
+#### Limitations & Known Issues
+
+- **Experimental**: Complex trigger is under active development. Hardware validation with real PicoScope hardware has not been fully performed.
+- **AND logic only**: OR conditions across channels are not supported in this release.
+- **Single condition block**: Only one `TriggerConditions` block is sent to the API; multiple overlapping condition blocks are not yet exposed in the UI.
+- **Window mode**: While the `Window` threshold mode can be selected, it requires appropriate Upper/Lower threshold values set independently — the UI currently mirrors the single threshold value to both bounds for simplicity.
 
 ## Settings & Configuration
 
@@ -198,7 +273,8 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
 
 **Triggering**
-- **No complex triggering**: Only basic edge triggering is supported. Advanced modes such as pulse-width, window, dropout, runt, and logic triggers are not implemented.
+- **No pulse-width / window / dropout / runt triggers**: Only edge triggering (Simple, Advanced) and experimental multi-channel Complex triggering are implemented. Advanced modes such as pulse-width, window, dropout, runt, and logic triggers are not implemented.
+- **Complex trigger is experimental**: See the [Complex Trigger](#complex-trigger--experimental) section for details and known limitations.
 
 **Protocol & Digital**
 - **No serial bus decoding**: Protocol analysis (UART, SPI, I²C, CAN, and the 39+ decoders in PicoScope 7) is not available.

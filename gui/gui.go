@@ -222,6 +222,7 @@ type (
 		SettingFileName            string
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
+		ComplexTriggerEnabled      bool
 		useExtGenCheck             *widget.Check
 	}
 )

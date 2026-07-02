@@ -522,6 +522,12 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	scp.Settings.Trigger.Type = option
 	scp.triggerSettingMsg.Type = triggerTypes[option]
+	
+	if option == "Complex" {
+		scp.buildComplexTriggerMessage()
+		scp.showComplexTriggerPopup()
+	}
+	
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
 	if scp.boxTriggerHysteresisDisp != nil {
@@ -623,10 +629,28 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.triggerModeSelect = selectscroll.NewSelectScroll(triggerModeOptions, scp.onTriggerModeChange, triggerModeOptions[2])
 	addToTest(scp.triggerModeSelect, triggerModeSelectId)
-	scp.triggerModeSelect.SetSelected(scp.Settings.Trigger.Mode)
-	scp.triggerTypeSelect = selectscroll.NewSelectScroll(triggerTypeOptions, scp.onTriggerTypeChange, triggerTypeOptions[1])
+	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
+	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
+
+	// Build trigger type options based on whether complex trigger is enabled
+	var activeTypeOptions []string
+	if scp.ComplexTriggerEnabled {
+		activeTypeOptions = []string{"Simple", "Advanced", "Complex"}
+		triggerTypes["Complex"] = control.Complex
+	} else {
+		activeTypeOptions = []string{"Simple", "Advanced"}
+		// If settings had Complex selected but flag is off, fall back to Advanced
+		if scp.Settings.Trigger.Type == "Complex" {
+			scp.Settings.Trigger.Type = "Advanced"
+		}
+	}
+	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, "Advanced")
 	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
-	scp.triggerTypeSelect.SetSelected(scp.Settings.Trigger.Type)
+	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
+	scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
+	if scp.Settings.Trigger.Type == "Complex" {
+		scp.buildComplexTriggerMessage()
+	}
 
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect)
 	boxThresh := container.New(layout.NewHBoxLayout(), scp.triggerThresholdDisp)

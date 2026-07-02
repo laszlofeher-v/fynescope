@@ -19,11 +19,21 @@ type TriggerDetector struct {
 	source                 ChannelId
 	maxIterations          int
 	triggerCalculationMode int
+	isComplex              bool
+	channels               [4]TriggerChannelConfig
+}
+
+type TriggerChannelConfig struct {
+	Enabled    bool
+	Threshold  int16
+	Hysteresis uint16
+	Direction  ThresholdDirection
+	Condition  TriggerState // CondTrue, CondFalse, CondDontCare
 }
 
 // NewTriggerDetector creates a new trigger detector with the specified parameters.
 func NewTriggerDetector(enabled bool, threshold int16, hysteresis uint16, direction ThresholdDirection, source ChannelId) *TriggerDetector {
-	return &TriggerDetector{
+	td := &TriggerDetector{
 		enabled:       enabled,
 		threshold:     threshold,
 		hysteresis:    hysteresis,
@@ -31,6 +41,17 @@ func NewTriggerDetector(enabled bool, threshold int16, hysteresis uint16, direct
 		source:        source,
 		maxIterations: maxTriggerTest,
 	}
+	// Setup simple trigger in channels array
+	if enabled && source >= 0 && int(source) < len(td.channels) {
+		td.channels[source] = TriggerChannelConfig{
+			Enabled:    true,
+			Threshold:  threshold,
+			Hysteresis: hysteresis,
+			Direction:  direction,
+			Condition:  CondTrue,
+		}
+	}
+	return td
 }
 
 var old float64
@@ -47,90 +68,97 @@ var old float64
 //
 // Returns:
 //   - triggerTime: Time offset in seconds where trigger occurred
-func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64) float64,
+func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch ChannelId) float64,
 	reqSamples uint32, maxTime float64, dt float64) (triggerTime float64) {
-	// slog.Debug("FindTriggerPoint", "reqSamples", reqSamples, "timeIntervalNanoseconds", timeIntervalNanoseconds)
-	// If trigger is disabled, return random trigger time
-	if !td.enabled {
+	
+	// Check if any channels are enabled
+	anyEnabled := false
+	for _, cfg := range td.channels {
+		if cfg.Enabled {
+			anyEnabled = true
+			break
+		}
+	}
+
+	if !anyEnabled {
 		triggerTime = rand.Float64() * float64(reqSamples)
 		return
 	}
 
-	// Calculate threshold with hysteresis
-	// For rising edge: hysteresis is below threshold
-	// For falling edge: hysteresis is above threshold
-	thresholdWithHysteresis := float64(td.threshold - int16(td.hysteresis))
-	if td.direction == TriggerFalling {
-		thresholdWithHysteresis = float64(td.threshold + int16(td.hysteresis))
-	}
-
-	// Track previous value for edge detection
-	prev := 1e12
-	if td.direction == TriggerFalling {
-		prev = -prev
-	}
-	hysteresisPassed := false
-	t := float64(0)
-	threshold := float64(td.threshold)
-	isRaising := td.direction == TriggerRaising
-	// Search for trigger point
-	for t < maxTime {
-		// Get signal level at current time
-		levelFloat := signalFunc(t)
-		// Check if hysteresis condition is met
-		if (isRaising && levelFloat <= thresholdWithHysteresis) ||
-			(!isRaising && levelFloat >= thresholdWithHysteresis) {
-			hysteresisPassed = true
-		}
-		// Check for trigger condition
-		if hysteresisPassed {
-			fineDt := dt / 1e3 // Sub-sample precision (1000 steps per sample)
-			triggerTime = t - dt
-			if (isRaising && levelFloat > threshold) ||
-				(!isRaising && levelFloat < threshold) {
-				switch td.triggerCalculationMode {
-				case InterpolatedTrigger:
-					v0 := signalFunc(t - dt)
-					v1 := levelFloat
-					a := (v1 - v0) / dt
-					// slog.Debug("trg", "v0", v0, "v1", v1, "a", a)
-					if a != 0 {
-						SetTriggerTimeOffset(-(threshold - v0) / a)
-					} else {
-						SetTriggerTimeOffset(0)
-					}
-					return
-				case FineGrainedTrigger:
-					// TriggerTimeOffset = triggerTime + dt/2
-					// slog.Debug("trg", "TriggerTimeOffset", TriggerTimeOffset, "triggerTime", triggerTime)
-					// slog.Debug("trg", "TriggerTimeOffset (s)", TriggerTimeOffset, "triggerTime (s)", triggerTime)
-					// Fine-grained search in the previous interval
-					count := 0
-					for tt := triggerTime; tt < t; tt += fineDt {
-						levelFloat = signalFunc(tt)
-						if (isRaising && levelFloat > threshold) ||
-							(!isRaising && levelFloat < threshold) {
-							SetTriggerTimeOffset(-(tt - triggerTime))
-							if old != GetTriggerTimeOffset() {
-								// slog.Debug("trg", "threshold", threshold, "levelFloat", levelFloat)
-								// slog.Debug("trg", "TriggerTimeOffset", TriggerTimeOffset)
-								// slog.Debug("trg", "t", t, "triggerTime", triggerTime)
-								// slog.Debug("trg", "tt", tt, "fineDt", fineDt)
-								old = GetTriggerTimeOffset()
-							}
-							return
-						}
-						count++
-					}
-				}
+	// Pre-calculate hysteresis thresholds
+	hysteresisPassed := [4]bool{}
+	thresholdWithHyst := [4]float64{}
+	isRaising := [4]bool{}
+	
+	for i, cfg := range td.channels {
+		if cfg.Enabled {
+			isRaising[i] = cfg.Direction == TriggerRaising
+			if cfg.Direction == TriggerFalling {
+				thresholdWithHyst[i] = float64(cfg.Threshold + int16(cfg.Hysteresis))
+			} else {
+				thresholdWithHyst[i] = float64(cfg.Threshold - int16(cfg.Hysteresis))
 			}
 		}
-		prev = levelFloat
+	}
+
+	t := float64(0)
+	for t < maxTime {
+		allConditionsMet := true
+		var edgeTriggerTime float64 = t - dt // Default trigger time if no edge triggers are used
+
+		for i, cfg := range td.channels {
+			if !cfg.Enabled || cfg.Condition == CondDontCare {
+				continue
+			}
+			
+			level := signalFunc(t, ChannelId(i))
+			thresh := float64(cfg.Threshold)
+
+			// If it's a level condition (TriggerNone)
+			if cfg.Direction == TriggerNone || cfg.Direction == TriggerRisingOrFalling || cfg.Direction == TriggerOutside || cfg.Direction == TriggerInside {
+				// Simple level threshold check - assuming CondTrue means "above threshold" for simplicity if no direction is specified.
+				// For real hardware, TriggerNone uses Upper/Lower Threshold properties (Window/Level).
+				// We'll keep it simple: True if above threshold.
+				if cfg.Condition == CondTrue && level < thresh {
+					allConditionsMet = false
+					break
+				} else if cfg.Condition == CondFalse && level >= thresh {
+					allConditionsMet = false
+					break
+				}
+				continue
+			}
+
+			// It's an edge condition (Rising/Falling)
+			if (isRaising[i] && level <= thresholdWithHyst[i]) ||
+				(!isRaising[i] && level >= thresholdWithHyst[i]) {
+				hysteresisPassed[i] = true
+			}
+
+			conditionMet := false
+			if hysteresisPassed[i] {
+				if (isRaising[i] && level > thresh) || (!isRaising[i] && level < thresh) {
+					conditionMet = true
+					edgeTriggerTime = t - dt // The trigger happened in the last dt step
+				}
+			}
+
+			if (cfg.Condition == CondTrue && !conditionMet) || 
+			   (cfg.Condition == CondFalse && conditionMet) {
+				allConditionsMet = false
+				break
+			}
+		}
+
+		if allConditionsMet {
+			// Trigger found! We use the edgeTriggerTime (or current time if only levels were used)
+			SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
+			return edgeTriggerTime
+		}
+
 		t += dt
 	}
 
-	// No trigger found within max time, return random value
-	// This simulates auto-trigger behavior
 	triggerTime = rand.Float64() * float64(reqSamples) * dt
 	return
 }
@@ -163,6 +191,42 @@ func (td *TriggerDetector) SetDirection(direction ThresholdDirection) {
 // SetSource sets the trigger source channel.
 func (td *TriggerDetector) SetSource(source ChannelId) {
 	td.source = source
+}
+
+// SetChannelProperties sets the multi-channel trigger properties.
+func (td *TriggerDetector) SetChannelProperties(props []TriggerChannelProperties) {
+	// First, clear existing enabled properties
+	for i := range td.channels {
+		td.channels[i].Enabled = false
+	}
+	for _, prop := range props {
+		ch := int(prop.Channel)
+		if ch >= 0 && ch < len(td.channels) {
+			td.channels[ch].Enabled = true
+			td.channels[ch].Threshold = prop.ThresholdUpper
+			td.channels[ch].Hysteresis = prop.ThresholdUpperHysteresis
+		}
+	}
+}
+
+// SetChannelConditions sets the multi-channel trigger conditions.
+func (td *TriggerDetector) SetChannelConditions(conds []TriggerConditions) {
+	if len(conds) == 0 {
+		return
+	}
+	cond := conds[0] // We only support one condition matrix block for now
+	td.channels[ChA].Condition = cond.ChannelA
+	td.channels[ChB].Condition = cond.ChannelB
+	td.channels[ChC].Condition = cond.ChannelC
+	td.channels[ChD].Condition = cond.ChannelD
+}
+
+// SetChannelDirections sets the multi-channel trigger directions.
+func (td *TriggerDetector) SetChannelDirections(dirA, dirB, dirC, dirD ThresholdDirection) {
+	td.channels[ChA].Direction = dirA
+	td.channels[ChB].Direction = dirB
+	td.channels[ChC].Direction = dirC
+	td.channels[ChD].Direction = dirD
 }
 
 // SetTriggerCalculationMode sets the trigger calculation mode.

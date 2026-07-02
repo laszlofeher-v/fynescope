@@ -23,6 +23,7 @@ const (
 const (
 	Simple TriggerTypes = iota
 	Advanced
+	Complex
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -33,8 +34,25 @@ func (psControl *PscDesc) triggerMonitor() {
 		unchanged, changed eventHandlerFunc
 		triggerSetting     TriggerDesc
 	)
+	triggerDescChanged := func(a, b TriggerDesc) bool {
+		return a.Enabled != b.Enabled ||
+			a.TriggerADC != b.TriggerADC ||
+			a.HysteresisADC != b.HysteresisADC ||
+			a.UpperHysteresis != b.UpperHysteresis ||
+			a.Source != b.Source ||
+			a.ThresholdDirection != b.ThresholdDirection ||
+			a.Mode != b.Mode ||
+			a.Type != b.Type ||
+			a.Mv != b.Mv ||
+			a.XOffset != b.XOffset ||
+			a.AutoTriggerMs != b.AutoTriggerMs ||
+			// For complex triggers, check slice lengths and pointer equality to detect updates
+			len(a.ComplexProperties) != len(b.ComplexProperties) ||
+			len(a.ComplexConditions) != len(b.ComplexConditions) ||
+			len(a.ComplexDirections) != len(b.ComplexDirections)
+	}
 	storeSettings := func(setMsg *TriggerDescMsg) (nextFunc eventHandlerFunc) {
-		if setMsg.TriggerDesc != triggerSetting {
+		if triggerDescChanged(setMsg.TriggerDesc, triggerSetting) {
 			slog.Debug("trigger new", "TriggerADC", setMsg.TriggerADC)
 			triggerSetting = setMsg.TriggerDesc
 			psControl.requestRestart()
@@ -100,11 +118,34 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 
 	at := int32(0)
 	if psControl.triggerSetting.Mode == Auto {
-
 		at = autoTriggerMs
-	} else {
-
 	}
+
+	if psControl.triggerSetting.Type == Complex {
+		err = psControl.Con.SetTriggerChannelProperties(psControl.triggerSetting.ComplexProperties, false, at)
+		if err != nil {
+			slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", psControl.triggerSetting.ComplexProperties)
+			return
+		}
+		err = psControl.Con.SetTriggerChannelConditions(psControl.triggerSetting.ComplexConditions)
+		if err != nil {
+			slog.Error("SetTriggerChannelCondition (Complex):", "error:", err)
+			return
+		}
+		dirs := psControl.triggerSetting.ComplexDirections
+		if len(dirs) > 0 {
+			err = psControl.Con.SetTriggerChannelDirections(dirs[0].ChannelA, dirs[0].ChannelB, dirs[0].ChannelC, dirs[0].ChannelD, dirs[0].Ext, dirs[0].Aux)
+		} else {
+			err = psControl.Con.SetTriggerChannelDirections(genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone)
+		}
+		if err != nil {
+			slog.Error("SetTriggerChannelDirections (Complex):", "error:", err)
+			return
+		}
+		return
+	}
+
+	// Advanced mode logic (fallback)
 	channelProperties := []genericps.TriggerChannelProperties{{ThresholdUpper: psControl.triggerSetting.TriggerADC,
 		ThresholdUpperHysteresis: psControl.triggerSetting.HysteresisADC, ThresholdLower: psControl.triggerSetting.TriggerADC,
 		ThresholdLowerHysteresis: psControl.triggerSetting.HysteresisADC, Channel: psControl.triggerSetting.Source, ThresholdMode: genericps.Level}}

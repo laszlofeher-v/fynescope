@@ -351,79 +351,87 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	}
 	triggerDetector.SetMaxIterations(maxIter)
 
-	triggerCh := triggerDetector.GetSource()
 	dt := timeIntervalNanoseconds / 1e9
 
-	// Initialize trigger filter if enabled for trigger channel
-	var triggerFilter *RlcFilter
-	if channels[triggerCh].rlcEnabled {
-		triggerFilter = NewRlcFilter(channels[triggerCh].rlcType, channels[triggerCh].rlcR, channels[triggerCh].rlcRUnit, 
-			channels[triggerCh].rlcL, channels[triggerCh].rlcLUnit, channels[triggerCh].rlcC, channels[triggerCh].rlcCUnit, dt)
-		
-		// Preroll the trigger filter to reach steady state at t=0
-		prerollSamples := 1000
-		prerollStart := -float64(prerollSamples) * dt
-		for i := 0; i < prerollSamples; i++ {
-			pt := prerollStart + float64(i)*dt
-			val := calculateSampleLevelAtTime(pt, triggerCh)
-			triggerFilter.Step(val)
-		}
+	triggerFilters := make([]*RlcFilter, MaxChannels)
+	triggerDigitalFilters := make([]*SimDigitalFilter, MaxChannels)
+	lastT := make([]float64, MaxChannels)
+	prevT := make([]float64, MaxChannels)
+	lastVal := make([]float64, MaxChannels)
+	prevVal := make([]float64, MaxChannels)
+	for i := 0; i < MaxChannels; i++ {
+		lastT[i] = -1
+		prevT[i] = -1
 	}
 
-	// Initialize trigger digital filter if enabled
-	var triggerDigitalFilter *SimDigitalFilter
-	if channels[triggerCh].dfLpEnabled || channels[triggerCh].dfHpEnabled || channels[triggerCh].dfBpEnabled || channels[triggerCh].dfBsEnabled {
-		triggerDigitalFilter = NewSimDigitalFilter(int(triggerCh), dt)
+	for ch := 0; ch < MaxChannels; ch++ {
+		if !channels[ch].enabled {
+			continue
+		}
+		
+		if channels[ch].rlcEnabled {
+			triggerFilters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit, 
+				channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
+		}
+		
+		if channels[ch].dfLpEnabled || channels[ch].dfHpEnabled || channels[ch].dfBpEnabled || channels[ch].dfBsEnabled {
+			triggerDigitalFilters[ch] = NewSimDigitalFilter(ch, dt)
+		}
 
-		// Preroll/initialize trigger digital filter to reach steady state
+		// Preroll the trigger filters to reach steady state at t=0
 		prerollSamples := 1000
 		prerollStart := -float64(prerollSamples) * dt
-		firstVal := calculateSampleLevelAtTime(prerollStart, triggerCh)
-		if triggerFilter != nil {
-			firstVal = triggerFilter.Step(firstVal)
+		firstVal := calculateSampleLevelAtTime(prerollStart, ChannelId(ch))
+		if triggerFilters[ch] != nil {
+			firstVal = triggerFilters[ch].Step(firstVal)
 		}
-		triggerDigitalFilter.Init(firstVal)
-
+		if triggerDigitalFilters[ch] != nil {
+			triggerDigitalFilters[ch].Init(firstVal)
+		}
+		
 		for i := 1; i < prerollSamples; i++ {
 			pt := prerollStart + float64(i)*dt
-			raw := calculateSampleLevelAtTime(pt, triggerCh)
-			if triggerFilter != nil {
-				raw = triggerFilter.Step(raw)
+			raw := calculateSampleLevelAtTime(pt, ChannelId(ch))
+			if triggerFilters[ch] != nil {
+				raw = triggerFilters[ch].Step(raw)
 			}
-			triggerDigitalFilter.Step(raw)
+			if triggerDigitalFilters[ch] != nil {
+				triggerDigitalFilters[ch].Step(raw)
+			}
 		}
 	}
 
-	var lastT, prevT float64 = -1, -1
-	var lastVal, prevVal float64
-
 	// Create signal function for trigger source channel
-	signalFunc := func(t float64) float64 {
-		if t == lastT {
-			return lastVal
+	signalFunc := func(t float64, ch ChannelId) float64 {
+		i := int(ch)
+		if i < 0 || i >= MaxChannels {
+			return 0
 		}
-		if t == prevT {
-			return prevVal
+		if t == lastT[i] {
+			return lastVal[i]
 		}
-		if t > prevT && t < lastT && prevT != -1 {
+		if t == prevT[i] {
+			return prevVal[i]
+		}
+		if t > prevT[i] && t < lastT[i] && prevT[i] != -1 {
 			// Interpolate for FineGrainedTrigger
-			fraction := (t - prevT) / (lastT - prevT)
-			return prevVal + fraction*(lastVal - prevVal)
+			fraction := (t - prevT[i]) / (lastT[i] - prevT[i])
+			return prevVal[i] + fraction*(lastVal[i] - prevVal[i])
 		}
 
-		raw := calculateSampleLevelAtTime(t, triggerCh)
+		raw := calculateSampleLevelAtTime(t, ch)
 		val := raw
-		if triggerFilter != nil {
-			val = triggerFilter.Step(raw)
+		if triggerFilters[i] != nil {
+			val = triggerFilters[i].Step(raw)
 		}
-		if triggerDigitalFilter != nil {
-			val = triggerDigitalFilter.Step(val)
+		if triggerDigitalFilters[i] != nil {
+			val = triggerDigitalFilters[i].Step(val)
 		}
 
-		prevT = lastT
-		prevVal = lastVal
-		lastT = t
-		lastVal = val
+		prevT[i] = lastT[i]
+		prevVal[i] = lastVal[i]
+		lastT[i] = t
+		lastVal[i] = val
 		return val
 	}
 
@@ -910,10 +918,7 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 		triggerDetector = NewTriggerDetector(false, 0, 0, 0, 0)
 		triggerDetector.SetTriggerCalculationMode(TriggerCalculationMode)
 	}
-	if triggerDetector != nil && len(simChannelProperties) > 0 {
-		triggerDetector.SetThreshold(simChannelProperties[0].ThresholdUpper)
-		triggerDetector.SetHysteresis(simChannelProperties[0].ThresholdUpperHysteresis)
-	}
+	triggerDetector.SetChannelProperties(channelProperties)
 	autoTrigger = autoTriggerMs
 	return
 }
@@ -921,39 +926,11 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 // simSetTriggerChannelConditions configures trigger channel conditions.
 func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerConditions) (err error) {
 	slog.Debug("sim trigg cond", "simTriggerConditions", simTriggerConditions)
-	// triggerDetector = NewTriggerDetector(false, 0, 0, 0, 0)
 	for i := 0; i < len(simTriggerConditions) && i < len(triggerConditions); i++ {
 		simTriggerConditions[i] = triggerConditions[i]
-		if simTriggerConditions[i].ChannelA == CondTrue {
-			if triggerDetector != nil {
-				triggerDetector.SetEnabled(true)
-				triggerDetector.SetSource(ChA)
-			}
-			break
-		} else if simTriggerConditions[i].ChannelB == CondTrue {
-			if triggerDetector != nil {
-				triggerDetector.SetEnabled(true)
-				triggerDetector.SetSource(ChB)
-			}
-			break
-		} else if simTriggerConditions[i].ChannelC == CondTrue {
-			if triggerDetector != nil {
-				triggerDetector.SetEnabled(true)
-				triggerDetector.SetSource(ChC)
-			}
-			break
-		} else if simTriggerConditions[i].ChannelD == CondTrue {
-			if triggerDetector != nil {
-				triggerDetector.SetEnabled(true)
-				triggerDetector.SetSource(ChD)
-			}
-			break
-		} else {
-			slog.Debug("sim trigg cond else", "i", i, "simTriggerConditions", triggerConditions)
-			if triggerDetector != nil {
-				triggerDetector.SetEnabled(false)
-			}
-		}
+	}
+	if triggerDetector != nil {
+		triggerDetector.SetChannelConditions(triggerConditions)
 	}
 	complexTrigger = true
 	return
@@ -966,16 +943,7 @@ func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, 
 	complexTrigger = true
 
 	if triggerDetector != nil {
-		switch triggerDetector.GetSource() {
-		case ChA:
-			triggerDetector.SetDirection(channelAThresholdDirection)
-		case ChB:
-			triggerDetector.SetDirection(channelBThresholdDirection)
-		case ChC:
-			triggerDetector.SetDirection(channelCThresholdDirection)
-		case ChD:
-			triggerDetector.SetDirection(channelDThresholdDirection)
-		}
+		triggerDetector.SetChannelDirections(channelA, channelB, channelC, channelD)
 	}
 	return
 }

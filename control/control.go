@@ -46,6 +46,9 @@ const (
 )
 
 type (
+	TriggerDirections struct {
+		ChannelA, ChannelB, ChannelC, ChannelD, Ext, Aux genericps.ThresholdDirection
+	}
 	TriggerDesc struct {
 		Enabled            bool
 		TriggerADC         int16
@@ -56,6 +59,9 @@ type (
 		Mode               TriggerModes
 		Type               TriggerTypes
 		Mv                 int32
+		ComplexProperties  []genericps.TriggerChannelProperties
+		ComplexConditions  []genericps.TriggerConditions
+		ComplexDirections  []TriggerDirections
 		// TimeOffset         int32
 		// TriggerPreRatio float32
 		XOffset       float64
