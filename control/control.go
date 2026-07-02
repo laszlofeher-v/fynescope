@@ -6,6 +6,7 @@ import (
 	"fynescope/genericps"
 	"fynescope/settings"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 
 	"runtime"
@@ -120,6 +121,9 @@ type (
 	PscDesc struct {
 		Con *genericps.Connection
 
+		shutdownCh     chan struct{} // closed by Shutdown() to stop all monitor goroutines
+		shutdownOnce   sync.Once
+
 		stateChannel   chan state
 		stopChannel    chan struct{}
 		restartChannel chan struct{}
@@ -185,9 +189,18 @@ type (
 	}
 )
 
+// Shutdown signals all monitor goroutines launched by NewControl to exit.
+// It is safe to call multiple times.
+func (psControl *PscDesc) Shutdown() {
+	psControl.shutdownOnce.Do(func() {
+		close(psControl.shutdownCh)
+	})
+}
+
 func NewControl(con *genericps.Connection) *PscDesc {
 	slog.Debug("NewControl")
 	psControl := &PscDesc{Con: con}
+	psControl.shutdownCh = make(chan struct{})
 	psControl.StreamEnabled.Store(true)
 	psControl.stateChannel = make(chan state)
 	psControl.restartChannel = make(chan struct{}, 1) // non blocking

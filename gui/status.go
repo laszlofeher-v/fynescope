@@ -12,7 +12,8 @@ import (
 func (scp *ScpDesc) initStatus() {
 	scp.status = widget.NewLabel("                                                 ")
 	scp.status.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
-	statusChan := make(chan string, 1)
+	scp.statusChan = make(chan string, 1)
+	scp.statusQuit = make(chan struct{})
 	go func() {
 		var (
 			s         string
@@ -21,11 +22,17 @@ func (scp *ScpDesc) initStatus() {
 		)
 		afterTime = time.Second
 		for {
-			s = <-statusChan
+			select {
+			case <-scp.statusQuit:
+				return
+			case s = <-scp.statusChan:
+			}
 			count = 0
 			for count < errorDisplayTime {
 				select {
-				case s = <-statusChan:
+				case <-scp.statusQuit:
+					return
+				case s = <-scp.statusChan:
 					count = 0
 					afterTime = time.Second
 					scp.status.Text = s
@@ -55,6 +62,6 @@ func (scp *ScpDesc) initStatus() {
 				})
 			}
 		}
-		statusChan <- s
+		scp.statusChan <- s
 	}
 }

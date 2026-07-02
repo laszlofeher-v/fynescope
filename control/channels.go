@@ -73,6 +73,8 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("channel unchanged started")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case setMsg := <-psControl.SetChannelCh:
 			return storeSettings(setMsg)
 		case getMsg := <-psControl.getChannelCh:
@@ -86,6 +88,8 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 	changed = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("channel changed started")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case setMsg := <-psControl.SetChannelCh:
 			_ = storeSettings(setMsg)
 			return changed
@@ -110,7 +114,7 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 	oldChDesc = make([]genericps.SetChannelMsg, numberOfChannels)
 	changedSet = make([]bool, numberOfChannels)
 	psControl.chEnabled = make([]atomic.Bool, numberOfChannels)
-	for {
+	for eventHandler != nil {
 		eventHandler = eventHandler()
 	}
 }

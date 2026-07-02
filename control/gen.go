@@ -47,6 +47,8 @@ func (psControl *PscDesc) generatorMonitor() {
 	}
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case msg := <-psControl.SetGeneratorCh:
 			// slog.Debug("generatorMonitor unchanged set received", "*msg", *msg)
 			return storeSettings(msg)
@@ -57,6 +59,8 @@ func (psControl *PscDesc) generatorMonitor() {
 	}
 	changed = func() (nextFunc eventHandlerFunc) {
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case msg := <-psControl.SetGeneratorCh:
 			_ = storeSettings(msg)
 			return changed
@@ -67,7 +71,7 @@ func (psControl *PscDesc) generatorMonitor() {
 		}
 	}
 	eventHandler := unchanged
-	for {
+	for eventHandler != nil {
 		eventHandler = eventHandler()
 	}
 }
@@ -75,7 +79,12 @@ func (psControl *PscDesc) generatorMonitor() {
 func (psControl *PscDesc) simGeneratorMonitor() {
 	var storedSettings [4]GeneratorDesc
 	for {
-		msg := <-psControl.SetSimGenCh
+		var msg *GeneratorDescMsg
+		select {
+		case <-psControl.shutdownCh:
+			return
+		case msg = <-psControl.SetSimGenCh:
+		}
 		ch := int(msg.Channel)
 		if ch >= 0 && ch < 4 {
 			// If the simulator connection isn't set up yet or is not the simulator, we probably shouldn't panic, but let's check it.

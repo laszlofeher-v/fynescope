@@ -29,6 +29,8 @@ func (psControl *PscDesc) interpolationMonitor() {
 
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case ipMode := <-psControl.SetInterpolationModeCh:
 			slog.Debug("unchanged received", "ipMode", ipMode)
 			return store(ipMode)
@@ -40,6 +42,8 @@ func (psControl *PscDesc) interpolationMonitor() {
 	}
 	changed = func() (nextFunc eventHandlerFunc) {
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case ipMode := <-psControl.SetInterpolationModeCh:
 			_ = store(ipMode)
 			slog.Debug("changed set")
@@ -52,7 +56,7 @@ func (psControl *PscDesc) interpolationMonitor() {
 		}
 	}
 	eventHandler := unchanged
-	for {
+	for eventHandler != nil {
 		eventHandler = eventHandler()
 	}
 }

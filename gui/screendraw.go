@@ -18,7 +18,8 @@ import (
 const dscp = 72
 
 var (
-	face font.Face
+	face      font.Face
+	labelSrc  = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
 )
 
 func init() {
@@ -53,9 +54,10 @@ func (scp *ScpDesc) boundString(s string) (left, top, right, bottom float32) {
 }
 
 func (scp *ScpDesc) addLabel(dst rasterImage, x, y int, label string, textColor color.Color) {
+	labelSrc.C = textColor
 	d := font.Drawer{ // Not thread safe
 		Dst:  dst,
-		Src:  image.NewUniform(textColor),
+		Src:  labelSrc,
 		Face: face,
 		Dot:  fixed.P(x, y),
 	}

@@ -34,6 +34,8 @@ import (
 	// "fynescope/selectscroll"
 	"sync"
 
+	"gonum.org/v1/gonum/dsp/fourier"
+
 	"fyne.io/fyne/v2"
 	// "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -125,6 +127,14 @@ type (
 		ffBufferDone                        chan struct{}
 		currentFfFreq                       float64
 		measuredFfFreq                      float64
+		// statusChan / statusQuit for the status display goroutine
+		statusChan chan string
+		statusQuit chan struct{}
+		// FFT caches for processFfData — reallocated only when sample count changes
+		ffFftObj     *fourier.FFT
+		ffFftBuf     []float64
+		ffFftResult  []complex128
+		ffFftSamples int
 		ffCurrentFreqDisp                   *disp7.DigitArray
 		ffMinFreqDisp                       *disp7.DigitArray
 		ffMaxFreqDisp                       *disp7.DigitArray
@@ -692,7 +702,16 @@ func (scp *ScpDesc) build2000Gui() {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
 	addToTest(changeSide, changeSideId)
-	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() { scp.App.Quit() })
+	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
+		if scp.psControl != nil {
+			scp.psControl.Shutdown()
+		}
+		if scp.statusQuit != nil {
+			close(scp.statusQuit)
+			scp.statusQuit = nil
+		}
+		scp.App.Quit()
+	})
 	if scp.Settings.Window.LeftControl {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,

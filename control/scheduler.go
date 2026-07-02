@@ -17,6 +17,9 @@ type (
 func idle(psControl *PscDesc) state {
 	for {
 		select {
+		case <-psControl.shutdownCh:
+			slog.Debug("idle quit received")
+			return nil
 		case <-psControl.restartChannel:
 			// Do not upload settings now
 			// next prepare will do

@@ -24,6 +24,8 @@ func (psControl *PscDesc) screenTimeMonitor() {
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("unchanged before select")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case screenTime := <-psControl.SetMaxScreenTimeCh:
 			slog.Debug("unchanged received", "screenTime", screenTime)
 			return store(screenTime)
@@ -36,6 +38,8 @@ func (psControl *PscDesc) screenTimeMonitor() {
 	changed = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("changed before select")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case screenTime := <-psControl.SetMaxScreenTimeCh:
 			_ = store(screenTime)
 			slog.Debug("changed set")
@@ -48,7 +52,7 @@ func (psControl *PscDesc) screenTimeMonitor() {
 		}
 	}
 	eventHandler := unchanged
-	for {
+	for eventHandler != nil {
 		eventHandler = eventHandler()
 	}
 }

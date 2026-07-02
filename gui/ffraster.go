@@ -76,6 +76,12 @@ type (
 		inspectorDispPhaseCur []float64 // Averaged Y-position phase displayed in the inspector overlay.
 		inspectorSamples      int       // Count of data frames collected in the current averaging period.
 		inspectorLastUpdate   time.Time // Timestamp of the last visual update of the inspector values.
+		// cached scratch slices reused per drawInspector/drawChannels call to avoid per-frame allocs
+		instAmp         []float64
+		instPhase       []float64
+		instAmpCur      []float64
+		instPhaseCur    []float64
+		smoothedPhaseBuf []float64
 	}
 )
 
@@ -512,7 +518,10 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 				A: uint8(a >> 8),
 			}
 
-			smoothedPhases := smoothPhase(pts, 7)
+			if len(ff.smoothedPhaseBuf) != len(pts) {
+				ff.smoothedPhaseBuf = make([]float64, len(pts))
+			}
+			smoothedPhases := smoothPhaseInto(pts, 7, ff.smoothedPhaseBuf)
 
 			var prevX, prevY float32
 			var prevPhase float64
@@ -616,10 +625,24 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		ff.inspectorSamples = 0
 	}
 
-	instAmp := make([]float64, len(ff.scp.channelViewers))
-	instPhase := make([]float64, len(ff.scp.channelViewers))
-	instAmpCur := make([]float64, len(ff.scp.channelViewers))
-	instPhaseCur := make([]float64, len(ff.scp.channelViewers))
+	n := len(ff.scp.channelViewers)
+	if len(ff.instAmp) != n {
+		ff.instAmp = make([]float64, n)
+		ff.instPhase = make([]float64, n)
+		ff.instAmpCur = make([]float64, n)
+		ff.instPhaseCur = make([]float64, n)
+	}
+	instAmp := ff.instAmp
+	instPhase := ff.instPhase
+	instAmpCur := ff.instAmpCur
+	instPhaseCur := ff.instPhaseCur
+	// zero out reused slices
+	for i := range instAmp {
+		instAmp[i] = 0
+		instPhase[i] = 0
+		instAmpCur[i] = 0
+		instPhaseCur[i] = 0
+	}
 
 	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
 		ch := ff.scp.Settings.Channels[chIdx]
@@ -636,7 +659,10 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			continue
 		}
 
-		smoothedPhases := smoothPhase(pts, 7)
+		if len(ff.smoothedPhaseBuf) != len(pts) {
+			ff.smoothedPhaseBuf = make([]float64, len(pts))
+		}
+		smoothedPhases := smoothPhaseInto(pts, 7, ff.smoothedPhaseBuf)
 
 		var bestPt *bodePoint
 		bestIdx := -1
@@ -1585,6 +1611,13 @@ func (scp *ScpDesc) startFfSweep() {
 		dwellTime = 0.01
 	}
 
+	// Pre-allocate bodeBuffers so no append growth occurs during the sweep.
+	scp.ffLocker.Lock()
+	for i := range scp.bodeBuffers {
+		scp.bodeBuffers[i] = make([]bodePoint, 0, len(freqs))
+	}
+	scp.ffLocker.Unlock()
+
 	go func() {
 		slog.Debug("startFfSweep", "points", len(freqs), "ppd", pointsPerDecade,
 			"min", scp.Settings.Ff.MinFreq, "max", scp.Settings.Ff.MaxFreq,
@@ -1806,9 +1839,10 @@ func (scp *ScpDesc) processFfData() {
 		return
 	}
 
-	fft := fourier.NewFFT(samplesLen)
-	fftBuf := make([]float64, samplesLen)
-	fftResult := make([]complex128, samplesLen/2+1)
+	scp.ensureFfFft(samplesLen)
+	fft := scp.ffFftObj
+	fftBuf := scp.ffFftBuf
+	fftResult := scp.ffFftResult
 
 	// We apply the same window configuration as DFT raster
 	window := settings.WindowFlatTop
@@ -1880,7 +1914,7 @@ func (scp *ScpDesc) processFfData() {
 			fftBuf[j] = float64(v)
 		}
 		applyWindow(fftBuf, window)
-		chFftResult := fft.Coefficients(nil, fftBuf)
+		chFftResult := fft.Coefficients(scp.ffFftResult, fftBuf)
 
 		// Get magnitude and phase at the reference peak bin
 		cVal := chFftResult[refPeakBin]
@@ -2001,13 +2035,32 @@ func (scp *ScpDesc) updateFfCurrentFreq() {
 	scp.ffCurrentFreqDisp.Refresh()
 }
 
+// ensureFfFft lazily initialises (or re-initialises when the sample count changes) the shared
+// FFT object and its input/output buffers used by processFfData.  Calling this before every
+// use avoids the ~O(n) twiddle-factor allocation that fourier.NewFFT would incur on every
+// scope buffer callback.
+func (scp *ScpDesc) ensureFfFft(samplesLen int) {
+	if scp.ffFftSamples == samplesLen && scp.ffFftObj != nil {
+		return
+	}
+	scp.ffFftObj = fourier.NewFFT(samplesLen)
+	scp.ffFftBuf = make([]float64, samplesLen)
+	scp.ffFftResult = make([]complex128, samplesLen/2+1)
+	scp.ffFftSamples = samplesLen
+}
+
 // smoothPhase applies a moving average window over the phase responses.
 // To handle the -180 to +180 degrees discontinuity correctly, it converts phases to unit vectors (sine/cosine),
 // computes the moving average of these components, and transforms the resulting average vector back to degrees.
 func smoothPhase(pts []bodePoint, windowSize int) []float64 {
-	smoothed := make([]float64, len(pts))
+	return smoothPhaseInto(pts, windowSize, make([]float64, len(pts)))
+}
+
+// smoothPhaseInto is like smoothPhase but writes results into the caller-supplied output buffer (len must equal len(pts)).
+// Use this when the caller can cache the output buffer to avoid per-call heap allocation.
+func smoothPhaseInto(pts []bodePoint, windowSize int, out []float64) []float64 {
 	if len(pts) == 0 {
-		return smoothed
+		return out
 	}
 	if windowSize < 1 {
 		windowSize = 1
@@ -2031,12 +2084,12 @@ func smoothPhase(pts []bodePoint, windowSize int) []float64 {
 			avgCos := sumCos / float64(count)
 			avgSin := sumSin / float64(count)
 			smoothedRad := math.Atan2(avgSin, avgCos)
-			smoothed[i] = smoothedRad * 180.0 / math.Pi
+			out[i] = smoothedRad * 180.0 / math.Pi
 		} else {
-			smoothed[i] = pts[i].phase
+			out[i] = pts[i].phase
 		}
 	}
-	return smoothed
+	return out
 }
 
 func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {

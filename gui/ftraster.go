@@ -34,6 +34,9 @@ type (
 		inspectorLastUpdate            time.Time
 		inspectorDispV                 []float32
 		inspectorDispVCur              []float32
+		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
+		instV    []float32
+		instVCur []float32
 	}
 )
 
@@ -158,7 +161,7 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				if channelViewer.displayOffsetInt != 0 {
 					yOffset = sv.scp.offsetNToFtY(channel.DisplayVOffset)
 				}
-				
+
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
 				if channel.Persistence {
 					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
@@ -166,10 +169,9 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 					}
 					targetImg = sv.scp.ftPersistentLayers[channelIndex]
 				}
-				
+
 				etsDrawDot := func() {
-					startX := float64(bounds.Min.X) //+ float64(sv.scp.controlXRoundError)*unit
-					// slog.Debug("etsDrawRaw", "controlXRoundError", sv.scp.controlXRoundError)
+					startX := float64(bounds.Min.X)
 					offsetFloat := float64(zeroOffset) + yOffset
 					s := displayBuffer[0]
 					if channel.Inverted {
@@ -287,7 +289,7 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				default:
 					panic("Undefine interpolation mode")
 				}
-				
+
 				if channel.Persistence {
 					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
@@ -331,7 +333,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					float64(sv.scp.controlXRoundError) +
 					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
 				t0 -= extra * deltaT
-				
+
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
 				if channel.Persistence {
 					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
@@ -465,7 +467,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				default:
 					panic("Undefined interpolation mode")
 				}
-				
+
 				if channel.Persistence {
 					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
@@ -523,8 +525,13 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		sv.inspectorSamples = 0
 	}
 
-	instV := make([]float32, len(sv.scp.channelViewers))
-	instVCur := make([]float32, len(sv.scp.channelViewers))
+	n := len(sv.scp.channelViewers)
+	if len(sv.instV) != n {
+		sv.instV = make([]float32, n)
+		sv.instVCur = make([]float32, n)
+	}
+	instV := sv.instV
+	instVCur := sv.instVCur
 
 	for channelIndex := range sv.scp.channelViewers {
 		channel := &sv.scp.Settings.Channels[channelIndex]

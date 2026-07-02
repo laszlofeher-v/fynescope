@@ -46,6 +46,8 @@ func (psControl *PscDesc) triggerMonitor() {
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("trigger unchanged started")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case setMsg := <-psControl.SetTriggerCh:
 			defer func() { setMsg.Done <- struct{}{} }()
 			return storeSettings(setMsg)
@@ -57,6 +59,8 @@ func (psControl *PscDesc) triggerMonitor() {
 	changed = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("trigger changed started")
 		select {
+		case <-psControl.shutdownCh:
+			return nil
 		case setMsg := <-psControl.SetTriggerCh:
 			defer func() { setMsg.Done <- struct{}{} }()
 			_ = storeSettings(setMsg)
@@ -69,7 +73,7 @@ func (psControl *PscDesc) triggerMonitor() {
 		}
 	}
 	eventHandler := unchanged
-	for {
+	for eventHandler != nil {
 		eventHandler = eventHandler()
 	}
 }
