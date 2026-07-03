@@ -191,13 +191,13 @@ func (ff *ffViewer) draw() {
 
 	if fullRefresh {
 		// Draw vertical logarithmic grid (frequency)
-		logMin := math.Log10(math.Max(minFreq, 1.0))
-		logMax := math.Log10(math.Max(maxFreq, 1.1))
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
 		logRange := logMax - logMin
 
 		getX := func(f float64) float64 {
-			if f < 1.0 {
-				f = 1.0
+			if f <= 0 {
+				f = 1e-6
 			}
 			return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
 		}
@@ -431,13 +431,13 @@ func drawDashedLine(img draw.Image, x0, y0, x1, y1 float32, c color.Color) {
 func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 	bounds := ff.scp.ffScopeSignalScreen.Bounds()
 
-	logMin := math.Log10(math.Max(minFreq, 1.0))
-	logMax := math.Log10(math.Max(minFreq+freqRange, 1.1))
+	logMin := math.Log10(math.Max(minFreq, 1e-6))
+	logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
 	logRange := logMax - logMin
 
 	getX := func(f float64) float64 {
-		if f < 1.0 {
-			f = 1.0
+		if f <= 0 {
+			f = 1e-6
 		}
 		return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
 	}
@@ -579,8 +579,8 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		ff.scp.ffScopeFullScreen.Set(mx, i, crosscol)
 	}
 
-	logMin := math.Log10(math.Max(minFreq, 1.0))
-	logMax := math.Log10(math.Max(minFreq+freqRange, 1.1))
+	logMin := math.Log10(math.Max(minFreq, 1e-6))
+	logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
 	logRange := logMax - logMin
 
 	fractionAtCursor := (float64(ff.mouseX) - float64(bounds.Min.X)) / w
@@ -953,8 +953,8 @@ func (ff *ffViewer) snapYToFfN(y float64) int {
 // Otherwise, it updates vertical offset positions for the specified scope channel.
 func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 	if chIndex == -1 {
-		logMin := math.Log10(math.Max(ff.scp.Settings.Ff.MinFreq, 1.0))
-		logMax := math.Log10(math.Max(ff.scp.Settings.Ff.MaxFreq, 1.1))
+		logMin := math.Log10(math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6))
+		logMax := math.Log10(math.Max(ff.scp.Settings.Ff.MaxFreq, math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6)*1.001))
 		diff := logMax - logMin
 		shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
 
