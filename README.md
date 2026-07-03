@@ -1,6 +1,6 @@
 # fynescope
 
-`fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000 Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the picoscope 2000 series SDK.
+`fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000 Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000 series SDK.
 
 ## Key Features & Navigation
 
@@ -244,7 +244,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
 ## Limitations
 
-`fynescope` is a focused, early-stage project. It is tested only on Ubuntu 24.04 using Picoscope 2407B. Compared to the official [PicoScope 7](https://www.picotech.com/oscilloscope/2000/picoscope-2000-overview) software, the following features are **not** implemented. This list is not exhaustive — other differences may exist.
+`fynescope` is a focused, early-stage project. It is tested only on Ubuntu 24.04 using PicoScope 2407B. Compared to the official [PicoScope 7](https://www.picotech.com/oscilloscope/2000/picoscope-2000-overview) software, the following features are **not** implemented. This list is not exhaustive — other differences may exist.
 
 **Platform & Hardware**
 - **Linux only**: CGo bindings to the PicoScope driver are Linux-specific. Windows and macOS are not supported.
