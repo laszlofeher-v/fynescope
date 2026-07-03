@@ -1,8 +1,7 @@
 package sim
 
 import (
-	// "reflect"
-	// "fmt"
+	"fmt"
 	"log/slog"
 	"fynescope/genericps"
 	"time"
@@ -13,8 +12,14 @@ const (
 	responseReceiveTimeout = 5000 * time.Millisecond
 )
 
+func checkHandle(handle int16) error {
+	if handle <= 0 {
+		return fmt.Errorf("invalid handle: %d", handle)
+	}
+	return nil
+}
+
 func Stop() (err error) {
-	// err = s.ps.Stop()
 	return
 }
 
@@ -24,7 +29,7 @@ func getValues(m *genericps.GetValuesMsg) {
 		overflow     int16
 		err          error
 	)
-	// numOfSamples, overflow, err = m.Connection().Ps().GetValues(m.StartIndex,
+
 	numOfSamples, overflow, err = simGetValues(m.Handle(), m.StartIndex,
 		m.ReqNumOfSamples,
 		m.DownSampleRatio,
@@ -152,7 +157,7 @@ func getChannelInformation(m *genericps.GetChannelInformationMsg) {
 	)
 	lengthOfRanges, err = simGetChannelInformation(m.Handle(), m.Info, m.Probe, m.Ranges, ChannelId(m.Channel))
 	m.Ranges = m.Ranges[0:lengthOfRanges]
-	// response := &GetChannelInformationRsp{Stat: Stat{err: err}, Ranges: m.Ranges, LengthOfRanges: lengthOfRanges}
+
 	response := m.Rsp().(*genericps.GetChannelInformationRsp)
 	response.Ranges = m.Ranges
 	response.LengthOfRanges = lengthOfRanges
@@ -190,7 +195,7 @@ func getNumberOfCaptures(m *genericps.GetNumOfCapturesMsg) {
 
 func getNumberOfProcessedCaptures(m *genericps.GetNumOfProcessedCapturesMsg) {
 	numOfCaptures, err := simGetNoOfProcessedCaptures(m.Handle())
-	// response := &GetNumOfProcessedCapturesRsp{Stat: Stat{err: err}, NCaptures: numOfCaptures}
+
 	response := m.Rsp().(*genericps.GetNumOfProcessedCapturesRsp)
 	response.NCaptures = numOfCaptures
 	response.SetStatus(err)
@@ -202,7 +207,7 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 		err error
 	)
 	err = simGetStreamingLatestValues(m.Handle(), StreamingReady(m.LpStreamingReadyGoPar), m.Param)
-	// response := &GetStreamingLatestValuesRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.GetStreamingLatestValuesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -210,7 +215,7 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 
 func getTimebase(m *genericps.GetTimebaseMsg) {
 	timeIntervalNanoseconds, maxSamples, err := simGetTimebase(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
-	// response := &GetTimebaseRsp{Stat: Stat{err: err}, TimeIntervalNanoseconds: timeIntervalNanoseconds, MaxSamples: maxSamples}
+
 	response := m.Rsp().(*genericps.GetTimebaseRsp)
 	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
 	response.MaxSamples = maxSamples
@@ -220,7 +225,7 @@ func getTimebase(m *genericps.GetTimebaseMsg) {
 
 func getTimebase2(m *genericps.GetTimebase2Msg) {
 	timeIntervalNanoseconds, maxSamples, err := simGetTimebase2(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
-	// response := &GetTimebase2Rsp{Stat: Stat{err: err}, TimeIntervalNanoseconds: timeIntervalNanoseconds, MaxSamples: maxSamples}
+
 	response := m.Rsp().(*genericps.GetTimebase2Rsp)
 	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
 	response.MaxSamples = maxSamples
@@ -230,7 +235,7 @@ func getTimebase2(m *genericps.GetTimebase2Msg) {
 
 func maximumValue(m *genericps.MaximumValueMsg) {
 	value, err := simMaximumValue(m.Handle())
-	// response := &MaximumValueRsp{Stat: Stat{err: err}, Value: value}
+
 	response := m.Rsp().(*genericps.MaximumValueRsp)
 	response.Value = value
 	response.SetStatus(err)
@@ -239,7 +244,7 @@ func maximumValue(m *genericps.MaximumValueMsg) {
 
 func minimumValue(m *genericps.MinimumValueMsg) {
 	value, err := simMinimumValue(m.Handle())
-	// response := &MinimumValueResp{Stat: Stat{err: err}, Value: value}
+
 	response := m.Rsp().(*genericps.MinimumValueResp)
 	response.Value = value
 	response.SetStatus(err)
@@ -252,7 +257,7 @@ func setSimpleTrigger(m *genericps.SetSimpleTriggerMsg) {
 	)
 	err = simSetSimpleTrigger(m.Handle(), m.Enable, ChannelId(m.Source),
 		m.Threshold, ThresholdDirection(m.Direction), m.Delay, m.AutoTriggerMs)
-	// response := &SetSimpleTriggerRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSimpleTriggerRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -263,7 +268,7 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 		err error
 	)
 	err = simSetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, m.SegmentIndex, RatioMode(m.Mode))
-	// response := &SetDataBufferRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -274,7 +279,7 @@ func setDataBuffers(m *genericps.SetDataBuffersMsg) {
 		err error
 	)
 	err = simSetDataBuffers(m.Handle(), ChannelId(m.Ch), m.BufferMax, m.BufferMin, m.SegmentIndex, RatioMode(m.Mode))
-	// response := &SetDataBuffersRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetDataBuffersRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -286,7 +291,7 @@ func setUnscaledDataBuffers(m *genericps.SetUnscaledDataBuffersMsg) {
 	)
 	err = simSetUnscaledDataBuffers(m.Handle(), ChannelId(m.
 		Ch), m.BufferMax, m.BufferMin, m.SegmentIndex, RatioMode(m.Mode))
-	// response := &SetUnscaledataBuffersRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetUnscaledataBuffersRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -294,7 +299,7 @@ func setUnscaledDataBuffers(m *genericps.SetUnscaledDataBuffersMsg) {
 
 func setEtsTimeBuffer(m *genericps.SetEtsTimeBufferMsg) {
 	err := simSetEtsTimeBuffer(m.Handle(), m.Buffer)
-	// response := &SetEtsTimeBufferRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetEtsTimeBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -302,7 +307,7 @@ func setEtsTimeBuffer(m *genericps.SetEtsTimeBufferMsg) {
 
 func setEtsTimeBuffers(m *genericps.SetEtsTimeBuffersMsg) {
 	err := simSetEtsTimeBuffers(m.Handle(), m.TimeUpper, m.TimeLower)
-	// response := &SetEtsTimeBufferRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetEtsTimeBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -313,7 +318,7 @@ func setEts(m *genericps.SetEtsMsg) {
 		sampleTimePicoseconds int32
 	)
 	sampleTimePicoseconds, err = simSetEts(m.Handle(), EtsMode(m.Mode), m.EtsCycles, m.EtsInterleave)
-	// response := &SetEtsRsp{Stat: Stat{err: err}, SampleTimePicoseconds: sampleTimePicoseconds}
+
 	response := m.Rsp().(*genericps.SetEtsRsp)
 	response.SampleTimePicoseconds = sampleTimePicoseconds
 	response.SetStatus(err)
@@ -327,7 +332,7 @@ func runStreaming(m *genericps.RunStreamingMsg) {
 	)
 	sampleInterval, err = simRunStreaming(m.Handle(), m.ReqSampleInterval, TimeUnits(m.SampleIntervalTimeUnits), m.MaxPostTriggerSamples,
 		m.MaxPostTriggerSamples, m.AutoStop, m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.OverviewBufferSize)
-	// response := &RunStreamingRsp{Stat: Stat{err: err}, SampleInterval: sampleInterval}
+
 	response := m.Rsp().(*genericps.RunStreamingRsp)
 	response.SampleInterval = sampleInterval
 	response.SetStatus(err)
@@ -341,7 +346,7 @@ func runBlock(m *genericps.RunBlockMsg) {
 	)
 	timeIndisposedMs, err = simRunBlock(m.Handle(), m.NumOfPreTriggerSamples, m.NumOfPostTriggerSamples,
 		m.TimeBase, m.OverSample, m.SegmentIndex, BlockReady(m.LpBlockReadyGoPar), m.Param)
-	// response := &RunBlockRsp{Stat: Stat{err: err}, TimeIndisposedMs: timeIndisposedMs}
+
 	response := m.Rsp().(*genericps.RunBlockRsp)
 	response.TimeIndisposedMs = timeIndisposedMs
 	response.SetStatus(err)
@@ -362,7 +367,7 @@ func setTriggerChannelProperties(m *genericps.SetTriggerChannelPropertiesMsg) {
 		tcp[i].ThresholdUpperHysteresis = m.ChannelProperties[i].ThresholdUpperHysteresis
 	}
 	err = simSetTriggerChannelProperties(m.Handle(), tcp, m.AuxOutputEnable, m.AutoTriggerMs)
-	// response := &SetTriggerChannelPropertiesRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetTriggerChannelPropertiesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -384,7 +389,7 @@ func setTriggerChannelConditions(m *genericps.SetTriggerChannelConditionsMsg) {
 		tc[i].PulseWidthQualifier = TriggerState(m.TriggerConditions[i].PulseWidthQualifier)
 	}
 	err = simSetTriggerChannelConditions(m.Handle(), tc)
-	// response := &SetTriggerChannelConditionsRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetTriggerChannelConditionsRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -397,7 +402,7 @@ func setTriggerChannelDirections(m *genericps.SetTriggerChannelDirectionsMsg) {
 	err = simSetTriggerChannelDirections(m.Handle(), ThresholdDirection(m.ChannelA),
 		ThresholdDirection(m.ChannelB), ThresholdDirection(m.ChannelC),
 		ThresholdDirection(m.ChannelD), ThresholdDirection(m.Ext), ThresholdDirection(m.Aux))
-	// response := &SetTriggerChannelDirectionsRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetTriggerChannelDirectionsRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -405,7 +410,7 @@ func setTriggerChannelDirections(m *genericps.SetTriggerChannelDirectionsMsg) {
 
 func setTriggerDelay(m *genericps.SetTriggerDelayMsg) {
 	err := simSetTriggerDelay(m.Handle(), m.Delay)
-	// response := &SetTriggerDelayRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetTriggerDelayRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -424,7 +429,7 @@ func setPulseWidthQualifier(m *genericps.SetPulseWidthQualifierMsg) {
 		c[i].ChannelD = TriggerState(m.Conditions[i].ChannelD)
 	}
 	err = simSetPulseWidthQualifier(m.Handle(), c, ThresholdDirection(m.Direction), m.Lower, m.Upper, PulseWidthType(m.PwType))
-	// response := &SetPulseWidthQualifierRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetPulseWidthQualifierRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -440,7 +445,7 @@ func setTriggerDigitalPortProperties(m *genericps.SetTriggerDigitalPortPropertie
 		tdp[i].Direction = DigitalDirection(m.DigitalDirections[i].Direction)
 	}
 	err = simSetTriggerDigitalPortProperties(m.Handle(), tdp)
-	// response := &SetTriggerDigitalPortPropertiesRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetTriggerDigitalPortPropertiesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -448,7 +453,7 @@ func setTriggerDigitalPortProperties(m *genericps.SetTriggerDigitalPortPropertie
 
 func stop(m *genericps.StopMsg) {
 	err := simStop(m.Handle())
-	// response := &StopRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.StopRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -462,7 +467,7 @@ func setSigGenBuiltIn(m *genericps.SetSigGenBuiltInMsg) {
 		m.StopFrequency, m.Increment, m.DwellTime, SweepTypeEnum(m.SweepType),
 		ExtraOperations(m.Operation), m.Shots, m.Sweeps, SigGenTrigType(m.TriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
-	// response := &SetSigGenBuiltInRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSigGenBuiltInRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -476,7 +481,7 @@ func setSigGenBuiltInV2(m *genericps.SetSigGenBuiltInV2Msg) {
 		m.StopFrequency, m.Increment, m.DwellTime, SweepTypeEnum(m.SweepType),
 		ExtraOperations(m.Operation), m.Shots, m.Sweeps, SigGenTrigType(m.TriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
-	// response := &SetSigGenBuiltInV2Rsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSigGenBuiltInV2Rsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -488,7 +493,7 @@ func sigGenFrequencyToPhase(m *genericps.SigGenFrequencyToPhasenMsg) {
 		phase uint32
 	)
 	phase, err = simSigGenFrequencyToPhase(m.Handle(), m.Frequency, IndexMode(m.IndexMode), m.BufferLength)
-	// response := &SigGenFrequencyToPhaseRsp{Stat: Stat{err: err}, Phase: phase}
+
 	response := m.Rsp().(*genericps.SigGenFrequencyToPhaseRsp)
 	response.SetStatus(err)
 	response.Phase = phase
@@ -497,7 +502,7 @@ func sigGenFrequencyToPhase(m *genericps.SigGenFrequencyToPhasenMsg) {
 
 func setNumOfCaptures(m *genericps.SetNumOfCapturesMsg) {
 	err := simSetNoCaptures(m.Handle(), m.NCaptures)
-	// response := &SetNumOfCapturesRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetNumOfCapturesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -510,8 +515,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 		timeUnits            TimeUnits
 	)
 	timeUpper, timeLower, timeUnits, err = simGetTriggerTimeOffset(m.Handle(), m.SegmentIndex)
-	// response := &GetTriggerTimeOffsetRsp{Stat: Stat{err: err}, TimeUpper: timeUpper,
-	// TimeLower: timeLower, TimeUnits: TimeUnits(timeUnits)}
+
 	response := m.Rsp().(*genericps.GetTriggerTimeOffsetRsp)
 	response.TimeLower = timeLower
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -522,11 +526,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 
 func getTriggerTimeOffset64(m *genericps.GetTriggerTimeOffset64Msg) {
 	time, timeUnits, err := simGetTriggerTimeOffset64(m.Handle(), m.SegmentIndex)
-	// response := GetTriggerTimeOffset64RspPool.Get().(*GetTriggerTimeOffset64Rsp)
-	// response.Stat.err = err
-	// response.Time = time
-	// response.TimeUnits = TimeUnits(timeUnits)
-	// response := &GetTriggerTimeOffset64Rsp{Stat: Stat{err: err}, Time: time, TimeUnits: timeUnits}
+
 	response := m.Rsp().(*genericps.GetTriggerTimeOffset64Rsp)
 	response.Time = time
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -543,7 +543,7 @@ func getValuesTriggerTimeOffsetBulk(m *genericps.GetValuesTriggerTimeOffsetBulkM
 		tu[i] = TimeUnits(m.TimeUnits[i])
 	}
 	err = simGetValuesTriggerTimeOffsetBulk(m.Handle(), m.TimesUpper, m.TimesLower, tu, m.FromSegmentIndex, m.ToSegmentIndex)
-	// response := &GetValuesTriggerTimeOffsetBulkRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.GetValuesTriggerTimeOffsetBulkRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -558,7 +558,7 @@ func getValuesTriggerTimeOffsetBulk64(m *genericps.GetValuesTriggerTimeOffsetBul
 		tu[i] = TimeUnits(m.TimeUnits[i])
 	}
 	err = simGetValuesTriggerTimeOffsetBulk64(m.Handle(), m.Times, tu, m.FromSegmentIndex, m.ToSegmentIndex)
-	// response := &GetValuesTriggerTimeOffsetBulk64Rsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.GetValuesTriggerTimeOffsetBulk64Rsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -566,7 +566,7 @@ func getValuesTriggerTimeOffsetBulk64(m *genericps.GetValuesTriggerTimeOffsetBul
 
 func holdOff(m *genericps.HoldOffMsg) {
 	err := simHoldOff(m.Handle(), m.HoldOff, HoldOffType(m.HoldOffType))
-	// response := &HoldOffRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.HoldOffRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -578,7 +578,7 @@ func simIsReady(handle int16) (ready int16, err error) {
 
 func lsReady(m *genericps.LsReadyMsg) {
 	ready, err := simIsReady(m.Handle())
-	// response := &LsReadyRsp{Stat: Stat{err: err}, Ready: ready}
+
 	response := m.Rsp().(*genericps.LsReadyRsp)
 	response.Ready = ready
 	response.SetStatus(err)
@@ -587,8 +587,7 @@ func lsReady(m *genericps.LsReadyMsg) {
 
 func triggerOrPulseWidthQualifierEnabled(m *genericps.TriggerOrPulseWidthQualifierEnabledMsg) {
 	triggerEnabled, pulseWidthQualifierEnabledint16, err := simTriggerOrPulseWidthQualifierEnabled(m.Handle())
-	// response := &TriggerOrPulseWidthQualifierEnabledRsp{Stat: Stat{err: err},
-	// 	TriggerEnabled: triggerEnabled, PulseWidthQualifierEnabledint16: pulseWidthQualifierEnabledint16}
+
 	response := m.Rsp().(*genericps.TriggerOrPulseWidthQualifierEnabledRsp)
 	response.TriggerEnabled = triggerEnabled
 	response.PulseWidthQualifierEnabledint16 = pulseWidthQualifierEnabledint16
@@ -598,7 +597,7 @@ func triggerOrPulseWidthQualifierEnabled(m *genericps.TriggerOrPulseWidthQualifi
 
 func memorySegments(m *genericps.MemorySegmentsMsg) {
 	nMaxSamples, err := simMemorySegments(m.Handle(), m.NSegments)
-	// response := &MemorySegmentsRsp{Stat: Stat{err: err}, NMaxSamples: nMaxSamples}
+
 	response := m.Rsp().(*genericps.MemorySegmentsRsp)
 	response.SetStatus(err)
 	response.NMaxSamples = nMaxSamples
@@ -607,27 +606,18 @@ func memorySegments(m *genericps.MemorySegmentsMsg) {
 
 func numOfStreamingValues(m *genericps.NumOfStreamingValuesMsg) {
 	numOfValues, err := simNoOfStreamingValues(m.Handle())
-	// response := &NumOfStreamingValuesRsp{Stat: Stat{err: err}, NumOfValues: numOfValues}
+
 	response := m.Rsp().(*genericps.NumOfStreamingValuesRsp)
 	response.NumOfValues = numOfValues
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
-// func openUnitProgress(m *genericps.OpenUnitProgressMsg) {
-// 	retHandle, progressPercent, complete, err := ps2000aOpenUnitProgress(m.Handle())
-// 	// response := &OpenUnitProgressRsp{Stat: Stat{err: err}, RetHandle: retHandle, ProgressPercent: progressPercent, Complete: complete}
-// 	response := m.Rsp().(*genericps.OpenUnitProgressRsp)
-// 	response.RetHandle = retHandle
-// 	response.ProgressPercent = progressPercent
-// 	response.Complete = complete
-// 	response.SetStatus(err)
-// 	m.RspCh() <- struct{}{}
-// }
+
 
 func pingUnit(m *genericps.PingUnitMsg) {
 	err := simPingUnit(m.Handle())
-	// response := &PingUnitRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.PingUnitRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -635,7 +625,7 @@ func pingUnit(m *genericps.PingUnitMsg) {
 
 func queryOutputEdgeDetect(m *genericps.QueryOutputEdgeDetectMsg) {
 	state, err := simQueryOutputEdgeDetect(m.Handle())
-	// response := &QueryOutputEdgeDetectRsp{Stat: Stat{err: err}, State: state}
+
 	response := m.Rsp().(*genericps.QueryOutputEdgeDetectRsp)
 	response.State = state
 	response.SetStatus(err)
@@ -647,7 +637,7 @@ func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandM
 		err error
 	)
 	err = simSetDigitalAnalogTriggerOperand(m.Handle(), TriggerOperand(m.Operand))
-	// response := &SetDigitalAnalogTriggerOperandRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -658,7 +648,7 @@ func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 		err error
 	)
 	err = simSetDigitalPort(m.Handle(), DigitalPort(m.Port), m.Enabled, m.Logiclevel)
-	// response := &SetDigitalPortRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -666,7 +656,7 @@ func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 
 func setOutputEdgeDetect(m *genericps.SetOutputEdgeDetectMsg) {
 	err := simSetOutputEdgeDetect(m.Handle(), m.State)
-	// response := &SetOutputEdgeDetectRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetOutputEdgeDetectRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -682,7 +672,7 @@ func setPulseWidthDigitalPortProperties(m *genericps.SetPulseWidthDigitalPortPro
 		dd[i].Direction = DigitalDirection(m.DigitalDirections[i].Direction)
 	}
 	err = simSetPulseWidthDigitalPortProperties(m.Handle(), dd)
-	// response := &SetPulseWidthDigitalPortPropertiesRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetPulseWidthDigitalPortPropertiesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -698,7 +688,7 @@ func setSigGenArbitrary(m *genericps.SetSigGenArbitraryMsg) {
 		IndexMode(m.IndexMode), m.Shots, m.Sweeps,
 		SigGenTrigType(m.TtriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
-	// response := &SetSigGenArbitraryRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSigGenArbitraryRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -710,7 +700,7 @@ func setSigGenPropertiesArbitrary(m *genericps.SetSigGenPropertiesArbitraryMsg) 
 		ExtraOperations(m.Operation), IndexMode(m.IndexMode), m.Shots, m.Sweeps,
 		SigGenTrigType(m.TriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
-	// response := &SetSigGenPropertiesArbitraryRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSigGenPropertiesArbitraryRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -721,7 +711,7 @@ func setSigGenPropertiesBuiltIn(m *genericps.SetSigGenPropertiesBuiltInMsg) {
 		m.StopFrequency, m.Increment, m.DwellTime, SweepTypeEnum(m.SweepType),
 		m.Shots, m.Sweeps,
 		SigGenTrigType(m.TriggerType), SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
-	// response := &SetSigGenPropertiesBuiltInRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SetSigGenPropertiesBuiltInRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -730,9 +720,7 @@ func setSigGenPropertiesBuiltIn(m *genericps.SetSigGenPropertiesBuiltInMsg) {
 func sigGenArbitraryMinMaxValues(m *genericps.SigGenArbitraryMinMaxValuesMsg) {
 	minArbitraryWaveformValue, maxArbitraryWaveformValue, minArbitraryWaveformSize,
 		maxArbitraryWaveformSize, err := simSigGenArbitraryMinMaxValues(m.Handle())
-	// response := &SigGenArbitraryMinMaxValuesRsp{Stat: Stat{err: err}, MinArbitraryWaveformValue: minArbitraryWaveformValue,
-	// 	MaxArbitraryWaveformValue: maxArbitraryWaveformValue, MinArbitraryWaveformSize: minArbitraryWaveformSize,
-	// 	MaxArbitraryWaveformSize: maxArbitraryWaveformSize}
+
 	response := m.Rsp().(*genericps.SigGenArbitraryMinMaxValuesRsp)
 	response.MinArbitraryWaveformValue = minArbitraryWaveformValue
 	response.MaxArbitraryWaveformValue = maxArbitraryWaveformValue
@@ -744,36 +732,51 @@ func sigGenArbitraryMinMaxValues(m *genericps.SigGenArbitraryMinMaxValuesMsg) {
 
 func sigGenSoftwareControl(m *genericps.SigGenSoftwareControlMsg) {
 	err := simSigGenSoftwareControl(m.Handle(), m.State)
-	// response := &SigGenSoftwareControlRsp{Stat: Stat{err: err}}
+
 	response := m.Rsp().(*genericps.SigGenSoftwareControlRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
 func setSimGen(m *genericps.SetSimGenMsg) {
+	response := m.Rsp().(*genericps.SetSimGenRsp)
+	if err := checkHandle(m.Handle()); err != nil {
+		response.SetStatus(err)
+		m.RspCh() <- struct{}{}
+		return
+	}
 	s := SimDesc{handle: m.Handle()}
 	err := s.SetSimGen(m.Channel, m.On, m.OffsetVoltage, m.PkToPK, genericps.WaveTypeEnum(m.WaveType),
 		m.StartFrequency, m.StopFrequency, m.Increment, m.DwellTime, genericps.SweepTypeEnum(m.SweepType),
 		genericps.ExtraOperations(m.Operation), m.Shots, m.Sweeps, genericps.SigGenTrigType(m.TriggerType),
 		genericps.SigGenTrigSource(m.TriggerSource), m.ExtInThreshold, m.Phase)
-	response := m.Rsp().(*genericps.SetSimGenRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
 func setSimRlcFilter(m *genericps.SetSimRlcFilterMsg) {
+	response := m.Rsp().(*genericps.SetSimRlcFilterRsp)
+	if err := checkHandle(m.Handle()); err != nil {
+		response.SetStatus(err)
+		m.RspCh() <- struct{}{}
+		return
+	}
 	s := SimDesc{handle: m.Handle()}
 	err := s.SetSimRlcFilter(m.Channel, m.GenSource, m.Enabled, m.FilterType, m.R, m.RUnit, m.L, m.LUnit, m.C, m.CUnit)
-	response := m.Rsp().(*genericps.SetSimRlcFilterRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
 func setSimDigitalFilter(m *genericps.SetSimDigitalFilterMsg) {
+	response := m.Rsp().(*genericps.SetSimDigitalFilterRsp)
+	if err := checkHandle(m.Handle()); err != nil {
+		response.SetStatus(err)
+		m.RspCh() <- struct{}{}
+		return
+	}
 	s := SimDesc{handle: m.Handle()}
 	err := s.SetSimDigitalFilter(m.Channel, m.LowpassEnabled, m.LowpassFc, m.HighpassEnabled, m.HighpassFc,
 		m.BandpassEnabled, m.BandpassFc1, m.BandpassFc2, m.BandstopEnabled, m.BandstopFc1, m.BandstopFc2)
-	response := m.Rsp().(*genericps.SetSimDigitalFilterRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
