@@ -16,9 +16,10 @@ import (
 type (
 	returnStatus int
 	channelDesc  struct {
-		enabled bool
-		vrange  RangeEnum
-		offset  float64
+		enabled  bool
+		vrange   RangeEnum
+		offset   float64
+		coupling Coupling
 		// Generator settings for this channel
 		genOn            bool
 		genPkToPk        uint32
@@ -354,6 +355,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	dt := timeIntervalNanoseconds / 1e9
 
 	triggerFilters := make([]*RlcFilter, MaxChannels)
+	triggerAcFilters := make([]*RlcFilter, MaxChannels)
 	triggerDigitalFilters := make([]*SimDigitalFilter, MaxChannels)
 	lastT := make([]float64, MaxChannels)
 	prevT := make([]float64, MaxChannels)
@@ -368,32 +370,43 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		if !channels[ch].enabled {
 			continue
 		}
-		
+
 		if channels[ch].rlcEnabled {
-			triggerFilters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit, 
+			triggerFilters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit,
 				channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
 		}
-		
+
+		// AC-coupling: analogue 1 Hz highpass filter (models the input capacitor)
+		if channels[ch].coupling == Ac {
+			triggerAcFilters[ch] = NewAcCouplingFilter(dt)
+		}
+
 		if channels[ch].dfLpEnabled || channels[ch].dfHpEnabled || channels[ch].dfBpEnabled || channels[ch].dfBsEnabled {
 			triggerDigitalFilters[ch] = NewSimDigitalFilter(ch, dt)
 		}
 
-		// Preroll the trigger filters to reach steady state at t=0
+		// Preroll all trigger filters to reach steady state before t=0
 		prerollSamples := 1000
 		prerollStart := -float64(prerollSamples) * dt
 		firstVal := calculateSampleLevelAtTime(prerollStart, ChannelId(ch))
 		if triggerFilters[ch] != nil {
 			firstVal = triggerFilters[ch].Step(firstVal)
 		}
+		if triggerAcFilters[ch] != nil {
+			firstVal = triggerAcFilters[ch].Step(firstVal)
+		}
 		if triggerDigitalFilters[ch] != nil {
 			triggerDigitalFilters[ch].Init(firstVal)
 		}
-		
+
 		for i := 1; i < prerollSamples; i++ {
 			pt := prerollStart + float64(i)*dt
 			raw := calculateSampleLevelAtTime(pt, ChannelId(ch))
 			if triggerFilters[ch] != nil {
 				raw = triggerFilters[ch].Step(raw)
+			}
+			if triggerAcFilters[ch] != nil {
+				raw = triggerAcFilters[ch].Step(raw)
 			}
 			if triggerDigitalFilters[ch] != nil {
 				triggerDigitalFilters[ch].Step(raw)
@@ -422,7 +435,10 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		raw := calculateSampleLevelAtTime(t, ch)
 		val := raw
 		if triggerFilters[i] != nil {
-			val = triggerFilters[i].Step(raw)
+			val = triggerFilters[i].Step(val)
+		}
+		if triggerAcFilters[i] != nil {
+			val = triggerAcFilters[i].Step(val)
 		}
 		if triggerDigitalFilters[i] != nil {
 			val = triggerDigitalFilters[i].Step(val)
@@ -440,21 +456,35 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 	// Initialize and pre-roll filters for enabled channels
 	filters := make([]*RlcFilter, MaxChannels)
+	acFilters := make([]*RlcFilter, MaxChannels)
 	digitalFilters := make([]*SimDigitalFilter, MaxChannels)
 	prerollSamples := 1000
 	for ch := range buffers {
 		if buffers[ch] != nil && channels[ch].enabled {
+			prerollStart := triggerTime - float64(nOfPreTrSamples)*dt - float64(prerollSamples)*dt
+
 			if channels[ch].rlcEnabled {
-				// Initialize filter with current dt
-				filters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit, 
+				// Initialize RLC filter with current dt and pre-roll
+				filters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit,
 					channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
-				
-				// Pre-roll
-				prerollStart := triggerTime - float64(nOfPreTrSamples)*dt - float64(prerollSamples)*dt
+			}
+
+			// AC-coupling: analogue 1 Hz highpass filter (models the input capacitor)
+			if channels[ch].coupling == Ac {
+				acFilters[ch] = NewAcCouplingFilter(dt)
+			}
+
+			// Pre-roll RLC and AC coupling together in a single pass
+			if filters[ch] != nil || acFilters[ch] != nil {
 				for i := 0; i < prerollSamples; i++ {
 					rt := prerollStart + float64(i)*dt
 					raw := calculateSampleLevelAtTime(rt, ChannelId(ch))
-					filters[ch].Step(raw)
+					if filters[ch] != nil {
+						raw = filters[ch].Step(raw)
+					}
+					if acFilters[ch] != nil {
+						acFilters[ch].Step(raw)
+					}
 				}
 			}
 
@@ -462,11 +492,13 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			if desc.dfLpEnabled || desc.dfHpEnabled || desc.dfBpEnabled || desc.dfBsEnabled {
 				digitalFilters[ch] = NewSimDigitalFilter(ch, dt)
 
-				// Pre-roll
-				prerollStart := triggerTime - float64(nOfPreTrSamples)*dt - float64(prerollSamples)*dt
+				// Pre-roll digital filter after RLC + AC coupling
 				firstRaw := calculateSampleLevelAtTime(prerollStart, ChannelId(ch))
 				if filters[ch] != nil {
 					firstRaw = filters[ch].Step(firstRaw)
+				}
+				if acFilters[ch] != nil {
+					firstRaw = acFilters[ch].Step(firstRaw)
 				}
 				digitalFilters[ch].Init(firstRaw)
 
@@ -475,6 +507,9 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					raw := calculateSampleLevelAtTime(rt, ChannelId(ch))
 					if filters[ch] != nil {
 						raw = filters[ch].Step(raw)
+					}
+					if acFilters[ch] != nil {
+						raw = acFilters[ch].Step(raw)
 					}
 					digitalFilters[ch].Step(raw)
 				}
@@ -506,6 +541,11 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				// Apply RLC Filter if enabled
 				if filters[ch] != nil {
 					levelFloat = filters[ch].Step(levelFloat)
+				}
+
+				// Apply AC coupling filter (analogue 1 Hz highpass) if channel is AC-coupled
+				if acFilters[ch] != nil {
+					levelFloat = acFilters[ch].Step(levelFloat)
 				}
 
 				// Apply Digital Filter if enabled
@@ -776,7 +816,7 @@ func simGetTimebase2(handle int16, timeBase uint32, noOfSamples int32, overSampl
 
 func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
 	slog.Debug("sim SetChannel", "index", channel, "enabled", enabled,
-		"vrange", voltageRange, "analogOffset", analogOffset)
+		"coupling", couplingType, "vrange", voltageRange, "analogOffset", analogOffset)
 	if voltageRange < 0 {
 		slog.Error("simSetChannel: negative voltageRange, clamping to 0", "vrange", voltageRange)
 		voltageRange = 0
@@ -784,6 +824,7 @@ func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType C
 	channels[channel].enabled = enabled
 	channels[channel].vrange = voltageRange
 	channels[channel].offset = float64(analogOffset)
+	channels[channel].coupling = couplingType
 	return
 }
 

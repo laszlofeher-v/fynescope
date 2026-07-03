@@ -104,6 +104,24 @@ func NewRlcFilter(filterType string, r float64, runit string, l float64, lunit s
 	return f
 }
 
+// NewAcCouplingFilter creates an analogue-model highpass filter that mimics the
+// AC-coupling capacitor on a real oscilloscope input. The cutoff frequency is
+// 1 Hz (τ = 1/(2π·fc)), implemented as a bilinear-transform first-order RC
+// highpass — the same algorithm as the "Highpass RC" RLC filter case.
+func NewAcCouplingFilter(dt float64) *RlcFilter {
+	const fc = 1.0 // Hz
+	tau := 1.0 / (2.0 * math.Pi * fc)
+	f := &RlcFilter{}
+	if dt <= 0 {
+		return f
+	}
+	a0 := 1.0 + 2.0*tau/dt
+	f.b0 = (2.0 * tau / dt) / a0
+	f.b1 = -(2.0 * tau / dt) / a0
+	f.a1 = (1.0 - 2.0*tau/dt) / a0
+	return f
+}
+
 func (f *RlcFilter) Step(x0 float64) float64 {
 	y0 := f.b0*x0 + f.b1*f.x1 + f.b2*f.x2 - f.a1*f.y1 - f.a2*f.y2
 	f.x2 = f.x1
