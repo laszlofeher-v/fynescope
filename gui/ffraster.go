@@ -222,12 +222,11 @@ func (ff *ffViewer) draw() {
 							ff.scp.ffScopeFullScreen.Set(ixf, y, col)
 						}
 
-						vstr := fmt.Sprintf("%.0fHz", f)
-						if f >= 1000 {
-							vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
-						}
+						vstr := fmt.Sprintf("%gHz", f)
 						if f >= 1000000 {
 							vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
+						} else if f >= 1000 {
+							vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
 						}
 						left, _, right, _ := ff.scp.boundString(vstr)
 						ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
