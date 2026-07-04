@@ -75,7 +75,7 @@ Run the application directly. It will attempt to detect connected PicoScope devi
 ./fynescope
 ```
 
-To run the application strictly in simulator mode (without hardware):
+To run the application strictly in simulator mode (without connected hardware):
 
 ```bash
 ./fynescope -sim

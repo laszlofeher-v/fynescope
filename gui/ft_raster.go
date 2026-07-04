@@ -896,10 +896,15 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 	if wInt != rect.Max.X-rect.Min.X || hInt != rect.Max.Y-rect.Min.Y { // window resized
 		slog.Debug("RESIZED")
 		scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
-		if scp.triggerSettingMsg.Type == control.Simple {
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		} else {
+		case control.Advanced:
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		case control.Complex:
+			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		default:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		}
 		rect = scp.ftScopeFullScreen.Bounds()
 		w = float32(rect.Dx())
@@ -911,10 +916,15 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 		scp.setFtHDivsX()
 	} else if getFlag(scp.repartition) {
 		slog.Debug("REPARTITION")
-		if scp.triggerSettingMsg.Type == control.Simple {
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		} else {
+		case control.Advanced:
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		case control.Complex:
+			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		default:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		}
 		scp.partitionFtScreen(w, h)
 		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)

@@ -1,9 +1,8 @@
 package gui
 
 import (
-	"image/color"
-	"log/slog"
 	"fynescope/settings"
+	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/theme"
@@ -94,7 +93,6 @@ func (t ScpDarkTheme) Color(c fyne.ThemeColorName, variant fyne.ThemeVariant) co
 	case theme.ColorNameForegroundOnPrimary:
 		return color.White
 	default:
-		slog.Debug("Color default", "ThemeColorName", c, "variant", variant)
 		return theme.DefaultTheme().Color(c, variant)
 	}
 }
@@ -151,7 +149,6 @@ func (t ScpLightTheme) Color(c fyne.ThemeColorName, variant fyne.ThemeVariant) c
 	case theme.ColorNameForegroundOnPrimary:
 		return color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xf0}
 	default:
-		slog.Debug("Color default", "ThemeColorName", c, "variant", variant)
 		return theme.DefaultTheme().Color(c, variant)
 	}
 }
