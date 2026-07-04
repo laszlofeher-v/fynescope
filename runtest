@@ -1,6 +1,6 @@
 go clean -testcache
 #go test -tags=noscope -timeout 99999s
-#go test -tags=testsw -v
+#go test -tags=noscope -tags=testsw -v
 go test -v -tags=noscope -tags=testsw  -run Test0 -timeout 105m
 #time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
