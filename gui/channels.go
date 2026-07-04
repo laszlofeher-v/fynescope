@@ -62,6 +62,9 @@ type (
 const (
 	raising = "Raising"
 	failing = "Falling"
+	enter   = "Enter"
+	exit    = "Exit"
+	any     = "Any"
 	ac      = "AC"
 	dc      = "DC"
 )
@@ -69,6 +72,7 @@ const (
 var (
 	channelNames            = []string{"A", "B", "C", "D"}
 	triggerDirectionOptions = []string{raising, failing}
+	triggerWindowDirectionOptions = []string{enter, exit, any}
 	triggerDirections       map[string]genericps.ThresholdDirection
 	triggerDirectionNames   map[genericps.ThresholdDirection]string
 	coupleTypeNames         = []string{ac, dc}
@@ -87,9 +91,15 @@ func initMaps() {
 	triggerDirectionNames = make(map[genericps.ThresholdDirection]string)
 	triggerDirectionNames[genericps.TriggerFalling] = failing
 	triggerDirectionNames[genericps.TriggerRaising] = raising
+	triggerDirectionNames[genericps.TriggerEnter] = enter
+	triggerDirectionNames[genericps.TriggerExit] = exit
+	triggerDirectionNames[genericps.TriggerEnterOrExit] = any
 	triggerDirections = make(map[string]genericps.ThresholdDirection)
 	triggerDirections[failing] = genericps.TriggerFalling
 	triggerDirections[raising] = genericps.TriggerRaising
+	triggerDirections[enter] = genericps.TriggerEnter
+	triggerDirections[exit] = genericps.TriggerExit
+	triggerDirections[any] = genericps.TriggerEnterOrExit
 }
 func sortInputRanges() {
 	vRanges = map[string]genericps.RangeEnum{

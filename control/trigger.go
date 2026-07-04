@@ -24,6 +24,7 @@ const (
 	Simple TriggerTypes = iota
 	Advanced
 	Complex
+	Window
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -44,6 +45,10 @@ func (psControl *PscDesc) triggerMonitor() {
 			a.Mode != b.Mode ||
 			a.Type != b.Type ||
 			a.Mv != b.Mv ||
+			a.LowerMv != b.LowerMv ||
+			a.LowerTriggerADC != b.LowerTriggerADC ||
+			a.LowerHysteresisADC != b.LowerHysteresisADC ||
+			a.LowerHysteresis != b.LowerHysteresis ||
 			a.XOffset != b.XOffset ||
 			a.AutoTriggerMs != b.AutoTriggerMs ||
 			// For complex triggers, check slice lengths and pointer equality to detect updates
@@ -145,10 +150,15 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		return
 	}
 
-	// Advanced mode logic (fallback)
+	// Advanced/Window mode logic (fallback)
+	thresholdMode := genericps.Level
+	if psControl.triggerSetting.Type == Window {
+		thresholdMode = genericps.Window
+	}
+
 	channelProperties := []genericps.TriggerChannelProperties{{ThresholdUpper: psControl.triggerSetting.TriggerADC,
-		ThresholdUpperHysteresis: psControl.triggerSetting.HysteresisADC, ThresholdLower: psControl.triggerSetting.TriggerADC,
-		ThresholdLowerHysteresis: psControl.triggerSetting.HysteresisADC, Channel: psControl.triggerSetting.Source, ThresholdMode: genericps.Level}}
+		ThresholdUpperHysteresis: psControl.triggerSetting.HysteresisADC, ThresholdLower: psControl.triggerSetting.LowerTriggerADC,
+		ThresholdLowerHysteresis: psControl.triggerSetting.LowerHysteresisADC, Channel: psControl.triggerSetting.Source, ThresholdMode: thresholdMode}}
 
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
@@ -185,19 +195,20 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	channelD := genericps.TriggerNone
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
+	dir := psControl.triggerSetting.ThresholdDirection
+	if psControl.triggerSetting.Type == Window {
+		dir = psControl.triggerSetting.WindowDirection
+	}
+
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-
-		channelA = psControl.triggerSetting.ThresholdDirection
+		channelA = dir
 	case genericps.ChB:
-
-		channelB = psControl.triggerSetting.ThresholdDirection
+		channelB = dir
 	case genericps.ChC:
-
-		channelC = psControl.triggerSetting.ThresholdDirection
+		channelC = dir
 	case genericps.ChD:
-
-		channelD = psControl.triggerSetting.ThresholdDirection
+		channelD = dir
 	}
 
 	err = psControl.Con.SetTriggerChannelDirections(channelA,

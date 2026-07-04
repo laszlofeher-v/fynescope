@@ -60,10 +60,11 @@ var (
 		triggerModeOptions[2]: control.Repeat,
 		triggerModeOptions[3]: control.Single,
 	}
-	triggerTypeOptions = []string{"Simple", "Advanced"}
+	triggerTypeOptions = []string{"Simple", "Advanced", "Window"}
 	triggerTypes       = map[string]control.TriggerTypes{
 		triggerTypeOptions[0]: control.Simple,
 		triggerTypeOptions[1]: control.Advanced,
+		triggerTypeOptions[2]: control.Window,
 	}
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
@@ -533,9 +534,31 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	if scp.boxTriggerHysteresisDisp != nil {
 		if scp.triggerSettingMsg.Type == control.Simple {
 			scp.boxTriggerHysteresisDisp.Hide()
-		} else {
+			if scp.boxTriggerLowerDisp != nil {
+				scp.boxTriggerLowerDisp.Hide()
+			}
+		} else if scp.triggerSettingMsg.Type == control.Advanced {
 			scp.boxTriggerHysteresisDisp.Show()
+			if scp.boxTriggerLowerDisp != nil {
+				scp.boxTriggerLowerDisp.Hide()
+			}
+		} else if scp.triggerSettingMsg.Type == control.Window {
+			scp.boxTriggerHysteresisDisp.Show()
+			if scp.boxTriggerLowerDisp != nil {
+				scp.boxTriggerLowerDisp.Show()
+			}
+			if scp.triggerWindowDirectionSelect != nil {
+				scp.triggerWindowDirectionSelect.Show()
+			}
+		} else { // Complex
+			scp.boxTriggerHysteresisDisp.Show()
+			if scp.boxTriggerLowerDisp != nil {
+				scp.boxTriggerLowerDisp.Hide()
+			}
 		}
+	}
+	if scp.triggerSettingMsg.Type != control.Window && scp.triggerWindowDirectionSelect != nil {
+		scp.triggerWindowDirectionSelect.Hide()
 	}
 	setFlag(scp.repartition)
 	scp.refreshRasters()
@@ -570,6 +593,55 @@ func (scp *ScpDesc) onHysteresisChange(v float64) {
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onLowerThresholdChange(v float64) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	intV := int32(math.Round(v))
+	scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv = intV
+	scp.triggerSettingMsg.LowerMv = intV
+	scp.triggerSettingMsg.LowerTriggerADC = int16(scp.mvToAdc(intV,
+		scp.Settings.Channels[scp.triggerSource].VRange))
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	intV := int32(math.Round(v))
+	scp.Settings.Channels[scp.triggerSource].Trigger.LowerHysteresis = intV
+	scp.triggerSettingMsg.LowerHysteresis = intV
+	scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(intV, scp.Settings.Channels[scp.triggerSource].VRange))
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onWindowDirectionChange(option string, ex selectscroll.Exception) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	dir := triggerDirections[option]
+	scp.Settings.Channels[scp.triggerSource].Trigger.WindowDirection = dir
+	scp.triggerSettingMsg.WindowDirection = dir
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
@@ -627,6 +699,29 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if triggerTypes[scp.Settings.Trigger.Type] == control.Simple {
 		scp.boxTriggerHysteresisDisp.Hide()
 	}
+	scp.triggerLowerThresholdDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, -20000,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Low Thres :", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.triggerLowerThresholdDisp.OnChanged = scp.onLowerThresholdChange
+
+	scp.triggerLowerHysteresisDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, 0,
+		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Low Hyst  :", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.triggerLowerHysteresisDisp.OnChanged = scp.onLowerHysteresisChange
+	scp.boxTriggerLowerDisp = container.New(layout.NewVBoxLayout(), scp.triggerLowerThresholdDisp, scp.triggerLowerHysteresisDisp)
+
+	if triggerTypes[scp.Settings.Trigger.Type] != control.Window {
+		scp.boxTriggerLowerDisp.Hide()
+	}
+
 	scp.triggerModeSelect = selectscroll.NewSelectScroll(triggerModeOptions, scp.onTriggerModeChange, triggerModeOptions[2])
 	addToTest(scp.triggerModeSelect, triggerModeSelectId)
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
@@ -635,10 +730,10 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	// Build trigger type options based on whether complex trigger is enabled
 	var activeTypeOptions []string
 	if scp.ComplexTriggerEnabled {
-		activeTypeOptions = []string{"Simple", "Advanced", "Complex"}
+		activeTypeOptions = []string{"Simple", "Advanced", "Window", "Complex"}
 		triggerTypes["Complex"] = control.Complex
 	} else {
-		activeTypeOptions = []string{"Simple", "Advanced"}
+		activeTypeOptions = []string{"Simple", "Advanced", "Window"}
 		// If settings had Complex selected but flag is off, fall back to Advanced
 		if scp.Settings.Trigger.Type == "Complex" {
 			scp.Settings.Trigger.Type = "Advanced"
@@ -652,9 +747,23 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.buildComplexTriggerMessage()
 	}
 
-	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect)
+	scp.triggerWindowDirectionSelect = selectscroll.NewSelectScroll(triggerWindowDirectionOptions, scp.onWindowDirectionChange, "Enter")
+	dirStr := "Enter"
+	for k, v := range triggerDirections {
+		if v == scp.Settings.Channels[scp.triggerSource].Trigger.WindowDirection {
+			dirStr = k
+			break
+		}
+	}
+	scp.triggerWindowDirectionSelect.SilentSetSelected(dirStr)
+	scp.triggerSettingMsg.WindowDirection = triggerDirections[dirStr]
+	if scp.Settings.Trigger.Type != "Window" {
+		scp.triggerWindowDirectionSelect.Hide()
+	}
+
+	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.triggerWindowDirectionSelect)
 	boxThresh := container.New(layout.NewHBoxLayout(), scp.triggerThresholdDisp)
-	scp.triggerDisplays = container.New(layout.NewVBoxLayout(), boxMode, boxThresh, scp.boxTriggerHysteresisDisp)
+	scp.triggerDisplays = container.New(layout.NewVBoxLayout(), boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerLowerDisp)
 	return scp.triggerDisplays, nil
 }
 

@@ -41,8 +41,11 @@ type (
 	}
 	ChTriggerSettings struct {
 		TriggerDirection genericps.ThresholdDirection `yaml:"triggerdirection"`
+		WindowDirection  genericps.ThresholdDirection `yaml:"windowdirection"`
 		Mv               int32                        `yaml:"mv"`
 		Hysteresis       int32                        `yaml:"hysteresis"`
+		LowerMv          int32                        `yaml:"lowermv"`
+		LowerHysteresis  int32                        `yaml:"lowerhysteresis"`
 	}
 	ComplexChannelConfig struct {
 		ThresholdMode genericps.ThresholdModeId    `yaml:"thresholdmode"`

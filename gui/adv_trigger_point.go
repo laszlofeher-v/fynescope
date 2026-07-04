@@ -6,9 +6,6 @@ import (
 	"log/slog"
 	"math"
 
-	// "fynescope/config"
-	// "fynescope/psi"
-
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )

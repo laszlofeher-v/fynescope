@@ -901,6 +901,8 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		case control.Advanced:
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		case control.Window:
+			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		default:
@@ -921,6 +923,8 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		case control.Advanced:
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
+		case control.Window:
+			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
 		default:

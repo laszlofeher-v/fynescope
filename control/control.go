@@ -52,13 +52,18 @@ type (
 	TriggerDesc struct {
 		Enabled            bool
 		TriggerADC         int16
+		LowerTriggerADC    int16
 		HysteresisADC      uint16
+		LowerHysteresisADC uint16
 		UpperHysteresis    int32
+		LowerHysteresis    int32
 		Source             genericps.ChannelId
 		ThresholdDirection genericps.ThresholdDirection
+		WindowDirection    genericps.ThresholdDirection
 		Mode               TriggerModes
 		Type               TriggerTypes
 		Mv                 int32
+		LowerMv            int32
 		ComplexProperties  []genericps.TriggerChannelProperties
 		ComplexConditions  []genericps.TriggerConditions
 		ComplexDirections  []TriggerDirections

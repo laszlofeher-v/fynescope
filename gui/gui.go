@@ -167,6 +167,9 @@ type (
 		triggerHysteresisDisp        *disp7.DigitArray
 		triggerThresholdDisp         *disp7.DigitArray
 		boxTriggerHysteresisDisp     *fyne.Container
+		triggerLowerThresholdDisp    *disp7.DigitArray
+		triggerLowerHysteresisDisp   *disp7.DigitArray
+		boxTriggerLowerDisp          *fyne.Container
 		digital                      *fyne.Container
 		genLayout                    *fyne.Container
 		rlcLayout                    *fyne.Container
@@ -188,6 +191,7 @@ type (
 		triggerCalculationModeSelect *selectscroll.SelectScroll
 		triggerModeSelect            *selectscroll.SelectScroll
 		triggerTypeSelect            *selectscroll.SelectScroll
+		triggerWindowDirectionSelect *selectscroll.SelectScroll
 		Settings                     *settings.PsSettings
 		runblockButton               *widget.Button
 		toolbar                      *fyne.Container
