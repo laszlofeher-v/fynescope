@@ -17,13 +17,13 @@ import (
 func (scp *ScpDesc) buildComplexTriggerMessage() {
 	var props []genericps.TriggerChannelProperties
 	var dirs []control.TriggerDirections
-	var dirA, dirB, dirC, dirD genericps.ThresholdDirection
-	dirA = genericps.TriggerNone
-	dirB = genericps.TriggerNone
-	dirC = genericps.TriggerNone
-	dirD = genericps.TriggerNone
+	var directionA, directionB, directionC, directionD genericps.ThresholdDirection
+	directionA = genericps.TriggerNone
+	directionB = genericps.TriggerNone
+	directionC = genericps.TriggerNone
+	directionD = genericps.TriggerNone
 
-	cond := genericps.TriggerConditions{
+	condition := genericps.TriggerConditions{
 		ChannelA:            genericps.CondDontCare,
 		ChannelB:            genericps.CondDontCare,
 		ChannelC:            genericps.CondDontCare,
@@ -49,32 +49,32 @@ func (scp *ScpDesc) buildComplexTriggerMessage() {
 
 			switch genericps.ChannelId(i) {
 			case genericps.ChA:
-				cond.ChannelA = chCfg.Condition
-				dirA = chCfg.Direction
+				condition.ChannelA = chCfg.Condition
+				directionA = chCfg.Direction
 			case genericps.ChB:
-				cond.ChannelB = chCfg.Condition
-				dirB = chCfg.Direction
+				condition.ChannelB = chCfg.Condition
+				directionB = chCfg.Direction
 			case genericps.ChC:
-				cond.ChannelC = chCfg.Condition
-				dirC = chCfg.Direction
+				condition.ChannelC = chCfg.Condition
+				directionC = chCfg.Direction
 			case genericps.ChD:
-				cond.ChannelD = chCfg.Condition
-				dirD = chCfg.Direction
+				condition.ChannelD = chCfg.Condition
+				directionD = chCfg.Direction
 			}
 		}
 	}
 
 	dirs = append(dirs, control.TriggerDirections{
-		ChannelA: dirA,
-		ChannelB: dirB,
-		ChannelC: dirC,
-		ChannelD: dirD,
+		ChannelA: directionA,
+		ChannelB: directionB,
+		ChannelC: directionC,
+		ChannelD: directionD,
 		Ext:      genericps.TriggerNone,
 		Aux:      genericps.TriggerNone,
 	})
 
 	scp.triggerSettingMsg.ComplexProperties = props
-	scp.triggerSettingMsg.ComplexConditions = []genericps.TriggerConditions{cond}
+	scp.triggerSettingMsg.ComplexConditions = []genericps.TriggerConditions{condition}
 	scp.triggerSettingMsg.ComplexDirections = dirs
 }
 

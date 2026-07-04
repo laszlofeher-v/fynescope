@@ -158,10 +158,10 @@ func (ff *ffViewer) draw() {
 		}
 	}
 
-	channellIndex := ff.scp.displayMovedDivs - 1
+	channelIndex := ff.scp.displayMovedDivs - 1
 	var yOffsetShift float64
-	if channellIndex >= 0 {
-		channelViewer := &ff.scp.channelViewers[channellIndex]
+	if channelIndex >= 0 {
+		channelViewer := &ff.scp.channelViewers[channelIndex]
 		yOffsetShift = channelViewer.ffDisplayOffsetFraction
 	}
 
@@ -170,9 +170,9 @@ func (ff *ffViewer) draw() {
 		for i := -40; i <= 48; i++ {
 			yf := float64(bounds.Min.Y) + float64(i)*h/8.0
 
-			if channellIndex >= 0 {
+			if channelIndex >= 0 {
 				drawHDiv(yf, color.NRGBA{50, 50, 50, 255})
-				col := ff.scp.Settings.Channels[channellIndex].Col[ff.scp.Settings.ChannelColorIndex]
+				col := ff.scp.Settings.Channels[channelIndex].Col[ff.scp.Settings.ChannelColorIndex]
 				counter := 0
 				yfShifted := yf + yOffsetShift
 				for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -212,7 +212,7 @@ func (ff *ffViewer) draw() {
 				xf := getX(f)
 				if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
 					col := gridCol
-					if channellIndex >= 0 {
+					if channelIndex >= 0 {
 						col = color.NRGBA{50, 50, 50, 255}
 					}
 

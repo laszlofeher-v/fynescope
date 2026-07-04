@@ -801,13 +801,13 @@ func (scp *ScpDesc) drawFtDivisions() {
 			}
 		}
 	}
-	channellIndex := scp.displayMovedDivs - 1
+	channelIndex := scp.displayMovedDivs - 1
 	col := scp.theme.Color(ColorNameDivision, 0)
-	if channellIndex >= 0 {
-		if scp.displayMovedDivs > 0 && scp.channelViewers[channellIndex].displayOffsetInt != 0 {
+	if channelIndex >= 0 {
+		if scp.displayMovedDivs > 0 && scp.channelViewers[channelIndex].displayOffsetInt != 0 {
 			drawDivs(0, gray)
-			yOffset := scp.offsetNToFtY(scp.channelViewers[channellIndex].displayOffsetInt)
-			drawDivs(float32(yOffset), scp.Settings.Channels[channellIndex].Col[scp.Settings.ChannelColorIndex])
+			yOffset := scp.offsetNToFtY(scp.channelViewers[channelIndex].displayOffsetInt)
+			drawDivs(float32(yOffset), scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex])
 		} else {
 			drawDivs(0, col)
 		}
