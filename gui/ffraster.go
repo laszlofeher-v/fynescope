@@ -836,7 +836,7 @@ func (ff *ffViewer) fyneToImg(x, y float32) (int, int) {
 func (ff *ffViewer) mouseInSignalScreen(x, y float32) bool {
 	ix, iy := ff.fyneToImg(x, y)
 	p := image.Point{X: ix, Y: iy}
-	return p.In(ff.imgRect)
+	return p.In(ff.scp.ffScopeSignalScreen.Bounds())
 }
 
 // cursor returns the appropriate desktop cursor type based on the mouse coordinate.
@@ -886,6 +886,16 @@ func (ff *ffViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	ff.selectedChannel = -2
 	for chIdx, bounds := range ff.labelBounds {
 		if p.In(bounds) {
+			if button == desktop.MouseButtonSecondary || button == desktop.RightMouseButton {
+				if chIdx >= 0 {
+					channelViewer := &ff.scp.channelViewers[chIdx]
+					channelViewer.ffDisplayOffsetFraction = 0
+					ff.scp.Settings.Channels[chIdx].FfDisplayVOffset = 0
+					ff.scp.ffFullRefresh = true
+					ff.scp.refreshRasters()
+				}
+				return
+			}
 			ff.selectedChannel = chIdx
 			if chIdx >= 0 {
 				ff.scp.displayMovedDivs = chIdx + 1
@@ -914,17 +924,18 @@ func (ff *ffViewer) mouseMoved(x, y float32) {
 		ix, iy := ff.fyneToImg(x, y)
 		ff.mouseX = float32(ix)
 		ff.mouseY = float32(iy)
-		if ff.mouseX < float32(ff.imgRect.Min.X) {
-			ff.mouseX = float32(ff.imgRect.Min.X)
+		bounds := ff.scp.ffScopeSignalScreen.Bounds()
+		if ff.mouseX < float32(bounds.Min.X) {
+			ff.mouseX = float32(bounds.Min.X)
 		}
-		if ff.mouseX > float32(ff.imgRect.Max.X-1) {
-			ff.mouseX = float32(ff.imgRect.Max.X - 1)
+		if ff.mouseX > float32(bounds.Max.X-1) {
+			ff.mouseX = float32(bounds.Max.X - 1)
 		}
-		if ff.mouseY < float32(ff.imgRect.Min.Y) {
-			ff.mouseY = float32(ff.imgRect.Min.Y)
+		if ff.mouseY < float32(bounds.Min.Y) {
+			ff.mouseY = float32(bounds.Min.Y)
 		}
-		if ff.mouseY > float32(ff.imgRect.Max.Y-1) {
-			ff.mouseY = float32(ff.imgRect.Max.Y - 1)
+		if ff.mouseY > float32(bounds.Max.Y-1) {
+			ff.mouseY = float32(bounds.Max.Y - 1)
 		}
 		ff.scp.ffFullRefresh = true
 		ff.enableRefresh()
@@ -1005,17 +1016,18 @@ func (ff *ffViewer) dragged(dx, dy, x, y float32) {
 		ix, iy := ff.fyneToImg(x, y)
 		ff.mouseX = float32(ix)
 		ff.mouseY = float32(iy)
-		if ff.mouseX < float32(ff.imgRect.Min.X) {
-			ff.mouseX = float32(ff.imgRect.Min.X)
+		bounds := ff.scp.ffScopeSignalScreen.Bounds()
+		if ff.mouseX < float32(bounds.Min.X) {
+			ff.mouseX = float32(bounds.Min.X)
 		}
-		if ff.mouseX > float32(ff.imgRect.Max.X-1) {
-			ff.mouseX = float32(ff.imgRect.Max.X - 1)
+		if ff.mouseX > float32(bounds.Max.X-1) {
+			ff.mouseX = float32(bounds.Max.X - 1)
 		}
-		if ff.mouseY < float32(ff.imgRect.Min.Y) {
-			ff.mouseY = float32(ff.imgRect.Min.Y)
+		if ff.mouseY < float32(bounds.Min.Y) {
+			ff.mouseY = float32(bounds.Min.Y)
 		}
-		if ff.mouseY > float32(ff.imgRect.Max.Y-1) {
-			ff.mouseY = float32(ff.imgRect.Max.Y - 1)
+		if ff.mouseY > float32(bounds.Max.Y-1) {
+			ff.mouseY = float32(bounds.Max.Y - 1)
 		}
 		ff.scp.ffFullRefresh = true
 		ff.enableRefresh()

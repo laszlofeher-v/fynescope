@@ -67,7 +67,24 @@ func (cl *dftChannelLabelViewer) mouseIn(x, y float32) bool {
 }
 
 func (cl *dftChannelLabelViewer) mouseDown(button desktop.MouseButton, x, y float32) {
-	cl.selected = cl.mouseIn(x, y)
+	if button == desktop.MouseButtonSecondary && cl.mouseIn(x, y) {
+		channel := &cl.scp.Settings.Channels[cl.channelIndex]
+		if channel.Enabled {
+			channelViewer := &cl.scp.channelViewers[cl.channelIndex]
+			
+			channelViewer.dftDisplayOffsetFraction = 0
+			channelViewer.dftDisplayOffsetInt = 0
+			cl.scp.Settings.Channels[cl.channelIndex].DftDisplayVOffset = 0
+			
+			channelViewer.label.enableRefresh()
+			channelViewer.dftLabel.enableRefresh()
+			
+			cl.scp.clearAllDftPersistentLayers()
+			cl.scp.refreshRasters()
+		}
+	} else {
+		cl.selected = cl.mouseIn(x, y)
+	}
 }
 func (cl *dftChannelLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
 	cl.selected = false

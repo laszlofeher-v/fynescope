@@ -422,7 +422,7 @@ func (fv *fvViewer) formatVoltage(mv float32, vRange genericps.RangeEnum) string
 
 func (fv *fvViewer) mouseInSignalScreen(x, y float32) bool {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
-	return p.In(fv.imgRect)
+	return p.In(fv.scp.fvScopeSignalScreen.Bounds())
 }
 
 func (fv *fvViewer) cursor(x, y float32) (desktop.Cursor, bool) {
@@ -455,6 +455,16 @@ func (fv *fvViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	fv.selectedChannel = -1
 	for chIdx, bounds := range fv.labelBounds {
 		if p.In(bounds) {
+			if button == desktop.MouseButtonSecondary || button == desktop.RightMouseButton {
+				channelViewer := &fv.scp.channelViewers[chIdx]
+				channelViewer.displayOffsetFraction = 0
+				channelViewer.displayOffsetInt = 0
+				fv.scp.Settings.Channels[chIdx].DisplayVOffset = 0
+				channelViewer.label.enableRefresh()
+				channelViewer.dftLabel.enableRefresh()
+				fv.scp.refreshRasters()
+				return
+			}
 			fv.selectedChannel = chIdx
 			break
 		}
@@ -475,17 +485,18 @@ func (fv *fvViewer) mouseMoved(x, y float32) {
 	if fv.showInspector {
 		fv.mouseX = x
 		fv.mouseY = y
-		if fv.mouseX < float32(fv.imgRect.Min.X) {
-			fv.mouseX = float32(fv.imgRect.Min.X)
+		bounds := fv.scp.fvScopeSignalScreen.Bounds()
+		if fv.mouseX < float32(bounds.Min.X) {
+			fv.mouseX = float32(bounds.Min.X)
 		}
-		if fv.mouseX > float32(fv.imgRect.Max.X-1) {
-			fv.mouseX = float32(fv.imgRect.Max.X - 1)
+		if fv.mouseX > float32(bounds.Max.X-1) {
+			fv.mouseX = float32(bounds.Max.X - 1)
 		}
-		if fv.mouseY < float32(fv.imgRect.Min.Y) {
-			fv.mouseY = float32(fv.imgRect.Min.Y)
+		if fv.mouseY < float32(bounds.Min.Y) {
+			fv.mouseY = float32(bounds.Min.Y)
 		}
-		if fv.mouseY > float32(fv.imgRect.Max.Y-1) {
-			fv.mouseY = float32(fv.imgRect.Max.Y - 1)
+		if fv.mouseY > float32(bounds.Max.Y-1) {
+			fv.mouseY = float32(bounds.Max.Y - 1)
 		}
 		fv.enableRefresh()
 		canvas.Refresh(fv.scp.fvRaster)
@@ -554,17 +565,18 @@ func (fv *fvViewer) dragged(dx, dy, x, y float32) {
 	if fv.showInspector {
 		fv.mouseX = x
 		fv.mouseY = y
-		if fv.mouseX < float32(fv.imgRect.Min.X) {
-			fv.mouseX = float32(fv.imgRect.Min.X)
+		bounds := fv.scp.fvScopeSignalScreen.Bounds()
+		if fv.mouseX < float32(bounds.Min.X) {
+			fv.mouseX = float32(bounds.Min.X)
 		}
-		if fv.mouseX > float32(fv.imgRect.Max.X-1) {
-			fv.mouseX = float32(fv.imgRect.Max.X - 1)
+		if fv.mouseX > float32(bounds.Max.X-1) {
+			fv.mouseX = float32(bounds.Max.X - 1)
 		}
-		if fv.mouseY < float32(fv.imgRect.Min.Y) {
-			fv.mouseY = float32(fv.imgRect.Min.Y)
+		if fv.mouseY < float32(bounds.Min.Y) {
+			fv.mouseY = float32(bounds.Min.Y)
 		}
-		if fv.mouseY > float32(fv.imgRect.Max.Y-1) {
-			fv.mouseY = float32(fv.imgRect.Max.Y - 1)
+		if fv.mouseY > float32(bounds.Max.Y-1) {
+			fv.mouseY = float32(bounds.Max.Y - 1)
 		}
 		fv.enableRefresh()
 		canvas.Refresh(fv.scp.fvRaster)
