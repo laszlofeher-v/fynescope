@@ -606,6 +606,8 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.runblockButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
 		if !scp.running {
+			scp.clearAllFtPersistentLayers()
+			scp.clearAllDftPersistentLayers()
 			if scp.controlTab.SelectedIndex() == fvTabIndex || scp.controlTab.SelectedIndex() == ffTabIndex {
 				// Force block mode and ensure a trigger is set for f(v) and f(f)
 				scp.triggerSettingMsg.Mode = control.Auto
