@@ -8,7 +8,7 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
-- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually.
+- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators.
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
 - **Measurements**: Built-in tabs for simple **RLC** circuit analysis and digital **Filter** application (FIR/IIR).
@@ -131,7 +131,7 @@ For more options, including displaying version, build date, and license informat
 The standard single-channel edge trigger. Select **Simple** in the trigger type selector to use basic rising or falling edge detection with a configurable threshold and auto-trigger fallback.
 
 ### Advanced Trigger
-Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes a configurable hysteresis setting alongside the threshold.
+Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports **Level** triggering (standard edge) and **Window** triggering (triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds).
 
 ### Complex Trigger ⚠️ Experimental
 
@@ -162,11 +162,12 @@ Selecting **Complex** opens a configuration dialog with a row for each enabled c
 | **Channel** | The analog channel (A, B, C, D) |
 | **Condition** | `Don't Care` / `True` / `False` — whether this channel must participate in the trigger |
 | **Direction** | `Rising` / `Falling` / `RisingOrFalling` — the required edge direction |
-| **Threshold (mV)** | Trigger voltage level in millivolts |
+| **Threshold (mV)** | Trigger voltage level (or Upper bound for Window mode) |
 | **Hysteresis** | Hysteresis voltage in millivolts to avoid false re-triggers |
 | **Mode** | `Level` (standard threshold) or `Window` (upper/lower bounds) |
+| **Window Dir.** | `Enter` / `Exit` / `Any` — direction for Window mode |
 
-Click **Apply** to commit the configuration. The settings are persisted in the device's YAML settings file and restored on next launch.
+Click **Apply** to commit the configuration. The settings are persisted in the device's YAML settings file and restored on next launch. You can also **click and drag** the visual trigger point indicators on the f(t) plot to intuitively adjust the upper and lower thresholds directly on the screen for each channel.
 
 #### Trigger Logic
 
@@ -179,14 +180,13 @@ With Complex mode, a trigger fires only when **all** channels with a `True` cond
 
 #### Simulator Support
 
-The software simulator fully supports complex trigger evaluation. At each simulated time step, all active channel conditions are evaluated simultaneously. The trigger fires at the first time step where all `True` conditions are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
+The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The trigger fires at the first time step where all `True` conditions are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
 
 #### Limitations & Known Issues
 
 - **Experimental**: Complex trigger is under active development. Hardware validation with real PicoScope hardware has not been fully performed.
 - **AND logic only**: OR conditions across channels are not supported in this release.
 - **Single condition block**: Only one `TriggerConditions` block is sent to the API; multiple overlapping condition blocks are not yet exposed in the UI.
-- **Window mode**: While the `Window` threshold mode can be selected, it requires appropriate Upper/Lower threshold values set independently — the UI currently mirrors the single threshold value to both bounds for simplicity.
 
 ## Settings & Configuration
 

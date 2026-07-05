@@ -171,6 +171,10 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		return
 	}
 
+	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
+		return
+	}
+
 	if tp.selected {
 		tp.triggerPointViewer.dragged(dx, dy, x, y)
 		return

@@ -326,9 +326,13 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			f /= 10
 			disp7Width++
 		}
+		minAllowedFreq := int(genericps.MinFrequency) * pow10tab[fractionWidth]
+		if minAllowedFreq <= 0 {
+			minAllowedFreq = 1
+		}
 		frequency, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
 			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
-			int(genericps.MinFrequency)*pow10tab[fractionWidth],
+			minAllowedFreq,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
@@ -357,7 +361,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 
 		startFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
 			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
-			int(genericps.MinFrequency)*pow10tab[fractionWidth],
+			minAllowedFreq,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
@@ -370,7 +374,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency) * pow10tab[fractionWidth])
 		addToTest(startFrqDisp, genMinFrqId)
 		stopFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*100, int(genericps.MinFrequency)*pow10tab[fractionWidth],
+			int(genericps.SineMaxFrequency)*100, minAllowedFreq,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,

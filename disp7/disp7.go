@@ -269,8 +269,7 @@ func (d7 *DigitArray) SilentSetFloatValue(v float64, dpPos int) {
 }
 
 func (d7 *DigitArray) silentSetFloatValue(v float64, dpPos int) {
-	if v > float64(d7.maxValue) || v < float64(d7.minValue) || dpPos < 0 ||
-		dpPos >= len(d7.digits) {
+	if dpPos < 0 || dpPos >= len(d7.digits) {
 		return
 	}
 	d7.dpPos = dpPos
@@ -285,8 +284,7 @@ func (d7 *DigitArray) silentSetFloatValue(v float64, dpPos int) {
 func (d7 *DigitArray) SetFloatValue(v float64, dpPos int) {
 	defer d7.lock.Unlock()
 	d7.lock.Lock()
-	if v > float64(d7.maxValue) || v < -float64(d7.maxValue) || dpPos < 0 ||
-		dpPos >= len(d7.digits) {
+	if dpPos < 0 || dpPos >= len(d7.digits) {
 		return
 	}
 	d7.silentSetFloatValue(v, dpPos)

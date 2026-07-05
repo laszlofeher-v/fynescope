@@ -128,6 +128,9 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
+	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
+		return
+	}
 	tp.triggerPointViewer.dragged(dx, dy, x, y) // call base class method
 	if !tp.uhSelected {                         // mouse down/up set it
 		return // 								   cursor is somewhere else

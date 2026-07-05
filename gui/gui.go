@@ -126,6 +126,7 @@ type (
 		ffLocker                            sync.Mutex
 		ffSweepQuit                         chan struct{}
 		ffSweepDataReady                    chan struct{}
+		ffSweepAcquireTime                  time.Time
 		ffBufferDone                        chan struct{}
 		currentFfFreq                       float64
 		measuredFfFreq                      float64

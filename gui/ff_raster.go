@@ -1666,7 +1666,18 @@ func (scp *ScpDesc) startFfSweep() {
 
 			// Dwell at this frequency — the scope's RefreshCallback will
 			// call processFfData which records the Bode points
-			timer := time.NewTimer(time.Duration(dwellTime * float64(time.Second)))
+			// We wait for both dwellTime (for the physical system to settle)
+			// and maxScreenTime (to fill the scope buffer with the new signal).
+			totalWait := dwellTime
+			if scp.maxScreenTime > 0 {
+				totalWait += scp.maxScreenTime
+			}
+
+			scp.ffLocker.Lock()
+			scp.ffSweepAcquireTime = time.Now().Add(time.Duration(totalWait * float64(time.Second)))
+			scp.ffLocker.Unlock()
+
+			timer := time.NewTimer(time.Duration(totalWait * float64(time.Second)))
 			dwellExpired := false
 			dataReady := false
 
@@ -1809,6 +1820,16 @@ func (scp *ScpDesc) measurePeriod(buf []float32, samplingInterval float64) (floa
 // performs envelope tracking (peak-hold) to keep the highest values, blends new phase estimates using vector averaging,
 // and appends/sorts new sweep points into the channels' Bode buffers.
 func (scp *ScpDesc) processFfData() {
+	scp.ffLocker.Lock()
+	acquireTime := scp.ffSweepAcquireTime
+	scp.ffLocker.Unlock()
+
+	// Only process data if the required wait time for the current sweep step has elapsed.
+	// This ensures we do not accumulate FFTs containing historical data from the previous frequency.
+	if time.Now().Before(acquireTime) {
+		return
+	}
+
 	refCh := scp.Settings.Ff.ReferenceChannel
 	if !scp.Settings.Channels[refCh].Enabled {
 		return
