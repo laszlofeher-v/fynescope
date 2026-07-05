@@ -488,23 +488,6 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 }
 
 func (scp *ScpDesc) notifyDigitalFilter(chIdx int) {
-	if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-		chSettings := &scp.Settings.Channels[chIdx]
-		filter := &chSettings.DigitalFilter
-		scp.psControl.Con.SetSimDigitalFilter(
-			genericps.ChannelId(chIdx),
-			filter.LowpassEnabled,
-			filter.LowpassFc,
-			filter.HighpassEnabled,
-			filter.HighpassFc,
-			filter.BandpassEnabled,
-			filter.BandpassFc1,
-			filter.BandpassFc2,
-			filter.BandstopEnabled,
-			filter.BandstopFc1,
-			filter.BandstopFc2,
-		)
-	}
 	scp.refreshFilterWarning(genericps.ChannelId(chIdx))
 }
 

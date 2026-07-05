@@ -767,17 +767,3 @@ func setSimRlcFilter(m *genericps.SetSimRlcFilterMsg) {
 	m.RspCh() <- struct{}{}
 }
 
-func setSimDigitalFilter(m *genericps.SetSimDigitalFilterMsg) {
-	response := m.Rsp().(*genericps.SetSimDigitalFilterRsp)
-	if err := checkHandle(m.Handle()); err != nil {
-		response.SetStatus(err)
-		m.RspCh() <- struct{}{}
-		return
-	}
-	s := SimDesc{handle: m.Handle()}
-	err := s.SetSimDigitalFilter(m.Channel, m.LowpassEnabled, m.LowpassFc, m.HighpassEnabled, m.HighpassFc,
-		m.BandpassEnabled, m.BandpassFc1, m.BandpassFc2, m.BandstopEnabled, m.BandstopFc1, m.BandstopFc2)
-	response.SetStatus(err)
-	m.RspCh() <- struct{}{}
-}
-

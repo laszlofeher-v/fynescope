@@ -37,17 +37,7 @@ type (
 		rlcLUnit   string
 		rlcC       float64
 		rlcCUnit   string
-		// Digital Filter settings
-		dfLpEnabled bool
-		dfLpFc      float64
-		dfHpEnabled bool
-		dfHpFc      float64
-		dfBpEnabled bool
-		dfBpFc1     float64
-		dfBpFc2     float64
-		dfBsEnabled bool
-		dfBsFc1     float64
-		dfBsFc2     float64
+
 	}
 )
 
@@ -356,7 +346,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 	triggerFilters := make([]*RlcFilter, MaxChannels)
 	triggerAcFilters := make([]*RlcFilter, MaxChannels)
-	triggerDigitalFilters := make([]*SimDigitalFilter, MaxChannels)
+
 	lastT := make([]float64, MaxChannels)
 	prevT := make([]float64, MaxChannels)
 	lastVal := make([]float64, MaxChannels)
@@ -381,10 +371,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			triggerAcFilters[ch] = NewAcCouplingFilter(dt)
 		}
 
-		if channels[ch].dfLpEnabled || channels[ch].dfHpEnabled || channels[ch].dfBpEnabled || channels[ch].dfBsEnabled {
-			triggerDigitalFilters[ch] = NewSimDigitalFilter(ch, dt)
-		}
-
 		// Preroll all trigger filters to reach steady state before t=0
 		prerollSamples := 1000
 		prerollStart := -float64(prerollSamples) * dt
@@ -394,9 +380,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		}
 		if triggerAcFilters[ch] != nil {
 			firstVal = triggerAcFilters[ch].Step(firstVal)
-		}
-		if triggerDigitalFilters[ch] != nil {
-			triggerDigitalFilters[ch].Init(firstVal)
 		}
 
 		for i := 1; i < prerollSamples; i++ {
@@ -408,9 +391,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			if triggerAcFilters[ch] != nil {
 				raw = triggerAcFilters[ch].Step(raw)
 			}
-			if triggerDigitalFilters[ch] != nil {
-				triggerDigitalFilters[ch].Step(raw)
-			}
+
 		}
 	}
 
@@ -440,9 +421,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		if triggerAcFilters[i] != nil {
 			val = triggerAcFilters[i].Step(val)
 		}
-		if triggerDigitalFilters[i] != nil {
-			val = triggerDigitalFilters[i].Step(val)
-		}
+
 
 		prevT[i] = lastT[i]
 		prevVal[i] = lastVal[i]
@@ -457,7 +436,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	// Initialize and pre-roll filters for enabled channels
 	filters := make([]*RlcFilter, MaxChannels)
 	acFilters := make([]*RlcFilter, MaxChannels)
-	digitalFilters := make([]*SimDigitalFilter, MaxChannels)
+
 	prerollSamples := 1000
 	for ch := range buffers {
 		if buffers[ch] != nil && channels[ch].enabled {
@@ -488,32 +467,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				}
 			}
 
-			desc := &channels[ch]
-			if desc.dfLpEnabled || desc.dfHpEnabled || desc.dfBpEnabled || desc.dfBsEnabled {
-				digitalFilters[ch] = NewSimDigitalFilter(ch, dt)
-
-				// Pre-roll digital filter after RLC + AC coupling
-				firstRaw := calculateSampleLevelAtTime(prerollStart, ChannelId(ch))
-				if filters[ch] != nil {
-					firstRaw = filters[ch].Step(firstRaw)
-				}
-				if acFilters[ch] != nil {
-					firstRaw = acFilters[ch].Step(firstRaw)
-				}
-				digitalFilters[ch].Init(firstRaw)
-
-				for i := 1; i < prerollSamples; i++ {
-					rt := prerollStart + float64(i)*dt
-					raw := calculateSampleLevelAtTime(rt, ChannelId(ch))
-					if filters[ch] != nil {
-						raw = filters[ch].Step(raw)
-					}
-					if acFilters[ch] != nil {
-						raw = acFilters[ch].Step(raw)
-					}
-					digitalFilters[ch].Step(raw)
-				}
-			}
 		}
 	}
 
@@ -548,10 +501,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					levelFloat = acFilters[ch].Step(levelFloat)
 				}
 
-				// Apply Digital Filter if enabled
-				if digitalFilters[ch] != nil {
-					levelFloat = digitalFilters[ch].Step(levelFloat)
-				}
+
 
 				// Clamp to valid range and detect overflow
 				var level int16
@@ -1079,24 +1029,6 @@ func (s *SimDesc) SetSimRlcFilter(channel genericps.ChannelId, genSource generic
 	return nil
 }
 
-func (s *SimDesc) SetSimDigitalFilter(channel genericps.ChannelId, lpEnabled bool, lpFc float64, hpEnabled bool, hpFc float64, bpEnabled bool, bpFc1, bpFc2 float64, bsEnabled bool, bsFc1, bsFc2 float64) (err error) {
-	ch := int(channel)
-	if ch < 0 || ch >= MaxChannels {
-		return fmt.Errorf("invalid channel")
-	}
-	channels[ch].dfLpEnabled = lpEnabled
-	channels[ch].dfLpFc = lpFc
-	channels[ch].dfHpEnabled = hpEnabled
-	channels[ch].dfHpFc = hpFc
-	channels[ch].dfBpEnabled = bpEnabled
-	channels[ch].dfBpFc1 = bpFc1
-	channels[ch].dfBpFc2 = bpFc2
-	channels[ch].dfBsEnabled = bsEnabled
-	channels[ch].dfBsFc1 = bsFc1
-	channels[ch].dfBsFc2 = bsFc2
-	return nil
-}
-
 func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode IndexMode, bufferLength uint32) (phase uint32, err error) {
 	slog.Error(notImplemented)
 	err = fmt.Errorf(notImplemented)
@@ -1333,8 +1265,7 @@ func dispatch(msg genericps.Message) {
 		setSimGen(m)
 	case *genericps.SetSimRlcFilterMsg:
 		setSimRlcFilter(m)
-	case *genericps.SetSimDigitalFilterMsg:
-		setSimDigitalFilter(m)
+
 	case *genericps.SigGenFrequencyToPhasenMsg:
 		sigGenFrequencyToPhase(m)
 	case *genericps.SetNumOfCapturesMsg:

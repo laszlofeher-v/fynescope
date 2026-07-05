@@ -578,24 +578,6 @@ type (
 		RespBase
 	}
 
-	SetSimDigitalFilterMsg struct {
-		MsgBase
-		Channel         ChannelId
-		LowpassEnabled  bool
-		LowpassFc       float64
-		HighpassEnabled bool
-		HighpassFc      float64
-		BandpassEnabled bool
-		BandpassFc1     float64
-		BandpassFc2     float64
-		BandstopEnabled bool
-		BandstopFc1     float64
-		BandstopFc2     float64
-	}
-	SetSimDigitalFilterRsp struct {
-		RespBase
-	}
-
 	SigGenFrequencyToPhasenMsg struct {
 		Frequency float64
 		MsgBase
@@ -1422,27 +1404,6 @@ func (c Connection) SetSimRlcFilter(channel ChannelId, genSource ChannelId, enab
 	msg.rsp = &SetSimRlcFilterRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetSimRlcFilterRsp)
-	err = rsp.Status()
-	return
-}
-
-func (c Connection) SetSimDigitalFilter(channel ChannelId, lpEnabled bool, lpFc float64, hpEnabled bool, hpFc float64, bpEnabled bool, bpFc1, bpFc2 float64, bsEnabled bool, bsFc1, bsFc2 float64) (err error) {
-	msg := &SetSimDigitalFilterMsg{
-		Channel:         channel,
-		LowpassEnabled:  lpEnabled,
-		LowpassFc:       lpFc,
-		HighpassEnabled: hpEnabled,
-		HighpassFc:      hpFc,
-		BandpassEnabled: bpEnabled,
-		BandpassFc1:     bpFc1,
-		BandpassFc2:     bpFc2,
-		BandstopEnabled: bsEnabled,
-		BandstopFc1:     bsFc1,
-		BandstopFc2:     bsFc2,
-	}
-	msg.rsp = &SetSimDigitalFilterRsp{}
-	c.Send(msg)
-	rsp := msg.Rsp().(*SetSimDigitalFilterRsp)
 	err = rsp.Status()
 	return
 }
