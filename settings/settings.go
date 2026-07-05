@@ -41,7 +41,7 @@ type (
 	}
 	ChTriggerSettings struct {
 		TriggerDirection genericps.ThresholdDirection `yaml:"triggerdirection"`
-		WindowDirection  genericps.ThresholdDirection `yaml:"windowdirection"`
+		ThresholdMode    genericps.ThresholdModeId    `yaml:"thresholdmode"`
 		Mv               int32                        `yaml:"mv"`
 		Hysteresis       int32                        `yaml:"hysteresis"`
 		LowerMv          int32                        `yaml:"lowermv"`

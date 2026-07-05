@@ -151,10 +151,7 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	}
 
 	// Advanced/Window mode logic (fallback)
-	thresholdMode := genericps.Level
-	if psControl.triggerSetting.Type == Window {
-		thresholdMode = genericps.Window
-	}
+	thresholdMode := psControl.triggerSetting.ThresholdMode
 
 	channelProperties := []genericps.TriggerChannelProperties{{ThresholdUpper: psControl.triggerSetting.TriggerADC,
 		ThresholdUpperHysteresis: psControl.triggerSetting.HysteresisADC, ThresholdLower: psControl.triggerSetting.LowerTriggerADC,
@@ -196,9 +193,6 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := psControl.triggerSetting.ThresholdDirection
-	if psControl.triggerSetting.Type == Window {
-		dir = psControl.triggerSetting.WindowDirection
-	}
 
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:

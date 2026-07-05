@@ -134,7 +134,13 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	}
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
-	channel.Trigger.Mv = int32(math.Round(float64(mv)))
+	newMv := int32(math.Round(float64(mv)))
+	if tp.scp.Settings.Trigger.Type == "Window" {
+		if newMv < channel.Trigger.LowerMv {
+			newMv = channel.Trigger.LowerMv
+		}
+	}
+	channel.Trigger.Mv = newMv
 	tp.scp.triggerSettingMsg.TriggerADC = int16(tp.scp.mvToAdc(channel.Trigger.Mv, channel.VRange))
 	tp.scp.triggerSettingMsg.Mv = channel.Trigger.Mv
 	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg

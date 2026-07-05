@@ -191,7 +191,6 @@ type (
 		triggerCalculationModeSelect *selectscroll.SelectScroll
 		triggerModeSelect            *selectscroll.SelectScroll
 		triggerTypeSelect            *selectscroll.SelectScroll
-		triggerWindowDirectionSelect *selectscroll.SelectScroll
 		Settings                     *settings.PsSettings
 		runblockButton               *widget.Button
 		toolbar                      *fyne.Container

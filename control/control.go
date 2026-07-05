@@ -59,7 +59,7 @@ type (
 		LowerHysteresis    int32
 		Source             genericps.ChannelId
 		ThresholdDirection genericps.ThresholdDirection
-		WindowDirection    genericps.ThresholdDirection
+		ThresholdMode      genericps.ThresholdModeId
 		Mode               TriggerModes
 		Type               TriggerTypes
 		Mv                 int32

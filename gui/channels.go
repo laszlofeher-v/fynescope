@@ -56,6 +56,7 @@ type (
 		simGenNameLabel          *canvas.Text
 		filterWarning            *canvas.Text
 		simGenDisplays           []*disp7.DigitArray
+		triggerDirectionSelect   *selectscroll.SelectScroll
 	}
 )
 
@@ -367,13 +368,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.changeChannelX10(chIndex, c)
 	}
 	triggerTypeChanged := func(option string, e selectscroll.Exception) {
-		var direction genericps.ThresholdDirection
-		switch {
-		case option == failing:
-			direction = genericps.TriggerFalling
-		case option == raising:
-			direction = genericps.TriggerRaising
-		default:
+		direction, ok := triggerDirections[option]
+		if !ok {
 			return
 		}
 		channel.Trigger.TriggerDirection = direction
@@ -514,11 +510,20 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, cChanged, "AC")
 	acdc.SetSelected(coupleTypeNames[scp.Settings.Channels[chIndex].CoupleType])
 	addToTest(acdc, acdcId+chId)
-	triggerDirection := selectscroll.NewSelectScroll(triggerDirectionOptions,
+	var activeTriggerDirectionOptions []string
+	if scp.Settings.Trigger.Type == "Window" {
+		activeTriggerDirectionOptions = triggerWindowDirectionOptions
+	} else {
+		activeTriggerDirectionOptions = triggerDirectionOptions
+	}
+	triggerDirection := selectscroll.NewSelectScroll(activeTriggerDirectionOptions,
 		triggerTypeChanged, "Raising")
+	channelViewer.triggerDirectionSelect = triggerDirection
 	addToTest(triggerDirection, triggerDirectionId)
-	triggerDirection.SetSelected(
-		triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection])
+	if _, ok := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]; ok {
+		triggerDirection.SetSelected(
+			triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection])
+	}
 	invertTriggerIpm = container.New(layout.NewHBoxLayout(), invert, trigger,
 		triggerDirection, pers)
 	enableCouplingRange := container.New(layout.NewHBoxLayout(), enableCh, acdc,
