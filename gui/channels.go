@@ -516,13 +516,32 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	} else {
 		activeTriggerDirectionOptions = triggerDirectionOptions
 	}
+	var defaultDir string
+	if len(activeTriggerDirectionOptions) > 0 {
+		defaultDir = activeTriggerDirectionOptions[0]
+	} else {
+		defaultDir = "Raising"
+	}
 	triggerDirection := selectscroll.NewSelectScroll(activeTriggerDirectionOptions,
-		triggerTypeChanged, "Raising")
+		triggerTypeChanged, defaultDir)
 	channelViewer.triggerDirectionSelect = triggerDirection
 	addToTest(triggerDirection, triggerDirectionId)
-	if _, ok := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]; ok {
-		triggerDirection.SetSelected(
-			triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection])
+	
+	// Validate that the saved setting is valid for the current options
+	savedName := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]
+	valid := false
+	for _, opt := range activeTriggerDirectionOptions {
+		if opt == savedName {
+			valid = true
+			break
+		}
+	}
+	if valid {
+		triggerDirection.SetSelected(savedName)
+	} else if len(activeTriggerDirectionOptions) > 0 {
+		// Force update settings to valid default
+		triggerDirection.SetSelected(activeTriggerDirectionOptions[0])
+		scp.Settings.Channels[chIndex].Trigger.TriggerDirection = triggerDirections[activeTriggerDirectionOptions[0]]
 	}
 	invertTriggerIpm = container.New(layout.NewHBoxLayout(), invert, trigger,
 		triggerDirection, pers)
