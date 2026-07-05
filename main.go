@@ -51,7 +51,7 @@ var (
 		"callbacks.go":       false,
 		"channels.go":        false,
 		"checkcolorpick.go":  false,
-		"connection.go":      true,
+		"connection.go":      false,
 		"const.go":           false,
 		"consts.go":          false,
 		"control.go":         false,
