@@ -267,11 +267,33 @@ func (scp *ScpDesc) setMaxScreenTime() {
 func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32, direction genericps.ThresholdDirection,
 	autoTriggerMs int16, xOffset float64) {
 	vRange := scp.Settings.Channels[genericps.ChA].VRange
-	if scp.triggerSource != dontCare {
+	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
 		vRange = scp.Settings.Channels[scp.triggerSource].VRange
 	}
-	hysteresisADC := uint16(scp.mvToUAdc(scp.triggerSettingMsg.UpperHysteresis, vRange))
+
+	var upperHysteresis int32
+	var lowerMv int32
+	var lowerHysteresis int32
+	var thresholdMode genericps.ThresholdModeId
+
+	if source != dontCare && int(source) < len(scp.Settings.Channels) {
+		trig := scp.Settings.Channels[source].Trigger
+		upperHysteresis = trig.Hysteresis
+		lowerMv = trig.LowerMv
+		lowerHysteresis = trig.LowerHysteresis
+		thresholdMode = trig.ThresholdMode
+	} else {
+		upperHysteresis = scp.triggerSettingMsg.UpperHysteresis
+		lowerMv = scp.triggerSettingMsg.LowerMv
+		lowerHysteresis = scp.triggerSettingMsg.LowerHysteresis
+		thresholdMode = scp.triggerSettingMsg.ThresholdMode
+	}
+
+	hysteresisADC := uint16(scp.mvToUAdc(upperHysteresis, vRange))
 	triggerADC := int16(scp.mvToAdc(mv, vRange))
+	lowerTriggerADC := int16(scp.mvToAdc(lowerMv, vRange))
+	lowerHysteresisADC := uint16(scp.mvToUAdc(lowerHysteresis, vRange))
+
 	if scp.triggerSettingMsg.Enabled != enable ||
 		scp.triggerSettingMsg.Source != source ||
 		scp.triggerSettingMsg.Mv != mv ||
@@ -279,17 +301,29 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		scp.triggerSettingMsg.XOffset != xOffset ||
 		scp.triggerSettingMsg.ThresholdDirection != direction ||
 		scp.triggerSettingMsg.HysteresisADC != hysteresisADC ||
-		scp.triggerSettingMsg.TriggerADC != triggerADC {
+		scp.triggerSettingMsg.TriggerADC != triggerADC ||
+		scp.triggerSettingMsg.UpperHysteresis != upperHysteresis ||
+		scp.triggerSettingMsg.LowerMv != lowerMv ||
+		scp.triggerSettingMsg.LowerHysteresis != lowerHysteresis ||
+		scp.triggerSettingMsg.LowerHysteresisADC != lowerHysteresisADC ||
+		scp.triggerSettingMsg.LowerTriggerADC != lowerTriggerADC ||
+		scp.triggerSettingMsg.ThresholdMode != thresholdMode {
 
 		// slog.Debug("new trigger", "old triggerADC", scp.triggerSettingMsg.TriggerADC)
 		scp.triggerSettingMsg.Enabled = enable
 		scp.triggerSettingMsg.Source = source
 		scp.triggerSettingMsg.Mv = mv
+		scp.triggerSettingMsg.UpperHysteresis = upperHysteresis
 		scp.triggerSettingMsg.HysteresisADC = hysteresisADC
 		scp.triggerSettingMsg.TriggerADC = triggerADC
 		scp.triggerSettingMsg.AutoTriggerMs = autoTriggerMs
 		scp.triggerSettingMsg.XOffset = xOffset
 		scp.triggerSettingMsg.ThresholdDirection = direction
+		scp.triggerSettingMsg.LowerMv = lowerMv
+		scp.triggerSettingMsg.LowerHysteresis = lowerHysteresis
+		scp.triggerSettingMsg.LowerHysteresisADC = lowerHysteresisADC
+		scp.triggerSettingMsg.LowerTriggerADC = lowerTriggerADC
+		scp.triggerSettingMsg.ThresholdMode = thresholdMode
 		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 		<-scp.triggerSettingMsg.Done
 	} else {
@@ -531,6 +565,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	}
 
 	for i := range scp.channelViewers {
+		scp.Settings.Channels[i].Trigger.ThresholdMode = scp.triggerSettingMsg.ThresholdMode
 		if scp.channelViewers[i].triggerDirectionSelect != nil {
 			var activeOpts []string
 			if option == "Window" {

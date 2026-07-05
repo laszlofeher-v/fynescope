@@ -25,8 +25,6 @@ import (
 	"fynescope/psc"
 	"log/slog"
 	"time"
-
-	// "time"
 	"unsafe"
 )
 
@@ -37,7 +35,6 @@ func init() {
 	scopeHandler.OpenUnit = openUnit
 	scopeHandler.OpenUnitAsync = openUnitAsync
 	scopeHandler.OpenUnitProgress = openUnitProgress
-	//TODO use constant
 	scopeHandler.Id = "ps2000a"
 	genericps.Register(scopeHandler)
 }
@@ -50,9 +47,6 @@ func boolToint16(b bool) int16 {
 }
 
 func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
-	// timeout handling with no messages
-	// too many goroutine start
-	// allows bad sequence of commands
 	c := make(chan struct{}, 1)
 	go func() {
 		var cstrPtr *C.schar
@@ -77,21 +71,6 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	}
 	return
 }
-
-// func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
-// 	var cstrPtr *C.schar
-// 	cstrPtr = (*C.schar)(C.malloc(C.sizeof_schar * (C.ulong)(bufferLen)))
-// 	defer C.free(unsafe.Pointer(cstrPtr))
-// 	serialLth = bufferLen
-// 	stat := C.ps2000aEnumerateUnits((*C.short)(&count), cstrPtr, (*C.short)(&serialLth))
-// 	if stat != C.PICO_OK {
-// 		err = fmt.Errorf("EnumerateUnits:  %s", psc.StatStr(int(stat)))
-// 		return
-// 	}
-// 	b := C.GoBytes(unsafe.Pointer(cstrPtr), (C.int)(serialLth-1))
-// 	serials = string(b)
-// 	return
-// }
 
 func openUnit(serial string) (handle int16, err error) {
 	var p *C.schar
@@ -202,7 +181,6 @@ func ps2000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 
 func ps2000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
-	//	fmt.Println("cgo GetValues 1 reqNoOfSamples:", reqNoOfSamples)
 	stat := C.ps2000aGetValues((C.short)(handle),
 		(C.uint)(startIndex),
 		(*C.uint)(&reqNoOfSamples),
@@ -210,7 +188,6 @@ func ps2000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio 
 		(C.PS2000A_RATIO_MODE)(downSampleRatioMode),
 		(C.uint)(segmentIndex),
 		(*C.short)(&overflow))
-	// fmt.Println("cgo GetValues overflow:", overflow)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValues:  %s", psc.StatStr(int(stat)))
 	}
@@ -374,9 +351,6 @@ func ps2000aGetTimebase2(handle int16, timeBase uint32, numOfSamples int32,
 }
 
 func ps2000aSetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
-	// log.Println("channel=", channel, " enabled=", enabled, " dcCoupled=", couplingType,
-	// 	" range=", voltageRange, " offset=", analogOffset)
-
 	stat := C.ps2000aSetChannel((C.short)(handle), (C.PS2000A_CHANNEL)(channel), (C.short)(boolToint16(enabled)),
 		(C.PS2000A_COUPLING)(couplingType), (C.PS2000A_RANGE)(voltageRange),
 		(C.float)(analogOffset))
@@ -427,8 +401,6 @@ func ps2000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentI
 }
 
 func ps2000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	// log.Println("handle=", handle, " channel=", ch, " &bufferMax[0]", &bufferMin[0], " &bufferMax[0]", &bufferMin[0],
-	// 	" len=", len(bufferMax), "segmentIndex", segmentIndex, " RatioMode=", mode)
 	stat := C.ps2000aSetDataBuffers((C.short)(handle), (C.int)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS2000A_RATIO_MODE)(mode))
@@ -439,8 +411,6 @@ func ps2000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []in
 }
 
 func ps2000aSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	// log.Println("handle=", handle, " channel=", ch, " &bufferMax[0]", &bufferMin[0], " &bufferMax[0]", &bufferMin[0],
-	// 	" len=", len(bufferMax), "segmentIndex", segmentIndex, " RatioMode=", mode)
 	stat := C.ps2000aSetDataBuffers((C.short)(handle), (C.int)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS2000A_RATIO_MODE)(mode))
@@ -515,9 +485,6 @@ func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
-	// slog.Debug("RunBlock", "noOfPreTriggerSamples", noOfPreTriggerSamples, "noOfPostTriggerSamples",
-	// 	noOfPostTriggerSamples, "timeBase", timeBase, "overSample", overSample,
-	// 	"segmentIndex", segmentIndex, "param", param)
 	nSamples := noOfPreTriggerSamples + noOfPostTriggerSamples
 	if nSamples > 1<<25 { // avoid exception in cgo
 		err = fmt.Errorf("RunBlock:  too many required samples %d", nSamples)
@@ -536,7 +503,6 @@ func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 func ps2000aSetTriggerChannelProperties(handle int16, channelProperties []TriggerChannelProperties, auxOutputEnable bool,
 	autoTriggerMs int32) (err error) {
 	var cTriggerChannelProperties []C.PS2000A_TRIGGER_CHANNEL_PROPERTIES
-	// log.Println("SetTriggerChannelProperties autoTriggerMs:", autoTriggerMs)
 	if len(channelProperties) > 0 {
 		cTriggerChannelProperties = make([]C.PS2000A_TRIGGER_CHANNEL_PROPERTIES, len(channelProperties))
 		for i := range channelProperties {
@@ -657,12 +623,6 @@ func ps2000aSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, w
 	startFrequency, stopFrequency, increment, dwellTime float32, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	// log.Println((C.short)(handle), (C.int)(offsetVoltage),
-	// 	(C.uint)(pkToPK), (C.short)(waveType), (C.double)(startFrequency),
-	// 	(C.double)(stopFrequency), (C.double)(increment), (C.double)(dwellTime),
-	// 	(C.PS2000A_SWEEP_TYPE)(sweepType), (C.PS2000A_EXTRA_OPERATIONS)(operation),
-	// 	(C.uint)(shots), (C.uint)(sweeps), (C.PS2000A_SIGGEN_TRIG_TYPE)(triggerType),
-	// 	(C.PS2000A_SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))
 	stat := C.ps2000aSetSigGenBuiltIn((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.short)(waveType), (C.float)(startFrequency),
 		(C.float)(stopFrequency), (C.float)(increment), (C.float)(dwellTime),
@@ -680,12 +640,6 @@ func ps2000aSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	// log.Println((C.short)(handle), (C.int)(offsetVoltage),
-	// 	(C.uint)(pkToPK), (C.short)(waveType), (C.double)(startFrequency),
-	// 	(C.double)(stopFrequency), (C.double)(increment), (C.double)(dwellTime),
-	// 	(C.PS2000A_SWEEP_TYPE)(sweepType), (C.PS2000A_EXTRA_OPERATIONS)(operation),
-	// 	(C.uint)(shots), (C.uint)(sweeps), (C.PS2000A_SIGGEN_TRIG_TYPE)(triggerType),
-	// 	(C.PS2000A_SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))
 	stat := C.ps2000aSetSigGenBuiltInV2((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.short)(waveType), (C.double)(startFrequency),
 		(C.double)(stopFrequency), (C.double)(increment), (C.double)(dwellTime),

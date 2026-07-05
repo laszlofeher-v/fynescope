@@ -185,12 +185,12 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	newH := int32(math.Round(tp.y2mv(float64(y))))
 
 	if tp.uhSelected {
-		switch {
-		case channel.Trigger.TriggerDirection == genericps.TriggerRaising || channel.Trigger.TriggerDirection == genericps.TriggerInside || channel.Trigger.TriggerDirection == genericps.TriggerOutside:
+		switch channel.Trigger.TriggerDirection {
+		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 			if newH >= channel.Trigger.Mv {
 				channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
 			}
-		case channel.Trigger.TriggerDirection == genericps.TriggerFalling:
+		case genericps.TriggerFalling, genericps.TriggerExit:
 			if newH <= channel.Trigger.Mv {
 				channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
 			}
@@ -206,12 +206,12 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.lhSelected {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		newH := int32(math.Round(tp.y2mv(float64(y))))
-		switch {
-		case channel.Trigger.TriggerDirection == genericps.TriggerRaising || channel.Trigger.TriggerDirection == genericps.TriggerInside || channel.Trigger.TriggerDirection == genericps.TriggerOutside:
+		switch channel.Trigger.TriggerDirection {
+		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 			if newH <= channel.Trigger.LowerMv {
 				channel.Trigger.LowerHysteresis = channel.Trigger.LowerMv - newH
 			}
-		case channel.Trigger.TriggerDirection == genericps.TriggerFalling:
+		case genericps.TriggerFalling, genericps.TriggerExit:
 			if newH >= channel.Trigger.LowerMv {
 				channel.Trigger.LowerHysteresis = -channel.Trigger.LowerMv + newH
 			}
@@ -353,7 +353,7 @@ func (tp *windowTriggerPointViewer) draw() {
 
 		var yh float32
 		_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
-		if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
+		if channel.Trigger.TriggerDirection == genericps.TriggerFalling || channel.Trigger.TriggerDirection == genericps.TriggerExit {
 			_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
 		}
 		if yh > maxY {
@@ -385,7 +385,7 @@ func (tp *windowTriggerPointViewer) draw() {
 
 		var lyh float32
 		_, lyh = tp.timeMv2xy(channel.Trigger.LowerMv - channel.Trigger.LowerHysteresis)
-		if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
+		if channel.Trigger.TriggerDirection == genericps.TriggerFalling || channel.Trigger.TriggerDirection == genericps.TriggerExit {
 			_, lyh = tp.timeMv2xy(channel.Trigger.LowerMv + channel.Trigger.LowerHysteresis)
 		}
 		if lyh > maxY {

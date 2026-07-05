@@ -65,24 +65,24 @@ const (
 	failing = "Falling"
 	enter   = "Enter"
 	exit    = "Exit"
-	any     = "Any"
+	either  = "Either"
 	ac      = "AC"
 	dc      = "DC"
 )
 
 var (
-	channelNames            = []string{"A", "B", "C", "D"}
-	triggerDirectionOptions = []string{raising, failing}
-	triggerWindowDirectionOptions = []string{enter, exit, any}
-	triggerDirections       map[string]genericps.ThresholdDirection
-	triggerDirectionNames   map[genericps.ThresholdDirection]string
-	coupleTypeNames         = []string{ac, dc}
-	coupleTypes             map[string]genericps.Coupling
-	vRanges                 map[string]genericps.RangeEnum
-	x10vRanges              map[string]genericps.RangeEnum
-	inputRanges             []string
-	x10InputRanges          []string
-	rangeEnumToString       map[genericps.RangeEnum]string
+	channelNames                  = []string{"A", "B", "C", "D"}
+	triggerDirectionOptions       = []string{raising, failing}
+	triggerWindowDirectionOptions = []string{enter, exit, either}
+	triggerDirections             map[string]genericps.ThresholdDirection
+	triggerDirectionNames         map[genericps.ThresholdDirection]string
+	coupleTypeNames               = []string{ac, dc}
+	coupleTypes                   map[string]genericps.Coupling
+	vRanges                       map[string]genericps.RangeEnum
+	x10vRanges                    map[string]genericps.RangeEnum
+	inputRanges                   []string
+	x10InputRanges                []string
+	rangeEnumToString             map[genericps.RangeEnum]string
 )
 
 func initMaps() {
@@ -94,13 +94,13 @@ func initMaps() {
 	triggerDirectionNames[genericps.TriggerRaising] = raising
 	triggerDirectionNames[genericps.TriggerEnter] = enter
 	triggerDirectionNames[genericps.TriggerExit] = exit
-	triggerDirectionNames[genericps.TriggerEnterOrExit] = any
+	triggerDirectionNames[genericps.TriggerEnterOrExit] = either
 	triggerDirections = make(map[string]genericps.ThresholdDirection)
 	triggerDirections[failing] = genericps.TriggerFalling
 	triggerDirections[raising] = genericps.TriggerRaising
 	triggerDirections[enter] = genericps.TriggerEnter
 	triggerDirections[exit] = genericps.TriggerExit
-	triggerDirections[any] = genericps.TriggerEnterOrExit
+	triggerDirections[either] = genericps.TriggerEnterOrExit
 }
 func sortInputRanges() {
 	vRanges = map[string]genericps.RangeEnum{
@@ -526,7 +526,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		triggerTypeChanged, defaultDir)
 	channelViewer.triggerDirectionSelect = triggerDirection
 	addToTest(triggerDirection, triggerDirectionId)
-	
+
 	// Validate that the saved setting is valid for the current options
 	savedName := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]
 	valid := false

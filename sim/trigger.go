@@ -24,11 +24,14 @@ type TriggerDetector struct {
 }
 
 type TriggerChannelConfig struct {
-	Enabled    bool
-	Threshold  int16
-	Hysteresis uint16
-	Direction  ThresholdDirection
-	Condition  TriggerState // CondTrue, CondFalse, CondDontCare
+	Enabled                  bool
+	Threshold                int16
+	Hysteresis               uint16
+	ThresholdLower           int16
+	ThresholdLowerHysteresis uint16
+	ThresholdMode            ThresholdModeId
+	Direction                ThresholdDirection
+	Condition                TriggerState // CondTrue, CondFalse, CondDontCare
 }
 
 // NewTriggerDetector creates a new trigger detector with the specified parameters.
@@ -85,22 +88,8 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		return
 	}
 
-	// Pre-calculate hysteresis thresholds
-	hysteresisPassed := [4]bool{}
-	thresholdWithHyst := [4]float64{}
-	isRaising := [4]bool{}
+	state := [4]int{}
 	
-	for i, cfg := range td.channels {
-		if cfg.Enabled {
-			isRaising[i] = cfg.Direction == TriggerRaising
-			if cfg.Direction == TriggerFalling {
-				thresholdWithHyst[i] = float64(cfg.Threshold + int16(cfg.Hysteresis))
-			} else {
-				thresholdWithHyst[i] = float64(cfg.Threshold - int16(cfg.Hysteresis))
-			}
-		}
-	}
-
 	t := float64(0)
 	for t < maxTime {
 		allConditionsMet := true
@@ -112,41 +101,109 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 			
 			level := signalFunc(t, ChannelId(i))
-			thresh := float64(cfg.Threshold)
-
-			// If it's a level condition (TriggerNone)
-			if cfg.Direction == TriggerNone || cfg.Direction == TriggerRisingOrFalling || cfg.Direction == TriggerOutside || cfg.Direction == TriggerInside {
-				// Simple level threshold check - assuming CondTrue means "above threshold" for simplicity if no direction is specified.
-				// For real hardware, TriggerNone uses Upper/Lower Threshold properties (Window/Level).
-				// We'll keep it simple: True if above threshold.
-				if cfg.Condition == CondTrue && level < thresh {
-					allConditionsMet = false
-					break
-				} else if cfg.Condition == CondFalse && level >= thresh {
+			
+			if cfg.ThresholdMode == Window {
+				threshUpper := float64(cfg.Threshold)
+				threshLower := float64(cfg.ThresholdLower)
+				upperHyst := float64(cfg.Hysteresis)
+				lowerHyst := float64(cfg.ThresholdLowerHysteresis)
+				
+				isInside := level <= threshUpper && level >= threshLower
+				
+				if cfg.Direction == TriggerInside {
+					conditionMet := isInside
+					if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
+						allConditionsMet = false
+						break
+					}
+					continue
+				} else if cfg.Direction == TriggerOutside {
+					conditionMet := !isInside
+					if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
+						allConditionsMet = false
+						break
+					}
+					continue
+				}
+				
+				isDeepOutside := level > (threshUpper + upperHyst) || level < (threshLower - lowerHyst)
+				isDeepInside := level <= (threshUpper - upperHyst) && level >= (threshLower + lowerHyst)
+				
+				conditionMet := false
+				if cfg.Direction == TriggerEnter {
+					if state[i] == 0 && isDeepOutside {
+						state[i] = 1
+					}
+					if state[i] == 1 && isInside {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+				} else if cfg.Direction == TriggerExit {
+					if state[i] == 0 && isDeepInside {
+						state[i] = 2
+					}
+					if state[i] == 2 && !isInside {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+				} else if cfg.Direction == TriggerEnterOrExit {
+					if state[i] == 0 {
+						if isDeepOutside { state[i] = 1 }
+						if isDeepInside { state[i] = 2 }
+					}
+					if state[i] == 1 && isInside {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+					if state[i] == 2 && !isInside {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+				}
+				
+				if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
 					allConditionsMet = false
 					break
 				}
-				continue
-			}
-
-			// It's an edge condition (Rising/Falling)
-			if (isRaising[i] && level <= thresholdWithHyst[i]) ||
-				(!isRaising[i] && level >= thresholdWithHyst[i]) {
-				hysteresisPassed[i] = true
-			}
-
-			conditionMet := false
-			if hysteresisPassed[i] {
-				if (isRaising[i] && level > thresh) || (!isRaising[i] && level < thresh) {
-					conditionMet = true
-					edgeTriggerTime = t - dt // The trigger happened in the last dt step
+			} else {
+				// Level mode
+				thresh := float64(cfg.Threshold)
+				hyst := float64(cfg.Hysteresis)
+				
+				// Level condition?
+				if cfg.Direction == TriggerNone || cfg.Direction == TriggerRisingOrFalling {
+					// Treat TriggerNone as simple level > thresh
+					conditionMet := level >= thresh
+					if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
+						allConditionsMet = false
+						break
+					}
+					continue
 				}
-			}
-
-			if (cfg.Condition == CondTrue && !conditionMet) || 
-			   (cfg.Condition == CondFalse && conditionMet) {
-				allConditionsMet = false
-				break
+				
+				conditionMet := false
+				if cfg.Direction == TriggerRaising {
+					if state[i] == 0 && level <= (thresh - hyst) {
+						state[i] = 1
+					}
+					if state[i] == 1 && level > thresh {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+				} else if cfg.Direction == TriggerFalling {
+					if state[i] == 0 && level >= (thresh + hyst) {
+						state[i] = 2
+					}
+					if state[i] == 2 && level < thresh {
+						conditionMet = true
+						edgeTriggerTime = t - dt
+					}
+				}
+				
+				if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
+					allConditionsMet = false
+					break
+				}
 			}
 		}
 
@@ -205,6 +262,9 @@ func (td *TriggerDetector) SetChannelProperties(props []TriggerChannelProperties
 			td.channels[ch].Enabled = true
 			td.channels[ch].Threshold = prop.ThresholdUpper
 			td.channels[ch].Hysteresis = prop.ThresholdUpperHysteresis
+			td.channels[ch].ThresholdLower = prop.ThresholdLower
+			td.channels[ch].ThresholdLowerHysteresis = prop.ThresholdLowerHysteresis
+			td.channels[ch].ThresholdMode = prop.ThresholdMode
 		}
 	}
 }
