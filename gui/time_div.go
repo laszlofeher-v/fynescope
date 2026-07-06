@@ -614,7 +614,8 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
 	if scp.boxTriggerHysteresisDisp != nil {
-		if scp.triggerSettingMsg.Type == control.Simple {
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
 			scp.boxTriggerHysteresisDisp.Hide()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
@@ -622,7 +623,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			if scp.boxTriggerIntervalDisp != nil {
 				scp.boxTriggerIntervalDisp.Hide()
 			}
-		} else if scp.triggerSettingMsg.Type == control.Advanced {
+		case control.Advanced:
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
@@ -630,7 +631,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			if scp.boxTriggerIntervalDisp != nil {
 				scp.boxTriggerIntervalDisp.Hide()
 			}
-		} else if scp.triggerSettingMsg.Type == control.Window {
+		case control.Window:
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Show()
@@ -638,7 +639,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			if scp.boxTriggerIntervalDisp != nil {
 				scp.boxTriggerIntervalDisp.Hide()
 			}
-		} else if scp.triggerSettingMsg.Type == control.Interval {
+		case control.Interval:
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
@@ -646,7 +647,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			if scp.boxTriggerIntervalDisp != nil {
 				scp.boxTriggerIntervalDisp.Show()
 			}
-		} else { // Complex
+		default: // Complex
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
