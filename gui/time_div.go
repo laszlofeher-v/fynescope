@@ -77,6 +77,22 @@ var (
 		interpolationModeOptions[settings.Raw]:    settings.Raw,
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
+
+	intervalTypeOptions = []string{"None", "Less Than", "Greater Than", "In Range", "Out Of Range"}
+	intervalTypes       = map[string]genericps.PulseWidthType{
+		intervalTypeOptions[0]: genericps.PwTypeNone,
+		intervalTypeOptions[1]: genericps.PwTypeLessThan,
+		intervalTypeOptions[2]: genericps.PwTypeGreaterThan,
+		intervalTypeOptions[3]: genericps.PwTypeInRange,
+		intervalTypeOptions[4]: genericps.PwTypeOutOfRange,
+	}
+	intervalTypeRevMap = map[genericps.PulseWidthType]string{
+		genericps.PwTypeNone:        intervalTypeOptions[0],
+		genericps.PwTypeLessThan:    intervalTypeOptions[1],
+		genericps.PwTypeGreaterThan: intervalTypeOptions[2],
+		genericps.PwTypeInRange:     intervalTypeOptions[3],
+		genericps.PwTypeOutOfRange:  intervalTypeOptions[4],
+	}
 )
 
 var (
@@ -603,20 +619,40 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
 			}
+			if scp.boxTriggerIntervalDisp != nil {
+				scp.boxTriggerIntervalDisp.Hide()
+			}
 		} else if scp.triggerSettingMsg.Type == control.Advanced {
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
+			}
+			if scp.boxTriggerIntervalDisp != nil {
+				scp.boxTriggerIntervalDisp.Hide()
 			}
 		} else if scp.triggerSettingMsg.Type == control.Window {
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Show()
 			}
+			if scp.boxTriggerIntervalDisp != nil {
+				scp.boxTriggerIntervalDisp.Hide()
+			}
+		} else if scp.triggerSettingMsg.Type == control.Interval {
+			scp.boxTriggerHysteresisDisp.Show()
+			if scp.boxTriggerLowerDisp != nil {
+				scp.boxTriggerLowerDisp.Hide()
+			}
+			if scp.boxTriggerIntervalDisp != nil {
+				scp.boxTriggerIntervalDisp.Show()
+			}
 		} else { // Complex
 			scp.boxTriggerHysteresisDisp.Show()
 			if scp.boxTriggerLowerDisp != nil {
 				scp.boxTriggerLowerDisp.Hide()
+			}
+			if scp.boxTriggerIntervalDisp != nil {
+				scp.boxTriggerIntervalDisp.Hide()
 			}
 		}
 	}
@@ -697,6 +733,86 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.LowerHysteresis = intV
 	scp.triggerSettingMsg.LowerHysteresis = intV
 	scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(intV, scp.Settings.Channels[scp.triggerSource].VRange))
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exception) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	pwType := intervalTypes[option]
+	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType = pwType
+	scp.triggerSettingMsg.IntervalType = pwType
+
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+func getIntervalUnitMultiplier(unit string) float64 {
+	switch unit {
+	case " ns":
+		return 1e-10
+	case " us":
+		return 1e-7
+	case " ms":
+		return 1e-4
+	case " s":
+		return 1e-1
+	}
+	return 1e-7 // default to us
+}
+
+func (scp *ScpDesc) onIntervalUnitChange(option string, ex selectscroll.Exception) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit = option
+
+	scp.intervalTimeLowerDisp.SetUnit(option)
+	scp.intervalTimeUpperDisp.SetUnit(option)
+
+	multiplier := getIntervalUnitMultiplier(option)
+	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
+	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
+
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower = valInSeconds
+	scp.triggerSettingMsg.IntervalTimeLower = valInSeconds
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper = valInSeconds
+	scp.triggerSettingMsg.IntervalTimeUpper = valInSeconds
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
 	setFlag(scp.repartition)
@@ -788,8 +904,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Complex"}
+	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Complex", "Interval"}
 	triggerTypes["Complex"] = control.Complex
+	triggerTypes["Interval"] = control.Interval
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, "Advanced")
 	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
@@ -798,9 +915,53 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.buildComplexTriggerMessage()
 	}
 
+	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions, scp.onIntervalTypeChange, "Out Of Range")
+
+	// Convert pulse width type enum back to string
+	pwTypeStr := intervalTypeRevMap[scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType]
+	if pwTypeStr == "" {
+		pwTypeStr = intervalTypeOptions[0]
+	}
+	scp.intervalTypeSelect.SilentSetSelected(pwTypeStr)
+
+	intervalUnits := []string{" ns", " us", " ms", " s"}
+	unitStr := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	if unitStr == "" {
+		unitStr = " us"
+	}
+	scp.intervalUnitSelect = selectscroll.NewSelectScroll(intervalUnits, scp.onIntervalUnitChange, unitStr)
+
+	multiplier := getIntervalUnitMultiplier(unitStr)
+
+	scp.intervalTimeLowerDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Intrvl Low:", unitStr)
+	if err != nil {
+		return nil, err
+	}
+	scp.intervalTimeLowerDisp.OnChanged = scp.onIntervalTimeLowerChange
+	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
+
+	scp.intervalTimeUpperDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Intrvl Up :", unitStr)
+	if err != nil {
+		return nil, err
+	}
+	scp.intervalTimeUpperDisp.OnChanged = scp.onIntervalTimeUpperChange
+	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
+
+	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect, scp.intervalUnitSelect)
+	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
+	if triggerTypes[scp.Settings.Trigger.Type] != control.Interval {
+		scp.boxTriggerIntervalDisp.Hide()
+	}
+
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect)
 	boxThresh := container.New(layout.NewHBoxLayout(), scp.triggerThresholdDisp)
-	scp.triggerDisplays = container.New(layout.NewVBoxLayout(), boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerLowerDisp)
+	scp.triggerDisplays = container.New(layout.NewVBoxLayout(), boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerLowerDisp, scp.boxTriggerIntervalDisp)
 	return scp.triggerDisplays, nil
 }
 

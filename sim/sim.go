@@ -947,9 +947,10 @@ func simSetTriggerDelay(handle int16, delay uint32) (err error) {
 
 func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
 	pwType PulseWidthType) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
-	return
+	if triggerDetector != nil {
+		triggerDetector.SetPulseWidthQualifier(conditions, direction, lower, upper, pwType)
+	}
+	return nil
 }
 func simSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
 	slog.Error(notImplemented)

@@ -40,14 +40,18 @@ type (
 		SimGenActiveTab  int     `yaml:"simgenactivetab"`
 	}
 	ChTriggerSettings struct {
-		Type             string                       `yaml:"type"` // "Simple", "Advanced", "Window"
-		Condition        genericps.TriggerRespBase    `yaml:"condition"`
-		TriggerDirection genericps.ThresholdDirection `yaml:"triggerdirection"`
-		ThresholdMode    genericps.ThresholdModeId    `yaml:"thresholdmode"`
-		Mv               int32                        `yaml:"mv"`
-		Hysteresis       int32                        `yaml:"hysteresis"`
-		LowerMv          int32                        `yaml:"lowermv"`
-		LowerHysteresis  int32                        `yaml:"lowerhysteresis"`
+		Type              string                       `yaml:"type"` // "Simple", "Advanced", "Window", "Complex", "Interval"
+		Condition         genericps.TriggerRespBase    `yaml:"condition"`
+		TriggerDirection  genericps.ThresholdDirection `yaml:"triggerdirection"`
+		ThresholdMode     genericps.ThresholdModeId    `yaml:"thresholdmode"`
+		Mv                int32                        `yaml:"mv"`
+		Hysteresis        int32                        `yaml:"hysteresis"`
+		LowerMv           int32                        `yaml:"lowermv"`
+		LowerHysteresis   int32                        `yaml:"lowerhysteresis"`
+		IntervalType      genericps.PulseWidthType     `yaml:"intervaltype"`
+		IntervalTimeUnit  string                       `yaml:"intervaltimeunit"`
+		IntervalTimeLower float64                      `yaml:"intervaltimelower"`
+		IntervalTimeUpper float64                      `yaml:"intervaltimeupper"`
 	}
 
 	ChSettings struct {

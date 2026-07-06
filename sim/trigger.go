@@ -21,6 +21,16 @@ type TriggerDetector struct {
 	triggerCalculationMode int
 	isComplex              bool
 	channels               [4]TriggerChannelConfig
+	pwqConfig              PwqConfig
+}
+
+type PwqConfig struct {
+	Enabled   bool
+	Direction ThresholdDirection
+	Lower     uint32
+	Upper     uint32
+	Type      PulseWidthType
+	Condition [4]TriggerState // CondTrue, CondFalse, CondDontCare
 }
 
 type TriggerChannelConfig struct {
@@ -55,6 +65,25 @@ func NewTriggerDetector(enabled bool, threshold int16, hysteresis uint16, direct
 		}
 	}
 	return td
+}
+
+func (td *TriggerDetector) SetPulseWidthQualifier(conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32, pwType PulseWidthType) {
+	td.pwqConfig.Enabled = pwType != PwTypeNone
+	td.pwqConfig.Direction = direction
+	td.pwqConfig.Lower = lower
+	td.pwqConfig.Upper = upper
+	td.pwqConfig.Type = pwType
+	
+	if len(conditions) > 0 {
+		td.pwqConfig.Condition[0] = conditions[0].ChannelA
+		td.pwqConfig.Condition[1] = conditions[0].ChannelB
+		td.pwqConfig.Condition[2] = conditions[0].ChannelC
+		td.pwqConfig.Condition[3] = conditions[0].ChannelD
+	} else {
+		for i := 0; i < 4; i++ {
+			td.pwqConfig.Condition[i] = CondDontCare
+		}
+	}
 }
 
 var old float64
@@ -104,10 +133,55 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 	states := [4]ChannelTriggerState{}
 
+	pwqActive := false
+	var pwqDuration float64 = 0
+
 	t := float64(0)
 	for t < maxTime {
 		allConditionsMet := true
 		var edgeTriggerTime float64 = t - dt // Default trigger time if no edge triggers are used
+		
+		pwqSatisfied := false
+		if td.pwqConfig.Enabled {
+			pwqConditionsMet := true
+			for i, cfg := range td.channels {
+				if td.pwqConfig.Condition[i] != CondDontCare {
+					level := signalFunc(t, ChannelId(i))
+					isHigh := level > float64(cfg.Threshold)
+					isTrueState := isHigh
+					if cfg.Direction == TriggerFalling {
+						isTrueState = !isHigh
+					}
+					if (td.pwqConfig.Condition[i] == CondTrue && !isTrueState) || (td.pwqConfig.Condition[i] == CondFalse && isTrueState) {
+						pwqConditionsMet = false
+						break
+					}
+				}
+			}
+
+			if pwqConditionsMet && !pwqActive {
+				pwqActive = true
+				pwqDuration = 0
+			} else if pwqConditionsMet && pwqActive {
+				pwqDuration += dt
+			} else if !pwqConditionsMet && pwqActive {
+				pwqActive = false
+				
+				lowerTime := float64(td.pwqConfig.Lower) * dt
+				upperTime := float64(td.pwqConfig.Upper) * dt
+				
+				switch td.pwqConfig.Type {
+				case PwTypeLessThan:
+					if pwqDuration < upperTime { pwqSatisfied = true }
+				case PwTypeGreaterThan:
+					if pwqDuration > lowerTime { pwqSatisfied = true }
+				case PwTypeInRange:
+					if pwqDuration >= lowerTime && pwqDuration <= upperTime { pwqSatisfied = true }
+				case PwTypeOutOfRange:
+					if pwqDuration < lowerTime || pwqDuration > upperTime { pwqSatisfied = true }
+				}
+			}
+		}
 
 		for i, cfg := range td.channels {
 			if !cfg.Enabled || cfg.Condition == CondDontCare {
@@ -134,9 +208,12 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 		}
 
-		if allConditionsMet {
+		if (!td.pwqConfig.Enabled && allConditionsMet) || (td.pwqConfig.Enabled && pwqSatisfied) {
 			// Trigger found! We use the edgeTriggerTime (or current time if only levels were used)
 			SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
+			if td.pwqConfig.Enabled {
+				return t - dt
+			}
 			return edgeTriggerTime
 		}
 

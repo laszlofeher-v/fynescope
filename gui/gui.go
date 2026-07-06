@@ -172,6 +172,11 @@ type (
 		triggerLowerThresholdDisp    *disp7.DigitArray
 		triggerLowerHysteresisDisp   *disp7.DigitArray
 		boxTriggerLowerDisp          *fyne.Container
+		intervalTypeSelect           *selectscroll.SelectScroll
+		intervalUnitSelect           *selectscroll.SelectScroll
+		intervalTimeLowerDisp        *disp7.DigitArray
+		intervalTimeUpperDisp        *disp7.DigitArray
+		boxTriggerIntervalDisp       *fyne.Container
 		digital                      *fyne.Container
 		genLayout                    *fyne.Container
 		rlcLayout                    *fyne.Container

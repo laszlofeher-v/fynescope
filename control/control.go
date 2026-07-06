@@ -67,6 +67,9 @@ type (
 		ComplexProperties  []genericps.TriggerChannelProperties
 		ComplexConditions  []genericps.TriggerConditions
 		ComplexDirections  []TriggerDirections
+		IntervalType       genericps.PulseWidthType
+		IntervalTimeLower  float64
+		IntervalTimeUpper  float64
 		// TimeOffset         int32
 		// TriggerPreRatio float32
 		XOffset       float64
