@@ -41,24 +41,13 @@ type (
 	}
 	ChTriggerSettings struct {
 		Type             string                       `yaml:"type"` // "Simple", "Advanced", "Window"
+		Condition        genericps.TriggerRespBase    `yaml:"condition"`
 		TriggerDirection genericps.ThresholdDirection `yaml:"triggerdirection"`
 		ThresholdMode    genericps.ThresholdModeId    `yaml:"thresholdmode"`
 		Mv               int32                        `yaml:"mv"`
 		Hysteresis       int32                        `yaml:"hysteresis"`
 		LowerMv          int32                        `yaml:"lowermv"`
 		LowerHysteresis  int32                        `yaml:"lowerhysteresis"`
-	}
-	ComplexChannelConfig struct {
-		ThresholdMode genericps.ThresholdModeId    `yaml:"thresholdmode"`
-		Direction     genericps.ThresholdDirection `yaml:"direction"`
-		Condition     genericps.TriggerRespBase    `yaml:"condition"`
-		UpperMv       int32                        `yaml:"uppermv"`
-		LowerMv       int32                        `yaml:"lowermv"`
-		UpperHyst     int32                        `yaml:"upperhyst"`
-		LowerHyst     int32                        `yaml:"lowerhyst"`
-	}
-	ComplexTriggerConfig struct {
-		Channels [4]ComplexChannelConfig `yaml:"channels"`
 	}
 
 	ChSettings struct {
@@ -117,10 +106,9 @@ type (
 		SampleRateUnit    string            `yaml:"samplerateunits"`
 	}
 	TriggerSettings struct {
-		Mode            string               `yaml:"triggermode"`
-		Type            string               `yaml:"triggertype"`
-		CalculationMode int                  `yaml:"calculationmode"`
-		Complex         ComplexTriggerConfig `yaml:"complex"`
+		Mode            string `yaml:"triggermode"`
+		Type            string `yaml:"triggertype"`
+		CalculationMode int    `yaml:"calculationmode"`
 	}
 	GeneratorSettings struct {
 		On                   bool                    `yaml:"on"`

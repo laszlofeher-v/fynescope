@@ -10,6 +10,7 @@ import (
 
 	"fynescope/control"
 	"fynescope/genericps"
+	"fynescope/settings"
 )
 
 // buildComplexTriggerMessage converts the GUI settings (in mV) into ADC values
@@ -34,15 +35,16 @@ func (scp *ScpDesc) buildComplexTriggerMessage() {
 		Digital:             genericps.CondDontCare,
 	}
 
-	for i, chCfg := range scp.Settings.Trigger.Complex.Channels {
+	for i, ch := range scp.Settings.Channels {
+		chCfg := ch.Trigger
 		if chCfg.Condition != genericps.CondDontCare {
-			vRange := scp.Settings.Channels[i].VRange
+			vRange := ch.VRange
 
 			props = append(props, genericps.TriggerChannelProperties{
-				ThresholdUpper:           int16(scp.mvToAdc(chCfg.UpperMv, vRange)),
-				ThresholdUpperHysteresis: uint16(scp.mvToUAdc(chCfg.UpperHyst, vRange)),
+				ThresholdUpper:           int16(scp.mvToAdc(chCfg.Mv, vRange)),
+				ThresholdUpperHysteresis: uint16(scp.mvToUAdc(chCfg.Hysteresis, vRange)),
 				ThresholdLower:           int16(scp.mvToAdc(chCfg.LowerMv, vRange)),
-				ThresholdLowerHysteresis: uint16(scp.mvToUAdc(chCfg.LowerHyst, vRange)),
+				ThresholdLowerHysteresis: uint16(scp.mvToUAdc(chCfg.LowerHysteresis, vRange)),
 				Channel:                  genericps.ChannelId(i),
 				ThresholdMode:            chCfg.ThresholdMode,
 			})
@@ -50,16 +52,16 @@ func (scp *ScpDesc) buildComplexTriggerMessage() {
 			switch genericps.ChannelId(i) {
 			case genericps.ChA:
 				condition.ChannelA = chCfg.Condition
-				directionA = chCfg.Direction
+				directionA = chCfg.TriggerDirection
 			case genericps.ChB:
 				condition.ChannelB = chCfg.Condition
-				directionB = chCfg.Direction
+				directionB = chCfg.TriggerDirection
 			case genericps.ChC:
 				condition.ChannelC = chCfg.Condition
-				directionC = chCfg.Direction
+				directionC = chCfg.TriggerDirection
 			case genericps.ChD:
 				condition.ChannelD = chCfg.Condition
-				directionD = chCfg.Direction
+				directionD = chCfg.TriggerDirection
 			}
 		}
 	}
@@ -97,22 +99,23 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 	channelRows = append(channelRows, header)
 
 	// Copy config to edit in dialog
-	editedConfig := scp.Settings.Trigger.Complex
+	editedChannels := make([]settings.ChSettings, len(scp.Settings.Channels))
+	copy(editedChannels, scp.Settings.Channels[:])
 
-	for i := 0; i < len(scp.Settings.Channels) && i < 4; i++ {
+	for i := 0; i < len(editedChannels) && i < 4; i++ {
 		chIdx := i
 		chName := string(rune('A' + i))
-		cfg := editedConfig.Channels[chIdx]
+		cfg := editedChannels[chIdx].Trigger
 
 		// Condition Dropdown
 		condSelect := widget.NewSelect([]string{"Don't Care", "True", "False"}, func(s string) {
 			switch s {
 			case "True":
-				editedConfig.Channels[chIdx].Condition = genericps.CondTrue
+				editedChannels[chIdx].Trigger.Condition = genericps.CondTrue
 			case "False":
-				editedConfig.Channels[chIdx].Condition = genericps.CondFalse
+				editedChannels[chIdx].Trigger.Condition = genericps.CondFalse
 			default:
-				editedConfig.Channels[chIdx].Condition = genericps.CondDontCare
+				editedChannels[chIdx].Trigger.Condition = genericps.CondDontCare
 			}
 		})
 		switch cfg.Condition {
@@ -128,14 +131,14 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 		dirSelect := widget.NewSelect([]string{"Rising", "Falling", "RisingOrFalling"}, func(s string) {
 			switch s {
 			case "Rising":
-				editedConfig.Channels[chIdx].Direction = genericps.TriggerRaising
+				editedChannels[chIdx].Trigger.TriggerDirection = genericps.TriggerRaising
 			case "Falling":
-				editedConfig.Channels[chIdx].Direction = genericps.TriggerFalling
+				editedChannels[chIdx].Trigger.TriggerDirection = genericps.TriggerFalling
 			case "RisingOrFalling":
-				editedConfig.Channels[chIdx].Direction = genericps.TriggerRisingOrFalling
+				editedChannels[chIdx].Trigger.TriggerDirection = genericps.TriggerRisingOrFalling
 			}
 		})
-		switch cfg.Direction {
+		switch cfg.TriggerDirection {
 		case genericps.TriggerRaising:
 			dirSelect.SetSelected("Rising")
 		case genericps.TriggerFalling:
@@ -148,31 +151,31 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 
 		// Threshold Input
 		threshInput := widget.NewEntry()
-		threshInput.SetText(strconv.Itoa(int(cfg.UpperMv)))
+		threshInput.SetText(strconv.Itoa(int(cfg.Mv)))
 		threshInput.OnChanged = func(s string) {
 			if v, err := strconv.Atoi(s); err == nil {
-				editedConfig.Channels[chIdx].UpperMv = int32(v)
+				editedChannels[chIdx].Trigger.Mv = int32(v)
 				// For simple Level mode, use same for LowerMv
-				editedConfig.Channels[chIdx].LowerMv = int32(v) 
+				editedChannels[chIdx].Trigger.LowerMv = int32(v)
 			}
 		}
 
 		// Hysteresis Input
 		hystInput := widget.NewEntry()
-		hystInput.SetText(strconv.Itoa(int(cfg.UpperHyst)))
+		hystInput.SetText(strconv.Itoa(int(cfg.Hysteresis)))
 		hystInput.OnChanged = func(s string) {
 			if v, err := strconv.Atoi(s); err == nil {
-				editedConfig.Channels[chIdx].UpperHyst = int32(v)
-				editedConfig.Channels[chIdx].LowerHyst = int32(v)
+				editedChannels[chIdx].Trigger.Hysteresis = int32(v)
+				editedChannels[chIdx].Trigger.LowerHysteresis = int32(v)
 			}
 		}
 
 		// Mode Dropdown
 		modeSelect := widget.NewSelect([]string{"Level", "Window"}, func(s string) {
 			if s == "Level" {
-				editedConfig.Channels[chIdx].ThresholdMode = genericps.Level
+				editedChannels[chIdx].Trigger.ThresholdMode = genericps.Level
 			} else {
-				editedConfig.Channels[chIdx].ThresholdMode = genericps.Window
+				editedChannels[chIdx].Trigger.ThresholdMode = genericps.Window
 			}
 		})
 		if cfg.ThresholdMode == genericps.Window {
@@ -197,7 +200,9 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 
 	dlg := dialog.NewCustomConfirm("Complex Trigger Configuration", "Apply", "Cancel", content, func(apply bool) {
 		if apply {
-			scp.Settings.Trigger.Complex = editedConfig
+			for i := range editedChannels {
+				scp.Settings.Channels[i].Trigger = editedChannels[i].Trigger
+			}
 			scp.SaveSettings()
 			scp.buildComplexTriggerMessage()
 			scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg

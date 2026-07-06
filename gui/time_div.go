@@ -787,18 +787,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
-	// Build trigger type options based on whether complex trigger is enabled
-	var activeTypeOptions []string
-	if scp.ComplexTriggerEnabled {
-		activeTypeOptions = []string{"Simple", "Advanced", "Window", "Complex"}
-		triggerTypes["Complex"] = control.Complex
-	} else {
-		activeTypeOptions = []string{"Simple", "Advanced", "Window"}
-		// If settings had Complex selected but flag is off, fall back to Advanced
-		if scp.Settings.Trigger.Type == "Complex" {
-			scp.Settings.Trigger.Type = "Advanced"
-		}
-	}
+	// Build trigger type options
+	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Complex"}
+	triggerTypes["Complex"] = control.Complex
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, "Advanced")
 	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)

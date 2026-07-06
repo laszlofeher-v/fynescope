@@ -137,7 +137,7 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 	
 	newMv := int32(math.Round(float64(mv)))
-	tp.scp.Settings.Trigger.Complex.Channels[chIdx].UpperMv = newMv
+	tp.scp.Settings.Channels[chIdx].Trigger.Mv = newMv
 	// For level trigger we keep LowerMv independent as requested by the user.
 
 	tp.scp.buildComplexTriggerMessage()
@@ -174,9 +174,10 @@ func (tp *complexTriggerPointViewer) draw() {
 	
 	tp.channelRects = make(map[int]image.Rectangle)
 	
-	for i, chCfg := range tp.scp.Settings.Trigger.Complex.Channels {
-		if chCfg.Condition != genericps.CondDontCare && tp.scp.Settings.Channels[i].Enabled {
-			x, y := tp.timeMv2xy(chCfg.UpperMv, i)
+	for i, ch := range tp.scp.Settings.Channels {
+		chCfg := ch.Trigger
+		if chCfg.Condition != genericps.CondDontCare && ch.Enabled {
+			x, y := tp.timeMv2xy(chCfg.Mv, i)
 			bound := tp.scp.ftScopeSignalScreen.Bounds()
 			maxY := float32(bound.Max.Y)
 			minY := float32(bound.Min.Y)
