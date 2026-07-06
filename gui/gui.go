@@ -368,17 +368,31 @@ func (scp *ScpDesc) SaveSettings() {
 }
 
 func (scp *ScpDesc) refreshRasters() {
-	if scp.ftRaster != nil {
-		canvas.Refresh(scp.ftRaster)
+	if scp.Settings == nil {
+		return
 	}
-	if scp.dftRaster != nil {
-		canvas.Refresh(scp.dftRaster)
+	targetFunction := scp.Settings.Window.Function
+	if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
+		targetFunction = scp.Settings.Window.LastDispFunction
 	}
-	if scp.fvRaster != nil {
-		canvas.Refresh(scp.fvRaster)
-	}
-	if scp.ffRaster != nil {
-		canvas.Refresh(scp.ffRaster)
+
+	switch targetFunction {
+	case dftTabIndex:
+		if scp.dftRaster != nil {
+			canvas.Refresh(scp.dftRaster)
+		}
+	case fvTabIndex:
+		if scp.fvRaster != nil {
+			canvas.Refresh(scp.fvRaster)
+		}
+	case ffTabIndex:
+		if scp.ffRaster != nil {
+			canvas.Refresh(scp.ffRaster)
+		}
+	default:
+		if scp.ftRaster != nil {
+			canvas.Refresh(scp.ftRaster)
+		}
 	}
 }
 
@@ -803,12 +817,12 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.controlTriggerTimeOffset = triggerTimeOffset
 		scp.controlSamplingTimeInterval = samplingTimeInterval
 
-		scp.UpdateMeasurements(buffers, samplingTimeInterval)
-		scp.updateBinWidth()
-		scp.updateDftDataCollectionTime()
-
-		/*go */
-		fyne.Do(scp.refreshRasters) // it calls draw method in signalviewer
+		fyne.Do(func() {
+			scp.UpdateMeasurements(buffers, samplingTimeInterval)
+			scp.updateBinWidth()
+			scp.updateDftDataCollectionTime()
+			scp.refreshRasters() // it calls draw method in signalviewer
+		})
 	}
 
 	for i := range scp.channelViewers {
