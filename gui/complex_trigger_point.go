@@ -201,9 +201,17 @@ func (tp *complexTriggerPointViewer) draw() {
 			if tp.selectedChannel == i || tp.hoveredChannel == i {
 				// Highlight outline if hovered or selected
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, theme.SelectionColor())
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, theme.SelectionColor())
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-2, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-3, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-4, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-5, col)
 			} else {
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-2, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-3, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-4, col)
 			}
 		}
 	}
