@@ -879,7 +879,7 @@ func NewConnection() (con *Connection) {
 	con = &Connection{}
 	con.ID = ""
 	con.MsgCh = make(chan Message)
-	con.RspCh = make(chan struct{})
+	con.RspCh = make(chan struct{}, 1)
 	return
 }
 
