@@ -131,7 +131,10 @@ For more options, including displaying version, build date, and license informat
 The standard single-channel edge trigger. Select **Simple** in the trigger type selector to use basic rising or falling edge detection with a configurable threshold and auto-trigger fallback.
 
 ### Advanced Trigger
-Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports **Level** triggering (standard edge) and **Window** triggering (triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds).
+Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports:
+- **Level** triggering (standard edge detection)
+- **Window** triggering (triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds)
+- **Interval** triggering (Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: Less Than, Greater Than, In Range, or Out Of Range)
 
 ### Complex Trigger ⚠️ Experimental
 
@@ -180,7 +183,7 @@ With Complex mode, a trigger fires only when **all** channels with a `True` cond
 
 #### Simulator Support
 
-The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The trigger fires at the first time step where all `True` conditions are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
+The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The simulator accurately tracks state for Window triggering boundaries (Enter/Exit direction rules) and evaluates Interval (Pulse Width) durations with sample-precision. The trigger fires at the first time step where all `True` conditions and time constraints are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
 
 #### Limitations & Known Issues
 
@@ -273,7 +276,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
 
 **Triggering**
-- **No pulse-width / window / dropout / runt triggers**: Only edge triggering (Simple, Advanced) and experimental multi-channel Complex triggering are implemented. Advanced modes such as pulse-width, window, dropout, runt, and logic triggers are not implemented.
+- **No dropout / runt triggers**: Edge (Simple, Advanced), Window (with directional control: Enter/Exit/Any), Interval (Pulse Width filtering), and experimental multi-channel Complex triggering are fully implemented. Other advanced hardware modes such as dropout, runt, and logic triggers are not currently implemented.
 - **Complex trigger is experimental**: See the [Complex Trigger](#complex-trigger--experimental) section for details and known limitations.
 
 **Protocol & Digital**
