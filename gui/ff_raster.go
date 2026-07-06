@@ -1827,11 +1827,13 @@ func (scp *ScpDesc) processFfData() {
 	// Only process data if the required wait time for the current sweep step has elapsed.
 	// This ensures we do not accumulate FFTs containing historical data from the previous frequency.
 	if time.Now().Before(acquireTime) {
+		slog.Info("processFfData early return: before acquireTime", "now", time.Now(), "acquireTime", acquireTime)
 		return
 	}
 
 	refCh := scp.Settings.Ff.ReferenceChannel
 	if !scp.Settings.Channels[refCh].Enabled {
+		slog.Info("processFfData early return: refCh not enabled", "refCh", refCh)
 		return
 	}
 
@@ -1853,6 +1855,7 @@ func (scp *ScpDesc) processFfData() {
 			measuredFreq = scp.currentFfFreq
 		} else {
 			// Not sweeping and no signal, skip measurement
+			slog.Info("processFfData early return: no signal and no sweep target", "err", err, "period", period)
 			return
 		}
 	}
@@ -1868,6 +1871,7 @@ func (scp *ScpDesc) processFfData() {
 	// 2. Compute FFT for each channel to get magnitude at measured frequency
 	samplesLen := len(refBuf)
 	if samplesLen < 4 {
+		slog.Info("processFfData early return: samplesLen < 4", "len", samplesLen)
 		return
 	}
 
@@ -2022,6 +2026,7 @@ func (scp *ScpDesc) processFfData() {
 	}
 
 	if scp.ffSweepDataReady != nil {
+		slog.Info("processFfData: sending to ffSweepDataReady", "freq", targetFreq)
 		select {
 		case scp.ffSweepDataReady <- struct{}{}:
 		default:

@@ -165,6 +165,7 @@ func blockMode(psControl *PscDesc) state {
 			}
 			err := prepare()
 			if err != nil {
+				slog.Error("blockMode prepare failed", "err", err)
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
@@ -199,6 +200,7 @@ func blockMode(psControl *PscDesc) state {
 			// slog.Debug("get")
 			err := psControl.getData(psControl.SampleCountRequired, 0, false) //get data from the scope and send to the gui
 			if err != nil {
+				slog.Error("blockMode getData failed", "err", err)
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
