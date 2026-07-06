@@ -502,6 +502,20 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		tap(changeSideId)
 		tap(changeSideId)
 		tap(runblockButtonId)
+
+		fyne.DoAndWait(func() {
+			scp.triggerTypeSelect.SetSelected("Complex")
+		})
+		wait()
+		fyne.DoAndWait(func() {
+			if scp.complexTriggerDialog != nil {
+				scp.complexTriggerDialog.Hide()
+				if scp.complexTriggerCb != nil {
+					scp.complexTriggerCb(rand.Intn(2) == 0) // Apply or Cancel randomly
+				}
+			}
+		})
+		wait()
 	}
 
 	fyne.DoAndWait(func() {
@@ -576,6 +590,17 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
 		wait()
+		if scp.complexTriggerDialog != nil {
+			fyne.DoAndWait(func() {
+				if scp.complexTriggerDialog != nil {
+					scp.complexTriggerDialog.Hide()
+					if scp.complexTriggerCb != nil {
+						scp.complexTriggerCb(rand.Intn(2) == 0) // Apply or Cancel randomly
+					}
+				}
+			})
+			continue
+		}
 		control = rand.Intn(len(controls))
 		// slog.Debug("name", "name", a[control], "short", a[control][0:3])
 		var targetTab int

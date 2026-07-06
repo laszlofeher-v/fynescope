@@ -198,7 +198,7 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 	content := container.NewVScroll(container.NewVBox(channelRows...))
 	content.SetMinSize(fyne.NewSize(650, 300))
 
-	dlg := dialog.NewCustomConfirm("Complex Trigger Configuration", "Apply", "Cancel", content, func(apply bool) {
+	scp.complexTriggerCb = func(apply bool) {
 		if apply {
 			for i := range editedChannels {
 				scp.Settings.Channels[i].Trigger = editedChannels[i].Trigger
@@ -210,7 +210,11 @@ func (scp *ScpDesc) showComplexTriggerPopup() {
 			scp.clearAllFtPersistentLayers()
 			scp.refreshRasters()
 		}
-	}, win)
-	dlg.Resize(fyne.NewSize(700, 400))
-	dlg.Show()
+		scp.complexTriggerDialog = nil
+		scp.complexTriggerCb = nil
+	}
+
+	scp.complexTriggerDialog = dialog.NewCustomConfirm("Complex Trigger Configuration", "Apply", "Cancel", content, scp.complexTriggerCb, win)
+	scp.complexTriggerDialog.Resize(fyne.NewSize(700, 400))
+	scp.complexTriggerDialog.Show()
 }

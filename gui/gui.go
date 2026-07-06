@@ -41,6 +41,7 @@ import (
 	// "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -227,6 +228,8 @@ type (
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
 		useExtGenCheck             *widget.Check
+		complexTriggerDialog       dialog.Dialog
+		complexTriggerCb           func(bool)
 	}
 )
 
