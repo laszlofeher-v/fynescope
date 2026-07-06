@@ -407,6 +407,18 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				col := channel.Col[scp.Settings.ChannelColorIndex]
 				scp.triggerThresholdDisp.SetOncolor(col)
 				scp.triggerHysteresisDisp.SetOncolor(col)
+				if scp.triggerLowerThresholdDisp != nil {
+					scp.triggerLowerThresholdDisp.SetOncolor(col)
+				}
+				if scp.triggerLowerHysteresisDisp != nil {
+					scp.triggerLowerHysteresisDisp.SetOncolor(col)
+				}
+				if scp.intervalTimeLowerDisp != nil {
+					scp.intervalTimeLowerDisp.SetOncolor(col)
+				}
+				if scp.intervalTimeUpperDisp != nil {
+					scp.intervalTimeUpperDisp.SetOncolor(col)
+				}
 			}
 		} else {
 			scp.triggerSource = dontCare
@@ -583,6 +595,18 @@ func (scp *ScpDesc) SetChannelColors(col color.Color,
 			cfg.Col[scp.Settings.ChannelColorIndex])
 		scp.triggerHysteresisDisp.SetOncolor(
 			cfg.Col[scp.Settings.ChannelColorIndex])
+		if scp.triggerLowerThresholdDisp != nil {
+			scp.triggerLowerThresholdDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
+		}
+		if scp.triggerLowerHysteresisDisp != nil {
+			scp.triggerLowerHysteresisDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
+		}
+		if scp.intervalTimeLowerDisp != nil {
+			scp.intervalTimeLowerDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
+		}
+		if scp.intervalTimeUpperDisp != nil {
+			scp.intervalTimeUpperDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
+		}
 	}
 	channelViewer.minV.SetOncolor(
 		cfg.Col[scp.Settings.ChannelColorIndex])

@@ -196,6 +196,12 @@ func (d7 *DigitArray) SetOncolor(col color.Color) {
 	defer d7.lock.Unlock()
 	d7.lock.Lock()
 	d7.onColor = col
+	if d7.label != nil {
+		d7.label.Color = col
+	}
+	if d7.unit != nil {
+		d7.unit.Color = col
+	}
 	d7.Refresh()
 }
 
