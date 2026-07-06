@@ -479,10 +479,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	addToTest(channelViewer.enableCheckbox, chEnableId+chId)
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
-	invert = widget.NewCheck("Inv:", inverted)
+	invert = widget.NewCheck("Inv", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
 	addToTest(invert, invertId+chId)
-	trigger = widget.NewCheck("Trig:", triggerSelected)
+	trigger = widget.NewCheck("Trig", triggerSelected)
 	channelViewer.triggerCheckbox = trigger
 	scp.triggerCheck = append(scp.triggerCheck, trigger)
 	addToTest(trigger, triggerCheckId+chId)
@@ -496,7 +496,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.refreshRasters()
 		scp.SaveSettings()
 	}
-	pers := widget.NewCheck("Pers:", persSelected)
+	pers := widget.NewCheck("Pers", persSelected)
 	pers.SetChecked(scp.Settings.Channels[chIndex].Persistence)
 	channelViewer.persistenceCheckbox = pers
 	addToTest(pers, persId+chId)
