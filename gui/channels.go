@@ -419,6 +419,21 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection,
 			1000, scp.Settings.Time.TriggerTimeOffset)
+		
+		if checked {
+			triggerType := channel.Trigger.Type
+			if triggerType == "" {
+				if channel.Trigger.ThresholdMode == genericps.Window {
+					triggerType = "Window"
+				} else {
+					triggerType = "Simple"
+				}
+			}
+			if scp.Settings.Trigger.Type != triggerType && scp.Settings.Trigger.Type != "Complex" {
+				scp.triggerTypeSelect.SetSelected(triggerType)
+			}
+		}
+		
 		scp.refreshRasters()
 		setChannel()
 	}

@@ -308,8 +308,6 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		scp.triggerSettingMsg.LowerHysteresisADC != lowerHysteresisADC ||
 		scp.triggerSettingMsg.LowerTriggerADC != lowerTriggerADC ||
 		scp.triggerSettingMsg.ThresholdMode != thresholdMode {
-
-		// slog.Debug("new trigger", "old triggerADC", scp.triggerSettingMsg.TriggerADC)
 		scp.triggerSettingMsg.Enabled = enable
 		scp.triggerSettingMsg.Source = source
 		scp.triggerSettingMsg.Mv = mv
@@ -557,25 +555,26 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	scp.Settings.Trigger.Type = option
 	scp.triggerSettingMsg.Type = triggerTypes[option]
-	
+
 	if scp.triggerSettingMsg.Type == control.Window {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
 	}
 
-	for i := range scp.channelViewers {
-		scp.Settings.Channels[i].Trigger.ThresholdMode = scp.triggerSettingMsg.ThresholdMode
-		if scp.channelViewers[i].triggerDirectionSelect != nil {
+	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
+		scp.Settings.Channels[scp.triggerSource].Trigger.ThresholdMode = scp.triggerSettingMsg.ThresholdMode
+		scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
+		if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
 			var activeOpts []string
 			if option == "Window" {
 				activeOpts = triggerWindowDirectionOptions
 			} else {
 				activeOpts = triggerDirectionOptions
 			}
-			scp.channelViewers[i].triggerDirectionSelect.SetOptions(activeOpts)
+			scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SetOptions(activeOpts)
 			// Also reset the selection if it's invalid for the new options
-			currSel := scp.channelViewers[i].triggerDirectionSelect.Selected
+			currSel := scp.channelViewers[scp.triggerSource].triggerDirectionSelect.Selected
 			valid := false
 			for _, opt := range activeOpts {
 				if opt == currSel {
@@ -584,11 +583,9 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 				}
 			}
 			if !valid && len(activeOpts) > 0 {
-				scp.channelViewers[i].triggerDirectionSelect.SilentSetSelected(activeOpts[0])
-				scp.Settings.Channels[i].Trigger.TriggerDirection = triggerDirections[activeOpts[0]]
-				if scp.triggerSource == genericps.ChannelId(i) {
-					scp.triggerSettingMsg.ThresholdDirection = triggerDirections[activeOpts[0]]
-				}
+				scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SilentSetSelected(activeOpts[0])
+				scp.Settings.Channels[scp.triggerSource].Trigger.TriggerDirection = triggerDirections[activeOpts[0]]
+				scp.triggerSettingMsg.ThresholdDirection = triggerDirections[activeOpts[0]]
 			}
 		}
 	}
@@ -597,7 +594,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 		scp.buildComplexTriggerMessage()
 		scp.showComplexTriggerPopup()
 	}
-	
+
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
 	if scp.boxTriggerHysteresisDisp != nil {
@@ -708,8 +705,6 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
-
-
 
 func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.timeUnitSelect = selectscroll.NewSelectScroll(units, scp.onTimeUnitChange, milliSec+div)
