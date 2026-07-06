@@ -481,7 +481,11 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 			max := float32(-32768)
 			scale := float32(genericps.InputRanges[channel.VRange]) / float32(scp.MaxValue)
 
-			for i := range receiveBuffer {
+			n := len(receiveBuffer)
+			if n > len(displayBuffer) {
+				n = len(displayBuffer)
+			}
+			for i := 0; i < n; i++ {
 				displayBuffer[i] = float32(receiveBuffer[i]) * scale
 			}
 
