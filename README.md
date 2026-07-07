@@ -93,7 +93,7 @@ For more options, including displaying version, build date, and license informat
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-sim` | `false` | Run in simulator mode only (no hardware required) |
-| `-ctrigger` | `false` | Enable the experimental Complex Trigger mode |
+| `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
 | `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab |
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
@@ -112,7 +112,7 @@ For more options, including displaying version, build date, and license informat
   - Left click in play icon starts the PicoScope hardware or the simulator.
 - **Graphs and Plots**:
   - **Scroll Wheel**: On trigger point change the hysteresis.
-  - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel.
+  - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
   - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase.
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
   - **Trigger Controls**: Use left click and drag or scroll on the trigger controls to adjust the trigger properties.
@@ -138,39 +138,20 @@ Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelCon
 
 ### Complex Trigger ⚠️ Experimental
 
-> **This feature is experimental and enabled separately via the `-ctrigger` command-line flag.**
-
 Complex triggering allows you to define trigger conditions across **multiple channels simultaneously**, using AND logic. It maps directly onto the PicoScope 2000 Series API calls `ps2000aSetTriggerChannelProperties`, `ps2000aSetTriggerChannelConditions`, and `ps2000aSetTriggerChannelDirections`.
 
 #### Enabling Complex Trigger
 
-```bash
-./fynescope -ctrigger=true
-```
+This feature is enabled by checking the **Cmpx** checkbox in the main trigger control panel.
 
-or in simulator mode:
+#### Per-Channel Configuration
 
-```bash
-./fynescope -sim -ctrigger=true
-```
+When **Cmpx** is enabled, a condition dropdown appears in each active channel's control panel. This allows you to configure trigger conditions independently for each channel:
 
-When enabled, a **Complex** option appears in the trigger type selector alongside **Simple** and **Advanced**.
+- **Condition**: `Don't Care` / `True` / `False` — whether this channel must participate in the trigger condition.
+- **Direction & Threshold**: Standard channel trigger settings (Direction, Threshold, Hysteresis, Mode, Window Dir) are used for the evaluation.
 
-#### Configuration Dialog
-
-Selecting **Complex** opens a configuration dialog with a row for each enabled channel (A, B, C, D). Each row allows you to configure:
-
-| Column | Description |
-|--------|-------------|
-| **Channel** | The analog channel (A, B, C, D) |
-| **Condition** | `Don't Care` / `True` / `False` — whether this channel must participate in the trigger |
-| **Direction** | `Rising` / `Falling` / `RisingOrFalling` — the required edge direction |
-| **Threshold (mV)** | Trigger voltage level (or Upper bound for Window mode) |
-| **Hysteresis** | Hysteresis voltage in millivolts to avoid false re-triggers |
-| **Mode** | `Level` (standard threshold) or `Window` (upper/lower bounds) |
-| **Window Dir.** | `Enter` / `Exit` / `Any` — direction for Window mode |
-
-Click **Apply** to commit the configuration. The settings are persisted in the device's YAML settings file and restored on next launch. You can also **click and drag** the visual trigger point indicators on the f(t) plot to intuitively adjust the upper and lower thresholds directly on the screen for each channel.
+The settings are persisted in the device's YAML settings file and restored on next launch. You can also **click and drag** the visual trigger point indicators on the f(t) plot to intuitively adjust the upper and lower thresholds directly on the screen for each channel.
 
 #### Trigger Logic
 
