@@ -174,20 +174,25 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		pwqCond = genericps.CondTrue
 	}
 
+	condMain := genericps.CondTrue
+	if isIntervalActive {
+		condMain = genericps.CondDontCare
+	}
+
 	var triggerConditions []genericps.TriggerConditions
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondTrue, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	case genericps.ChB:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondTrue, ChannelC: genericps.CondDontCare,
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	case genericps.ChC:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondTrue,
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain,
 			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	case genericps.ChD:
 		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
-			ChannelD: genericps.CondTrue, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	}
 
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
@@ -270,14 +275,29 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 				}
 			}
 		}
-		
-		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, dir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
+		pwqDir := dir
+		switch dir {
+		case genericps.TriggerRaising:
+			pwqDir = genericps.TriggerFalling
+		case genericps.TriggerFalling:
+			pwqDir = genericps.TriggerRaising
+		case genericps.TriggerAbove:
+			pwqDir = genericps.TriggerBelow
+		case genericps.TriggerBelow:
+			pwqDir = genericps.TriggerAbove
+		}
+		slog.Debug("isIntervalActive","pwqConditions",pwqConditions,"pwqDir",pwqDir)
+		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
 		if err != nil {
 			slog.Error("SetPulseWidthQualifier:", "error:", err)
 			return
 		}
 	} else {
-		err = psControl.Con.SetPulseWidthQualifier(nil, dir, 0, 0, genericps.PwTypeNone)
+		pwqDir := genericps.TriggerRaising
+		if dir == genericps.TriggerFalling {
+			pwqDir = genericps.TriggerFalling
+		}
+		err = psControl.Con.SetPulseWidthQualifier(nil, pwqDir, 0, 0, genericps.PwTypeNone)
 		if err != nil {
 			slog.Error("SetPulseWidthQualifier disable:", "error:", err)
 		}

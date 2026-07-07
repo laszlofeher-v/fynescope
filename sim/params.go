@@ -10,30 +10,40 @@ import (
 // uint64 bit-pattern and accessed via sync/atomic so that reads and writes are
 // always race-free without needing a mutex.
 var simParams struct {
-	noiseAmplitude       atomic.Uint64 // float64 bits
-	phaseNoiseDegree     atomic.Uint64 // float64 bits
-	raiseFallTimePercent atomic.Uint64 // float64 bits
-	triggerTimeOffset    atomic.Uint64 // float64 bits
+	noiseAmplitude       [MaxChannels]atomic.Uint64 // float64 bits
+	phaseNoiseDegree     [MaxChannels]atomic.Uint64 // float64 bits
+	raiseFallTimePercent atomic.Uint64              // float64 bits
+	triggerTimeOffset    atomic.Uint64              // float64 bits
 }
 
 // SetNoiseAmplitude sets the noise amplitude (GUI → sampling goroutine).
-func SetNoiseAmplitude(v float64) {
-	simParams.noiseAmplitude.Store(math.Float64bits(v))
+func SetNoiseAmplitude(ch int, v float64) {
+	if ch >= 0 && ch < MaxChannels {
+		simParams.noiseAmplitude[ch].Store(math.Float64bits(v))
+	}
 }
 
 // GetNoiseAmplitude returns the current noise amplitude.
-func GetNoiseAmplitude() float64 {
-	return math.Float64frombits(simParams.noiseAmplitude.Load())
+func GetNoiseAmplitude(ch int) float64 {
+	if ch >= 0 && ch < MaxChannels {
+		return math.Float64frombits(simParams.noiseAmplitude[ch].Load())
+	}
+	return 0
 }
 
 // SetPhaseNoiseDegree sets the phase noise in degrees (GUI → sampling goroutine).
-func SetPhaseNoiseDegree(v float64) {
-	simParams.phaseNoiseDegree.Store(math.Float64bits(v))
+func SetPhaseNoiseDegree(ch int, v float64) {
+	if ch >= 0 && ch < MaxChannels {
+		simParams.phaseNoiseDegree[ch].Store(math.Float64bits(v))
+	}
 }
 
 // GetPhaseNoiseDegree returns the current phase noise in degrees.
-func GetPhaseNoiseDegree() float64 {
-	return math.Float64frombits(simParams.phaseNoiseDegree.Load())
+func GetPhaseNoiseDegree(ch int) float64 {
+	if ch >= 0 && ch < MaxChannels {
+		return math.Float64frombits(simParams.phaseNoiseDegree[ch].Load())
+	}
+	return 0
 }
 
 // SetRaiseFallTimePercent sets the rise/fall time percent (GUI → sampling goroutine).

@@ -8,6 +8,7 @@ import (
 	"fynescope/settings"
 	"image/color"
 	"log/slog"
+	"math"
 	"sort"
 
 	"fyne.io/fyne/v2"
@@ -57,6 +58,7 @@ type (
 		filterWarning            *canvas.Text
 		simGenDisplays           []*disp7.DigitArray
 		triggerDirectionSelect   *selectscroll.SelectScroll
+		triggerConditionSelect   *selectscroll.SelectScroll
 	}
 )
 
@@ -255,7 +257,7 @@ func (scp *ScpDesc) refreshFilterWarning(chIndex genericps.ChannelId) {
 func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 	frqPeriodBox *fyne.Container) {
 	var err error
-	const fontScale = 0.7
+	fontScale := float32(0.7) * scp.getScreenScale()
 	scp.channelViewers[chIndex].frq, err = disp7.NewCustomDisp7Array(4, 0,
 		maxFrqDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
 		scp.Window, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
@@ -282,7 +284,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 	vfBox *fyne.Container) {
 	var err error
-	const fontScale = 0.7
+	fontScale := float32(0.7) * scp.getScreenScale()
 	scp.channelViewers[chIndex].maxV, err = disp7.NewCustomDisp7Array(5, 3,
 		20000, -20000, disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 		scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
@@ -301,6 +303,39 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 	if err != nil {
 		panic("error from disp7.NewCustomDisp7Array")
 	}
+
+	scp.channelViewers[chIndex].triggerConditionSelect = selectscroll.NewSelectScroll([]string{"Don't Care", "True", "False"}, func(s string, e selectscroll.Exception) {
+		switch s {
+		case "True":
+			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondTrue
+		case "False":
+			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondFalse
+		default:
+			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondDontCare
+		}
+		if scp.Settings.Trigger.ComplexEnabled {
+			scp.buildComplexTriggerMessage()
+			scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+			<-scp.triggerSettingMsg.Done
+			scp.clearAllFtPersistentLayers()
+			scp.refreshRasters()
+			scp.SaveSettings()
+		}
+	}, "Don't Care")
+	
+	switch scp.Settings.Channels[chIndex].Trigger.Condition {
+	case genericps.CondTrue:
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("True")
+	case genericps.CondFalse:
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("False")
+	default:
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("Don't Care")
+	}
+
+	if !scp.Settings.Trigger.ComplexEnabled {
+		scp.channelViewers[chIndex].triggerConditionSelect.Hide()
+	}
+
 	vfBox = container.New(layout.NewVBoxLayout(),
 		scp.channelViewers[chIndex].maxV,
 		scp.channelViewers[chIndex].minV)
@@ -425,14 +460,66 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			scp.triggerDisplays.Hide()
 			channel.TriggerSource = false
 		}
-		scp.triggerThresholdDisp.Refresh()
-		scp.triggerHysteresisDisp.Refresh()
-		scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
-		scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
-			channel.Trigger.TriggerDirection,
-			1000, scp.Settings.Time.TriggerTimeOffset)
-		
 		if checked {
+			if scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
+				scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
+			}
+			scp.triggerThresholdDisp.Refresh()
+			
+			if scp.triggerHysteresisDisp.Value != int(channel.Trigger.Hysteresis) {
+				scp.triggerHysteresisDisp.SilentSetValue(int(channel.Trigger.Hysteresis))
+			}
+			scp.triggerHysteresisDisp.Refresh()
+			
+			if scp.triggerLowerThresholdDisp != nil {
+				if scp.triggerLowerThresholdDisp.Value != int(channel.Trigger.LowerMv) {
+					scp.triggerLowerThresholdDisp.SilentSetValue(int(channel.Trigger.LowerMv))
+				}
+				scp.triggerLowerThresholdDisp.Refresh()
+			}
+			
+			if scp.triggerLowerHysteresisDisp != nil {
+				if scp.triggerLowerHysteresisDisp.Value != int(channel.Trigger.LowerHysteresis) {
+					scp.triggerLowerHysteresisDisp.SilentSetValue(int(channel.Trigger.LowerHysteresis))
+				}
+				scp.triggerLowerHysteresisDisp.Refresh()
+			}
+			
+			if scp.intervalTypeSelect != nil {
+				invTypeStr := intervalTypeRevMap[channel.Trigger.IntervalType]
+				if invTypeStr != "" && scp.intervalTypeSelect.Selected != invTypeStr {
+					scp.intervalTypeSelect.SilentSetSelected(invTypeStr)
+				}
+			}
+
+			if scp.intervalUnitSelect != nil {
+				if channel.Trigger.IntervalTimeUnit != "" && scp.intervalUnitSelect.Selected != channel.Trigger.IntervalTimeUnit {
+					scp.intervalUnitSelect.SilentSetSelected(channel.Trigger.IntervalTimeUnit)
+				}
+			}
+
+			if scp.intervalTimeLowerDisp != nil {
+				unit := channel.Trigger.IntervalTimeUnit
+				if unit == "" {
+					unit = scp.intervalUnitSelect.Selected
+				}
+				multiplier := getIntervalUnitMultiplier(unit)
+				scp.intervalTimeLowerDisp.SetUnit(unit)
+				scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(channel.Trigger.IntervalTimeLower / multiplier)))
+				scp.intervalTimeLowerDisp.Refresh()
+			}
+			
+			if scp.intervalTimeUpperDisp != nil {
+				unit := channel.Trigger.IntervalTimeUnit
+				if unit == "" {
+					unit = scp.intervalUnitSelect.Selected
+				}
+				multiplier := getIntervalUnitMultiplier(unit)
+				scp.intervalTimeUpperDisp.SetUnit(unit)
+				scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(channel.Trigger.IntervalTimeUpper / multiplier)))
+				scp.intervalTimeUpperDisp.Refresh()
+			}
+
 			triggerType := channel.Trigger.Type
 			if triggerType == "" {
 				if channel.Trigger.ThresholdMode == genericps.Window {
@@ -441,10 +528,18 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 					triggerType = "Simple"
 				}
 			}
-			if scp.Settings.Trigger.Type != triggerType && scp.Settings.Trigger.Type != "Complex" {
+			if scp.Settings.Trigger.Type != triggerType {
 				scp.triggerTypeSelect.SetSelected(triggerType)
 			}
+		} else {
+			scp.triggerThresholdDisp.Refresh()
+			scp.triggerHysteresisDisp.Refresh()
 		}
+
+		scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+		scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
+			channel.Trigger.TriggerDirection,
+			1000, scp.Settings.Time.TriggerTimeOffset)
 		
 		scp.refreshRasters()
 		setChannel()
@@ -452,7 +547,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	channelOffset := func(chIndex genericps.ChannelId) (
 		channelOffsetBox *fyne.Container) {
 		var err error
-		const fontScale = 0.7
+		fontScale := float32(0.7) * scp.getScreenScale()
 		scp.channelViewers[chIndex].offset, err =
 			disp7.NewCustomDisp7Array(5, 3, 20000, -20000, disp7.Signed,
 				disp7.NoTrailingZeroes, scp.Window,
@@ -576,6 +671,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		vRange, x10)
 	minMaxBox := scp.minMaxDisp(chIndex)
 	frqPeriodBox := scp.frqPeriodDisp(chIndex)
+	frqPeriodBox.Add(scp.channelViewers[chIndex].triggerConditionSelect)
 	voltageBox := container.New(layout.NewVBoxLayout(), offsetBox, minMaxBox)
 	vfBox := container.New(layout.NewCustomPaddedHBoxLayout(-20), voltageBox, frqPeriodBox)
 	setChannel()

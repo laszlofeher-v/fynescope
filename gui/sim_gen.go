@@ -68,8 +68,8 @@ func (scp *ScpDesc) applySimGenSettings(ch genericps.ChannelId, genSettings *set
 	msg.Phase = genSettings.Phase
 	
 	if genSettings.On {
-		sim.SetNoiseAmplitude(genSettings.NoiseAmplitude)
-		sim.SetPhaseNoiseDegree(genSettings.PhaseNoiseDegree)
+		sim.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
+		sim.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
 		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 	}
 	
@@ -254,7 +254,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
 
-		sim.SetNoiseAmplitude(genSettings.NoiseAmplitude)
+		sim.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
 		noiseAmplitudeDisp, err = disp7.NewCustomDisp7Array(5, 0,
 			10000, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -269,11 +269,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		noiseAmplitudeDisp.OnChanged = func(v float64) {
 			genSettings.NoiseAmplitude = v
-			sim.SetNoiseAmplitude(v)
+			sim.SetNoiseAmplitude(int(ch), v)
 			scp.applySimGenSettings(ch, genSettings)
 		}
 		noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
-		sim.SetPhaseNoiseDegree(genSettings.PhaseNoiseDegree)
+		sim.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
 		phaseNoiseDisp, err = disp7.NewCustomDisp7Array(5, 2,
 			36000, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -289,7 +289,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		phaseNoiseDisp.OnChanged = func(v float64) {
 			genSettings.PhaseNoiseDegree = v / 100.0
 			slog.Debug("phaseNoiseDisp", "PhaseNoiseDegree", genSettings.PhaseNoiseDegree)
-			sim.SetPhaseNoiseDegree(v / 100.0)
+			sim.SetPhaseNoiseDegree(int(ch), v / 100.0)
 			scp.applySimGenSettings(ch, genSettings)
 		}
 		phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))

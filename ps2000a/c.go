@@ -588,12 +588,12 @@ func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, dir
 		cPwqConditions[i].aux = (C.PS2000A_TRIGGER_STATE)(conditions[i].Aux)
 		cPwqConditions[i].digital = (C.PS2000A_TRIGGER_STATE)(conditions[i].Digital)
 	}
-	
+
 	pcPwqConditions := (*C.PS2000A_PWQ_CONDITIONS)(nil)
 	if len(conditions) > 0 {
 		pcPwqConditions = &cPwqConditions[0]
 	}
-	
+	slog.Debug("cgo", "conditions", conditions, "direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
 	stat := C.ps2000aSetPulseWidthQualifier((C.short)(handle),
 		pcPwqConditions, (C.short)(len(conditions)),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint)(lower), (C.uint)(upper),

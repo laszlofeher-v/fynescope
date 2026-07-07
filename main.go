@@ -92,9 +92,9 @@ var (
 		"tastybutton.go":     false,
 		"testproxy.go":       false,
 		"theme.go":           false,
-		"timediv.go":         false,
+		"timediv.go":         true,
 		"timing.go":          false,
-		"trigger.go":         false,
+		"trigger.go":         true,
 		"triggerpoint.go":    false,
 		"types.go":           false,
 		"waveforms.go":       false,
@@ -212,7 +212,8 @@ func startProfile(n int) error {
 //	-loglevel: Sets logging verbosity (debug, info, warning, error)
 //	-profile:  Enables CPU profiling when set to true
 //	-sim:      Runs in simulator-only mode when set to true
-func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool) {
+//	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
+func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	simulator = flag.Bool("sim", false, "-sim=true")
@@ -220,6 +221,7 @@ func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chC
 	about := flag.Bool("about", false, "show version, build date and license")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := flag.Bool("extgen", inTestMode, "enable external generator (-extgen=true/false)")
+	screenSize = flag.String("screensize", "1920x1080", "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
 
 	flag.Parse()
 
@@ -231,6 +233,9 @@ func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chC
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "chcount" {
 			chCountExplicit = true
+		}
+		if f.Name == "screensize" {
+			screenSizeExplicit = true
 		}
 	})
 
@@ -294,13 +299,21 @@ func setupSettingsFile(con *genericps.Connection) error {
 // 1. Loads saved settings from the YAML file (or creates defaults if not found)
 // 2. Launches the main GUI menu with the device connection and settings
 // The Menu function will block until the user closes the application.
-func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc) error {
+func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc, explicitScreenSize *string, isScreenSizeExplicit bool) error {
 	var err error
 	scp.Settings, err = settings.Load(settingFileName)
 	if err != nil {
 		slog.Error("failed to load settings, using defaults", "err", err)
 		scp.Settings = settings.NewDefaultSettings()
 	}
+	
+	if isScreenSizeExplicit {
+		scp.Settings.ScreenSize = *explicitScreenSize
+		if err := settings.Save(settingFileName, scp.Settings); err != nil {
+			slog.Error("failed to save new default screen size", "err", err)
+		}
+	}
+	
 	return scp.Menu(con, scp.Settings, settingFileName)
 }
 
@@ -312,7 +325,7 @@ func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc) error {
 // 2. Sets up a device-specific settings file
 // 3. Loads settings and launches the main application
 // 4. On exit, closes the connection and saves settings
-func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo) error {
+func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo, explicitScreenSize *string, isScreenSizeExplicit bool) error {
 	w := scp.App.NewWindow("Select Device")
 	w.Resize(fyne.NewSize(400, 300))
 
@@ -376,7 +389,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo)
 
 			fyne.Do(func() {
 				// Launch the main application
-				if err := initializeAndRunApp(con, scp); err != nil {
+				if err := initializeAndRunApp(con, scp, explicitScreenSize, isScreenSizeExplicit); err != nil {
 					slog.Error("Menu", "err", err)
 					selectButton.Enable()
 					cancelButton.Enable()
@@ -438,7 +451,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled := parseFlags()
+	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit := parseFlags()
 	setLogging(logLevel)
 
 	err = sim.SetChannelCount(*chCount, chCountExplicit)
@@ -488,7 +501,7 @@ func main() {
 	}
 
 	// Show device selection dialog and run the application
-	if err = showDeviceSelectionDialog(scp, devices); err != nil {
+	if err = showDeviceSelectionDialog(scp, devices, explicitScreenSize, isScreenSizeExplicit); err != nil {
 		slog.Error("device selection", "err", err)
 	}
 }

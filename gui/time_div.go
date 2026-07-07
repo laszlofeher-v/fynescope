@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"math"
 
+	"fyne.io/fyne/v2/widget"
+
 	"fynescope/control"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
@@ -568,95 +570,150 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	scp.SaveSettings()
 }
 
-func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
-	scp.Settings.Trigger.Type = option
-	scp.triggerSettingMsg.Type = triggerTypes[option]
+func (scp *ScpDesc) updateTriggerSourceState(option string) {
+	if scp.triggerSource == dontCare || int(scp.triggerSource) >= len(scp.Settings.Channels) {
+		return
+	}
+	scp.Settings.Channels[scp.triggerSource].Trigger.ThresholdMode = scp.triggerSettingMsg.ThresholdMode
+	scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
+	if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
+		var activeOpts []string
+		if option == "Window" || option == "Interval" {
+			activeOpts = triggerWindowDirectionOptions
+		} else {
+			activeOpts = triggerDirectionOptions
+		}
+		scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SetOptions(activeOpts)
+		// Also reset the selection if it's invalid for the new options
+		currSel := scp.channelViewers[scp.triggerSource].triggerDirectionSelect.Selected
+		valid := false
+		for _, opt := range activeOpts {
+			if opt == currSel {
+				valid = true
+				break
+			}
+		}
+		if !valid && len(activeOpts) > 0 {
+			scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SilentSetSelected(activeOpts[0])
+			scp.Settings.Channels[scp.triggerSource].Trigger.TriggerDirection = triggerDirections[activeOpts[0]]
+			scp.triggerSettingMsg.ThresholdDirection = triggerDirections[activeOpts[0]]
+		}
+	}
 
-	if scp.triggerSettingMsg.Type == control.Window {
+	scp.triggerSettingMsg.IntervalType = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
+	scp.triggerSettingMsg.IntervalTimeLower = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
+	scp.triggerSettingMsg.IntervalTimeUpper = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+}
+
+func (scp *ScpDesc) updateTriggerUIForType() {
+	if scp.boxTriggerHysteresisDisp == nil {
+		return
+	}
+
+	// Show/hide channel condition selectors for complex trigger
+	isComplex := scp.triggerSettingMsg.Type == control.Complex
+	for i := range scp.channelViewers {
+		if scp.channelViewers[i].triggerConditionSelect != nil {
+			if isComplex {
+				scp.channelViewers[i].triggerConditionSelect.Show()
+			} else {
+				scp.channelViewers[i].triggerConditionSelect.Hide()
+			}
+		}
+	}
+
+	switch triggerTypes[scp.Settings.Trigger.Type] {
+	case control.Simple:
+		scp.boxTriggerHysteresisDisp.Hide()
+		if scp.boxTriggerLowerDisp != nil {
+			scp.boxTriggerLowerDisp.Hide()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Hide()
+		}
+	case control.Advanced:
+		scp.boxTriggerHysteresisDisp.Show()
+		if scp.boxTriggerLowerDisp != nil {
+			scp.boxTriggerLowerDisp.Hide()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Hide()
+		}
+	case control.Window:
+		scp.boxTriggerHysteresisDisp.Show()
+		if scp.boxTriggerLowerDisp != nil {
+			scp.boxTriggerLowerDisp.Show()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Hide()
+		}
+	case control.Interval:
+		scp.boxTriggerHysteresisDisp.Show()
+		if scp.boxTriggerLowerDisp != nil {
+			scp.boxTriggerLowerDisp.Show()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Show()
+		}
+	}
+}
+
+func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
+	scp.Settings.Trigger.ComplexEnabled = checked
+	if checked {
+		scp.triggerSettingMsg.Type = control.Complex
+	} else {
+		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
+	}
+
+	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.Interval {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
 	}
 
-	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
-		scp.Settings.Channels[scp.triggerSource].Trigger.ThresholdMode = scp.triggerSettingMsg.ThresholdMode
-		scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
-		if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
-			var activeOpts []string
-			if option == "Window" {
-				activeOpts = triggerWindowDirectionOptions
-			} else {
-				activeOpts = triggerDirectionOptions
-			}
-			scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SetOptions(activeOpts)
-			// Also reset the selection if it's invalid for the new options
-			currSel := scp.channelViewers[scp.triggerSource].triggerDirectionSelect.Selected
-			valid := false
-			for _, opt := range activeOpts {
-				if opt == currSel {
-					valid = true
-					break
-				}
-			}
-			if !valid && len(activeOpts) > 0 {
-				scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SilentSetSelected(activeOpts[0])
-				scp.Settings.Channels[scp.triggerSource].Trigger.TriggerDirection = triggerDirections[activeOpts[0]]
-				scp.triggerSettingMsg.ThresholdDirection = triggerDirections[activeOpts[0]]
-			}
-		}
-	}
+	scp.updateTriggerSourceState(scp.Settings.Trigger.Type)
 
-	if option == "Complex" {
+	if checked {
 		scp.buildComplexTriggerMessage()
-		scp.showComplexTriggerPopup()
 	}
 
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
-	if scp.boxTriggerHysteresisDisp != nil {
-		switch scp.triggerSettingMsg.Type {
-		case control.Simple:
-			scp.boxTriggerHysteresisDisp.Hide()
-			if scp.boxTriggerLowerDisp != nil {
-				scp.boxTriggerLowerDisp.Hide()
-			}
-			if scp.boxTriggerIntervalDisp != nil {
-				scp.boxTriggerIntervalDisp.Hide()
-			}
-		case control.Advanced:
-			scp.boxTriggerHysteresisDisp.Show()
-			if scp.boxTriggerLowerDisp != nil {
-				scp.boxTriggerLowerDisp.Hide()
-			}
-			if scp.boxTriggerIntervalDisp != nil {
-				scp.boxTriggerIntervalDisp.Hide()
-			}
-		case control.Window:
-			scp.boxTriggerHysteresisDisp.Show()
-			if scp.boxTriggerLowerDisp != nil {
-				scp.boxTriggerLowerDisp.Show()
-			}
-			if scp.boxTriggerIntervalDisp != nil {
-				scp.boxTriggerIntervalDisp.Hide()
-			}
-		case control.Interval:
-			scp.boxTriggerHysteresisDisp.Show()
-			if scp.boxTriggerLowerDisp != nil {
-				scp.boxTriggerLowerDisp.Hide()
-			}
-			if scp.boxTriggerIntervalDisp != nil {
-				scp.boxTriggerIntervalDisp.Show()
-			}
-		default: // Complex
-			scp.boxTriggerHysteresisDisp.Show()
-			if scp.boxTriggerLowerDisp != nil {
-				scp.boxTriggerLowerDisp.Hide()
-			}
-			if scp.boxTriggerIntervalDisp != nil {
-				scp.boxTriggerIntervalDisp.Hide()
-			}
-		}
+
+	scp.updateTriggerUIForType()
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
+	scp.Settings.Trigger.Type = option
+
+	if scp.Settings.Trigger.ComplexEnabled {
+		scp.triggerSettingMsg.Type = control.Complex
+	} else {
+		scp.triggerSettingMsg.Type = triggerTypes[option]
 	}
+
+	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.Interval {
+		scp.triggerSettingMsg.ThresholdMode = genericps.Window
+	} else {
+		scp.triggerSettingMsg.ThresholdMode = genericps.Level
+	}
+
+	scp.updateTriggerSourceState(option)
+
+	if scp.Settings.Trigger.ComplexEnabled {
+		scp.buildComplexTriggerMessage()
+	}
+
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+
+	scp.updateTriggerUIForType()
+
 	setFlag(scp.repartition)
 	scp.refreshRasters()
 	scp.SaveSettings()
@@ -852,7 +909,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		}
 	}
 
-	const fontScale = 0.7
+	fontScale := float32(0.7) * scp.getScreenScale()
 	var err error
 	scp.triggerThresholdDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, -20000,
 		disp7.Signed, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -895,7 +952,8 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerLowerHysteresisDisp.OnChanged = scp.onLowerHysteresisChange
 	scp.boxTriggerLowerDisp = container.New(layout.NewVBoxLayout(), scp.triggerLowerThresholdDisp, scp.triggerLowerHysteresisDisp)
 
-	if triggerTypes[scp.Settings.Trigger.Type] != control.Window {
+	tType := triggerTypes[scp.Settings.Trigger.Type]
+	if tType != control.Window && tType != control.Interval {
 		scp.boxTriggerLowerDisp.Hide()
 	}
 
@@ -905,14 +963,23 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Complex", "Interval"}
+	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Interval"}
 	triggerTypes["Complex"] = control.Complex
 	triggerTypes["Interval"] = control.Interval
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, "Advanced")
 	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
-	scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
-	if scp.Settings.Trigger.Type == "Complex" {
+
+	if scp.Settings.Trigger.ComplexEnabled {
+		scp.triggerSettingMsg.Type = control.Complex
+	} else {
+		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
+	}
+
+	scp.complexTriggerCheck = widget.NewCheck("Cmpx", scp.onComplexTriggerChange)
+	scp.complexTriggerCheck.SetChecked(scp.Settings.Trigger.ComplexEnabled)
+
+	if scp.Settings.Trigger.ComplexEnabled {
 		scp.buildComplexTriggerMessage()
 	}
 
@@ -924,11 +991,16 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		pwTypeStr = intervalTypeOptions[0]
 	}
 	scp.intervalTypeSelect.SilentSetSelected(pwTypeStr)
+	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
+		scp.triggerSettingMsg.IntervalType = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
+		scp.triggerSettingMsg.IntervalTimeLower = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
+		scp.triggerSettingMsg.IntervalTimeUpper = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+	}
 
 	intervalUnits := []string{" ns", " us", " ms", " s"}
 	unitStr := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	if unitStr == "" {
-		unitStr = " us"
+		unitStr = " ms"
 	}
 	scp.intervalUnitSelect = selectscroll.NewSelectScroll(intervalUnits, scp.onIntervalUnitChange, unitStr)
 
@@ -960,9 +1032,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.boxTriggerIntervalDisp.Hide()
 	}
 
-	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect)
+	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
 	boxThresh := container.New(layout.NewHBoxLayout(), scp.triggerThresholdDisp)
-	scp.triggerDisplays = container.New(layout.NewVBoxLayout(), boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerLowerDisp, scp.boxTriggerIntervalDisp)
+	scp.triggerDisplays = container.New(&fixedVBoxLayout{}, boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerLowerDisp, scp.boxTriggerIntervalDisp)
 	return scp.triggerDisplays, nil
 }
 

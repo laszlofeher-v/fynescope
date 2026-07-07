@@ -3,18 +3,39 @@ package gui
 import (
 	"fynescope/genericps"
 	"image"
+	"image/color"
+	"log/slog"
 	"math"
 
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
 
+type complexHandleType int
+
+const (
+	complexHandleNone complexHandleType = iota
+	complexHandleMain
+	complexHandleUpperHyst
+	complexHandleLower
+	complexHandleLowerHyst
+)
+
+type complexHit struct {
+	channelIndex int
+	handle       complexHandleType
+}
+
 type complexTriggerPointViewer struct {
 	rasterPartition
-	scp             *ScpDesc
-	selectedChannel int
-	hoveredChannel  int
-	channelRects    map[int]image.Rectangle
+	scp         *ScpDesc
+	hoveredHit  complexHit
+	selectedHit complexHit
+
+	mainRects map[int]image.Rectangle
+	uhRects   map[int]image.Rectangle
+	lRects    map[int]image.Rectangle
+	lhRects   map[int]image.Rectangle
 }
 
 var (
@@ -29,9 +50,12 @@ func newComplexTriggerPointViewer(img rasterImage, scp *ScpDesc) *complexTrigger
 	return &complexTriggerPointViewer{
 		rasterPartition: rasterPartition{img: img},
 		scp:             scp,
-		selectedChannel: -1,
-		hoveredChannel:  -1,
-		channelRects:    make(map[int]image.Rectangle),
+		hoveredHit:      complexHit{-1, complexHandleNone},
+		selectedHit:     complexHit{-1, complexHandleNone},
+		mainRects:       make(map[int]image.Rectangle),
+		uhRects:         make(map[int]image.Rectangle),
+		lRects:          make(map[int]image.Rectangle),
+		lhRects:         make(map[int]image.Rectangle),
 	}
 }
 
@@ -73,22 +97,43 @@ func (tp *complexTriggerPointViewer) y2mv(y float64, channelIndex int) (mv float
 	return
 }
 
-func (tp *complexTriggerPointViewer) mouseInChannel(x, y float32) int {
+func (tp *complexTriggerPointViewer) getHit(x, y float32) complexHit {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
-	for chIdx, rect := range tp.channelRects {
+
+	// Check main rects
+	for chIdx, rect := range tp.mainRects {
 		if p.In(rect) {
-			return chIdx
+			return complexHit{chIdx, complexHandleMain}
 		}
 	}
-	return -1
+	// Check upper hysteresis rects
+	for chIdx, rect := range tp.uhRects {
+		if p.In(rect) {
+			return complexHit{chIdx, complexHandleUpperHyst}
+		}
+	}
+	// Check lower rects
+	for chIdx, rect := range tp.lRects {
+		if p.In(rect) {
+			return complexHit{chIdx, complexHandleLower}
+		}
+	}
+	// Check lower hysteresis rects
+	for chIdx, rect := range tp.lhRects {
+		if p.In(rect) {
+			return complexHit{chIdx, complexHandleLowerHyst}
+		}
+	}
+
+	return complexHit{-1, complexHandleNone}
 }
 
 func (tp *complexTriggerPointViewer) cursor(x, y float32) (desktop.Cursor, bool) {
 	if tp.scp.inStreamMode() {
 		return desktop.DefaultCursor, false
 	}
-	chIdx := tp.mouseInChannel(x, y)
-	if chIdx != -1 || tp.selectedChannel != -1 {
+	hit := tp.getHit(x, y)
+	if hit.handle != complexHandleNone || tp.selectedHit.handle != complexHandleNone {
 		return desktop.PointerCursor, true
 	}
 	return desktop.DefaultCursor, false
@@ -98,10 +143,10 @@ func (tp *complexTriggerPointViewer) mouseMoved(x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	prev := tp.hoveredChannel
-	tp.hoveredChannel = tp.mouseInChannel(x, y)
-	
-	if prev != tp.hoveredChannel {
+	prev := tp.hoveredHit
+	tp.hoveredHit = tp.getHit(x, y)
+
+	if prev != tp.hoveredHit {
 		tp.enableRefresh()
 		if tp.scp.ftRaster != nil {
 			tp.scp.ftRaster.Refresh()
@@ -113,11 +158,29 @@ func (tp *complexTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y 
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.selectedChannel = tp.mouseInChannel(x, y)
+	tp.selectedHit = tp.getHit(x, y)
 }
 
 func (tp *complexTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float32) {
-	tp.selectedChannel = -1
+	if tp.scp.inStreamMode() {
+		return
+	}
+	refresh := false
+	if tp.selectedHit.handle != complexHandleNone {
+		tp.selectedHit = complexHit{-1, complexHandleNone}
+		tp.hoveredHit = tp.getHit(x, y)
+		refresh = true
+
+		// If lower bounds were changed, save settings
+		setFlag(tp.scp.repartition)
+		tp.scp.SaveSettings()
+	}
+	if refresh {
+		tp.enableRefresh()
+		if tp.scp.ftRaster != nil {
+			tp.scp.ftRaster.Refresh()
+		}
+	}
 }
 
 func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) {
@@ -135,21 +198,61 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
-	
+
 	newMv := int32(math.Round(float64(mv)))
-	tp.scp.Settings.Channels[chIdx].Trigger.Mv = newMv
-	// For level trigger we keep LowerMv independent as requested by the user.
+	if channel.Trigger.ThresholdMode == genericps.Window {
+		if newMv < channel.Trigger.LowerMv {
+			newMv = channel.Trigger.LowerMv
+		}
+	}
+	channel.Trigger.Mv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
 	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
 	<-tp.scp.triggerSettingMsg.Done
-	
+
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
 	lw.enableRefresh()
 	tp.enableRefresh()
-	
+
+	if tp.scp.ftRaster != nil {
+		tp.scp.ftRaster.Refresh()
+	}
+}
+
+func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx int) {
+	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	if int(x) < bounds.Min.X || int(x) > bounds.Max.X ||
+		int(y) < bounds.Min.Y || int(y) > bounds.Max.Y {
+		return
+	}
+	mv := tp.y2mv(float64(y), chIdx)
+	channel := &tp.scp.Settings.Channels[chIdx]
+	bound := float64(genericps.InputRanges[channel.VRange])
+	if mv < -bound || mv > bound {
+		return
+	}
+	tp.scp.addFtXOffset(float64(dx))
+	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
+
+	newMv := int32(math.Round(float64(mv)))
+	if newMv > channel.Trigger.Mv {
+		newMv = channel.Trigger.Mv
+	}
+	channel.Trigger.LowerMv = newMv
+
+	tp.scp.buildComplexTriggerMessage()
+	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
+	<-tp.scp.triggerSettingMsg.Done
+
+	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
+	tp.scp.clearAllFtPersistentLayers()
+	tp.scp.clearAllDftPersistentLayers()
+	lw.enableRefresh()
+	tp.enableRefresh()
+
 	if tp.scp.ftRaster != nil {
 		tp.scp.ftRaster.Refresh()
 	}
@@ -159,8 +262,71 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	if tp.selectedChannel != -1 {
-		tp.setDispOffset(dx, x, y, tp.selectedChannel)
+	if tp.selectedHit.handle == complexHandleNone {
+		return
+	}
+
+	chIdx := tp.selectedHit.channelIndex
+	channel := &tp.scp.Settings.Channels[chIdx]
+
+	if tp.selectedHit.handle == complexHandleMain {
+		tp.setDispOffset(dx, x, y, chIdx)
+		return
+	}
+
+	if tp.selectedHit.handle == complexHandleLower {
+		tp.setLowerDispOffset(dx, x, y, chIdx)
+		return
+	}
+
+	newH := int32(math.Round(tp.y2mv(float64(y), chIdx)))
+
+	if tp.selectedHit.handle == complexHandleUpperHyst {
+		switch channel.Trigger.TriggerDirection {
+		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+			if newH >= channel.Trigger.Mv {
+				channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
+			}
+		case genericps.TriggerFalling, genericps.TriggerExit:
+			if newH <= channel.Trigger.Mv {
+				channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+			}
+		default:
+			slog.Error("windowTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
+		}
+
+		tp.scp.buildComplexTriggerMessage()
+		tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
+		<-tp.scp.triggerSettingMsg.Done
+		tp.enableRefresh()
+		if tp.scp.ftRaster != nil {
+			tp.scp.ftRaster.Refresh()
+		}
+		return
+	}
+
+	if tp.selectedHit.handle == complexHandleLowerHyst {
+		switch channel.Trigger.TriggerDirection {
+		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+			if newH <= channel.Trigger.LowerMv {
+				channel.Trigger.LowerHysteresis = channel.Trigger.LowerMv - newH
+			}
+		case genericps.TriggerFalling, genericps.TriggerExit:
+			if newH >= channel.Trigger.LowerMv {
+				channel.Trigger.LowerHysteresis = -channel.Trigger.LowerMv + newH
+			}
+		default:
+			slog.Error("windowTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
+		}
+
+		tp.scp.buildComplexTriggerMessage()
+		tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
+		<-tp.scp.triggerSettingMsg.Done
+		tp.enableRefresh()
+		if tp.scp.ftRaster != nil {
+			tp.scp.ftRaster.Refresh()
+		}
+		return
 	}
 }
 
@@ -171,9 +337,12 @@ func (tp *complexTriggerPointViewer) draw() {
 	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
 	}
-	
-	tp.channelRects = make(map[int]image.Rectangle)
-	
+
+	tp.mainRects = make(map[int]image.Rectangle)
+	tp.uhRects = make(map[int]image.Rectangle)
+	tp.lRects = make(map[int]image.Rectangle)
+	tp.lhRects = make(map[int]image.Rectangle)
+
 	for i, ch := range tp.scp.Settings.Channels {
 		chCfg := ch.Trigger
 		if chCfg.Condition != genericps.CondDontCare && ch.Enabled {
@@ -181,37 +350,151 @@ func (tp *complexTriggerPointViewer) draw() {
 			bound := tp.scp.ftScopeSignalScreen.Bounds()
 			maxY := float32(bound.Max.Y)
 			minY := float32(bound.Min.Y)
-			switch {
-			case y > maxY:
+			if y > maxY {
 				y = maxY
-			case y < minY:
+			}
+			if y < minY {
 				y = minY
 			}
-			
-			rectSize := float32(triggerPointR * 2)
-			rect := image.Rect(
-				int(math.Round(float64(x-rectSize))),
-				int(math.Round(float64(y-rectSize))),
-				int(math.Round(float64(x+rectSize))),
-				int(math.Round(float64(y+rectSize))),
+
+			halfRectSize := float32(triggerPointR * 2)
+			rectSize2 := 2 * halfRectSize
+
+			tp.mainRects[i] = image.Rect(
+				int(math.Round(float64(x-halfRectSize))),
+				int(math.Round(float64(y-halfRectSize))),
+				int(math.Round(float64(x+halfRectSize))),
+				int(math.Round(float64(y+halfRectSize))),
 			)
-			tp.channelRects[i] = rect
-			
-			col := tp.scp.Settings.Channels[i].Col[tp.scp.Settings.ChannelColorIndex]
-			if tp.selectedChannel == i || tp.hoveredChannel == i {
-				// Highlight outline if hovered or selected
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, theme.SelectionColor())
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, theme.SelectionColor())
+
+			col := ch.Col[tp.scp.Settings.ChannelColorIndex]
+
+			// Main Point Color
+			var mainCol color.Color = col
+			if tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleMain ||
+				tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleMain {
+				mainCol = theme.SelectionColor()
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, mainCol)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, mainCol)
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-2, col)
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-3, col)
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-4, col)
 				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-5, col)
 			} else {
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, col)
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, col)
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-2, col)
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-3, col)
-				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-4, col)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, mainCol)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-1, mainCol)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-2, mainCol)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-3, mainCol)
+				drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR-4, mainCol)
+			}
+
+			if chCfg.ThresholdMode == genericps.Window {
+				var yh float32
+				_, yh = tp.timeMv2xy(chCfg.Mv+chCfg.Hysteresis, i)
+				if chCfg.TriggerDirection == genericps.TriggerFalling || chCfg.TriggerDirection == genericps.TriggerExit {
+					_, yh = tp.timeMv2xy(chCfg.Mv-chCfg.Hysteresis, i)
+				}
+				if yh > maxY {
+					yh = maxY
+				}
+				if yh < minY {
+					yh = minY
+				}
+
+				tp.uhRects[i] = image.Rect(int(math.Round(float64(x-rectSize2))),
+					int(math.Round(float64(yh-rectSize2))),
+					int(math.Round(float64(x+rectSize2))),
+					int(math.Round(float64(rectSize2+yh))))
+
+				lx, ly := tp.timeMv2xy(chCfg.LowerMv, i)
+				if ly > maxY {
+					ly = maxY
+				}
+				if ly < minY {
+					ly = minY
+				}
+
+				tp.lRects[i] = image.Rect(int(math.Round(float64(lx-halfRectSize))),
+					int(math.Round(float64(ly-halfRectSize))),
+					int(math.Round(float64(lx+halfRectSize))),
+					int(math.Round(float64(ly+halfRectSize))))
+
+				var lyh float32
+				_, lyh = tp.timeMv2xy(chCfg.LowerMv-chCfg.LowerHysteresis, i)
+				if chCfg.TriggerDirection == genericps.TriggerFalling || chCfg.TriggerDirection == genericps.TriggerExit {
+					_, lyh = tp.timeMv2xy(chCfg.LowerMv+chCfg.LowerHysteresis, i)
+				}
+				if lyh > maxY {
+					lyh = maxY
+				}
+				if lyh < minY {
+					lyh = minY
+				}
+
+				tp.lhRects[i] = image.Rect(int(math.Round(float64(lx-rectSize2))),
+					int(math.Round(float64(lyh-rectSize2))),
+					int(math.Round(float64(lx+rectSize2))),
+					int(math.Round(float64(rectSize2+lyh))))
+
+				// Draw Upper Hysteresis
+				var uhCol color.Color = col
+				if tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleUpperHyst ||
+					tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleUpperHyst {
+					uhCol = theme.SelectionColor()
+				}
+				drawLine(tp.scp.ftScopeSignalScreen, x, y, x, yh, uhCol)
+				drawLine(tp.scp.ftScopeSignalScreen, x-halfRectSize, yh, x+halfRectSize, yh, uhCol)
+
+				// Draw Lower Point
+				var lCol color.Color = col
+				if tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleLower ||
+					tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleLower {
+					lCol = theme.SelectionColor()
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-1, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-2, col)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-3, col)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-4, col)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-5, col)
+				} else {
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-1, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-2, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-3, lCol)
+					drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR-4, lCol)
+				}
+
+				// Draw Lower Hysteresis
+				var lhCol color.Color = col
+				if tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleLowerHyst ||
+					tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleLowerHyst {
+					lhCol = theme.SelectionColor()
+				}
+				drawLine(tp.scp.ftScopeSignalScreen, lx, ly, lx, lyh, lhCol)
+				drawLine(tp.scp.ftScopeSignalScreen, lx-halfRectSize, lyh, lx+halfRectSize, lyh, lhCol)
+			}
+
+			if genericps.ChannelId(i) == tp.scp.triggerSource {
+				if tp.scp.triggerThresholdDisp.Value != int(chCfg.Mv) {
+					tp.scp.triggerThresholdDisp.SilentSetValue(int(chCfg.Mv))
+					tp.scp.triggerThresholdDisp.Refresh()
+				}
+				if tp.scp.triggerLowerThresholdDisp != nil {
+					if tp.scp.triggerLowerThresholdDisp.Value != int(chCfg.LowerMv) {
+						tp.scp.triggerLowerThresholdDisp.SilentSetValue(int(chCfg.LowerMv))
+						tp.scp.triggerLowerThresholdDisp.Refresh()
+					}
+				}
+				if tp.scp.triggerHysteresisDisp.Value != int(chCfg.Hysteresis) {
+					tp.scp.triggerHysteresisDisp.SilentSetValue(int(chCfg.Hysteresis))
+					tp.scp.triggerHysteresisDisp.Refresh()
+				}
+				if tp.scp.triggerLowerHysteresisDisp != nil {
+					if tp.scp.triggerLowerHysteresisDisp.Value != int(chCfg.LowerHysteresis) {
+						tp.scp.triggerLowerHysteresisDisp.SilentSetValue(int(chCfg.LowerHysteresis))
+						tp.scp.triggerLowerHysteresisDisp.Refresh()
+					}
+				}
 			}
 		}
 	}

@@ -23,6 +23,8 @@ var (
 	lightTheme ScpLightTheme
 	darkTheme  ScpDarkTheme
 	themes     [2]fyne.Theme
+
+	GlobalScreenScale float32 = 1.0
 )
 
 const (
@@ -195,44 +197,44 @@ func (t ScpLightTheme) Icon(n fyne.ThemeIconName) fyne.Resource {
 func (t ScpDarkTheme) Size(s fyne.ThemeSizeName) float32 {
 	switch s {
 	case theme.SizeNameCaptionText:
-		return 11
+		return 11 * GlobalScreenScale
 	case theme.SizeNameInlineIcon:
-		return 20
+		return 20 * GlobalScreenScale
 	case theme.SizeNamePadding:
-		return 4
+		return 4 * GlobalScreenScale
 	case theme.SizeNameScrollBar:
-		return 16
+		return 16 * GlobalScreenScale
 	case theme.SizeNameScrollBarSmall:
-		return 3
+		return 3 * GlobalScreenScale
 	case theme.SizeNameSeparatorThickness:
-		return 1
+		return 1 * GlobalScreenScale
 	case theme.SizeNameText:
-		return 14
+		return 14 * GlobalScreenScale
 	case theme.SizeNameInputBorder:
-		return 2
+		return 2 * GlobalScreenScale
 	default:
-		return theme.DefaultTheme().Size(s)
+		return theme.DefaultTheme().Size(s) * GlobalScreenScale
 	}
 }
 func (t ScpLightTheme) Size(s fyne.ThemeSizeName) float32 {
 	switch s {
 	case theme.SizeNameCaptionText:
-		return 11
+		return 11 * GlobalScreenScale
 	case theme.SizeNameInlineIcon:
-		return 20
+		return 20 * GlobalScreenScale
 	case theme.SizeNamePadding:
-		return 4
+		return 4 * GlobalScreenScale
 	case theme.SizeNameScrollBar:
-		return 16
+		return 16 * GlobalScreenScale
 	case theme.SizeNameScrollBarSmall:
-		return 3
+		return 3 * GlobalScreenScale
 	case theme.SizeNameSeparatorThickness:
-		return 1
+		return 1 * GlobalScreenScale
 	case theme.SizeNameText:
-		return 14
+		return 14 * GlobalScreenScale
 	case theme.SizeNameInputBorder:
-		return 2
+		return 2 * GlobalScreenScale
 	default:
-		return theme.DefaultTheme().Size(s)
+		return theme.DefaultTheme().Size(s) * GlobalScreenScale
 	}
 }

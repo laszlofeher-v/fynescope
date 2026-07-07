@@ -41,7 +41,6 @@ import (
 	// "fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -135,21 +134,21 @@ type (
 		statusChan chan string
 		statusQuit chan struct{}
 		// FFT caches for processFfData — reallocated only when sample count changes
-		ffFftObj     *fourier.FFT
-		ffFftBuf     []float64
-		ffFftResult  []complex128
-		ffFftSamples int
-		ffCurrentFreqDisp                   *disp7.DigitArray
-		ffMinFreqDisp                       *disp7.DigitArray
-		ffMaxFreqDisp                       *disp7.DigitArray
-		ffStepFreqDisp                      *disp7.DigitArray
-		ffDeltaTDisp                        *disp7.DigitArray
-		ffAmpDisp                           *disp7.DigitArray
-		ffOffsetDisp                        *disp7.DigitArray
-		ffPhaseDisp                         *disp7.DigitArray
-		ffRaiseFallTimeDisp                 *disp7.DigitArray
-		ffNoiseAmplitudeDisp                *disp7.DigitArray
-		ffPhaseNoiseDisp                    *disp7.DigitArray
+		ffFftObj             *fourier.FFT
+		ffFftBuf             []float64
+		ffFftResult          []complex128
+		ffFftSamples         int
+		ffCurrentFreqDisp    *disp7.DigitArray
+		ffMinFreqDisp        *disp7.DigitArray
+		ffMaxFreqDisp        *disp7.DigitArray
+		ffStepFreqDisp       *disp7.DigitArray
+		ffDeltaTDisp         *disp7.DigitArray
+		ffAmpDisp            *disp7.DigitArray
+		ffOffsetDisp         *disp7.DigitArray
+		ffPhaseDisp          *disp7.DigitArray
+		ffRaiseFallTimeDisp  *disp7.DigitArray
+		ffNoiseAmplitudeDisp *disp7.DigitArray
+		ffPhaseNoiseDisp     *disp7.DigitArray
 
 		bodeBuffers                  [genericps.MaxChannel][]bodePoint
 		maxSamplingRate              uint32
@@ -233,8 +232,7 @@ type (
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
 		useExtGenCheck             *widget.Check
-		complexTriggerDialog       dialog.Dialog
-		complexTriggerCb           func(bool)
+		complexTriggerCheck        *widget.Check
 	}
 )
 
@@ -422,6 +420,39 @@ func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
 		adc = math.MaxInt16 - 1
 	}
 	return adc
+}
+
+func (scp *ScpDesc) getScreenScale() float32 {
+	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
+		return 1.0
+	}
+	switch scp.Settings.ScreenSize {
+	case "1920x1080":
+		return 1.0
+	case "1366x768":
+		return 0.71
+	case "1280x720":
+		return 0.66
+	case "1024x768":
+		return 0.53
+	default:
+		return 1.0
+	}
+}
+
+func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
+	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
+		return 1920, 1080
+	}
+	parts := strings.Split(scp.Settings.ScreenSize, "x")
+	if len(parts) == 2 {
+		w, err1 := strconv.ParseFloat(parts[0], 32)
+		h, err2 := strconv.ParseFloat(parts[1], 32)
+		if err1 == nil && err2 == nil {
+			return float32(w), float32(h)
+		}
+	}
+	return 1920, 1080
 }
 
 func (scp *ScpDesc) build2000Gui() {
@@ -970,6 +1001,8 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		scp.psControl.StreamEnabled.Store(*scp.Settings.StreamEnabled)
 	}
 
+	GlobalScreenScale = scp.getScreenScale()
+
 	scp.Window = scp.App.NewWindow("")
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
@@ -998,7 +1031,18 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		return
 	}
 	scp.Window.SetTitle(scp.psControl.Info)
-	scp.Window.Resize(fyne.NewSize(float32(scp.Settings.Window.Width), float32(scp.Settings.Window.Height)))
+
+	sw, sh := scp.getScreenDimensions()
+	winW := float32(scp.Settings.Window.Width)
+	winH := float32(scp.Settings.Window.Height)
+	if winW > sw {
+		winW = sw
+	}
+	if winH > sh {
+		winH = sh
+	}
+	scp.Window.Resize(fyne.NewSize(winW, winH))
+
 	if scp.Settings.Window.Fullscreen {
 		scp.Window.SetFullScreen(true)
 	}
@@ -1385,7 +1429,7 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 		} else {
 			scp.extGen.SetOutput(scpi.Ch1, false)
 		}
-		
+
 		// Ensure internal generator is turned off
 		msg := &control.GeneratorDescMsg{}
 		msg.Operation = genericps.EsOff
@@ -1434,7 +1478,7 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 		} else {
 			scp.extGen.SetOutput(scpi.Ch1, false)
 		}
-		
+
 		// Ensure internal simulator generators are turned off
 		for i := 0; i < int(scp.channelCount); i++ {
 			msg := &control.GeneratorDescMsg{}

@@ -111,6 +111,7 @@ type (
 		Mode            string `yaml:"triggermode"`
 		Type            string `yaml:"triggertype"`
 		CalculationMode int    `yaml:"calculationmode"`
+		ComplexEnabled  bool   `yaml:"complexenabled"`
 	}
 	GeneratorSettings struct {
 		On                   bool                    `yaml:"on"`
@@ -158,6 +159,7 @@ type (
 		Theme             ThemeType             `yaml:"theme"`
 		ChannelColorIndex ChannelColorIndexType `yaml:"channelcolorindex"`
 		Window            WindowSettings        `yaml:"window"`
+		ScreenSize        string                `yaml:"screensize,omitempty"`
 		Channels          []ChSettings          `yaml:"channels"`
 		Trigger           TriggerSettings       `yaml:"trigger"`
 		Time              TimeSettings          `yaml:"time"`
@@ -208,9 +210,10 @@ func NewDefaultSettings() *PsSettings {
 	return &PsSettings{
 		Window: WindowSettings{Width: 1366, Height: 768, LeftControl: false,
 			Function: 0},
+		ScreenSize: "1920x1080",
 		Time: TimeSettings{Unit: defaultTimeUnit, TriggerTimeOffset: 0, TimeDiv: defaultTime,
 			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit},
-		Trigger: TriggerSettings{Mode: "Auto", Type: "Simple", CalculationMode: 0},
+		Trigger: TriggerSettings{Mode: "Auto", Type: "Simple", CalculationMode: 0, ComplexEnabled: false},
 		Channels: []ChSettings{
 			{ID: genericps.ChA, Col: [2]color.NRGBA{{100, 200, 255, 255},
 				{1, 5, 191, 255}}, VRange: defaultRange,
@@ -339,9 +342,18 @@ func Load(fileName string) (*PsSettings, error) {
 		}
 	}
 
+	if settings.Trigger.Type == "Complex" {
+		settings.Trigger.ComplexEnabled = true
+		settings.Trigger.Type = "Advanced"
+	}
+
 	if settings.StreamEnabled == nil {
 		streamDefault := true
 		settings.StreamEnabled = &streamDefault
+	}
+
+	if settings.ScreenSize == "" {
+		settings.ScreenSize = "1920x1080"
 	}
 
 	// if settings.FfGen.Frequency == 0 {

@@ -254,7 +254,7 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	phase := (t*freq + genChDesc.phase/360.0) * math.Pi * 2
 
 	// Add phase noise (read atomically — written by GUI goroutine)
-	if pnd := GetPhaseNoiseDegree(); pnd > 0 {
+	if pnd := GetPhaseNoiseDegree(int(genSrc)); pnd > 0 {
 		phase += (rand.Float64()*2 - 1) * pnd * math.Pi / 180.0
 	}
 
@@ -283,7 +283,7 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	chOffset := (chDesc.offset * 1000.0) / rangeMv
 
 	noise_offset := float64(0)
-	if na := GetNoiseAmplitude(); na > 0 && genChDesc.genOn {
+	if na := GetNoiseAmplitude(int(genSrc)); na > 0 && genChDesc.genOn {
 		rnd := rand.Intn(100)
 		if rnd < 2 {
 			noise_offset = (rand.Float64()*2 - 1) * na / rangeMv
