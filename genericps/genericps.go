@@ -873,6 +873,7 @@ var (
 	RampMaxFrequency, HalfSineMaxFrequency, GaussianMaxFrequency,
 	PrbsMaxFrequency, PrbsMinFrequency, MinFrequency float64
 	AwgMinSigGenBufferSize, AwgMaxSigGenBufferSize int16
+	MinThresholdDiff int32
 )
 
 func NewConnection() (con *Connection) {

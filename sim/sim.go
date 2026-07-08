@@ -1003,7 +1003,12 @@ func (s *SimDesc) SetSimGen(channel genericps.ChannelId, on bool, offsetVoltage 
 	}
 
 	channels[ch].genOn = on
-	channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
+	switch operation {
+	case genericps.Prbs:
+		channels[ch].genWaveFunction = NewPrbsGenerator()
+	default:
+		channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
+	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
 	channels[ch].sweepController = NewSweepController(startFrequency, stopFrequency, increment, SweepTypeEnum(sweepType), dwellDuration)
 	channels[ch].genPkToPk = pkToPK

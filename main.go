@@ -58,7 +58,7 @@ var (
 		"dft_channel_label.go": false,
 		"dft_raster.go":        false,
 		"disp7.go":             false,
-		"ets.go":               false,
+		"ets.go":               true,
 		"ext_gen.go":           false,
 		"ff_raster.go":         false,
 		"ft_channel_label.go":  false,

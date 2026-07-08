@@ -135,8 +135,8 @@ type (
 	PscDesc struct {
 		Con *genericps.Connection
 
-		shutdownCh     chan struct{} // closed by Shutdown() to stop all monitor goroutines
-		shutdownOnce   sync.Once
+		shutdownCh   chan struct{} // closed by Shutdown() to stop all monitor goroutines
+		shutdownOnce sync.Once
 
 		stateChannel   chan state
 		stopChannel    chan struct{}
@@ -324,12 +324,21 @@ func (psControl *PscDesc) setEverything() (err error) {
 }
 
 func (psControl *PscDesc) sendTrigger() (err error) {
-	if psControl.triggerSetting.Type == Simple ||
-		!psControl.triggerSetting.Enabled {
-		err = psControl.sendSimpleTrigger()
-	} else {
+	switch psControl.triggerSetting.Type {
+	case Simple:
+		// if !psControl.triggerSetting.Enabled {
+			err = psControl.sendSimpleTrigger()
+		// }
+	case Advanced:
+		err = psControl.sendAdvancedTrigger()
+	case Complex:
 		err = psControl.sendComplexTrigger()
+	case Window:
+		err = psControl.sendWindowTrigger()
+	case Interval:
+		err = psControl.sendIntervalTrigger()
 	}
+
 	return
 }
 

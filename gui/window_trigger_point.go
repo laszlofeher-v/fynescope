@@ -150,8 +150,8 @@ func (tp *windowTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 	newMv := int32(math.Round(float64(mv)))
-	if newMv > channel.Trigger.Mv {
-		newMv = channel.Trigger.Mv
+	if newMv > channel.Trigger.Mv-genericps.MinThresholdDiff {
+		newMv = channel.Trigger.Mv - genericps.MinThresholdDiff
 	}
 	channel.Trigger.LowerMv = newMv
 	tp.scp.triggerSettingMsg.LowerMv = newMv
@@ -328,7 +328,6 @@ func (tp *windowTriggerPointViewer) scrolled(delta, x, y float32) {
 		}
 	}
 }
-
 
 func (tp *windowTriggerPointViewer) draw() {
 	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {

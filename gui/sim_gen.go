@@ -59,7 +59,7 @@ func (scp *ScpDesc) applySimGenSettings(ch genericps.ChannelId, genSettings *set
 		msg.StopFrequency = genSettings.StopFrequency
 		msg.SweepType = genericps.SweepDown // there is no "no sweep"
 	}
-	msg.Operation = genericps.EsOff //TODO ui
+	msg.Operation = genSettings.Operation
 	msg.Shots = 0
 	msg.Sweeps = 0
 	msg.TriggerType = genericps.SigGenRising
@@ -325,6 +325,21 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			}
 			scp.applySimGenSettings(ch, genSettings)
 		}
+
+		const (
+			operationNormal = "Normal"
+			operationPrbs   = "PRBS"
+		)
+		operationMap := map[string]genericps.ExtraOperations{
+			operationNormal: genericps.EsOff,
+			operationPrbs:   genericps.Prbs,
+		}
+		operationOptions := []string{operationNormal, operationPrbs}
+		operationChanged := func(option string, e selectscroll.Exception) {
+			genSettings.Operation = operationMap[option]
+			scp.applySimGenSettings(ch, genSettings)
+			scp.SaveSettings()
+		}
 		sweepChanged := func(option string, e selectscroll.Exception) {
 			if option == sweepOff {
 				sweepBox.Hide()
@@ -534,6 +549,15 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Sweep "), sweepMenu)
 
+		operationSelect := selectscroll.NewSelectScroll(operationOptions, operationChanged, operationNormal)
+		if genSettings.Operation == genericps.Prbs {
+			operationSelect.SetSelected(operationPrbs)
+		} else {
+			operationSelect.SetSelected(operationNormal)
+		}
+		operationBox := container.New(layout.NewHBoxLayout(),
+			widget.NewLabel("Operation:"), operationSelect)
+
 		scp.triggerCalculationModeSelect = selectscroll.NewSelectScroll(triggerCalculationOptions, onTriggerCalculationModeChange, triggerCalculationOptions[0])
 		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId)
 		scp.triggerCalculationModeSelect.SetSelected(triggerCalculationOptions[scp.Settings.Trigger.CalculationMode])
@@ -544,7 +568,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp /*triggerTimeOffsetDisp,*/, noiseAmplitudeDisp, phaseNoiseDisp, calcBox)
+			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp /*triggerTimeOffsetDisp,*/, noiseAmplitudeDisp, phaseNoiseDisp, operationBox, calcBox)
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)
 		show.SetChecked(genSettings.Digital)
 		showChanged(genSettings.Digital)

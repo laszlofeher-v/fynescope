@@ -201,8 +201,8 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 
 	newMv := int32(math.Round(float64(mv)))
 	if channel.Trigger.ThresholdMode == genericps.Window {
-		if newMv < channel.Trigger.LowerMv {
-			newMv = channel.Trigger.LowerMv
+		if newMv < channel.Trigger.LowerMv+genericps.MinThresholdDiff {
+			newMv = channel.Trigger.LowerMv + genericps.MinThresholdDiff
 		}
 	}
 	channel.Trigger.Mv = newMv
@@ -238,9 +238,14 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 
 	newMv := int32(math.Round(float64(mv)))
-	if newMv > channel.Trigger.Mv {
-		newMv = channel.Trigger.Mv
+	if channel.Trigger.ThresholdMode == genericps.Window {
+		if newMv > channel.Trigger.Mv-genericps.MinThresholdDiff {
+			newMv = channel.Trigger.Mv - genericps.MinThresholdDiff
+		}
 	}
+	// if newMv > channel.Trigger.Mv {
+	// 	newMv = channel.Trigger.Mv
+	// }
 	channel.Trigger.LowerMv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
