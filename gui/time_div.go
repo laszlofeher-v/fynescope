@@ -39,6 +39,14 @@ const (
 	autoTriggerMs = 1000 // TODO make it adjustable
 )
 
+// Interval type option string constants.
+const (
+	IntervalTypeLessThan    = "Less Than"
+	IntervalTypeGreaterThan = "Greater Than"
+	IntervalTypeInRange     = "In Range"
+	IntervalTypeOutOfRange  = "Out Of Range"
+)
+
 type (
 	timeLabelViewer struct {
 		rasterPartition
@@ -55,7 +63,7 @@ var (
 	etsUnits          []string
 	tu                map[string]int
 
-	triggerModeOptions = []string{"Auto", "ETS", "Repeat", "Single"}
+	triggerModeOptions = []string{settings.TriggerModeAuto, settings.TriggerModeETS, settings.TriggerModeRepeat, settings.TriggerModeSingle}
 	triggerModes       = map[string]control.TriggerModes{
 		triggerModeOptions[0]: control.Auto,
 		triggerModeOptions[1]: control.ETS,
@@ -72,7 +80,7 @@ var (
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
 		"9", "8", "7", "6", "5", "4", "3", "2", "1"}
-	sampleUnits              = []string{"GS/s", "MS/s", "KS/s", "S/s"}
+	sampleUnits              = []string{selectscroll.UnitGSps, selectscroll.UnitMSps, selectscroll.UnitKSps, selectscroll.UnitSps}
 	interpolationModeOptions = []string{dot, raw, linear, sinc}
 	interpolationModes       = map[string]settings.InterpolationType{
 		interpolationModeOptions[settings.Sinc]:   settings.Sinc,
@@ -81,7 +89,7 @@ var (
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
 
-	intervalTypeOptions = []string{"Less Than", "Greater Than", "In Range", "Out Of Range"}
+	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan, IntervalTypeInRange, IntervalTypeOutOfRange}
 	intervalTypes       = map[string]genericps.PulseWidthType{
 		intervalTypeOptions[0]: genericps.PwTypeLessThan,
 		intervalTypeOptions[1]: genericps.PwTypeGreaterThan,
@@ -577,7 +585,7 @@ func (scp *ScpDesc) updateTriggerSourceState(option string) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
 	if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
 		var activeOpts []string
-		if option == "Window" || option == "Interval" {
+		if option == settings.TriggerTypeWindow || option == settings.TriggerTypeInterval {
 			activeOpts = triggerWindowDirectionOptions
 		} else {
 			activeOpts = triggerDirectionOptions
@@ -738,7 +746,7 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	if scp.Settings.Trigger.Type == "Window" {
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
 		if intV < lowerMv {
 			intV = lowerMv
@@ -777,7 +785,7 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	if scp.Settings.Trigger.Type == "Window" {
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
 		if intV > upperMv {
 			intV = upperMv
@@ -983,10 +991,10 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{"Simple", "Advanced", "Window", "Interval"}
-	triggerTypes["Complex"] = control.Complex
-	triggerTypes["Interval"] = control.Interval
-	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, "Advanced")
+	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval}
+	triggerTypes[settings.TriggerTypeComplex] = control.Complex
+	triggerTypes[settings.TriggerTypeInterval] = control.Interval
+	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, settings.TriggerTypeAdvanced)
 	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
 
@@ -1003,12 +1011,12 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.buildComplexTriggerMessage()
 	}
 
-	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions, scp.onIntervalTypeChange, "Out Of Range")
+	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions, scp.onIntervalTypeChange, IntervalTypeOutOfRange)
 
 	// Convert pulse width type enum back to string
 	pwTypeStr := intervalTypeRevMap[scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType]
 	if pwTypeStr == "" {
-		pwTypeStr = "Out Of Range"
+		pwTypeStr = IntervalTypeOutOfRange
 		if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
 			scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType = genericps.PwTypeOutOfRange
 		}

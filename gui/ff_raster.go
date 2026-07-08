@@ -1801,7 +1801,7 @@ func (scp *ScpDesc) measurePeriod(buf []float32, samplingInterval float64) (floa
 
 	// We need at least 2 crossings to measure a period
 	if len(crossings) < 2 {
-		return 0, fmt.Errorf("Frequency cannot be detected")
+		return 0, fmt.Errorf(ErrFrequencyCannotBeDetected)
 	}
 
 	// Calculate average period in samples

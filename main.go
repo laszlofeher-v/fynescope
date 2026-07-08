@@ -221,7 +221,7 @@ func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chC
 	about := flag.Bool("about", false, "show version, build date and license")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := flag.Bool("extgen", inTestMode, "enable external generator (-extgen=true/false)")
-	screenSize = flag.String("screensize", "1920x1080", "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
+	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
 
 	flag.Parse()
 

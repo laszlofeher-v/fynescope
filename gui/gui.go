@@ -52,6 +52,12 @@ const (
 	maxSampling500M  = 500000000
 	maxSampling1G    = 1000000000
 	errorDisplayTime = 10 // seconds
+
+	streamEnabledLabel  = "Stream: Enabled"
+	streamDisabledLabel = "Stream: Disabled"
+
+	// ErrFrequencyCannotBeDetected is returned when f(f) cannot lock onto the signal.
+	ErrFrequencyCannotBeDetected = "Frequency cannot be detected"
 )
 const (
 	ftTabIndex = iota
@@ -427,13 +433,13 @@ func (scp *ScpDesc) getScreenScale() float32 {
 		return 1.0
 	}
 	switch scp.Settings.ScreenSize {
-	case "1920x1080":
+	case settings.ScreenSize1920x1080:
 		return 1.0
-	case "1366x768":
+	case settings.ScreenSize1366x768:
 		return 0.71
-	case "1280x720":
+	case settings.ScreenSize1280x720:
 		return 0.66
-	case "1024x768":
+	case settings.ScreenSize1024x768:
 		return 0.53
 	default:
 		return 1.0
@@ -643,7 +649,7 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	addToTest(themeChangeAction, themeChangeActionId)
 
-	scp.streamEnableButton = widget.NewButton("Stream: Enabled", func() {
+	scp.streamEnableButton = widget.NewButton(streamEnabledLabel, func() {
 		if scp.psControl == nil {
 			return
 		}
@@ -676,7 +682,7 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.triggerSettingMsg.Mv = 0
 				}
 			}
-			if scp.status.Text == "Frequency cannot be detected" {
+			if scp.status.Text == ErrFrequencyCannotBeDetected {
 				scp.status.SetText("")
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
@@ -1068,13 +1074,13 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 		rate, _ := strconv.ParseFloat(scp.Settings.Dft.SampleRate, 64)
 		unitMul := 1.0
 		switch scp.Settings.Dft.SampleRateUnit {
-		case "GS/s":
+		case selectscroll.UnitGSps:
 			unitMul = 1e9
-		case "MS/s":
+		case selectscroll.UnitMSps:
 			unitMul = 1e6
-		case "kS/s":
+		case selectscroll.UnitKSps:
 			unitMul = 1e3
-		case "S/s":
+		case selectscroll.UnitSps:
 			unitMul = 1.0
 		}
 		fs := rate * unitMul
@@ -1416,9 +1422,9 @@ func (scp *ScpDesc) updateStreamButtonState() {
 		return
 	}
 	if scp.psControl.StreamEnabled.Load() {
-		scp.streamEnableButton.SetText("Stream: Enabled")
+		scp.streamEnableButton.SetText(streamEnabledLabel)
 	} else {
-		scp.streamEnableButton.SetText("Stream: Disabled")
+		scp.streamEnableButton.SetText(streamDisabledLabel)
 	}
 }
 

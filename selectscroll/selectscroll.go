@@ -23,6 +23,14 @@ const (
 	Under
 )
 
+// Sample-rate unit strings shared across packages.
+const (
+	UnitGSps = "GS/s"
+	UnitMSps = "MS/s"
+	UnitKSps = "kS/s"
+	UnitSps  = "S/s"
+)
+
 func NewSelectScroll(options []string, changed func(option string, exception Exception), placeHolder string) *SelectScroll {
 	var selScr *SelectScroll
 	wrapper := func(option string) {
@@ -70,7 +78,7 @@ func parseOptionToValue(s string) (float64, bool) {
 		suffix     string
 		multiplier float64
 	}{
-		{"GS/s", 1e9}, {"MS/s", 1e6}, {"kS/s", 1e3}, {"KS/s", 1e3}, {"S/s", 1.0},
+		{UnitGSps, 1e9}, {UnitMSps, 1e6}, {UnitKSps, 1e3}, {"KS/s", 1e3}, {UnitSps, 1.0},
 		{"MHz", 1e6}, {"kHz", 1e3}, {"Hz", 1.0},
 		{"mV", 1e-3}, {"V", 1.0},
 		{"ms", 1e-3}, {"us", 1e-6}, {"µs", 1e-6}, {"ns", 1e-9}, {"ps", 1e-12}, {"s", 1.0},

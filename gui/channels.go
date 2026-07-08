@@ -72,6 +72,16 @@ const (
 	dc      = "DC"
 )
 
+// Trigger condition selector option strings.
+const (
+	condDontCare = "Don't Care"
+	condTrue     = "True"
+	condFalse    = "False"
+)
+
+// errDisp7NewArray is the panic message for a failed disp7 array construction.
+const errDisp7NewArray = "error from disp7.NewCustomDisp7Array"
+
 var (
 	channelNames                  = []string{"A", "B", "C", "D"}
 	triggerDirectionOptions       = []string{raising, failing}
@@ -265,7 +275,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, "Frq:", " MHz")
 	if err != nil {
-		panic("error from disp7.NewCustomDisp7Array")
+		panic(errDisp7NewArray)
 	}
 	scp.channelViewers[chIndex].period, err = disp7.NewCustomDisp7Array(4, 0,
 		maxPeriodDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
@@ -273,7 +283,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "  T:", " ms")
 	if err != nil {
-		panic("error from disp7.NewCustomDisp7Array")
+		panic(errDisp7NewArray)
 	}
 	scp.channelViewers[chIndex].period.SetValue(0)
 	frqPeriodBox = container.New(layout.NewVBoxLayout(),
@@ -292,7 +302,7 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, " Max:", " V ")
 	if err != nil {
-		panic("error from disp7.NewCustomDisp7Array")
+		panic(errDisp7NewArray)
 	}
 	scp.channelViewers[chIndex].minV, err = disp7.NewCustomDisp7Array(5, 3,
 		20000, -20000, disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
@@ -301,14 +311,14 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, " Min:", " V ")
 	if err != nil {
-		panic("error from disp7.NewCustomDisp7Array")
+		panic(errDisp7NewArray)
 	}
 
-	scp.channelViewers[chIndex].triggerConditionSelect = selectscroll.NewSelectScroll([]string{"Don't Care", "True", "False"}, func(s string, e selectscroll.Exception) {
+	scp.channelViewers[chIndex].triggerConditionSelect = selectscroll.NewSelectScroll([]string{condDontCare, condTrue, condFalse}, func(s string, e selectscroll.Exception) {
 		switch s {
-		case "True":
+		case condTrue:
 			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondTrue
-		case "False":
+		case condFalse:
 			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondFalse
 		default:
 			scp.Settings.Channels[chIndex].Trigger.Condition = genericps.CondDontCare
@@ -321,15 +331,15 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 			scp.refreshRasters()
 			scp.SaveSettings()
 		}
-	}, "Don't Care")
+	}, condDontCare)
 	
 	switch scp.Settings.Channels[chIndex].Trigger.Condition {
 	case genericps.CondTrue:
-		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("True")
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected(condTrue)
 	case genericps.CondFalse:
-		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("False")
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected(condFalse)
 	default:
-		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected("Don't Care")
+		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected(condDontCare)
 	}
 
 	if !scp.Settings.Trigger.ComplexEnabled {
@@ -488,7 +498,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			if scp.intervalTypeSelect != nil {
 				invTypeStr := intervalTypeRevMap[channel.Trigger.IntervalType]
 				if invTypeStr == "" {
-					invTypeStr = "Out Of Range"
+					invTypeStr = IntervalTypeOutOfRange
 					channel.Trigger.IntervalType = genericps.PwTypeOutOfRange
 				}
 				if scp.intervalTypeSelect.Selected != invTypeStr {
@@ -527,9 +537,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			triggerType := channel.Trigger.Type
 			if triggerType == "" {
 				if channel.Trigger.ThresholdMode == genericps.Window {
-					triggerType = "Window"
+					triggerType = settings.TriggerTypeWindow
 				} else {
-					triggerType = "Simple"
+					triggerType = settings.TriggerTypeSimple
 				}
 			}
 			if scp.Settings.Trigger.Type != triggerType {
@@ -637,7 +647,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	acdc.SetSelected(coupleTypeNames[scp.Settings.Channels[chIndex].CoupleType])
 	addToTest(acdc, acdcId+chId)
 	var activeTriggerDirectionOptions []string
-	if scp.Settings.Trigger.Type == "Window" {
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		activeTriggerDirectionOptions = triggerWindowDirectionOptions
 	} else {
 		activeTriggerDirectionOptions = triggerDirectionOptions

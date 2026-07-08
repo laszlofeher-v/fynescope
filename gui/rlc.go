@@ -3,6 +3,7 @@ package gui
 import (
 	"fynescope/genericps"
 	"fynescope/selectscroll"
+	"fynescope/settings"
 	"strconv"
 	"strings"
 
@@ -64,10 +65,10 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		}
 		genSourceSelect.SetSelected("Gen " + string(rune('A'+int(chSettings.RlcFilter.GeneratorSource))))
 
-		filterTypes := []string{"Disabled", "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
+		filterTypes := []string{settings.RlcFilterTypeDisabled, "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
 		typeSelect := selectscroll.NewSelectScroll(filterTypes, func(s string, exc selectscroll.Exception) {
 			chSettings.RlcFilter.Type = s
-			chSettings.RlcFilter.Enabled = (s != "Disabled")
+			chSettings.RlcFilter.Enabled = (s != settings.RlcFilterTypeDisabled)
 			scp.SaveSettings()
 			notifySim()
 		}, "")
@@ -122,7 +123,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		// Hide irrelevant inputs based on filter type
 		updateVisibility := func() {
 			t := chSettings.RlcFilter.Type
-			if t == "Disabled" {
+			if t == settings.RlcFilterTypeDisabled {
 				rBox.Hide()
 				lBox.Hide()
 				cBox.Hide()

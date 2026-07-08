@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/selectscroll"
 	"math"
 	"strconv"
 )
@@ -8,7 +9,7 @@ import (
 // dftSyncRates / dftSyncUnits must match what newDftPanel creates.
 var (
 	dftSyncRates    = []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
-	dftSyncUnits    = []string{"S/s", "kS/s", "MS/s", "GS/s"}
+	dftSyncUnits    = []string{selectscroll.UnitSps, selectscroll.UnitKSps, selectscroll.UnitMSps, selectscroll.UnitGSps}
 	dftSyncUnitMuls = []float64{1.0, 1e3, 1e6, 1e9}
 )
 
@@ -60,11 +61,11 @@ func (scp *ScpDesc) dftSettingsFs() float64 {
 	rate, _ := strconv.ParseFloat(scp.Settings.Dft.SampleRate, 64)
 	unitMul := 1.0
 	switch scp.Settings.Dft.SampleRateUnit {
-	case "GS/s":
+	case selectscroll.UnitGSps:
 		unitMul = 1e9
-	case "MS/s":
+	case selectscroll.UnitMSps:
 		unitMul = 1e6
-	case "kS/s":
+	case selectscroll.UnitKSps:
 		unitMul = 1e3
 	}
 	return rate * unitMul

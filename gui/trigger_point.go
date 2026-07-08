@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fynescope/genericps"
+	"fynescope/settings"
 	"image"
 	"log/slog"
 	"math"
@@ -135,7 +136,7 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 	newMv := int32(math.Round(float64(mv)))
-	if tp.scp.Settings.Trigger.Type == "Window" {
+	if tp.scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		if newMv < channel.Trigger.LowerMv {
 			newMv = channel.Trigger.LowerMv
 		}
