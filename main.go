@@ -44,60 +44,60 @@ var thirdPartyLicenses string
 // This is used for targeted debugging of specific components.
 var (
 	debugOn = map[string]bool{
-		"advtriggerpoint.go": false,
-		"blockmode.go":       false,
-		"buffers.go":         false,
-		"c.go":               false,
-		"callbacks.go":       false,
-		"channels.go":        false,
-		"checkcolorpick.go":  false,
-		"connection.go":      false,
-		"const.go":           false,
-		"consts.go":          false,
-		"control.go":         false,
-		"dftchannellabel.go": false,
-		"dftraster.go":       false,
-		"disp7.go":           false,
-		"ets.go":             false,
-		"extgen.go":          false,
-		"ffraster.go":        false,
-		"ftchannellabel.go":  false,
-		"ftraster.go":        false,
-		"fvraster.go":        false,
-		"gen.go":             false,
-		"genericps.go":       false,
-		"gui.go":             false,
-		"interpolation.go":   false,
-		"main.go":            false,
-		"measure.go":         false,
-		"noscope.go":         false,
-		"open.go":            false,
-		"params.go":          false,
-		"psconsts.go":        false,
-		"raster.go":          false,
-		"scheduler.go":       false,
-		"scpi.go":            true,
-		"scratch.go":         false,
-		"screendraw.go":      false,
-		"screentime.go":      false,
-		"selectscroll.go":    false,
-		"settings.go":        false,
-		"sim.go":             false,
-		"simgen.go":          false,
-		"sliderscroll.go":    false,
-		"status.go":          false,
-		"stream.go":          false,
-		"sweep.go":           false,
-		"sync.go":            false,
-		"tastybutton.go":     false,
-		"testproxy.go":       false,
-		"theme.go":           false,
-		"timediv.go":         true,
-		"timing.go":          false,
-		"trigger.go":         true,
-		"triggerpoint.go":    false,
-		"types.go":           false,
-		"waveforms.go":       false,
+		"adv_trigger_point.go": false,
+		"block_mode.go":        false,
+		"buffers.go":           false,
+		"c.go":                 false,
+		"callbacks.go":         false,
+		"channels.go":          false,
+		"check_color_pick.go":  false,
+		"connection.go":        false,
+		"const.go":             false,
+		"consts.go":            false,
+		"control.go":           false,
+		"dft_channel_label.go": false,
+		"dft_raster.go":        false,
+		"disp7.go":             false,
+		"ets.go":               false,
+		"ext_gen.go":           false,
+		"ff_raster.go":         false,
+		"ft_channel_label.go":  false,
+		"ft_raster.go":         false,
+		"fv_raster.go":         false,
+		"gen.go":               false,
+		"genericps.go":         false,
+		"gui.go":               false,
+		"interpolation.go":     false,
+		"main.go":              false,
+		"measure.go":           false,
+		"no_scope.go":          false,
+		"open.go":              false,
+		"params.go":            false,
+		"ps_consts.go":         false,
+		"raster.go":            false,
+		"scheduler.go":         false,
+		"scpi.go":              true,
+		"scratch.go":           false,
+		"screen_draw.go":       false,
+		"screen_time.go":       false,
+		"selectscroll.go":      false,
+		"settings.go":          false,
+		"sim.go":               false,
+		"sim_gen.go":           false,
+		"slider_scroll.go":     false,
+		"status.go":            false,
+		"stream.go":            false,
+		"sweep.go":             false,
+		"sync.go":              false,
+		"tasty_button.go":      false,
+		"test_proxy.go":        false,
+		"theme.go":             false,
+		"time_div.go":          true,
+		"timing.go":            false,
+		"trigger.go":           true,
+		"trigger_point.go":     false,
+		"types.go":             false,
+		"waveforms.go":         false,
 	}
 )
 
@@ -306,14 +306,14 @@ func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc, explicitSc
 		slog.Error("failed to load settings, using defaults", "err", err)
 		scp.Settings = settings.NewDefaultSettings()
 	}
-	
+
 	if isScreenSizeExplicit {
 		scp.Settings.ScreenSize = *explicitScreenSize
 		if err := settings.Save(settingFileName, scp.Settings); err != nil {
 			slog.Error("failed to save new default screen size", "err", err)
 		}
 	}
-	
+
 	return scp.Menu(con, scp.Settings, settingFileName)
 }
 
@@ -467,7 +467,7 @@ func main() {
 
 	// Initialize the GUI application
 	scp := &gui.ScpDesc{
-		ExtGenEnabled:         extGenEnabled,
+		ExtGenEnabled: extGenEnabled,
 	}
 	scp.App = app.New()
 

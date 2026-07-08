@@ -62,11 +62,12 @@ var (
 		triggerModeOptions[2]: control.Repeat,
 		triggerModeOptions[3]: control.Single,
 	}
-	triggerTypeOptions = []string{"Simple", "Advanced", "Window"}
+	triggerTypeOptions = []string{"Simple", "Advanced", "Window", "Interval"}
 	triggerTypes       = map[string]control.TriggerTypes{
 		triggerTypeOptions[0]: control.Simple,
 		triggerTypeOptions[1]: control.Advanced,
 		triggerTypeOptions[2]: control.Window,
+		triggerTypeOptions[3]: control.Interval,
 	}
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
@@ -968,6 +969,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	tType := triggerTypes[scp.Settings.Trigger.Type]
+	slog.Debug("trg", "tType", tType)
+	slog.Debug("set", "Trigger", scp.Settings.Trigger)
+	slog.Debug("trg", "triggerTypes", triggerTypes)
 	if tType != control.Window && tType != control.Interval {
 		scp.triggerLowerThresholdDisp.Hide()
 		scp.triggerLowerHysteresisDisp.Hide()
