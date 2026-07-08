@@ -355,20 +355,6 @@ func Load(fileName string) (*PsSettings, error) {
 	if settings.ScreenSize == "" {
 		settings.ScreenSize = "1920x1080"
 	}
-
-	// if settings.FfGen.Frequency == 0 {
-	// 	settings.FfGen = settings.ActiveGenerator
-	// 	settings.FfGen.Sweep = genericps.SweepUp
-	// 	settings.FfGen.WaveType = genericps.Sine
-	// 	settings.FfGen.On = true
-	// }
-	// if settings.FfSimGen.Frequency == 0 {
-	// 	settings.FfSimGen = settings.Channels[0].SimGen
-	// 	settings.FfSimGen.Sweep = genericps.SweepUp
-	// 	settings.FfSimGen.WaveType = genericps.Sine
-	// 	settings.FfSimGen.On = true
-	// }
-
 	return settings, nil
 }
 

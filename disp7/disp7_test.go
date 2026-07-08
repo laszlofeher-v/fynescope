@@ -224,7 +224,7 @@ func TestNewDisp7Array(t *testing.T) {
 	assert.Equal(t, DeafultDigitHeight, disp.size.Height)
 	assert.Equal(t, DefaultSkew, disp.skew)
 	assert.Equal(t, DefaultVCursorSpace, disp.cursorVSpace)
-	assert.Equal(t, "", disp.label.Text)
+	assert.Nil(t, disp.label)
 	assert.Equal(t, "", disp.unit.Text)
 }
 

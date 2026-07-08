@@ -135,9 +135,11 @@ func NewCustomDisp7Array(numOfDigits int, numOfFractionDigits, maxValue,
 	disp.unit = canvas.NewText(unit, onColor)
 	disp.unit.TextStyle = fyne.TextStyle{Monospace: true}
 	disp.unit.TextSize = digitHeight / 2
-	disp.label = canvas.NewText(label, onColor)
-	disp.label.TextStyle = fyne.TextStyle{Monospace: true}
-	disp.label.TextSize = digitHeight / 2
+	if label != "" {
+		disp.label = canvas.NewText(label, onColor)
+		disp.label.TextStyle = fyne.TextStyle{Monospace: true}
+		disp.label.TextSize = digitHeight / 2
+	}
 	slog.Debug("sizes", "unit", unit, "W", disp.unit.MinSize().Width)
 	dpSpace := float32(0)
 	if numOfFractionDigits > 0 {
@@ -147,9 +149,13 @@ func NewCustomDisp7Array(numOfDigits int, numOfFractionDigits, maxValue,
 	if signed != UnSigned {
 		signSpace = disp.digitWidth + disp.spaceBetweenDigits + disp.skew
 	}
+	labelSpace := float32(0)
+	if disp.label != nil {
+		labelSpace = disp.label.MinSize().Width + disp.spaceBetweenDigits + disp.skew
+	}
 	disp.size.Width = float32(numOfDigits)*disp.digitWidth +
 		float32(numOfDigits-1)*(disp.spaceBetweenDigits+disp.skew) +
-		disp.label.MinSize().Width + disp.spaceBetweenDigits + disp.skew +
+		labelSpace +
 		disp.unit.MinSize().Width + disp.spaceBetweenDigits + disp.skew +
 		spaceMultiplier*(disp.spaceBetweenDigits+disp.skew)*
 			(float32(numOfDigits /*-numOfFractionDigits*/)/3) + dpSpace + signSpace

@@ -170,7 +170,7 @@ type (
 		boxTriggerHysteresisDisp     *fyne.Container
 		triggerLowerThresholdDisp    *disp7.DigitArray
 		triggerLowerHysteresisDisp   *disp7.DigitArray
-		boxTriggerLowerDisp          *fyne.Container
+	// boxTriggerLowerDisp removed
 		intervalTypeSelect           *selectscroll.SelectScroll
 		intervalUnitSelect           *selectscroll.SelectScroll
 		intervalTimeLowerDisp        *disp7.DigitArray
@@ -442,17 +442,20 @@ func (scp *ScpDesc) getScreenScale() float32 {
 
 func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
-		return 1920, 1080
+		return 1920, 1030
 	}
 	parts := strings.Split(scp.Settings.ScreenSize, "x")
 	if len(parts) == 2 {
 		w, err1 := strconv.ParseFloat(parts[0], 32)
 		h, err2 := strconv.ParseFloat(parts[1], 32)
 		if err1 == nil && err2 == nil {
+			if w == 1920 && h == 1080 {
+				return 1920, 1030
+			}
 			return float32(w), float32(h)
 		}
 	}
-	return 1920, 1080
+	return 1920, 1030
 }
 
 func (scp *ScpDesc) build2000Gui() {

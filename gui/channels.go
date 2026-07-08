@@ -487,7 +487,11 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			
 			if scp.intervalTypeSelect != nil {
 				invTypeStr := intervalTypeRevMap[channel.Trigger.IntervalType]
-				if invTypeStr != "" && scp.intervalTypeSelect.Selected != invTypeStr {
+				if invTypeStr == "" {
+					invTypeStr = "Out Of Range"
+					channel.Trigger.IntervalType = genericps.PwTypeOutOfRange
+				}
+				if scp.intervalTypeSelect.Selected != invTypeStr {
 					scp.intervalTypeSelect.SilentSetSelected(invTypeStr)
 				}
 			}
