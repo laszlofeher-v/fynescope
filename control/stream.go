@@ -103,7 +103,7 @@ func streamMode(psControl *PscDesc) state {
 		if simpleTrigger {
 			err = psControl.sendSimpleTrigger()
 		} else {
-			err = psControl.sendComplexTrigger()
+			err = psControl.sendTrigger()
 		}
 		if err != nil {
 			slog.Error("stream prepare SetTrigger", "error", err)

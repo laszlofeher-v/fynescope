@@ -80,6 +80,30 @@ func etsBlockMode(psControl *PscDesc) state {
 			return err
 		}
 
+		// Calculate valid timeBase for RunBlock
+		psControl.overSample = 1
+		tbInput := uint32(float64(psControl.maxScreenTime*1e9) / float64(psControl.SampleCountRequired))
+		switch psControl.MaxSamplingRate {
+		case MaxSampling100M:
+			psControl.timeBase = timeBase100M(tbInput)
+		case MaxSampling200M:
+			psControl.timeBase = timeBase200M(tbInput)
+		case MaxSampling500M:
+			psControl.timeBase = timeBase500M(tbInput)
+		default:
+			psControl.timeBase = timeBase1G(tbInput)
+		}
+		if psControl.timeBase > psControl.timeBaseDec {
+			psControl.timeBase -= psControl.timeBaseDec
+		} else {
+			psControl.timeBase = 0
+		}
+		_, _, err = psControl.getTimeBase(psControl.SampleCountRequired)
+		if err != nil {
+			slog.Error("ETS prepare: getTimeBase failed", "error", err)
+			return err
+		}
+
 		sampleTimePicoseconds, err := psControl.Con.SetEts(genericps.EtsFast, etsCycles, etsInterleave)
 		if err != nil {
 			slog.Error("ETS prepare: SetEts failed", "error", err)
@@ -121,6 +145,9 @@ func etsBlockMode(psControl *PscDesc) state {
 		// etscallback also needs triggerTimeOffset
 		psControl.NPre = int32(math.Round(psControl.triggerSetting.XOffset / psControl.SamplingTimeInterval))
 		psControl.NPro = psControl.SampleCountRequired - psControl.NPre
+		if psControl.NPro < 0 {
+			psControl.NPro = 0
+		}
 		slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
 		psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*float64(psControl.NPre-1)
 		slog.Debug("ets pre", "XRoundError", psControl.XRoundError)
@@ -131,6 +158,8 @@ func etsBlockMode(psControl *PscDesc) state {
 	}
 
 	runBlock := func() error {
+		slog.Debug("run", "psControl.NPre", psControl.NPre, "psControl.NPro", psControl.NPro,
+			"psControl.timeBase", psControl.timeBase, "psControl.overSample", psControl.overSample)
 		_, err := psControl.Con.RunBlock(psControl.NPre, psControl.NPro, psControl.timeBase, psControl.overSample, 0, callbackBlock, nil)
 		if err != nil {
 			slog.Error("ETS runBlock failed", "error", err)

@@ -578,6 +578,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 }
 
 func (scp *ScpDesc) updateTriggerSourceState(option string) {
+	//TODO review and refactor
 	if scp.triggerSource == dontCare || int(scp.triggerSource) >= len(scp.Settings.Channels) {
 		return
 	}
@@ -741,6 +742,8 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	scp.SaveSettings()
 }
 
+
+
 func (scp *ScpDesc) onThresholdChange(v float64) {
 	if scp.triggerSource == dontCare {
 		return
@@ -748,8 +751,8 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 	intV := int32(math.Round(v))
 	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
-		if intV < lowerMv {
-			intV = lowerMv
+		if intV < lowerMv+genericps.MinThresholdDiff {
+			intV = lowerMv + genericps.MinThresholdDiff
 			scp.triggerThresholdDisp.SilentSetValue(int(intV))
 		}
 	}
@@ -787,8 +790,9 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 	intV := int32(math.Round(v))
 	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
-		if intV > upperMv {
-			intV = upperMv
+		// if intV > upperMv {
+		if intV > upperMv-genericps.MinThresholdDiff {
+			intV = upperMv - genericps.MinThresholdDiff
 			scp.triggerLowerThresholdDisp.SilentSetValue(int(intV))
 		}
 	}

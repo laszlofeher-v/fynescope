@@ -42,6 +42,51 @@ func NewWaveformGenerator(waveType WaveTypeEnum) WaveformGenerator {
 	}
 }
 
+// NewPrbsGenerator returns a WaveformGenerator that produces a PRBS signal
+// (Pseudo-Random Binary Sequence) using a 15-bit maximal-length LFSR.
+// The bit-clock period is 1/freq, so the configured frequency controls the
+// bit-rate. At each bit boundary the LFSR advances one step producing a
+// deterministic but pseudo-random ±1 sequence.
+func NewPrbsGenerator() WaveformGenerator {
+	// 15-bit LFSR with taps at positions 15 and 14 (polynomial x^15 + x^14 + 1)
+	lfsr := uint32(1)
+	prevBit := float64(0) // current output level (+1 or -1)
+	prevBitIndex := int64(-1)
+
+	return func(t float64, freq float64) float64 {
+		if freq <= 0 {
+			return 0
+		}
+		// Which bit period are we in?
+		bitIndex := int64(t * freq / (2 * math.Pi))
+		if bitIndex != prevBitIndex {
+			// Advance LFSR for each elapsed bit period
+			steps := bitIndex - prevBitIndex
+			if steps < 0 {
+				steps = 1
+			}
+			if steps > 65535 {
+				steps = 65535
+			}
+			for i := int64(0); i < steps; i++ {
+				// Galois LFSR: tap bits 15 and 14 (1-indexed)
+				bit := (lfsr ^ (lfsr >> 1)) & 1
+				lfsr = (lfsr >> 1) | (bit << 14)
+				if lfsr == 0 {
+					lfsr = 1 // avoid zero state
+				}
+			}
+			prevBitIndex = bitIndex
+			if lfsr&1 == 1 {
+				prevBit = 1.0
+			} else {
+				prevBit = -1.0
+			}
+		}
+		return prevBit
+	}
+}
+
 // sineWave generates a standard sine wave.
 // Returns values in range [-1, 1].
 func sineWave(t float64, freq float64) float64 {

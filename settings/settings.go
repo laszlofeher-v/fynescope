@@ -114,24 +114,25 @@ type (
 		ComplexEnabled  bool   `yaml:"complexenabled"`
 	}
 	GeneratorSettings struct {
-		On                   bool                    `yaml:"on"`
-		Digital              bool                    `yaml:"digital"`
-		Frequency            float64                 `yaml:"frequency"`
-		StartFrequency       float64                 `yaml:"startfrequency"`
-		StopFrequency        float64                 `yaml:"stopfrequency"`
-		Increment            float64                 `yaml:"increment"`
-		Sweep                genericps.SweepTypeEnum `yaml:"sweep"`
-		Dwelltime            float64                 `yaml:"dwelltime"`
-		OffsetVoltage        int32                   `yaml:"offsetvoltage"`
-		Amplitude            uint32                  `yaml:"amplitude"`
-		WaveType             genericps.WaveTypeEnum  `yaml:"wavetype"`
-		RaiseFallTimePercent float64                 `yaml:"raisefalltimepercent"`
-		TriggerTimeOffset    float64                 `yaml:"triggertimeoffset"`
-		NoiseAmplitude       float64                 `yaml:"noise_amplitude"`
-		PhaseNoiseDegree     float64                 `yaml:"phase_noise_degree"`
-		Phase                float64                 `yaml:"phase"`
-		ImpedanceMode        string                  `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
-		ImpedanceOhms        int                     `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
+		On                   bool                       `yaml:"on"`
+		Digital              bool                       `yaml:"digital"`
+		Frequency            float64                    `yaml:"frequency"`
+		StartFrequency       float64                    `yaml:"startfrequency"`
+		StopFrequency        float64                    `yaml:"stopfrequency"`
+		Increment            float64                    `yaml:"increment"`
+		Sweep                genericps.SweepTypeEnum    `yaml:"sweep"`
+		Dwelltime            float64                    `yaml:"dwelltime"`
+		OffsetVoltage        int32                      `yaml:"offsetvoltage"`
+		Amplitude            uint32                     `yaml:"amplitude"`
+		WaveType             genericps.WaveTypeEnum     `yaml:"wavetype"`
+		Operation            genericps.ExtraOperations  `yaml:"operation"`
+		RaiseFallTimePercent float64                    `yaml:"raisefalltimepercent"`
+		TriggerTimeOffset    float64                    `yaml:"triggertimeoffset"`
+		NoiseAmplitude       float64                    `yaml:"noise_amplitude"`
+		PhaseNoiseDegree     float64                    `yaml:"phase_noise_degree"`
+		Phase                float64                    `yaml:"phase"`
+		ImpedanceMode        string                     `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
+		ImpedanceOhms        int                        `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
 	}
 	DftSettings struct {
 		MaxFreq        float64 `yaml:"maxfreq"`

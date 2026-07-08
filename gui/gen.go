@@ -72,7 +72,7 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 		msg.StopFrequency = scp.Settings.GenPanel.StopFrequency
 		msg.SweepType = genericps.SweepDown // there is no "no sweep"
 	}
-	msg.Operation = genericps.EsOff //TODO ui
+	msg.Operation = scp.Settings.GenPanel.Operation
 	msg.Shots = 0
 	msg.Sweeps = 0
 	msg.TriggerType = genericps.SigGenRising
@@ -268,6 +268,20 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			}
 			scp.applyInternalGenSettings(check.Checked)
 		}
+
+		const (
+			operationNormal = "Normal"
+			operationPrbs   = "PRBS"
+		)
+		operationMap := map[string]genericps.ExtraOperations{
+			operationNormal: genericps.EsOff,
+			operationPrbs:   genericps.Prbs,
+		}
+		operationOptions := []string{operationNormal, operationPrbs}
+		operationChanged := func(option string, e selectscroll.Exception) {
+			scp.Settings.GenPanel.Operation = operationMap[option]
+			scp.applyInternalGenSettings(check.Checked)
+		}
 		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
 		waveType.SetSelected(waveTypeOptions[scp.Settings.GenPanel.WaveType])
 		if undockable {
@@ -447,8 +461,18 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		addToTest(sweepMenu, genSweepId)
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Sweep "), sweepMenu)
+
+		operationSelect := selectscroll.NewSelectScroll(operationOptions, operationChanged, operationNormal)
+		if scp.Settings.GenPanel.Operation == genericps.Prbs {
+			operationSelect.SetSelected(operationPrbs)
+		} else {
+			operationSelect.SetSelected(operationNormal)
+		}
+		operationBox := container.New(layout.NewHBoxLayout(),
+			widget.NewLabel("Operation:"), operationSelect)
+
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset)
+			sweepBox, amp, offset, operationBox)
 		// }
 
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)

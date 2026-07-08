@@ -158,6 +158,7 @@ const (
 const (
 	AwgMinSigGenBufferSize = 1
 	AwgMaxSigGenBufferSize = 8192
+	MinThresholdDiff       = 100
 )
 
 type TriggerState int
@@ -563,4 +564,5 @@ func loadConstants() {
 	genericps.MinFrequency = (MinFrequency)
 	genericps.AwgMinSigGenBufferSize = (AwgMinSigGenBufferSize)
 	genericps.AwgMaxSigGenBufferSize = (AwgMaxSigGenBufferSize)
+	genericps.MinThresholdDiff = MinThresholdDiff
 }
