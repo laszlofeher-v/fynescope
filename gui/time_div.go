@@ -516,6 +516,13 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				scp.channelViewers[i].triggerCheckbox.SetChecked(false)
 				scp.channelViewers[i].triggerCheckbox.Disable()
 			}
+			if scp.triggerTypeSelect != nil {
+				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced})
+				if scp.Settings.Trigger.Type != settings.TriggerTypeSimple && scp.Settings.Trigger.Type != settings.TriggerTypeAdvanced {
+					scp.triggerTypeSelect.SetSelected(settings.TriggerTypeAdvanced)
+				}
+				scp.triggerTypeSelect.Refresh()
+			}
 			scp.triggerSource = genericps.ChA // only channel A is allowed
 			//TODO Is it ps2000 specific?
 			channelViewer := &scp.channelViewers[genericps.ChA]
@@ -541,6 +548,10 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	} else {
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
+			if scp.triggerTypeSelect != nil {
+				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval})
+				scp.triggerTypeSelect.Refresh()
+			}
 			for i := range scp.channelViewers {
 				scp.channelViewers[i].triggerCheckbox.Enable()
 			}
@@ -586,7 +597,7 @@ func (scp *ScpDesc) updateTriggerSourceState(option string) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
 	if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
 		var activeOpts []string
-		if option == settings.TriggerTypeWindow || option == settings.TriggerTypeInterval {
+		if option == settings.TriggerTypeWindow {
 			activeOpts = triggerWindowDirectionOptions
 		} else {
 			activeOpts = triggerDirectionOptions
@@ -996,6 +1007,12 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 
 	// Build trigger type options
 	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval}
+	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
+		activeTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced}
+		if scp.Settings.Trigger.Type != settings.TriggerTypeSimple && scp.Settings.Trigger.Type != settings.TriggerTypeAdvanced {
+			scp.Settings.Trigger.Type = settings.TriggerTypeAdvanced
+		}
+	}
 	triggerTypes[settings.TriggerTypeComplex] = control.Complex
 	triggerTypes[settings.TriggerTypeInterval] = control.Interval
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, settings.TriggerTypeAdvanced)

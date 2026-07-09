@@ -439,6 +439,7 @@ func ps2000aSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err 
 }
 
 func ps2000aSetEts(handle int16, mode EtsMode, etsCycles int16, etsInterLeave int16) (sampleTimePicoseconds int32, err error) {
+	slog.Debug("ps2000aSetEts", "mode", mode)
 	stat := C.ps2000aSetEts((C.short)(handle), (C.PS2000A_ETS_MODE)(mode),
 		(C.short)(etsCycles), (C.short)(etsInterLeave), (*C.int)(&sampleTimePicoseconds))
 	if stat != C.PICO_OK {
