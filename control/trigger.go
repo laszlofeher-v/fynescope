@@ -443,13 +443,6 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 		return
 	}
 
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
-		return
-	}
-
 	pwqDir := genericps.TriggerRaising
 	if dir == genericps.TriggerFalling {
 		pwqDir = genericps.TriggerFalling
@@ -462,10 +455,7 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendIntervalTrigger() (err error) {
-	at := int32(0)
-	if psControl.triggerSetting.Mode == Auto {
-		at = autoTriggerMs
-	}
+	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
 

@@ -28,6 +28,14 @@ func blockMode(psControl *PscDesc) state {
 	} //end callbackBlock
 
 	prepare := func() (err error) {
+		// Disable ETS on hardware BEFORE configuring the trigger.
+		// The SDK raises PICO_TRIGGER_ERROR if trigger properties are set
+		// while ETS is still active (e.g. after returning from ETS mode).
+		_, err = psControl.Con.SetEts(genericps.EtsOff, 40, 4)
+		if err != nil {
+			slog.Error("Set Ets off", "err", err)
+			return
+		}
 		err = psControl.setEverything()
 		if err != nil {
 			return
@@ -45,11 +53,6 @@ func blockMode(psControl *PscDesc) state {
 		}
 		if err != nil {
 			slog.Error("runblock memorySegments", "err", err)
-			return
-		}
-		_, err = psControl.Con.SetEts(genericps.EtsOff, 40, 4)
-		if err != nil {
-			slog.Error("Set Ets off", "err", err)
 			return
 		}
 		psControl.overSample = 1 // not used
@@ -119,7 +122,7 @@ func blockMode(psControl *PscDesc) state {
 			slog.Debug("pre", "NPre", psControl.NPre)
 			slog.Debug("pre", "NPro", psControl.NPro)
 		}
-		if psControl.NPro < 0 { //TODO Why?
+		if psControl.NPro < 0 {
 			psControl.NPro = 0
 		}
 		slog.Debug("pre", "XRoundError", psControl.XRoundError)

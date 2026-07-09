@@ -873,7 +873,7 @@ var (
 	RampMaxFrequency, HalfSineMaxFrequency, GaussianMaxFrequency,
 	PrbsMaxFrequency, PrbsMinFrequency, MinFrequency float64
 	AwgMinSigGenBufferSize, AwgMaxSigGenBufferSize int16
-	MinThresholdDiff int32
+	MinThresholdDiff                               int32
 )
 
 func NewConnection() (con *Connection) {
@@ -1272,6 +1272,7 @@ func (c Connection) SetDigitalPort(port DigitalPort, enabled bool, logiclevel in
 }
 func (c Connection) SetEts(mode EtsMode, etsCycles int16, etsInterLeave int16) (sampleTimePicoseconds int32, err error) {
 	msg := &SetEtsMsg{Mode: mode, EtsCycles: etsCycles, EtsInterleave: etsInterLeave}
+	slog.Debug("SetEts", "EtsMode", mode)
 	msg.rsp = &SetEtsRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetEtsRsp)
