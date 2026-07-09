@@ -158,7 +158,7 @@ func NewCustomDisp7Array(numOfDigits int, numOfFractionDigits, maxValue,
 		labelSpace +
 		disp.unit.MinSize().Width + disp.spaceBetweenDigits + disp.skew +
 		spaceMultiplier*(disp.spaceBetweenDigits+disp.skew)*
-			(float32(numOfDigits /*-numOfFractionDigits*/)/3) + dpSpace + signSpace
+			(float32(numOfDigits)/3) + dpSpace + signSpace
 	disp.cursorVSpace = cursorVSpace
 	disp.onColor = onColor
 	disp.CursorColor = theme.PrimaryColorNamed(DefaultCursorColor)

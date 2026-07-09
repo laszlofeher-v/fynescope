@@ -181,7 +181,10 @@ type (
 		intervalUnitSelect           *selectscroll.SelectScroll
 		intervalTimeLowerDisp        *disp7.DigitArray
 		intervalTimeUpperDisp        *disp7.DigitArray
+		intervalTimeSingleDisp       *disp7.DigitArray
 		boxTriggerIntervalDisp       *fyne.Container
+		boxIntervalTimeSingle        *fyne.Container
+		boxIntervalTimeRange         *fyne.Container
 		digital                      *fyne.Container
 		genLayout                    *fyne.Container
 		rlcLayout                    *fyne.Container

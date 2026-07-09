@@ -88,9 +88,16 @@ var (
 		interpolationModeOptions[settings.Raw]:    settings.Raw,
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
-
 	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan, IntervalTypeInRange, IntervalTypeOutOfRange}
-	intervalTypes       = map[string]genericps.PulseWidthType{
+	intervalTypes       map[string]genericps.PulseWidthType
+	intervalTypeRevMap  map[genericps.PulseWidthType]string
+	// intervalSingleModeTypes are interval types that use a single ΔT value
+	// (only one horizontal trigger point handle and one time disp7 widget).
+	intervalSingleModeTypes map[genericps.PulseWidthType]bool
+)
+
+func initTimeMaps() {
+	intervalTypes = map[string]genericps.PulseWidthType{
 		intervalTypeOptions[0]: genericps.PwTypeLessThan,
 		intervalTypeOptions[1]: genericps.PwTypeGreaterThan,
 		intervalTypeOptions[2]: genericps.PwTypeInRange,
@@ -102,7 +109,13 @@ var (
 		genericps.PwTypeInRange:     intervalTypeOptions[2],
 		genericps.PwTypeOutOfRange:  intervalTypeOptions[3],
 	}
-)
+	intervalSingleModeTypes = map[genericps.PulseWidthType]bool{
+		genericps.PwTypeLessThan:    true,
+		genericps.PwTypeGreaterThan: true,
+		genericps.PwTypeInRange:     false,
+		genericps.PwTypeOutOfRange:  false,
+	}
+}
 
 var (
 	_ mouser     = (*timeLabelViewer)(nil)
@@ -681,14 +694,15 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 	case control.Interval:
 		scp.boxTriggerHysteresisDisp.Show()
 		if scp.triggerLowerThresholdDisp != nil {
-			scp.triggerLowerThresholdDisp.Show()
+			scp.triggerLowerThresholdDisp.Hide()
 		}
 		if scp.triggerLowerHysteresisDisp != nil {
-			scp.triggerLowerHysteresisDisp.Show()
+			scp.triggerLowerHysteresisDisp.Hide()
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
 		}
+		scp.updateIntervalTimeGUI()
 	}
 }
 
@@ -752,8 +766,6 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
-
-
 
 func (scp *ScpDesc) onThresholdChange(v float64) {
 	if scp.triggerSource == dontCare {
@@ -842,8 +854,29 @@ func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exceptio
 		return
 	}
 	pwType := intervalTypes[option]
-	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType = pwType
+	channel := &scp.Settings.Channels[scp.triggerSource]
+
+	// Prevent invalid 0 values when switching modes by syncing the active time parameter
+	if pwType == genericps.PwTypeLessThan && channel.Trigger.IntervalTimeUpper <= 0 {
+		channel.Trigger.IntervalTimeUpper = channel.Trigger.IntervalTimeLower
+	} else if pwType == genericps.PwTypeGreaterThan && channel.Trigger.IntervalTimeLower <= 0 {
+		channel.Trigger.IntervalTimeLower = channel.Trigger.IntervalTimeUpper
+	} else if pwType == genericps.PwTypeInRange || pwType == genericps.PwTypeOutOfRange {
+		if channel.Trigger.IntervalTimeLower <= 0 {
+			channel.Trigger.IntervalTimeLower = channel.Trigger.IntervalTimeUpper
+		}
+		if channel.Trigger.IntervalTimeUpper <= channel.Trigger.IntervalTimeLower {
+			// Ensure upper is greater than lower for range modes
+			channel.Trigger.IntervalTimeUpper = channel.Trigger.IntervalTimeLower + 1000 // add 1us nominal
+		}
+	}
+
+	channel.Trigger.IntervalType = pwType
 	scp.triggerSettingMsg.IntervalType = pwType
+	scp.triggerSettingMsg.IntervalTimeLower = channel.Trigger.IntervalTimeLower
+	scp.triggerSettingMsg.IntervalTimeUpper = channel.Trigger.IntervalTimeUpper
+
+	scp.updateIntervalTimeGUI()
 
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 	<-scp.triggerSettingMsg.Done
@@ -853,6 +886,60 @@ func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exceptio
 	scp.refreshRasters()
 	scp.SaveSettings()
 }
+
+// updateIntervalTimeGUI switches between single-ΔT mode (for Greater Than / Less Than)
+// and dual-time range mode (for In Range / Out Of Range).
+func (scp *ScpDesc) updateIntervalTimeGUI() {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	// Interval mode only uses one voltage threshold, so always hide the lower threshold widgets
+	if scp.triggerLowerThresholdDisp != nil {
+		scp.triggerLowerThresholdDisp.Hide()
+	}
+	if scp.triggerLowerHysteresisDisp != nil {
+		scp.triggerLowerHysteresisDisp.Hide()
+	}
+
+	pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
+	if intervalSingleModeTypes[pwType] {
+		slog.Debug("Single mode: show only one ΔT widget, hide range pair")
+		// Single mode: show only one ΔT widget, hide range pair
+		if scp.boxIntervalTimeRange != nil {
+			scp.boxIntervalTimeRange.Hide()
+		}
+		if scp.boxIntervalTimeSingle != nil {
+			scp.boxIntervalTimeSingle.Show()
+			// Sync the single disp value from the appropriate field
+			unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+			if unit == "" && scp.intervalUnitSelect != nil {
+				unit = scp.intervalUnitSelect.Selected
+			}
+			multiplier := getIntervalUnitMultiplier(unit)
+			var timeVal float64
+			if pwType == genericps.PwTypeLessThan {
+				timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+			} else { // GreaterThan
+				timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
+			}
+			scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(timeVal / multiplier)))
+			scp.intervalTimeSingleDisp.Refresh()
+		}
+	} else {
+		// Range mode: show both lower/upper times, hide single ΔT widget
+		slog.Debug(" Range mode: show both lower/upper times, hide single ΔT widget")
+		if scp.boxIntervalTimeSingle != nil {
+			scp.boxIntervalTimeSingle.Hide()
+		}
+		if scp.boxIntervalTimeRange != nil {
+			scp.boxIntervalTimeRange.Show()
+		}
+	}
+
+	if scp.triggerDisplays != nil {
+		scp.triggerDisplays.Refresh()
+	}
+}
 func getIntervalUnitMultiplier(unit string) float64 {
 	switch unit {
 	case " ns":
@@ -860,7 +947,7 @@ func getIntervalUnitMultiplier(unit string) float64 {
 	case " us":
 		return 1e-7
 	case " ms":
-		return 1e-4
+		return 1e-8
 	case " s":
 		return 1e-1
 	}
@@ -875,10 +962,25 @@ func (scp *ScpDesc) onIntervalUnitChange(option string, ex selectscroll.Exceptio
 
 	scp.intervalTimeLowerDisp.SetUnit(option)
 	scp.intervalTimeUpperDisp.SetUnit(option)
+	if scp.intervalTimeSingleDisp != nil {
+		scp.intervalTimeSingleDisp.SetUnit(option)
+	}
 
 	multiplier := getIntervalUnitMultiplier(option)
 	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
+
+	// Also update the single ΔT disp
+	if scp.intervalTimeSingleDisp != nil {
+		pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
+		var timeVal float64
+		if pwType == genericps.PwTypeLessThan {
+			timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+		} else {
+			timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
+		}
+		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(timeVal / multiplier)))
+	}
 
 	scp.SaveSettings()
 }
@@ -917,7 +1019,32 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	scp.SaveSettings()
 }
 
+// onIntervalTimeSingleChange handles the single ΔT disp7 for Greater Than / Less Than modes.
+func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
+	if scp.triggerSource == dontCare {
+		return
+	}
+	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
+	if pwType == genericps.PwTypeLessThan {
+		scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper = valInSeconds
+		scp.triggerSettingMsg.IntervalTimeUpper = valInSeconds
+	} else { // GreaterThan
+		scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower = valInSeconds
+		scp.triggerSettingMsg.IntervalTimeLower = valInSeconds
+	}
+	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
+	<-scp.triggerSettingMsg.Done
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	scp.refreshRasters()
+	scp.SaveSettings()
+}
+
 func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
+	initTimeMaps()
 	scp.timeUnitSelect = selectscroll.NewSelectScroll(units, scp.onTimeUnitChange, milliSec+div)
 	scp.timeUnitSelect.SilentSetSelected(scp.Settings.Time.Unit)
 	scp.timeUnit = tu[scp.timeUnitSelect.Selected]
@@ -1078,10 +1205,24 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.intervalTimeUpperDisp.OnChanged = scp.onIntervalTimeUpperChange
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
 
+	// Single ΔT display for Greater Than / Less Than modes
+	scp.intervalTimeSingleDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "\u0394T:", unitStr)
+	if err != nil {
+		return nil, err
+	}
+	scp.intervalTimeSingleDisp.OnChanged = scp.onIntervalTimeSingleChange
+
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect, scp.intervalUnitSelect)
-	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
+	scp.boxIntervalTimeRange = container.New(layout.NewVBoxLayout(), scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
+	scp.boxIntervalTimeSingle = container.New(layout.NewVBoxLayout(), scp.intervalTimeSingleDisp)
+	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, scp.boxIntervalTimeSingle, scp.boxIntervalTimeRange)
 	if triggerTypes[scp.Settings.Trigger.Type] != control.Interval {
 		scp.boxTriggerIntervalDisp.Hide()
+	} else {
+		scp.updateIntervalTimeGUI()
 	}
 
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
