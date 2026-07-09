@@ -98,13 +98,7 @@ func streamMode(psControl *PscDesc) state {
 		}
 		psControl.SamplingTimeInterval = float64(timeInterval) * 1e-9
 
-		// Configure triggering if needed (usually simple trigger is fine)
-		simpleTrigger := true
-		if simpleTrigger {
-			err = psControl.sendSimpleTrigger()
-		} else {
-			err = psControl.sendTrigger()
-		}
+		err = psControl.setTrigger()
 		if err != nil {
 			slog.Error("stream prepare SetTrigger", "error", err)
 			return

@@ -93,6 +93,11 @@ func blockMode(psControl *PscDesc) state {
 			psControl.SampleCountRequired = minSampleCount
 		}
 		psControl.SamplingTimeInterval = float64(timeIntervalNanoseconds) * 1e-9
+		err = psControl.setTrigger()
+		if err != nil {
+			slog.Error("runblock setTrigger:", "err", err)
+			return
+		}
 		if psControl.SampleCountRequired == 0 {
 			slog.Error("runblock setBuffers sampleCount == 0")
 			return

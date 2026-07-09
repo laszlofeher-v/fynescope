@@ -315,11 +315,6 @@ func (psControl *PscDesc) setEverything() (err error) {
 		slog.Error("setChannel", "error", err)
 		return
 	}
-	err = psControl.setTrigger()
-	if err != nil {
-		slog.Error("setTrigger", "error", err)
-		return
-	}
 	return
 }
 

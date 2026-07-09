@@ -284,7 +284,12 @@ func (psControl *PscDesc) sendAdvancedBaseTrigger() (err error) {
 			upperSamples = 0
 		}
 
-		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir)
+		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
+			"intervalType", psControl.triggerSetting.IntervalType,
+			"lowerSamples", lowerSamples, "upperSamples", upperSamples,
+			"rawTimeLower", psControl.triggerSetting.IntervalTimeLower,
+			"rawTimeUpper", psControl.triggerSetting.IntervalTimeUpper,
+			"samplingInterval", psControl.SamplingTimeInterval)
 		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
 		if err != nil {
 			slog.Error("SetPulseWidthQualifier:", "error:", err)
@@ -602,7 +607,12 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 			upperSamples = 0
 		}
 
-		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir)
+		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
+			"intervalType", psControl.triggerSetting.IntervalType,
+			"lowerSamples", lowerSamples, "upperSamples", upperSamples,
+			"rawTimeLower", psControl.triggerSetting.IntervalTimeLower,
+			"rawTimeUpper", psControl.triggerSetting.IntervalTimeUpper,
+			"samplingInterval", psControl.SamplingTimeInterval)
 		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
 		if err != nil {
 			slog.Error("SetPulseWidthQualifier:", "error:", err)
