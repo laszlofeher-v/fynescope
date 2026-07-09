@@ -707,7 +707,7 @@ func (sv *signalViewer) formatTime(seconds float64) string {
 	if absT < 1e-9 {
 		val *= 1e12
 		unit = "ps"
-	} else if absT < 1e-6 {
+	} else if absT < 1E-6 {
 		val *= 1e9
 		unit = "ns"
 	} else if absT < 1e-3 {

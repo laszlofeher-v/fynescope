@@ -545,6 +545,8 @@ func ps2000aSetTriggerChannelConditions(handle int16, triggerConditions []Trigge
 	if len(triggerConditions) > 0 {
 		pcTriggerConditions = &cTriggerConditions[0]
 	}
+	slog.Debug("ps2000aSetTriggerChannelConditions", "pcTriggerConditions", pcTriggerConditions)
+
 	stat := C.ps2000aSetTriggerChannelConditions((C.short)(handle),
 		(*C.PS2000A_TRIGGER_CONDITIONS)(pcTriggerConditions),
 		(C.short)(len(triggerConditions)))
@@ -556,6 +558,7 @@ func ps2000aSetTriggerChannelConditions(handle int16, triggerConditions []Trigge
 }
 
 func ps2000aSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, channelD, ext, aux ThresholdDirection) (err error) {
+	slog.Debug("ps2000aSetTriggerChannelDirections", "channelA", channelA)
 	stat := C.ps2000aSetTriggerChannelDirections((C.short)(handle),
 		(C.PS2000A_THRESHOLD_DIRECTION)(channelA),
 		(C.PS2000A_THRESHOLD_DIRECTION)(channelB),
@@ -594,7 +597,7 @@ func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, dir
 	if len(conditions) > 0 {
 		pcPwqConditions = &cPwqConditions[0]
 	}
-	slog.Debug("cgo", "conditions", conditions, "direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
+	slog.Debug("ps2000aSetPulseWidthQualifier", "pcPwqConditions", pcPwqConditions, "conditions", conditions, "direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
 	stat := C.ps2000aSetPulseWidthQualifier((C.short)(handle),
 		pcPwqConditions, (C.short)(len(conditions)),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint)(lower), (C.uint)(upper),

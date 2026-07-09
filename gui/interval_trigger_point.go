@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/genericps"
 	"image"
 	"math"
 
@@ -135,16 +136,31 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		timeOffset = -timeOffset
 	}
 
-	if tp.lowerSelected {
-		if channel.Trigger.IntervalTimeUpper > 0 && timeOffset > channel.Trigger.IntervalTimeUpper {
-			timeOffset = channel.Trigger.IntervalTimeUpper
+	pwType := channel.Trigger.IntervalType
+	isSingle := intervalSingleModeTypes[pwType]
+
+	if isSingle {
+		// Single mode: either handle controls the single ΔT
+		if pwType == genericps.PwTypeLessThan {
+			channel.Trigger.IntervalTimeUpper = timeOffset
+			channel.Trigger.IntervalTimeLower = timeOffset
+		} else { // GreaterThan
+			channel.Trigger.IntervalTimeUpper = timeOffset
+			channel.Trigger.IntervalTimeLower = timeOffset
 		}
-		channel.Trigger.IntervalTimeLower = timeOffset
-	} else if tp.upperSelected {
-		if timeOffset < channel.Trigger.IntervalTimeLower {
-			timeOffset = channel.Trigger.IntervalTimeLower
+	} else {
+		// Range mode: separate lower/upper handles
+		if tp.lowerSelected {
+			if channel.Trigger.IntervalTimeUpper > 0 && timeOffset > channel.Trigger.IntervalTimeUpper {
+				timeOffset = channel.Trigger.IntervalTimeUpper
+			}
+			channel.Trigger.IntervalTimeLower = timeOffset
+		} else if tp.upperSelected {
+			if timeOffset < channel.Trigger.IntervalTimeLower {
+				timeOffset = channel.Trigger.IntervalTimeLower
+			}
+			channel.Trigger.IntervalTimeUpper = timeOffset
 		}
-		channel.Trigger.IntervalTimeUpper = timeOffset
 	}
 
 	tp.scp.triggerSettingMsg.IntervalTimeLower = channel.Trigger.IntervalTimeLower
@@ -176,75 +192,121 @@ func (tp *intervalTriggerPointViewer) draw() {
 			return
 		}
 
-		lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.scp.maxScreenTime) * w)
-		upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.scp.maxScreenTime) * w)
-
-		var xLower float32
-		var xUpper float32
-
-		// Pulse width is measured after the trigger point
-		xLower = x + lowerDx
-		xUpper = x + upperDx
+		pwType := channel.Trigger.IntervalType
+		isSingle := intervalSingleModeTypes[pwType]
 
 		halfRectSize := float32(triggerPointR * 2)
 		rectSize2 := 2 * halfRectSize
 
-		tp.lowerHImgRect = image.Rect(
-			int(math.Round(float64(xLower-rectSize2))),
-			int(math.Round(float64(y-rectSize2))),
-			int(math.Round(float64(xLower+rectSize2))),
-			int(math.Round(float64(y+rectSize2))))
-
-		tp.upperHImgRect = image.Rect(
-			int(math.Round(float64(xUpper-rectSize2))),
-			int(math.Round(float64(y-rectSize2))),
-			int(math.Round(float64(xUpper+rectSize2))),
-			int(math.Round(float64(y+rectSize2))))
-
-		colLower := theme.ForegroundColor()
-		if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.lowerHImgRect.Min.X+tp.lowerHImgRect.Dx()/2), y)) {
-			colLower = theme.SelectionColor()
-		}
-
-		colUpper := theme.ForegroundColor()
-		if tp.upperSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.upperHImgRect.Min.X+tp.upperHImgRect.Dx()/2), y)) {
-			colUpper = theme.SelectionColor()
-		}
-
-		// Draw horizontal line from trigger point to xLower
-		drawLine(tp.scp.ftScopeSignalScreen, x, y, xLower, y, colLower)
-		// Draw vertical handle at xLower
-		drawLine(tp.scp.ftScopeSignalScreen, xLower, y-halfRectSize, xLower, y+halfRectSize, colLower)
-
-		// Draw horizontal line from trigger point to xUpper
-		drawLine(tp.scp.ftScopeSignalScreen, x, y, xUpper, y, colUpper)
-		// Draw vertical handle at xUpper
-		drawLine(tp.scp.ftScopeSignalScreen, xUpper, y-halfRectSize, xUpper, y+halfRectSize, colUpper)
-
-		// Update UI labels if necessary
-		if tp.scp.intervalTimeLowerDisp != nil {
-			unit := channel.Trigger.IntervalTimeUnit
-			if unit == "" && tp.scp.intervalUnitSelect != nil {
-				unit = tp.scp.intervalUnitSelect.Selected
+		if isSingle {
+			// Single handle mode: show only one horizontal handle for the single ΔT
+			var singleTime float64
+			if pwType == genericps.PwTypeLessThan {
+				singleTime = channel.Trigger.IntervalTimeUpper
+			} else { // GreaterThan
+				singleTime = channel.Trigger.IntervalTimeLower
 			}
-			multiplier := getIntervalUnitMultiplier(unit)
-			val := int(math.Round(channel.Trigger.IntervalTimeLower / multiplier))
-			if tp.scp.intervalTimeLowerDisp.Value != val {
-				tp.scp.intervalTimeLowerDisp.SilentSetValue(val)
-				tp.scp.intervalTimeLowerDisp.Refresh()
-			}
-		}
+			singleDx := float32((singleTime / tp.scp.maxScreenTime) * w)
+			xSingle := x + singleDx
 
-		if tp.scp.intervalTimeUpperDisp != nil {
-			unit := channel.Trigger.IntervalTimeUnit
-			if unit == "" && tp.scp.intervalUnitSelect != nil {
-				unit = tp.scp.intervalUnitSelect.Selected
+			// Use lowerHImgRect for the single handle's hit-test area
+			tp.lowerHImgRect = image.Rect(
+				int(math.Round(float64(xSingle-rectSize2))),
+				int(math.Round(float64(y-rectSize2))),
+				int(math.Round(float64(xSingle+rectSize2))),
+				int(math.Round(float64(y+rectSize2))))
+			// Make upperHImgRect empty so it is not hit-testable
+			tp.upperHImgRect = image.Rect(0, 0, 0, 0)
+
+			colSingle := theme.ForegroundColor()
+			if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.lowerHImgRect.Min.X+tp.lowerHImgRect.Dx()/2), y)) {
+				colSingle = theme.SelectionColor()
 			}
-			multiplier := getIntervalUnitMultiplier(unit)
-			val := int(math.Round(channel.Trigger.IntervalTimeUpper / multiplier))
-			if tp.scp.intervalTimeUpperDisp.Value != val {
-				tp.scp.intervalTimeUpperDisp.SilentSetValue(val)
-				tp.scp.intervalTimeUpperDisp.Refresh()
+
+			// Draw horizontal line from trigger point to the single handle
+			drawLine(tp.scp.ftScopeSignalScreen, x, y, xSingle, y, colSingle)
+			// Draw vertical handle at xSingle
+			drawLine(tp.scp.ftScopeSignalScreen, xSingle, y-halfRectSize, xSingle, y+halfRectSize, colSingle)
+
+			// Update single ΔT disp
+			if tp.scp.intervalTimeSingleDisp != nil {
+				unit := channel.Trigger.IntervalTimeUnit
+				if unit == "" && tp.scp.intervalUnitSelect != nil {
+					unit = tp.scp.intervalUnitSelect.Selected
+				}
+				multiplier := getIntervalUnitMultiplier(unit)
+				val := int(math.Round(singleTime / multiplier))
+				if tp.scp.intervalTimeSingleDisp.Value != val {
+					tp.scp.intervalTimeSingleDisp.SilentSetValue(val)
+					tp.scp.intervalTimeSingleDisp.Refresh()
+				}
+			}
+		} else {
+			// Range mode: two time handles + single trigger point
+			// Time handles
+			lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.scp.maxScreenTime) * w)
+			upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.scp.maxScreenTime) * w)
+
+			xLower := x + lowerDx
+			xUpper := x + upperDx
+
+			tp.lowerHImgRect = image.Rect(
+				int(math.Round(float64(xLower-rectSize2))),
+				int(math.Round(float64(y-rectSize2))),
+				int(math.Round(float64(xLower+rectSize2))),
+				int(math.Round(float64(y+rectSize2))))
+
+			tp.upperHImgRect = image.Rect(
+				int(math.Round(float64(xUpper-rectSize2))),
+				int(math.Round(float64(y-rectSize2))),
+				int(math.Round(float64(xUpper+rectSize2))),
+				int(math.Round(float64(y+rectSize2))))
+
+			colLower := theme.ForegroundColor()
+			if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.lowerHImgRect.Min.X+tp.lowerHImgRect.Dx()/2), y)) {
+				colLower = theme.SelectionColor()
+			}
+
+			colUpper := theme.ForegroundColor()
+			if tp.upperSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.upperHImgRect.Min.X+tp.upperHImgRect.Dx()/2), y)) {
+				colUpper = theme.SelectionColor()
+			}
+
+			// Draw horizontal line from trigger point to xLower
+			drawLine(tp.scp.ftScopeSignalScreen, x, y, xLower, y, colLower)
+			// Draw vertical handle at xLower
+			drawLine(tp.scp.ftScopeSignalScreen, xLower, y-halfRectSize, xLower, y+halfRectSize, colLower)
+
+			// Draw horizontal line from trigger point to xUpper
+			drawLine(tp.scp.ftScopeSignalScreen, x, y, xUpper, y, colUpper)
+			// Draw vertical handle at xUpper
+			drawLine(tp.scp.ftScopeSignalScreen, xUpper, y-halfRectSize, xUpper, y+halfRectSize, colUpper)
+
+			// Update time disp7s
+			if tp.scp.intervalTimeLowerDisp != nil {
+				unit := channel.Trigger.IntervalTimeUnit
+				if unit == "" && tp.scp.intervalUnitSelect != nil {
+					unit = tp.scp.intervalUnitSelect.Selected
+				}
+				multiplier := getIntervalUnitMultiplier(unit)
+				val := int(math.Round(channel.Trigger.IntervalTimeLower / multiplier))
+				if tp.scp.intervalTimeLowerDisp.Value != val {
+					tp.scp.intervalTimeLowerDisp.SilentSetValue(val)
+					tp.scp.intervalTimeLowerDisp.Refresh()
+				}
+			}
+
+			if tp.scp.intervalTimeUpperDisp != nil {
+				unit := channel.Trigger.IntervalTimeUnit
+				if unit == "" && tp.scp.intervalUnitSelect != nil {
+					unit = tp.scp.intervalUnitSelect.Selected
+				}
+				multiplier := getIntervalUnitMultiplier(unit)
+				val := int(math.Round(channel.Trigger.IntervalTimeUpper / multiplier))
+				if tp.scp.intervalTimeUpperDisp.Value != val {
+					tp.scp.intervalTimeUpperDisp.SilentSetValue(val)
+					tp.scp.intervalTimeUpperDisp.Refresh()
+				}
 			}
 		}
 	}

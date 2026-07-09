@@ -744,7 +744,7 @@ func formatTime(t float64) string {
 	if t >= 1e-3 {
 		return fmt.Sprintf("%.3gms", t*1e3)
 	}
-	if t >= 1e-6 {
+	if t >= 1E-6 {
 		return fmt.Sprintf("%.3gµs", t*1e6)
 	}
 	if t >= 1e-9 {
@@ -1020,7 +1020,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 			uv := unitVals[u]
 			for _, v := range valLabels {
 				vv, _ := strconv.ParseFloat(v, 64)
-				if math.Abs(vv*uv-currentMaxFreq) < 1e-6 {
+				if math.Abs(vv*uv-currentMaxFreq) < 1E-6 {
 					bestVal = v
 					bestUnit = u
 					goto found

@@ -275,6 +275,15 @@ func (psControl *PscDesc) sendAdvancedBaseTrigger() (err error) {
 		case genericps.TriggerBelow:
 			pwqDir = genericps.TriggerAbove
 		}
+
+		// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
+		if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
+			lowerSamples = upperSamples
+			upperSamples = 0
+		} else if psControl.triggerSetting.IntervalType == genericps.PwTypeGreaterThan {
+			upperSamples = 0
+		}
+
 		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir)
 		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
 		if err != nil {
@@ -584,6 +593,15 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 		case genericps.TriggerBelow:
 			pwqDir = genericps.TriggerAbove
 		}
+
+		// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
+		if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
+			lowerSamples = upperSamples
+			upperSamples = 0
+		} else if psControl.triggerSetting.IntervalType == genericps.PwTypeGreaterThan {
+			upperSamples = 0
+		}
+
 		slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir)
 		err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
 		if err != nil {

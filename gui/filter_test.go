@@ -14,7 +14,7 @@ func TestApplyFIR_2Tap(t *testing.T) {
 
 	// Since input is constant 1.0, output should be 1.0
 	for i, v := range output {
-		if math.Abs(float64(v-1.0)) > 1e-6 {
+		if math.Abs(float64(v-1.0)) > 1E-6 {
 			t.Errorf("At index %d, expected 1.0, got %f", i, v)
 		}
 	}
@@ -25,7 +25,7 @@ func TestApplyFIR_2Tap(t *testing.T) {
 	// Output should be [1.0, 0.5, 0.0, 0.0] under boundary clamping
 	expected := []float32{1.0, 0.5, 0.0, 0.0}
 	for i, v := range output {
-		if math.Abs(float64(v-expected[i])) > 1e-6 {
+		if math.Abs(float64(v-expected[i])) > 1E-6 {
 			t.Errorf("At index %d, expected %f, got %f", i, expected[i], v)
 		}
 	}
@@ -39,7 +39,7 @@ func TestApplyFIR_3Tap(t *testing.T) {
 
 	// Constant input should yield constant output (since sum of coeffs = 1.0)
 	for i, v := range output {
-		if math.Abs(float64(v-1.0)) > 1e-6 {
+		if math.Abs(float64(v-1.0)) > 1E-6 {
 			t.Errorf("At index %d, expected 1.0, got %f", i, v)
 		}
 	}
@@ -50,7 +50,7 @@ func TestApplyFIR_3Tap(t *testing.T) {
 	// Output should be [1.0, 0.75, 0.25, 0.0] under boundary clamping
 	expected := []float32{1.0, 0.75, 0.25, 0.0}
 	for i, v := range output {
-		if math.Abs(float64(v-expected[i])) > 1e-6 {
+		if math.Abs(float64(v-expected[i])) > 1E-6 {
 			t.Errorf("At index %d, expected %f, got %f", i, expected[i], v)
 		}
 	}
