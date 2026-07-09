@@ -117,6 +117,13 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		psControl.SamplingTimeInterval = float64(sampleTimePicoseconds) * 1e-12
 		slog.Debug("ETS", "TimeInterval", psControl.SamplingTimeInterval, "psControl.maxScreenTime", psControl.maxScreenTime)
+		
+		err = psControl.setTrigger()
+		if err != nil {
+			slog.Error("ETS prepare setTrigger failed", "error", err)
+			return err
+		}
+
 		psControl.SampleCountRequired = int32(math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval))
 
 		const maxEtsSamples = 250000
