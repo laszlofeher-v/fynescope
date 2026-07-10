@@ -268,7 +268,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 	frqPeriodBox *fyne.Container) {
 	var err error
 	fontScale := float32(0.7) * scp.getScreenScale()
-	scp.channelViewers[chIndex].frq, err = disp7.NewCustomDisp7Array(4, 0,
+	scp.channelViewers[chIndex].frq, err = disp7.NewCustomDisp7Array(4, 2,
 		maxFrqDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
 		scp.Window, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
 		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
@@ -277,7 +277,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 	if err != nil {
 		panic(errDisp7NewArray)
 	}
-	scp.channelViewers[chIndex].period, err = disp7.NewCustomDisp7Array(4, 0,
+	scp.channelViewers[chIndex].period, err = disp7.NewCustomDisp7Array(4, 2,
 		maxPeriodDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
 		scp.Window, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
 		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
