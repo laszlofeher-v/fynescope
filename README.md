@@ -131,10 +131,13 @@ For more options, including displaying version, build date, and license informat
 The standard single-channel edge trigger. Select **Simple** in the trigger type selector to use basic rising or falling edge detection with a configurable threshold and auto-trigger fallback.
 
 ### Advanced Trigger
-Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` unified pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports:
-- **Level** triggering (standard edge detection)
-- **Window** triggering (triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds)
-- **Interval** triggering (Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: Less Than, Greater Than, In Range, or Out Of Range). The hardware interval trigger pipeline is seamlessly integrated alongside the advanced edge conditions.
+Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` unified pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold for standard **Level** triggering (edge detection).
+
+### Window Trigger
+Triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds. This mode provides interactive boundaries directly on the f(t) plot.
+
+### Interval Trigger
+A Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: **Less Than**, **Greater Than**, **In Range**, or **Out Of Range**. The hardware interval trigger pipeline is seamlessly integrated alongside the advanced edge conditions, evaluating both voltage threshold and pulse duration simultaneously.
 
 ### Complex Trigger ⚠️ Experimental
 
