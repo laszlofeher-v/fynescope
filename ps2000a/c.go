@@ -397,7 +397,7 @@ func ps2000aMinimumValue(handle int16) (value int16, err error) {
 
 func ps2000aSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold int16,
 	direction ThresholdDirection, delay uint32, autoTriggerMs int16) (err error) {
-	slog.Debug("ps2000aSetSimpleTrigger", "handle", handle, "enable", enable, "source", source, "threshold", threshold, "direction", direction, "delay", delay, "autoTriggerMs", autoTriggerMs)
+	slog.Debug("ps2000aSetSimpleTrigger", "handle", handle, "enable", enable, "src", source, "threshold", threshold, "direction", direction, "delay", delay, "autoTriggerMs", autoTriggerMs)
 	stat := C.ps2000aSetSimpleTrigger((C.short)(handle), (C.short)(boolToint16(enable)),
 		(C.PS2000A_CHANNEL)(source), (C.short)(threshold),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint)(delay),

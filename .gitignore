@@ -18,3 +18,7 @@ fynescope.test
 *.pcapng
 .gitignore
 decoder.go
+PicoStatus.h
+.gitignore
+ps2000aApi.h
+rename_files.sh
