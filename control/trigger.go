@@ -128,7 +128,17 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 	slog.Debug("validprop", "genericps.Window", genericps.Window)
 	if psControl.triggerSetting.ThresholdMode == genericps.Window {
 		if lower >= upper {
-			panic("lower >= upper")
+			slog.Warn("getValidTriggerProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
+			if lower > upper {
+				lower, upper = upper, lower
+			}
+			if lower == upper {
+				if upper < 32767 {
+					upper++
+				} else {
+					lower--
+				}
+			}
 		}
 	}
 
