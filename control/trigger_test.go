@@ -45,20 +45,30 @@ func TestPscDesc_getValidTriggerProperties(t *testing.T) {
 	}
 }
 
-func TestPscDesc_getValidTriggerProperties_WindowPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("The code did not panic when lower >= upper in Window mode")
-		}
-	}()
-
+func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	psControl := &PscDesc{}
+	
+	// Case 1: lower > upper (should swap)
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:         500,
-		LowerTriggerADC:    1000, // Invalid: lower > upper
+		LowerTriggerADC:    1000,
 		ThresholdMode:      genericps.Window,
 	}
 
-	// This should panic
-	_ = psControl.getValidTriggerProperties()
+	props := psControl.getValidTriggerProperties()
+	if props[0].ThresholdUpper != 1000 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected bounds to be swapped to 1000 and 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	}
+
+	// Case 2: lower == upper (should increment upper)
+	psControl.triggerSetting = TriggerDesc{
+		TriggerADC:         500,
+		LowerTriggerADC:    500,
+		ThresholdMode:      genericps.Window,
+	}
+
+	props = psControl.getValidTriggerProperties()
+	if props[0].ThresholdUpper != 501 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected upper bound to be incremented to 501, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	}
 }
