@@ -1,5 +1,9 @@
 # fynescope
 
+<p align="center">
+  <img src="signal.png" width="100%" alt="Fynescope Interface Screenshot">
+</p>
+
 `fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000 Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000 series SDK.
 
 ## Key Features & Navigation
@@ -9,6 +13,10 @@ Once the application is running, you can navigate between different visualizatio
 - **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
 - **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators.
+<p align="center">
+  <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
+</p>
+
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
 - **Measurements**: Built-in tabs for simple **RLC** circuit analysis (**simulator mode only**) and digital **Filter** application (FIR/IIR).

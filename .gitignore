@@ -1,6 +1,5 @@
 go.sum
 *.prof
-*.png
 *.kra
 *.pclx
 *.debug
@@ -22,3 +21,5 @@ PicoStatus.h
 .gitignore
 ps2000aApi.h
 rename_files.sh
+icon1.png
+icon2.png
