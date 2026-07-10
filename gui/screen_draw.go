@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"image/draw"
 	"log"
-	"log/slog"
 	"math"
 
 	"golang.org/x/image/font"
@@ -18,8 +17,8 @@ import (
 const dscp = 72
 
 var (
-	face      font.Face
-	labelSrc  = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
+	face     font.Face
+	labelSrc = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
 )
 
 func init() {
@@ -97,8 +96,6 @@ func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err er
 	for {
 		n++
 		if n > 10000 {
-			slog.Debug("draw line", "xf0", xf0, "yf0", yf0, "xf1", xf1, "yf1", yf1)
-			slog.Debug("draw line", "x0", x0, "y0", y0, "x1", x1, "y1", y1, "error", error)
 			err = fmt.Errorf("draw line >10000")
 			return
 		}
