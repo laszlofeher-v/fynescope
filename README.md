@@ -11,7 +11,7 @@ Once the application is running, you can navigate between different visualizatio
 - **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators.
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
-- **Measurements**: Built-in tabs for simple **RLC** circuit analysis and digital **Filter** application (FIR/IIR).
+- **Measurements**: Built-in tabs for simple **RLC** circuit analysis (**simulator mode only**) and digital **Filter** application (FIR/IIR).
 - **Simulator Mode**: Explore the interface without physical hardware using the built-in simulator.
 
 ## Getting Started
@@ -131,10 +131,10 @@ For more options, including displaying version, build date, and license informat
 The standard single-channel edge trigger. Select **Simple** in the trigger type selector to use basic rising or falling edge detection with a configurable threshold and auto-trigger fallback.
 
 ### Advanced Trigger
-Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports:
+Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelConditions` unified pipeline for the primary trigger channel. Exposes configurable hysteresis alongside the threshold. Supports:
 - **Level** triggering (standard edge detection)
 - **Window** triggering (triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds)
-- **Interval** triggering (Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: Less Than, Greater Than, In Range, or Out Of Range)
+- **Interval** triggering (Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: Less Than, Greater Than, In Range, or Out Of Range). The hardware interval trigger pipeline is seamlessly integrated alongside the advanced edge conditions.
 
 ### Complex Trigger ⚠️ Experimental
 
@@ -149,9 +149,9 @@ This feature is enabled by checking the **Cmpx** checkbox in the main trigger co
 When **Cmpx** is enabled, a condition dropdown appears in each active channel's control panel. This allows you to configure trigger conditions independently for each channel:
 
 - **Condition**: `Don't Care` / `True` / `False` — whether this channel must participate in the trigger condition.
-- **Direction & Threshold**: Standard channel trigger settings (Direction, Threshold, Hysteresis, Mode, Window Dir) are used for the evaluation.
+- **Direction, Threshold, & Windows**: Standard channel trigger settings (Direction, Threshold, Hysteresis, Mode) are used for the evaluation. This now fully supports complex **Window** triggering concurrently across channels, utilizing each channel's independent Upper Threshold, Lower Threshold, Upper Hysteresis, and Lower Hysteresis.
 
-The settings are persisted in the device's YAML settings file and restored on next launch. You can also **click and drag** the visual trigger point indicators on the f(t) plot to intuitively adjust the upper and lower thresholds directly on the screen for each channel.
+The settings are persisted in the device's YAML settings file and restored on next launch. You can also **click and drag** the visual trigger point indicators on the f(t) plot to intuitively adjust the upper thresholds, lower thresholds, and their respective hysteresis boundaries directly on the screen for each channel.
 
 #### Trigger Logic
 
