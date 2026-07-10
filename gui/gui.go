@@ -451,7 +451,7 @@ func (scp *ScpDesc) getScreenScale() float32 {
 
 func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
-		return 1920, 1030
+		return 1920, 1000
 	}
 	parts := strings.Split(scp.Settings.ScreenSize, "x")
 	if len(parts) == 2 {
@@ -459,12 +459,12 @@ func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 		h, err2 := strconv.ParseFloat(parts[1], 32)
 		if err1 == nil && err2 == nil {
 			if w == 1920 && h == 1080 {
-				return 1920, 1030
+				return 1920, 1000
 			}
 			return float32(w), float32(h)
 		}
 	}
-	return 1920, 1030
+	return 1920, 1000
 }
 
 func (scp *ScpDesc) build2000Gui() {
