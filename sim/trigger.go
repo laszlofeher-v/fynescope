@@ -133,56 +133,17 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 	states := [4]ChannelTriggerState{}
 
-	pwqActive := false
-	var pwqDuration float64 = 0
+	intervalActive := false
+	var intervalDuration float64 = 0
 
 	t := float64(0)
 	for t < maxTime {
 		allConditionsMet := true
 		var edgeTriggerTime float64 = t - dt // Default trigger time if no edge triggers are used
 		
-		pwqSatisfied := false
-		if td.pwqConfig.Enabled {
-			pwqConditionsMet := true
-			for i, cfg := range td.channels {
-				if td.pwqConfig.Condition[i] != CondDontCare {
-					level := signalFunc(t, ChannelId(i))
-					isHigh := level > float64(cfg.Threshold)
-					isTrueState := isHigh
-					if cfg.Direction == TriggerFalling {
-						isTrueState = !isHigh
-					}
-					if (td.pwqConfig.Condition[i] == CondTrue && !isTrueState) || (td.pwqConfig.Condition[i] == CondFalse && isTrueState) {
-						pwqConditionsMet = false
-						break
-					}
-				}
-			}
+		var mainEdgeFired bool = false
 
-			if pwqConditionsMet && !pwqActive {
-				pwqActive = true
-				pwqDuration = 0
-			} else if pwqConditionsMet && pwqActive {
-				pwqDuration += dt
-			} else if !pwqConditionsMet && pwqActive {
-				pwqActive = false
-				
-				lowerTime := float64(td.pwqConfig.Lower) * dt
-				upperTime := float64(td.pwqConfig.Upper) * dt
-				
-				switch td.pwqConfig.Type {
-				case PwTypeLessThan:
-					if pwqDuration < upperTime { pwqSatisfied = true }
-				case PwTypeGreaterThan:
-					if pwqDuration > lowerTime { pwqSatisfied = true }
-				case PwTypeInRange:
-					if pwqDuration >= lowerTime && pwqDuration <= upperTime { pwqSatisfied = true }
-				case PwTypeOutOfRange:
-					if pwqDuration < lowerTime || pwqDuration > upperTime { pwqSatisfied = true }
-				}
-			}
-		}
-
+		// 1. Evaluate main channel triggers
 		for i, cfg := range td.channels {
 			if !cfg.Enabled || cfg.Condition == CondDontCare {
 				continue
@@ -200,6 +161,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 			if fired {
 				edgeTriggerTime = t - dt
+				if td.pwqConfig.Condition[i] != CondDontCare {
+					mainEdgeFired = true
+				}
 			}
 
 			if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
@@ -208,13 +172,45 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 		}
 
-		if (!td.pwqConfig.Enabled && allConditionsMet) || (td.pwqConfig.Enabled && pwqSatisfied) {
-			// Trigger found! We use the edgeTriggerTime (or current time if only levels were used)
-			SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
-			if td.pwqConfig.Enabled {
-				return t - dt
+		// 2. Track Interval and Trigger
+		if td.pwqConfig.Enabled {
+			if intervalActive {
+				intervalDuration += dt
 			}
-			return edgeTriggerTime
+
+			if mainEdgeFired {
+				if !intervalActive {
+					intervalActive = true
+					intervalDuration = 0
+				} else {
+					lowerTime := float64(td.pwqConfig.Lower) * dt
+					upperTime := float64(td.pwqConfig.Upper) * dt
+					
+					intervalSatisfied := false
+					switch td.pwqConfig.Type {
+					case PwTypeLessThan:
+						if intervalDuration < lowerTime { intervalSatisfied = true }
+					case PwTypeGreaterThan:
+						if intervalDuration > lowerTime { intervalSatisfied = true }
+					case PwTypeInRange:
+						if intervalDuration >= lowerTime && intervalDuration <= upperTime { intervalSatisfied = true }
+					case PwTypeOutOfRange:
+						if intervalDuration < lowerTime || intervalDuration > upperTime { intervalSatisfied = true }
+					}
+
+					intervalDuration = 0 // Start next interval from this edge
+
+					if intervalSatisfied && allConditionsMet {
+						SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
+						return edgeTriggerTime
+					}
+				}
+			}
+		} else {
+			if allConditionsMet {
+				SetTriggerTimeOffset(0)
+				return edgeTriggerTime
+			}
 		}
 
 		t += dt
