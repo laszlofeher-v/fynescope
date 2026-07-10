@@ -29,6 +29,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to open simulator: %v", err)
 	}
 
+	// Ensure tests start with a clean state by removing the existing settings file
+	_ = os.Remove(settingFileName)
 	cfg, err := settings.Load(settingFileName)
 	if err != nil {
 		cfg = settings.NewDefaultSettings()
