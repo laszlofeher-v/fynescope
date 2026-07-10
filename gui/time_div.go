@@ -867,7 +867,7 @@ func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exceptio
 		}
 		if channel.Trigger.IntervalTimeUpper <= channel.Trigger.IntervalTimeLower {
 			// Ensure upper is greater than lower for range modes
-			channel.Trigger.IntervalTimeUpper = channel.Trigger.IntervalTimeLower + 1000 // add 1us nominal
+			channel.Trigger.IntervalTimeUpper = channel.Trigger.IntervalTimeLower + 1e-6 // add 1us nominal
 		}
 	}
 
@@ -933,6 +933,15 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		}
 		if scp.boxIntervalTimeRange != nil {
 			scp.boxIntervalTimeRange.Show()
+			unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+			if unit == "" && scp.intervalUnitSelect != nil {
+				unit = scp.intervalUnitSelect.Selected
+			}
+			multiplier := getIntervalUnitMultiplier(unit)
+			scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
+			scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
+			scp.intervalTimeLowerDisp.Refresh()
+			scp.intervalTimeUpperDisp.Refresh()
 		}
 	}
 
