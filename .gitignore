@@ -12,5 +12,9 @@ output_verify.txt
 fynescope
 fynescope.test
 *.log
+*.txt
+*.nogo
+*.py
+*.pcapng
 .gitignore
-
+decoder.go

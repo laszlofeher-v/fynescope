@@ -177,6 +177,13 @@ func (psControl *PscDesc) sendAdvancedBaseTrigger() (err error) {
 			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	}
 
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
@@ -211,13 +218,6 @@ func (psControl *PscDesc) sendAdvancedBaseTrigger() (err error) {
 
 	if err != nil {
 		slog.Error("SetTriggerChannelDirections:", "error:", err)
-		return
-	}
-
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
 
@@ -265,16 +265,6 @@ func (psControl *PscDesc) sendAdvancedBaseTrigger() (err error) {
 			}
 		}
 		pwqDir := dir
-		switch dir {
-		case genericps.TriggerRaising:
-			pwqDir = genericps.TriggerFalling
-		case genericps.TriggerFalling:
-			pwqDir = genericps.TriggerRaising
-		case genericps.TriggerAbove:
-			pwqDir = genericps.TriggerBelow
-		case genericps.TriggerBelow:
-			pwqDir = genericps.TriggerAbove
-		}
 
 		// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 		if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
@@ -332,6 +322,13 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 			ChannelD: genericps.CondTrue, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: genericps.CondDontCare, Digital: genericps.CondDontCare}}
 	}
 
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
@@ -366,13 +363,6 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 
 	if err != nil {
 		slog.Error("SetTriggerChannelDirections:", "error:", err)
-		return
-	}
-
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
 
@@ -411,6 +401,15 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	}
 
+	channelProperties := psControl.getValidTriggerProperties()
+
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
@@ -445,15 +444,6 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 
 	if err != nil {
 		slog.Error("SetTriggerChannelDirections:", "error:", err)
-		return
-	}
-
-	channelProperties := psControl.getValidTriggerProperties()
-
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
 
@@ -500,6 +490,13 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	}
 
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
@@ -534,13 +531,6 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 
 	if err != nil {
 		slog.Error("SetTriggerChannelDirections:", "error:", err)
-		return
-	}
-
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
 
@@ -588,16 +578,6 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 			}
 		}
 		pwqDir := dir
-		switch dir {
-		case genericps.TriggerRaising:
-			pwqDir = genericps.TriggerFalling
-		case genericps.TriggerFalling:
-			pwqDir = genericps.TriggerRaising
-		case genericps.TriggerAbove:
-			pwqDir = genericps.TriggerBelow
-		case genericps.TriggerBelow:
-			pwqDir = genericps.TriggerAbove
-		}
 
 		// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 		if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
