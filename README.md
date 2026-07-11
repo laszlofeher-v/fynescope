@@ -159,7 +159,14 @@ Uses the PicoScope API's `SetTriggerChannelProperties` and `SetTriggerChannelCon
 Triggers when a signal enters, exits, or crosses a specified voltage window defined by upper and lower thresholds. This mode provides interactive boundaries directly on the f(t) plot.
 
 ### Interval Trigger
-A Pulse Width qualifier that only triggers when a pulse meets specific timing constraints: **Less Than**, **Greater Than**, **In Range**, or **Out Of Range**. The hardware interval trigger pipeline is seamlessly integrated alongside the advanced edge conditions, evaluating both voltage threshold and pulse duration simultaneously.
+A time-based qualifier that triggers when the interval between two consecutive edges of the *same* polarity meets specific timing constraints: **Less Than**, **Greater Than**, **In Range**, or **Out Of Range**. The hardware interval trigger pipeline is seamlessly integrated alongside the advanced edge conditions, evaluating both voltage threshold and time duration simultaneously.
+
+### Pulse Width Trigger
+A time-based qualifier that triggers when a pulse (the duration between two consecutive edges of *opposite* polarity) meets specific timing constraints: **Less Than**, **Greater Than**, **In Range**, or **Out Of Range**.
+
+<p align="center">
+  <img src="pulsewidth.png" width="100%" alt="Pulse Width Trigger Screenshot">
+</p>
 
 ### Complex Trigger ⚠️ Experimental
 
