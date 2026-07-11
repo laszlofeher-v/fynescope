@@ -1,3 +1,5 @@
+//go:build scpi
+
 package scpi
 
 import (
@@ -7,7 +9,8 @@ import (
 
 func TestGeneratorCommands(t *testing.T) {
 	var buf bytes.Buffer
-	g := New(Config{Port: "dummy"})
+	gIface := New(Config{Port: "dummy"})
+	g := gIface.(*Generator)
 	g.Writer = &buf
 
 	tests := []struct {

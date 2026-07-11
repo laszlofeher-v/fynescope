@@ -19,12 +19,13 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
-- **Measurements**: Built-in tabs for simple **RLC** circuit analysis (**simulator mode only**) and digital **Filter** application (FIR/IIR).
+- **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR).
 - **Simulator Mode**: Explore the interface without physical hardware using the built-in simulator.
 
 ## Getting Started
 
 ### Prerequisites
+
 - Ubuntu 24.04 or later. Other distros may require additional setup.
 - Fyne 2.6.1 or later. Check at go.mod.
 - Go 1.27 or later. Check at go.mod.
@@ -44,7 +45,7 @@ Fyne dependency for Linux:
 sudo apt-get update && sudo apt-get install -y libxrandr-dev libxcursor-dev libxinerama-dev libxi-dev libgl1-mesa-dev xorg-dev
 ```
 
-Usb dependency for Linux:
+Usb dependency for Linux (required for PicoScope hardware and external SCPI generator support):
 
 ```bash
 sudo apt install libusb-1.0-0-dev
@@ -56,13 +57,26 @@ Get go dependencies:
 go mod tidy
 ```
 
-To build the application purely for the simulator without requiring the PicoScope C driver libraries, use the `noscope` build tag:
+The application can be compiled with different features enabled via build tags:
+
+- `noscope`: Build without the PicoScope C driver libraries (simulator mode only).
+- `scpi`: Include the external SCPI signal generator module (requires `libusb-1.0-0-dev`).
+
+**Build Examples:**
+
+To build the application purely for the simulator without requiring the PicoScope C driver libraries, and without external SCPI generator support:
 
 ```bash
 go build -tags=noscope -o fynescope .
 ```
 
-If you want to build the application with installed libps2000 driver: 
+If you want to build the application with installed libps2000 driver and external SCPI generator support: 
+
+```bash
+go build -tags=scpi -o fynescope .
+```
+
+If you want to build the application with installed libps2000 driver but without the SCPI/USB dependency: 
 
 ```bash
 go build -o fynescope .
@@ -103,7 +117,7 @@ For more options, including displaying version, build date, and license informat
 | `-sim` | `false` | Run in simulator mode only (no hardware required) |
 | `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
 | `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
-| `-extgen` | `false` | Enable external SCPI signal generator tab |
+| `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
 | `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
 | `-about` | — | Print version, build date, and license info, then exit |
@@ -169,6 +183,7 @@ The settings are persisted in the device's YAML settings file and restored on ne
 With Complex mode, a trigger fires only when **all** channels with a `True` condition simultaneously satisfy their edge/level requirement (AND logic). Channels set to `Don't Care` are ignored.
 
 **Example**: Trigger when Channel A has a rising edge above 500 mV **and** Channel B is below −200 mV:
+
 - ChA: `Condition=True`, `Direction=Rising`, `Threshold=500`
 - ChB: `Condition=True`, `Direction=Falling`, `Threshold=-200`
 - ChC, ChD: `Condition=Don't Care`
@@ -188,6 +203,7 @@ The software simulator fully supports complex trigger evaluation, including AC c
 `fynescope` automatically saves your application settings, such as channel configuration, trigger settings, UI window size, and other preferences. 
 
 The settings are saved in a YAML file in the working directory. The filename is device-specific, which allows you to maintain separate configurations for different PicoScope units or the simulator:
+
 - `scopesettings_1_1.yaml` (simulator mode)
 - `scopesettings_<batch_and_serial>.yaml` (e.g., `scopesettings_GQ123_456.yaml`)
 
@@ -242,24 +258,28 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 `fynescope` is a focused, early-stage project. It is tested only on Ubuntu 24.04 using PicoScope 2407B. Compared to the official [PicoScope 7](https://www.picotech.com/oscilloscope/2000/picoscope-2000-overview) software, the following features are **not** implemented. This list is not exhaustive — other differences may exist.
 
 **Platform & Hardware**
+
 - **Linux only**: CGo bindings to the PicoScope driver are Linux-specific. Windows and macOS are not supported.
 - **PicoScope 2000 Series only**: Tied to the `libps2000` driver; PS3000, PS4000, PS5000, PS6000, etc. are not supported.
 - **No MSO support**: Digital channels on Mixed-Signal Oscilloscope variants are not implemented.
 - **Single device only**: Using multiple PicoScope devices simultaneously is not supported.
 
 **Display & Navigation**
+
 - **English only UI**: The application interface is available only in English; localization to other languages is not supported.
 - **No zoom**: There is no waveform zoom or multi-zoom viewport support.
 - **No rulers**: On-screen measurement rulers/cursors are not available.
 - **No multiple viewports**: Only a single view of each signal domain is shown at a time.
 
 **Measurements & Analysis**
+
 - **Limited measurements**: Only a small set of built-in measurements is provided. PicoScope 7 offers dozens of automated parameters (THD, SINAD, overshoot, phase, power factor, etc.).
 - **No DeepMeasure**: Cycle-by-cycle statistical analysis across millions of samples is not available.
 - **No mask testing**: Pass/fail mask limit testing for waveform validation is not supported.
 - **No math/virtual channels**: Computed channels (e.g., A+B, integrals, derivatives, filters) are not implemented.
 
 **FFT / Spectrum Analyzer**
+
 - **No FFT display modes**: Only instantaneous FFT is shown. PicoScope 7 also offers average and peak-hold accumulation modes.
 - **No frequency axis control**: The FFT span always covers the full sample bandwidth. PicoScope 7 lets you set explicit start/stop frequencies.
 - **No spectrum measurements**: Frequency-domain automatic measurements (THD, THD+N, SNR, SINAD, IMD) are not available.
@@ -268,18 +288,22 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
 
 **Triggering**
+
 - **No dropout / runt triggers**: Edge (Simple, Advanced), Window (with directional control: Enter/Exit/Any), Interval (Pulse Width filtering), and experimental multi-channel Complex triggering are fully implemented. Other advanced hardware modes such as dropout, runt, and logic triggers are not currently implemented.
 - **Complex trigger is experimental**: See the [Complex Trigger](#complex-trigger--experimental) section for details and known limitations.
 
 **Protocol & Digital**
+
 - **No serial bus decoding**: Protocol analysis (UART, SPI, I²C, CAN, and the 39+ decoders in PicoScope 7) is not available.
 
 **Waveform Management**
+
 - **No waveform buffer/storage**: Capturing and navigating through a history of thousands of waveforms is not supported.
 - **No reference waveforms**: Storing and overlaying a previously captured waveform for comparison is not available.
 - **No waveform export/import**: Saving or loading waveforms from disk (e.g., `.psdata`, `.csv`) is not implemented.
 
 **Signal Generator**
+
 - **No arbitrary waveform generator (AWG)**: Only standard waveforms are supported; importing custom waveforms from CSV or drawing them by hand is not available.
 
 ## Debugging
