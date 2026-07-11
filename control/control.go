@@ -322,7 +322,7 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 	switch psControl.triggerSetting.Type {
 	case Simple:
 		// if !psControl.triggerSetting.Enabled {
-			err = psControl.sendSimpleTrigger()
+		err = psControl.sendSimpleTrigger()
 		// }
 	case Advanced:
 		err = psControl.sendAdvancedTrigger()
@@ -332,6 +332,8 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 		err = psControl.sendWindowTrigger()
 	case Interval:
 		err = psControl.sendIntervalTrigger()
+	case PulseWidth:
+		err = psControl.sendPulseWidthTrigger()
 	}
 
 	return

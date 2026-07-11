@@ -40,7 +40,7 @@ type (
 		SimGenActiveTab  int     `yaml:"simgenactivetab"`
 	}
 	ChTriggerSettings struct {
-		Type              string                       `yaml:"type"` // "Simple", "Advanced", "Window", "Complex", "Interval"
+		Type              string                       `yaml:"type"` // "Simple", "Advanced", "Window", "Complex", "Interval", "Pulse Width"
 		Condition         genericps.TriggerRespBase    `yaml:"condition"`
 		TriggerDirection  genericps.ThresholdDirection `yaml:"triggerdirection"`
 		ThresholdMode     genericps.ThresholdModeId    `yaml:"thresholdmode"`

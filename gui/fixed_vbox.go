@@ -37,3 +37,29 @@ func (l *fixedVBoxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	
 	return fyne.NewSize(width, height)
 }
+
+type fixedMaxLayout struct{}
+
+func (l *fixedMaxLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	for _, child := range objects {
+		if !child.Visible() {
+			continue
+		}
+		child.Resize(size)
+		child.Move(fyne.NewPos(0, 0))
+	}
+}
+
+func (l *fixedMaxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	var width, height float32
+	for _, child := range objects {
+		min := child.MinSize()
+		if min.Width > width {
+			width = min.Width
+		}
+		if min.Height > height {
+			height = min.Height
+		}
+	}
+	return fyne.NewSize(width, height)
+}
