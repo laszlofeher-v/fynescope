@@ -138,7 +138,7 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	newH := int32(math.Round(tp.y2mv(float64(y))))
 	switch {
-	case channel.Trigger.TriggerDirection == genericps.TriggerRaising:
+	case channel.Trigger.TriggerDirection == genericps.TriggerRising:
 		if newH <= channel.Trigger.Mv {
 			channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
 		}

@@ -63,7 +63,7 @@ type (
 )
 
 const (
-	raising = "Raising"
+	rising  = "Rising"
 	failing = "Falling"
 	enter   = "Enter"
 	exit    = "Exit"
@@ -84,7 +84,7 @@ const errDisp7NewArray = "error from disp7.NewCustomDisp7Array"
 
 var (
 	channelNames                  = []string{"A", "B", "C", "D"}
-	triggerDirectionOptions       = []string{raising, failing}
+	triggerDirectionOptions       = []string{rising, failing}
 	triggerWindowDirectionOptions = []string{enter, exit, either}
 	triggerDirections             map[string]genericps.ThresholdDirection
 	triggerDirectionNames         map[genericps.ThresholdDirection]string
@@ -103,13 +103,13 @@ func initMaps() {
 	coupleTypes[dc] = genericps.Dc
 	triggerDirectionNames = make(map[genericps.ThresholdDirection]string)
 	triggerDirectionNames[genericps.TriggerFalling] = failing
-	triggerDirectionNames[genericps.TriggerRaising] = raising
+	triggerDirectionNames[genericps.TriggerRising] = rising
 	triggerDirectionNames[genericps.TriggerEnter] = enter
 	triggerDirectionNames[genericps.TriggerExit] = exit
 	triggerDirectionNames[genericps.TriggerEnterOrExit] = either
 	triggerDirections = make(map[string]genericps.ThresholdDirection)
 	triggerDirections[failing] = genericps.TriggerFalling
-	triggerDirections[raising] = genericps.TriggerRaising
+	triggerDirections[rising] = genericps.TriggerRising
 	triggerDirections[enter] = genericps.TriggerEnter
 	triggerDirections[exit] = genericps.TriggerExit
 	triggerDirections[either] = genericps.TriggerEnterOrExit
@@ -332,7 +332,7 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 			scp.SaveSettings()
 		}
 	}, condDontCare)
-	
+
 	switch scp.Settings.Channels[chIndex].Trigger.Condition {
 	case genericps.CondTrue:
 		scp.channelViewers[chIndex].triggerConditionSelect.SilentSetSelected(condTrue)
@@ -475,26 +475,26 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 			}
 			scp.triggerThresholdDisp.Refresh()
-			
+
 			if scp.triggerHysteresisDisp.Value != int(channel.Trigger.Hysteresis) {
 				scp.triggerHysteresisDisp.SilentSetValue(int(channel.Trigger.Hysteresis))
 			}
 			scp.triggerHysteresisDisp.Refresh()
-			
+
 			if scp.triggerLowerThresholdDisp != nil {
 				if scp.triggerLowerThresholdDisp.Value != int(channel.Trigger.LowerMv) {
 					scp.triggerLowerThresholdDisp.SilentSetValue(int(channel.Trigger.LowerMv))
 				}
 				scp.triggerLowerThresholdDisp.Refresh()
 			}
-			
+
 			if scp.triggerLowerHysteresisDisp != nil {
 				if scp.triggerLowerHysteresisDisp.Value != int(channel.Trigger.LowerHysteresis) {
 					scp.triggerLowerHysteresisDisp.SilentSetValue(int(channel.Trigger.LowerHysteresis))
 				}
 				scp.triggerLowerHysteresisDisp.Refresh()
 			}
-			
+
 			if scp.intervalTypeSelect != nil {
 				invTypeStr := intervalTypeRevMap[channel.Trigger.IntervalType]
 				if invTypeStr == "" {
@@ -522,7 +522,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(channel.Trigger.IntervalTimeLower / multiplier)))
 				scp.intervalTimeLowerDisp.Refresh()
 			}
-			
+
 			if scp.intervalTimeUpperDisp != nil {
 				unit := channel.Trigger.IntervalTimeUnit
 				if unit == "" {
@@ -554,7 +554,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.setTrigger(checked, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection,
 			1000, scp.Settings.Time.TriggerTimeOffset)
-		
+
 		scp.refreshRasters()
 		setChannel()
 	}
@@ -656,7 +656,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	if len(activeTriggerDirectionOptions) > 0 {
 		defaultDir = activeTriggerDirectionOptions[0]
 	} else {
-		defaultDir = "Raising"
+		defaultDir = "Rising"
 	}
 	triggerDirection := selectscroll.NewSelectScroll(activeTriggerDirectionOptions,
 		triggerTypeChanged, defaultDir)

@@ -837,7 +837,7 @@ var (
 	Range_1v, Range_2v, Range_5v, Range_10v, Range_20v, Range_50v RangeEnum
 	Level, Window                              ThresholdModeId
 	CondDontCare, CondTrue, CondFalse, CondMax TriggerRespBase
-	TriggerAbove, TriggerBelow, TriggerRaising, TriggerFalling, TriggerRisingOrFalling,
+	TriggerAbove, TriggerBelow, TriggerRising, TriggerFalling, TriggerRisingOrFalling,
 	TriggerAboveLower, TriggerBelowLower, TriggerRisingLower, TriggerFallingLower,
 	TriggerOutside, TriggerInside, TriggerEnter, TriggerExit, TriggerEnterOrExit,
 	TriggerPositiveRunt, TriggerNegativeRunt, TriggerNone ThresholdDirection

@@ -190,7 +190,7 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 
 	if tp.uhSelected {
 		switch channel.Trigger.TriggerDirection {
-		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+		case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 			if newH >= channel.Trigger.Mv {
 				channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
 			}
@@ -211,7 +211,7 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		newH := int32(math.Round(tp.y2mv(float64(y))))
 		switch channel.Trigger.TriggerDirection {
-		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+		case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 			if newH <= channel.Trigger.LowerMv {
 				channel.Trigger.LowerHysteresis = channel.Trigger.LowerMv - newH
 			}
