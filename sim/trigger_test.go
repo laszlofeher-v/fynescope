@@ -7,11 +7,11 @@ import (
 
 func TestTriggerDetector_FindTriggerPoint_IntervalLessThan(t *testing.T) {
 	// Setup simple trigger detector
-	td := NewTriggerDetector(true, 50, 10, TriggerRaising, ChA)
+	td := NewTriggerDetector(true, 50, 10, TriggerRising, ChA)
 
 	// Configure PWQ for "Less Than" 100 units
 	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
-	td.SetPulseWidthQualifier(conds, TriggerRaising, 100, 0, PwTypeLessThan)
+	td.SetPulseWidthQualifier(conds, TriggerRising, 100, 0, PwTypeLessThan)
 
 	// Create a mock signal function that creates a rising edge at t=100 and t=150
 	// Interval should be 50, which is < 100, so it should trigger exactly at t=150.
@@ -84,11 +84,11 @@ func TestTriggerDetector_FindTriggerPoint_IntervalGreaterThan(t *testing.T) {
 }
 
 func TestTriggerDetector_FindTriggerPoint_IntervalInRange(t *testing.T) {
-	td := NewTriggerDetector(true, 50, 10, TriggerRaising, ChA)
+	td := NewTriggerDetector(true, 50, 10, TriggerRising, ChA)
 
 	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
 	// Interval must be between 80 and 120
-	td.SetPulseWidthQualifier(conds, TriggerRaising, 80, 120, PwTypeInRange)
+	td.SetPulseWidthQualifier(conds, TriggerRising, 80, 120, PwTypeInRange)
 
 	signalFunc := func(time float64, ch ChannelId) float64 {
 		if ch != ChA {
