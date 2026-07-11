@@ -241,7 +241,7 @@ func TestSimGetValues(t *testing.T) {
 	channels[ChA].sweepController = NewSweepController(10000000, 10000000, 0, SweepUp, 0)
 
 	// Set trigger detector
-	err = simSetSimpleTrigger(h, true, ChA, 0, TriggerRaising, 0, 0)
+	err = simSetSimpleTrigger(h, true, ChA, 0, TriggerRising, 0, 0)
 	if err != nil {
 		t.Fatalf("simSetSimpleTrigger failed: %v", err)
 	}
