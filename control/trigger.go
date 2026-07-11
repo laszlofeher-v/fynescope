@@ -26,6 +26,7 @@ const (
 	Complex
 	Window
 	Interval
+	PulseWidth
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -315,6 +316,13 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
 	pwqCond := genericps.CondTrue
 	condMain := genericps.CondTrue
 	var triggerConditions []genericps.TriggerConditions
@@ -333,13 +341,6 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
 	}
 
-	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
-	if err != nil {
-		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
-		return
-	}
-
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
@@ -353,7 +354,6 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := psControl.triggerSetting.ThresholdDirection
-
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
 		channelA = dir
@@ -419,7 +419,151 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 		}
 	}
 	pwqDir := dir
+	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
+	if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
+		lowerSamples = upperSamples
+		upperSamples = 0
+	} else if psControl.triggerSetting.IntervalType == genericps.PwTypeGreaterThan {
+		upperSamples = 0
+	}
 
+	slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
+		"intervalType", psControl.triggerSetting.IntervalType,
+		"lowerSamples", lowerSamples, "upperSamples", upperSamples,
+		"rawTimeLower", psControl.triggerSetting.IntervalTimeLower,
+		"rawTimeUpper", psControl.triggerSetting.IntervalTimeUpper,
+		"samplingInterval", psControl.SamplingTimeInterval)
+	err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
+	if err != nil {
+		slog.Error("SetPulseWidthQualifier:", "error:", err)
+		return
+	}
+	return
+}
+
+func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
+	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
+
+	channelProperties := psControl.getValidTriggerProperties()
+	for i := range channelProperties {
+		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+	}
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
+	pwqCond := genericps.CondTrue
+	condMain := genericps.CondTrue
+	var triggerConditions []genericps.TriggerConditions
+	switch psControl.triggerSetting.Source {
+	case genericps.ChA:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChB:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChC:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChD:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
+			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	}
+
+	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
+		return
+	}
+
+	channelA := genericps.TriggerNone
+	channelB := genericps.TriggerNone
+	channelC := genericps.TriggerNone
+	channelD := genericps.TriggerNone
+	ext := genericps.TriggerNone
+	aux := genericps.TriggerNone
+	dir := psControl.triggerSetting.ThresholdDirection
+	mainDir := dir
+	if dir == genericps.TriggerRising {
+		mainDir = genericps.TriggerFalling
+	} else if dir == genericps.TriggerFalling {
+		mainDir = genericps.TriggerRising
+	}
+
+	switch psControl.triggerSetting.Source {
+	case genericps.ChA:
+		channelA = mainDir
+	case genericps.ChB:
+		channelB = mainDir
+	case genericps.ChC:
+		channelC = mainDir
+	case genericps.ChD:
+		channelD = mainDir
+	}
+	err = psControl.Con.SetTriggerChannelDirections(channelA,
+		channelB,
+		channelC,
+		channelD,
+		ext,
+		aux)
+
+	if err != nil {
+		slog.Error("SetTriggerChannelDirections:", "error:", err)
+		return
+	}
+
+	var pwqConditions []genericps.PwqConditions
+	switch psControl.triggerSetting.Source {
+	case genericps.ChA:
+		pwqConditions = []genericps.PwqConditions{{ChannelA: genericps.CondTrue, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, Digital: genericps.CondDontCare}}
+	case genericps.ChB:
+		pwqConditions = []genericps.PwqConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondTrue, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, Digital: genericps.CondDontCare}}
+	case genericps.ChC:
+		pwqConditions = []genericps.PwqConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondTrue, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, Digital: genericps.CondDontCare}}
+	case genericps.ChD:
+		pwqConditions = []genericps.PwqConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondTrue, External: genericps.CondDontCare, Aux: genericps.CondDontCare, Digital: genericps.CondDontCare}}
+	}
+
+	lowerSamples := uint32(1)
+	if psControl.triggerSetting.IntervalTimeLower > 0 && psControl.SamplingTimeInterval > 0 {
+		samples := uint32(psControl.triggerSetting.IntervalTimeLower / psControl.SamplingTimeInterval)
+		if samples > 0 {
+			lowerSamples = samples
+		}
+	}
+	upperSamples := uint32(1)
+	if psControl.triggerSetting.IntervalTimeUpper > 0 && psControl.SamplingTimeInterval > 0 {
+		samples := uint32(psControl.triggerSetting.IntervalTimeUpper / psControl.SamplingTimeInterval)
+		if samples > 0 {
+			upperSamples = samples
+		}
+	}
+
+	if lowerSamples > 16777215 {
+		lowerSamples = 16777215
+	}
+	if upperSamples > 16777215 {
+		upperSamples = 16777215
+	}
+
+	if psControl.triggerSetting.IntervalType == genericps.PwTypeInRange || psControl.triggerSetting.IntervalType == genericps.PwTypeOutOfRange {
+		if lowerSamples >= upperSamples {
+			upperSamples = lowerSamples + 1
+			if upperSamples > 16777215 {
+				lowerSamples = 16777214
+			}
+		}
+	}
+	pwqDir := dir
+	// pwqDir := genericps.TriggerRisingOrFalling
+	if dir == genericps.TriggerRising {
+		pwqDir = genericps.TriggerRisingLower
+	} else if dir == genericps.TriggerFalling {
+		pwqDir = genericps.TriggerFallingLower
+	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
 		lowerSamples = upperSamples

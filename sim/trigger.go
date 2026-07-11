@@ -131,6 +131,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		return
 	}
 
+	pwqStates := [4]TriggerArmedState{}
 	states := [4]ChannelTriggerState{}
 
 	intervalActive := false
@@ -142,8 +143,34 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		var edgeTriggerTime float64 = t - dt // Default trigger time if no edge triggers are used
 
 		var mainEdgeFired bool = false
+		var pwqEdgeFired bool = false
 
-		// 1. Evaluate main channel triggers
+		// 1. Evaluate PWQ triggers
+		if td.pwqConfig.Enabled {
+			for i, cond := range td.pwqConfig.Condition {
+				if cond == CondDontCare {
+					continue
+				}
+				level := signalFunc(t, ChannelId(i))
+
+				// PWQ evaluates against the main channel's thresholds
+				cfg := td.channels[i]
+
+				// Create a temporary config for PWQ with its own direction
+				pwqCfg := TriggerChannelConfig{
+					Threshold:  cfg.Threshold,
+					Hysteresis: cfg.Hysteresis,
+					Direction:  td.pwqConfig.Direction,
+				}
+
+				_, fired := td.evaluateLevelTrigger(pwqCfg, &pwqStates[i], level)
+				if fired {
+					pwqEdgeFired = true
+				}
+			}
+		}
+
+		// 2. Evaluate main channel triggers
 		for i, cfg := range td.channels {
 			if !cfg.Enabled || cfg.Condition == CondDontCare {
 				continue
@@ -172,47 +199,46 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 		}
 
-		// 2. Track Interval and Trigger
+		// 3. Track Interval and Trigger
 		if td.pwqConfig.Enabled {
 			if intervalActive {
 				intervalDuration += dt
 			}
 
-			if mainEdgeFired {
-				if !intervalActive {
-					intervalActive = true
-					intervalDuration = 0
-				} else {
-					lowerTime := float64(td.pwqConfig.Lower) * dt
-					upperTime := float64(td.pwqConfig.Upper) * dt
+			if mainEdgeFired && intervalActive {
+				lowerTime := float64(td.pwqConfig.Lower) * dt
+				upperTime := float64(td.pwqConfig.Upper) * dt
 
-					intervalSatisfied := false
-					switch td.pwqConfig.Type {
-					case PwTypeLessThan:
-						if intervalDuration < lowerTime {
-							intervalSatisfied = true
-						}
-					case PwTypeGreaterThan:
-						if intervalDuration > lowerTime {
-							intervalSatisfied = true
-						}
-					case PwTypeInRange:
-						if intervalDuration >= lowerTime && intervalDuration <= upperTime {
-							intervalSatisfied = true
-						}
-					case PwTypeOutOfRange:
-						if intervalDuration < lowerTime || intervalDuration > upperTime {
-							intervalSatisfied = true
-						}
+				intervalSatisfied := false
+				switch td.pwqConfig.Type {
+				case PwTypeLessThan:
+					if intervalDuration < lowerTime {
+						intervalSatisfied = true
 					}
-
-					intervalDuration = 0 // Start next interval from this edge
-
-					if intervalSatisfied && allConditionsMet {
-						SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
-						return edgeTriggerTime
+				case PwTypeGreaterThan:
+					if intervalDuration > lowerTime {
+						intervalSatisfied = true
+					}
+				case PwTypeInRange:
+					if intervalDuration >= lowerTime && intervalDuration <= upperTime {
+						intervalSatisfied = true
+					}
+				case PwTypeOutOfRange:
+					if intervalDuration < lowerTime || intervalDuration > upperTime {
+						intervalSatisfied = true
 					}
 				}
+
+				if intervalSatisfied && allConditionsMet {
+					SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
+					return edgeTriggerTime
+				}
+				intervalActive = false
+			}
+
+			if pwqEdgeFired {
+				intervalActive = true
+				intervalDuration = 0
 			}
 		} else {
 			if allConditionsMet {
@@ -237,14 +263,14 @@ func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state 
 		return level >= thresh, false
 	}
 
-	if cfg.Direction == TriggerRising {
+	if cfg.Direction == TriggerRising || cfg.Direction == TriggerRisingLower {
 		if *state == TriggerStateIdle && level <= (thresh-hyst) {
 			*state = TriggerStateArmedRising
 		} else if *state == TriggerStateArmedRising && level > thresh {
 			*state = TriggerStateIdle
 			return true, true
 		}
-	} else if cfg.Direction == TriggerFalling {
+	} else if cfg.Direction == TriggerFalling || cfg.Direction == TriggerFallingLower {
 		if *state == TriggerStateIdle && level >= (thresh+hyst) {
 			*state = TriggerStateArmedFalling
 		} else if *state == TriggerStateArmedFalling && level < thresh {

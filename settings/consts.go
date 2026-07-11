@@ -27,6 +27,7 @@ const (
 	TriggerTypeAdvanced = "Advanced"
 	TriggerTypeWindow   = "Window"
 	TriggerTypeInterval = "Interval"
+	TriggerTypePulseWidth = "Pulse Width"
 	TriggerTypeComplex  = "Complex"
 )
 

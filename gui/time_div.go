@@ -70,12 +70,13 @@ var (
 		triggerModeOptions[2]: control.Repeat,
 		triggerModeOptions[3]: control.Single,
 	}
-	triggerTypeOptions = []string{"Simple", "Advanced", "Window", "Interval"}
+	triggerTypeOptions = []string{"Simple", "Advanced", "Window", "Interval", "Pulse Width"}
 	triggerTypes       = map[string]control.TriggerTypes{
 		triggerTypeOptions[0]: control.Simple,
 		triggerTypeOptions[1]: control.Advanced,
 		triggerTypeOptions[2]: control.Window,
 		triggerTypeOptions[3]: control.Interval,
+		triggerTypeOptions[4]: control.PulseWidth,
 	}
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
@@ -562,7 +563,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
 			if scp.triggerTypeSelect != nil {
-				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval})
+				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth})
 				scp.triggerTypeSelect.Refresh()
 			}
 			for i := range scp.channelViewers {
@@ -691,7 +692,7 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
 		}
-	case control.Interval:
+	case control.Interval, control.PulseWidth:
 		scp.boxTriggerHysteresisDisp.Show()
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
@@ -1000,6 +1001,11 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	if valInSeconds > scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper {
+		valInSeconds = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeLowerDisp.Refresh()
+	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower = valInSeconds
 	scp.triggerSettingMsg.IntervalTimeLower = valInSeconds
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
@@ -1017,6 +1023,11 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	if valInSeconds < scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower {
+		valInSeconds = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
+		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeUpperDisp.Refresh()
+	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper = valInSeconds
 	scp.triggerSettingMsg.IntervalTimeUpper = valInSeconds
 	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
@@ -1142,7 +1153,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval}
+	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth}
 	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
 		activeTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced}
 		if scp.Settings.Trigger.Type != settings.TriggerTypeSimple && scp.Settings.Trigger.Type != settings.TriggerTypeAdvanced {
@@ -1227,8 +1238,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect, scp.intervalUnitSelect)
 	scp.boxIntervalTimeRange = container.New(layout.NewVBoxLayout(), scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
 	scp.boxIntervalTimeSingle = container.New(layout.NewVBoxLayout(), scp.intervalTimeSingleDisp)
-	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, scp.boxIntervalTimeSingle, scp.boxIntervalTimeRange)
-	if triggerTypes[scp.Settings.Trigger.Type] != control.Interval {
+	boxIntervalTimeValues := container.New(&fixedMaxLayout{}, scp.boxIntervalTimeSingle, scp.boxIntervalTimeRange)
+	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, boxIntervalTimeValues)
+	if triggerTypes[scp.Settings.Trigger.Type] != control.Interval && triggerTypes[scp.Settings.Trigger.Type] != control.PulseWidth {
 		scp.boxTriggerIntervalDisp.Hide()
 	} else {
 		scp.updateIntervalTimeGUI()
