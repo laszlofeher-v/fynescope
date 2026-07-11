@@ -289,7 +289,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.selectedHit.handle == complexHandleUpperHyst {
 		if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
 			switch channel.Trigger.TriggerDirection {
-			case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+			case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 				if newH >= channel.Trigger.Mv {
 					channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
 				}
@@ -302,7 +302,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			}
 		} else if channel.Trigger.Type == "Advanced" {
 			switch channel.Trigger.TriggerDirection {
-			case genericps.TriggerRaising:
+			case genericps.TriggerRising:
 				if newH <= channel.Trigger.Mv {
 					channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
 				}
@@ -327,7 +327,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 
 	if tp.selectedHit.handle == complexHandleLowerHyst {
 		switch channel.Trigger.TriggerDirection {
-		case genericps.TriggerRaising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+		case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 			if newH <= channel.Trigger.LowerMv {
 				channel.Trigger.LowerHysteresis = channel.Trigger.LowerMv - newH
 			}

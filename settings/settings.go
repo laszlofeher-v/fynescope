@@ -114,25 +114,25 @@ type (
 		ComplexEnabled  bool   `yaml:"complexenabled"`
 	}
 	GeneratorSettings struct {
-		On                   bool                       `yaml:"on"`
-		Digital              bool                       `yaml:"digital"`
-		Frequency            float64                    `yaml:"frequency"`
-		StartFrequency       float64                    `yaml:"startfrequency"`
-		StopFrequency        float64                    `yaml:"stopfrequency"`
-		Increment            float64                    `yaml:"increment"`
-		Sweep                genericps.SweepTypeEnum    `yaml:"sweep"`
-		Dwelltime            float64                    `yaml:"dwelltime"`
-		OffsetVoltage        int32                      `yaml:"offsetvoltage"`
-		Amplitude            uint32                     `yaml:"amplitude"`
-		WaveType             genericps.WaveTypeEnum     `yaml:"wavetype"`
-		Operation            genericps.ExtraOperations  `yaml:"operation"`
-		RaiseFallTimePercent float64                    `yaml:"raisefalltimepercent"`
-		TriggerTimeOffset    float64                    `yaml:"triggertimeoffset"`
-		NoiseAmplitude       float64                    `yaml:"noise_amplitude"`
-		PhaseNoiseDegree     float64                    `yaml:"phase_noise_degree"`
-		Phase                float64                    `yaml:"phase"`
-		ImpedanceMode        string                     `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
-		ImpedanceOhms        int                        `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
+		On                   bool                      `yaml:"on"`
+		Digital              bool                      `yaml:"digital"`
+		Frequency            float64                   `yaml:"frequency"`
+		StartFrequency       float64                   `yaml:"startfrequency"`
+		StopFrequency        float64                   `yaml:"stopfrequency"`
+		Increment            float64                   `yaml:"increment"`
+		Sweep                genericps.SweepTypeEnum   `yaml:"sweep"`
+		Dwelltime            float64                   `yaml:"dwelltime"`
+		OffsetVoltage        int32                     `yaml:"offsetvoltage"`
+		Amplitude            uint32                    `yaml:"amplitude"`
+		WaveType             genericps.WaveTypeEnum    `yaml:"wavetype"`
+		Operation            genericps.ExtraOperations `yaml:"operation"`
+		RaiseFallTimePercent float64                   `yaml:"raisefalltimepercent"`
+		TriggerTimeOffset    float64                   `yaml:"triggertimeoffset"`
+		NoiseAmplitude       float64                   `yaml:"noise_amplitude"`
+		PhaseNoiseDegree     float64                   `yaml:"phase_noise_degree"`
+		Phase                float64                   `yaml:"phase"`
+		ImpedanceMode        string                    `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
+		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
 	}
 	DftSettings struct {
 		MaxFreq        float64 `yaml:"maxfreq"`
@@ -219,25 +219,25 @@ func NewDefaultSettings() *PsSettings {
 			{ID: genericps.ChA, Col: [2]color.NRGBA{{100, 200, 255, 255},
 				{1, 5, 191, 255}}, VRange: defaultRange,
 				CoupleType: defaultCouple, Enabled: true, TriggerSource: true,
-				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRaising, Mv: 0},
+				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRising, Mv: 0},
 				RlcFilter:     RlcFilterSettings{GeneratorSource: genericps.ChA, Enabled: false, Type: RlcFilterTypeDisabled, R: 1, RUnit: "kΩ", L: 1, LUnit: "mH", C: 1, CUnit: "µF"},
 				DigitalFilter: DigitalFilterSettings{LowpassFc: 10000.0, HighpassFc: 100.0, BandpassFc1: 500.0, BandpassFc2: 5000.0, BandstopFc1: 900.0, BandstopFc2: 1100.0}},
 			{ID: genericps.ChB, Col: [2]color.NRGBA{{255, 0, 0, 255},
 				{255, 0, 0, 255}}, VRange: defaultRange,
 				CoupleType: defaultCouple, Enabled: false, TriggerSource: false,
-				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRaising, Mv: 0},
+				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRising, Mv: 0},
 				RlcFilter:     RlcFilterSettings{GeneratorSource: genericps.ChB, Enabled: false, Type: RlcFilterTypeDisabled, R: 1, RUnit: "kΩ", L: 1, LUnit: "mH", C: 1, CUnit: "µF"},
 				DigitalFilter: DigitalFilterSettings{LowpassFc: 10000.0, HighpassFc: 100.0, BandpassFc1: 500.0, BandpassFc2: 5000.0, BandstopFc1: 900.0, BandstopFc2: 1100.0}},
 			{ID: genericps.ChC, Col: [2]color.NRGBA{{0, 255, 0, 255},
 				{0, 135, 0, 255}}, VRange: defaultRange,
 				CoupleType: defaultCouple, Enabled: false, TriggerSource: false,
-				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRaising, Mv: 0},
+				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRising, Mv: 0},
 				RlcFilter:     RlcFilterSettings{GeneratorSource: genericps.ChC, Enabled: false, Type: RlcFilterTypeDisabled, R: 1, RUnit: "kΩ", L: 1, LUnit: "mH", C: 1, CUnit: "µF"},
 				DigitalFilter: DigitalFilterSettings{LowpassFc: 10000.0, HighpassFc: 100.0, BandpassFc1: 500.0, BandpassFc2: 5000.0, BandstopFc1: 900.0, BandstopFc2: 1100.0}},
 			{ID: genericps.ChD, Col: [2]color.NRGBA{{255, 255, 0, 255},
 				{100, 100, 0, 255}}, VRange: defaultRange,
 				CoupleType: defaultCouple, Enabled: false, TriggerSource: false,
-				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRaising, Mv: 0},
+				Trigger:       ChTriggerSettings{TriggerDirection: genericps.TriggerRising, Mv: 0},
 				RlcFilter:     RlcFilterSettings{GeneratorSource: genericps.ChD, Enabled: false, Type: RlcFilterTypeDisabled, R: 1, RUnit: "kΩ", L: 1, LUnit: "mH", C: 1, CUnit: "µF"},
 				DigitalFilter: DigitalFilterSettings{LowpassFc: 10000.0, HighpassFc: 100.0, BandpassFc1: 500.0, BandpassFc2: 5000.0, BandstopFc1: 900.0, BandstopFc2: 1100.0}},
 		},

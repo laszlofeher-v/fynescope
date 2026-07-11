@@ -1,8 +1,8 @@
 package sim
 
 import (
-	"log/slog"
 	"fynescope/genericps"
+	"log/slog"
 	"time"
 )
 
@@ -109,7 +109,7 @@ type ThresholdDirection int
 const (
 	TriggerAbove ThresholdDirection = iota
 	TriggerBelow
-	TriggerRaising
+	TriggerRising
 	TriggerFalling
 	TriggerRisingOrFalling
 	TriggerAboveLower
@@ -431,7 +431,7 @@ func loadConstants() {
 	genericps.CondMax = genericps.TriggerRespBase(CondMax)
 	genericps.TriggerAbove = genericps.ThresholdDirection(TriggerAbove)
 	genericps.TriggerBelow = genericps.ThresholdDirection(TriggerBelow)
-	genericps.TriggerRaising = genericps.ThresholdDirection(TriggerRaising)
+	genericps.TriggerRising = genericps.ThresholdDirection(TriggerRising)
 	genericps.TriggerFalling = genericps.ThresholdDirection(TriggerFalling)
 	genericps.TriggerRisingOrFalling = genericps.ThresholdDirection(TriggerRisingOrFalling)
 	genericps.TriggerAboveLower = genericps.ThresholdDirection(TriggerAboveLower)

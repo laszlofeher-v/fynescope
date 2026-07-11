@@ -95,7 +95,7 @@ type ThresholdDirection int
 const (
 	TriggerAbove           ThresholdDirection = C.PS2000A_ABOVE
 	TriggerBelow           ThresholdDirection = C.PS2000A_BELOW
-	TriggerRaising         ThresholdDirection = C.PS2000A_RISING
+	TriggerRising          ThresholdDirection = C.PS2000A_RISING
 	TriggerFalling         ThresholdDirection = C.PS2000A_FALLING
 	TriggerRisingOrFalling ThresholdDirection = C.PS2000A_RISING_OR_FALLING
 	TriggerAboveLower      ThresholdDirection = C.PS2000A_ABOVE_LOWER
@@ -416,7 +416,7 @@ func loadConstants() {
 	genericps.CondMax = genericps.TriggerRespBase(CondMax)
 	genericps.TriggerAbove = genericps.ThresholdDirection(TriggerAbove)
 	genericps.TriggerBelow = genericps.ThresholdDirection(TriggerBelow)
-	genericps.TriggerRaising = genericps.ThresholdDirection(TriggerRaising)
+	genericps.TriggerRising = genericps.ThresholdDirection(TriggerRising)
 	genericps.TriggerFalling = genericps.ThresholdDirection(TriggerFalling)
 	genericps.TriggerRisingOrFalling = genericps.ThresholdDirection(TriggerRisingOrFalling)
 	genericps.TriggerAboveLower = genericps.ThresholdDirection(TriggerAboveLower)
