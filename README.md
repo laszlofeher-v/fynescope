@@ -214,7 +214,7 @@ To restore all settings to their default values, simply delete or clear the cont
 
 ## Testing
 
-The project includes unit tests across all major packages. Tests run without any PicoScope hardware — only the `noscope` tag is needed to exclude the CGo driver dependency.
+The project includes unit tests across all major packages. **Important:** There are no tests specified for real hardware. All testing is conducted strictly using the built-in software simulator. Therefore, tests run entirely without any PicoScope hardware — only the `noscope` tag is needed to exclude the CGo driver dependency.
 
 ### Run all tests (no hardware required)
 
