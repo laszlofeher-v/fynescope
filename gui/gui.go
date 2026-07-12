@@ -559,8 +559,12 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.running {
 
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
-				// Force block mode and ensure a trigger is set for f(v) and f(f)
-				scp.triggerSettingMsg.Mode = control.Auto
+				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth) {
+					scp.StopRunning()
+					scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
+				} else {
+					// Force block mode and ensure a trigger is set for f(v) and f(f)
+					scp.triggerSettingMsg.Mode = control.Auto
 				if scp.triggerSource == dontCare {
 					// Set arbitrary simple trigger on ChA if none selected
 					scp.triggerSource = chA
@@ -568,6 +572,7 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.triggerSettingMsg.Source = chA
 					scp.triggerSettingMsg.Enabled = true
 					scp.triggerSettingMsg.Mv = 0
+				}
 				}
 			}
 
@@ -689,6 +694,10 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.status.SetText("")
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
+				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth {
+					scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
+					return
+				}
 				if scp.Settings.Ff.PtsDec <= 0 {
 					scp.status.SetText("Error: Points per decade cannot be 0")
 					return
@@ -1625,6 +1634,9 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 
 	// Transitioning from f(f) to non-f(f)
 	if prevTab == ffTabIndex && newTab != ffTabIndex {
+		if scp.status.Text == "Error: f(f) requires Simple, Advanced, or Window trigger" {
+			scp.status.SetText("")
+		}
 		scp.stopFfSweep() // stop any running Bode sweep
 		if scp.psControl != nil && scp.psControl.Con.ID == genericps.SimId {
 			for i := 0; i < int(scp.channelCount); i++ {
