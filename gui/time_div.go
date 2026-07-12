@@ -1001,6 +1001,19 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	
+	minTime, maxTime := scp.getScreenTimeLimits()
+	if valInSeconds < minTime {
+		valInSeconds = minTime
+		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeLowerDisp.Refresh()
+	}
+	if valInSeconds > maxTime {
+		valInSeconds = maxTime
+		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeLowerDisp.Refresh()
+	}
+
 	if valInSeconds > scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper {
 		valInSeconds = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
 		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
@@ -1023,6 +1036,19 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+
+	minTime, maxTime := scp.getScreenTimeLimits()
+	if valInSeconds < minTime {
+		valInSeconds = minTime
+		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeUpperDisp.Refresh()
+	}
+	if valInSeconds > maxTime {
+		valInSeconds = maxTime
+		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeUpperDisp.Refresh()
+	}
+
 	if valInSeconds < scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower {
 		valInSeconds = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
 		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
@@ -1046,6 +1072,19 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
+	
+	minTime, maxTime := scp.getScreenTimeLimits()
+	if valInSeconds < minTime {
+		valInSeconds = minTime
+		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeSingleDisp.Refresh()
+	}
+	if valInSeconds > maxTime {
+		valInSeconds = maxTime
+		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+		scp.intervalTimeSingleDisp.Refresh()
+	}
+
 	pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
 	if pwType == genericps.PwTypeLessThan {
 		scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper = valInSeconds
@@ -1277,3 +1316,14 @@ func (scp *ScpDesc) newSetTimeDivPanel(container *fyne.Container) (err error) {
 	container.Add(timeDivPanel)
 	return
 }
+
+func (scp *ScpDesc) getScreenTimeLimits() (minTime, maxTime float64) {
+	maxTime = scp.Settings.Time.TriggerTimeOffset
+	if maxTime < 0 {
+		maxTime = 0
+	}
+	minTime = 0
+	return minTime, maxTime
+}
+
+
