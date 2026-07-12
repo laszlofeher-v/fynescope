@@ -136,6 +136,14 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		timeOffset = -timeOffset
 	}
 
+	minTime, maxTime := tp.scp.getScreenTimeLimits()
+	if timeOffset < minTime {
+		timeOffset = minTime
+	}
+	if timeOffset > maxTime {
+		timeOffset = maxTime
+	}
+
 	pwType := channel.Trigger.IntervalType
 	isSingle := intervalSingleModeTypes[pwType]
 
