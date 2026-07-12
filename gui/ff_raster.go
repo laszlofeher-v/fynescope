@@ -1283,9 +1283,11 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		}
 		vbox.Add(chBox)
 
+		addToTest(enabledCheck, ffEnableId+chName)
 		addToTest(phaseCheck, ffPhaseCheckId+chName)
 		addToTest(refCheck, ffRefCheckId+chName)
 		addToTest(vRange, ffVRangeId+chName)
+		addToTest(x10Check, ffX10Id+chName)
 	}
 
 	// Declare disp7 widgets first so they can be referenced in the OnChanged closure

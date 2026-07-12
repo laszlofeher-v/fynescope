@@ -64,6 +64,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			chSettings.RlcFilter.GeneratorSource = genericps.ChannelId(chIdx)
 		}
 		genSourceSelect.SetSelected("Gen " + string(rune('A'+int(chSettings.RlcFilter.GeneratorSource))))
+		addToTest(genSourceSelect, "rlcGenSource"+chStr)
 
 		filterTypes := []string{settings.RlcFilterTypeDisabled, "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
 		typeSelect := selectscroll.NewSelectScroll(filterTypes, func(s string, exc selectscroll.Exception) {

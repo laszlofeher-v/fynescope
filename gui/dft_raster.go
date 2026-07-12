@@ -888,6 +888,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		})
 		check.SetChecked(channel.Enabled)
 		channelViewer.dftCheckbox = check
+		addToTest(check, dftEnableId+chName)
 		
 		persSelected := func(checked bool) {
 			channel.DftPersistence = checked
@@ -901,6 +902,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		persCheck := widget.NewCheck("Pers", persSelected)
 		persCheck.SetChecked(channel.DftPersistence)
 		channelViewer.dftPersistenceCheckbox = persCheck
+		addToTest(persCheck, dftPersId+chName)
 
 		// Channel Label
 		text := "Ch " + chName + ":"
@@ -926,6 +928,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		vRange := selectscroll.NewSelectScroll(ranges, func(option string, e selectscroll.Exception) {
 			scp.changeChannelRange(chIdx, option)
 		}, "±200mV")
+		addToTest(vRange, dftVRangeId+chName)
 
 		vr := scp.Settings.Channels[chIdx].VRange
 		if s, ok := rangeEnumToString[vr]; ok {
@@ -941,6 +944,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		})
 		x10Check.SetChecked(scp.Settings.Channels[chIdx].X10)
 		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10Check)
+		addToTest(x10Check, dftX10Id+chName)
 
 		// Each channel gets its own row
 		chRow := container.NewHBox(check, label, vRange, x10Check, persCheck)
@@ -960,6 +964,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, settings.WindowRectangular)
 	windowSelector.SilentSetSelected(scp.Settings.Dft.Window)
+	addToTest(windowSelector, dftWindowId)
 	// Display mode selector row
 	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDB, settings.ModeVoltage}, func(selected string, _ selectscroll.Exception) {
 		scp.Settings.Dft.DisplayMode = selected
@@ -973,6 +978,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, settings.ModeVoltage)
 	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayMode)
+	addToTest(modeSelector, dftModeId)
 
 	// Freq Range Selector
 	valLabels := []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
@@ -1005,10 +1011,12 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		}
 		updateMaxFreq()
 	}, "500")
+	addToTest(scp.dftMaxFreqValSelect, dftMaxFreqValId)
 
 	scp.dftMaxFreqUnitSelect = selectscroll.NewSelectScroll(unitLabels, func(selected string, _ selectscroll.Exception) {
 		updateMaxFreq()
 	}, "MHz")
+	addToTest(scp.dftMaxFreqUnitSelect, dftMaxFreqUnitId)
 
 	// Initialize selectors from current MaxFreq
 	currentMaxFreq := scp.Settings.Dft.MaxFreq
@@ -1050,6 +1058,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, "1024")
 	binSelector.SilentSetSelected(strconv.Itoa(scp.Settings.Dft.Bins))
+	addToTest(binSelector, dftBinId)
 
 	scp.binWidthLabel = widget.NewLabel("BW: -")
 	scp.updateBinWidth()
@@ -1074,12 +1083,14 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.syncTimeDivToDft()
 		scp.updateAcquisitionParameters()
 	}, "100")
+	addToTest(scp.dftSampleRateSelect, dftSampleRateId)
 
 	scp.dftSampleUnitSelect = selectscroll.NewSelectScroll(dftSampleUnits, func(selected string, _ selectscroll.Exception) {
 		scp.Settings.Dft.SampleRateUnit = selected
 		scp.syncTimeDivToDft()
 		scp.updateAcquisitionParameters()
 	}, selectscroll.UnitMSps)
+	addToTest(scp.dftSampleUnitSelect, dftSampleUnitId)
 
 	scp.dftSampleRateSelect.SilentSetSelected(scp.Settings.Dft.SampleRate)
 	scp.dftSampleUnitSelect.SilentSetSelected(scp.Settings.Dft.SampleRateUnit)

@@ -9,6 +9,7 @@ import (
 	"fynescope/selectscroll"
 	"log/slog"
 	"math"
+	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -144,6 +145,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}
 			scp.SaveSettings()
 		})
+		addToTest(onOffCheck, extGenOnOffId+chName)
 		onOffCheck.SetChecked(scp.Settings.ExtGen[chIdx].On)
 
 		waveTypeOptions := []string{"Sine", "Square", "Triangle", "RampUp", "RampDown"}
@@ -185,6 +187,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}
 			scp.SaveSettings()
 		}, "RampDown")
+		addToTest(waveTypeSelect, extGenWaveTypeId)
 
 		for key, val := range waveTypeMap {
 			if val == scp.Settings.ExtGen[chIdx].WaveType {
@@ -197,10 +200,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		const maxV = 2000000
 		const size = 0.8
-
+		fontScale := float32(0.8)
 		const maxFreq = 100000000.0 // 100 MHz
+		const minFreq = 1.0
 
-		disp7Width := fractionWidth
+		disp7Width := 9
 		// Allocate enough digits for the maximum supported frequency (100 MHz).
 		f := int(math.Round(maxFreq))
 		for f > 0 {
@@ -208,17 +212,18 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7Width++
 		}
 
-		frequency, _ := disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(maxFreq)*pow10tab[fractionWidth],
-			int(genericps.MinFrequency)*pow10tab[fractionWidth],
+		frequency, _ := disp7.NewCustomDisp7Array(disp7Width, 0,
+			int(maxFreq),
+			int(minFreq),
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
-			scp.theme.Color(ColorNameGeneratorDisp, 0),
-			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "Frq: ", " Hz")
-		frequency.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Frequency) * pow10tab[fractionWidth])
+			color.White,
+			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
+			fontScale*disp7.DeafultDigitHeight, 1,
+			disp7.DefaultVCursorSpace, "Freq  ", " Hz")
+		addToTest(frequency, extGenFreqId)
+		frequency.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Frequency))
 		frequency.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].Frequency = v / float64(pow10tab[fractionWidth])
+			scp.Settings.ExtGen[chIdx].Frequency = v
 			if scp.extGen.Connected() {
 				if err := scp.extGen.SetFrequency(scpiCh, scp.Settings.ExtGen[chIdx].Frequency); err != nil {
 					slog.Error("external gen set freq failed", "err", err)
@@ -232,10 +237,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		amp, _ := disp7.NewCustomDisp7Array(7, 6, maxV, 0,
 			disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
-			scp.theme.Color(ColorNameGeneratorDisp, 0),
-			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "Amp:", " V")
+			color.White,
+			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
+			fontScale*disp7.DeafultDigitHeight, 1,
+			disp7.DefaultVCursorSpace, "Amp   ", " V")
+		addToTest(amp, extGenAmpId)
 		amp.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Amplitude))
 		amp.OnChanged = func(v float64) {
 			scp.Settings.ExtGen[chIdx].Amplitude = uint32(v)
@@ -249,10 +255,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		offset, _ := disp7.NewCustomDisp7Array(7, 6, maxV, -maxV,
 			disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
-			scp.theme.Color(ColorNameGeneratorDisp, 0),
-			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "Offs:", " V")
+			color.White,
+			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
+			fontScale*disp7.DeafultDigitHeight, 1,
+			disp7.DefaultVCursorSpace, "Offs  ", " V")
+		addToTest(offset, extGenOffsetId)
 		offset.SilentSetValue(int(scp.Settings.ExtGen[chIdx].OffsetVoltage))
 		offset.OnChanged = func(v float64) {
 			scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v)
@@ -266,10 +273,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		phase, _ := disp7.NewCustomDisp7Array(4, 1, 3600, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
-			scp.theme.Color(ColorNameGeneratorDisp, 0),
-			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "Phase:", " °")
+			color.White,
+			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
+			fontScale*disp7.DeafultDigitHeight, 1,
+			disp7.DefaultVCursorSpace, "Phase ", " °")
+		addToTest(phase, extGenPhaseId)
 		phase.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Phase * 10))
 		phase.OnChanged = func(v float64) {
 			scp.Settings.ExtGen[chIdx].Phase = v / 10.0
@@ -293,10 +301,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		impedanceOhmsWidget, _ := disp7.NewCustomDisp7Array(5, 0, 10000, 1,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
-			scp.theme.Color(ColorNameGeneratorDisp, 0),
-			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "Imp:", " Ω")
+			color.White,
+			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
+			fontScale*disp7.DeafultDigitHeight, 1,
+			disp7.DefaultVCursorSpace, "Load  ", " Ω")
+		addToTest(impedanceOhmsWidget, extGenImpOhmsId)
 		impedanceOhmsWidget.SilentSetValue(scp.Settings.ExtGen[chIdx].ImpedanceOhms)
 		impedanceOhmsWidget.OnChanged = func(v float64) {
 			scp.Settings.ExtGen[chIdx].ImpedanceOhms = int(v)

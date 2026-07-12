@@ -367,6 +367,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
 		waveType.SetSelected(waveTypeOptions[genSettings.WaveType])
+		addToTest(waveType, genWaveTypeId)
 		if undockable {
 			undockButton = widget.NewButtonWithIcon(undock, theme.ViewFullScreenIcon(), func() {
 				// Errors logged with Fyne 2.6.0, 2.6.1 2.7.0
@@ -555,6 +556,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		} else {
 			operationSelect.SetSelected(operationNormal)
 		}
+		addToTest(operationSelect, genOperationId)
 		operationBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Operation:"), operationSelect)
 

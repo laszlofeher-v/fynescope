@@ -1180,6 +1180,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions, scp.onIntervalTypeChange, IntervalTypeOutOfRange)
+	addToTest(scp.intervalTypeSelect, intervalTypeSelectId)
 
 	// Convert pulse width type enum back to string
 	pwTypeStr := intervalTypeRevMap[scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType]
@@ -1202,6 +1203,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		unitStr = " ms"
 	}
 	scp.intervalUnitSelect = selectscroll.NewSelectScroll(intervalUnits, scp.onIntervalUnitChange, unitStr)
+	addToTest(scp.intervalUnitSelect, intervalUnitSelectId)
 
 	multiplier := getIntervalUnitMultiplier(unitStr)
 
@@ -1214,6 +1216,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.intervalTimeLowerDisp.OnChanged = scp.onIntervalTimeLowerChange
 	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
+	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId)
 
 	scp.intervalTimeUpperDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -1224,6 +1227,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.intervalTimeUpperDisp.OnChanged = scp.onIntervalTimeUpperChange
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
+	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId)
 
 	// Single ΔT display for Greater Than / Less Than modes
 	scp.intervalTimeSingleDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
@@ -1234,6 +1238,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		return nil, err
 	}
 	scp.intervalTimeSingleDisp.OnChanged = scp.onIntervalTimeSingleChange
+	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId)
 
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect, scp.intervalUnitSelect)
 	scp.boxIntervalTimeRange = container.New(layout.NewVBoxLayout(), scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
