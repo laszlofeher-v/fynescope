@@ -738,6 +738,13 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 }
 
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
+	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval || option == settings.TriggerTypePulseWidth) {
+		scp.StopRunning()
+		scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
+	} else if scp.status.Text == "Error: f(f) requires Simple, Advanced, or Window trigger" {
+		scp.status.SetText("")
+	}
+
 	scp.Settings.Trigger.Type = option
 
 	if scp.Settings.Trigger.ComplexEnabled {
