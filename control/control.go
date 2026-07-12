@@ -175,9 +175,10 @@ type (
 		receiveBuffer        [][]int16   // raw data buffer, only for real channel
 		displayBuffer        [][]float32 // signal stored in mv
 		EtsInBuffer          []int64
-		overSample           int16
-		SamplingTimeInterval float64
-		SampleCountRequired  int32
+		overSample                  int16
+		SamplingTimeInterval        float64
+		lastTriggerSamplingInterval float64
+		SampleCountRequired         int32
 		NPre, NPro           int32
 		XRoundError          float64
 		timeBase             uint32
@@ -284,13 +285,19 @@ func (psControl *PscDesc) setChannel() (err error) {
 }
 
 func (psControl *PscDesc) setTrigger() (err error) {
-	psControl.getTriggerCh <- &psControl.getTrigger // ask for data
-	if <-psControl.getTrigger.newSettings {         // wait for data
+	psControl.getTriggerCh <- &psControl.getTrigger   // ask for data
+	newSettings := <-psControl.getTrigger.newSettings // wait for data
+
+	samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
+	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth
+
+	if newSettings || (samplingIntervalChanged && timeDependentTrigger) {
 		err = psControl.sendTrigger() // 			   send to the scope
 		if err != nil {
 			slog.Error("setTrigger", "error", err)
 			return
 		}
+		psControl.lastTriggerSamplingInterval = psControl.SamplingTimeInterval
 	}
 	return
 }
