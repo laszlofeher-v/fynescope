@@ -242,6 +242,9 @@ type (
 		ExtGenEnabled              bool
 		useExtGenCheck             *widget.Check
 		complexTriggerCheck        *widget.Check
+		timeZoomButton             *widget.Button
+		timeZoomWindow             fyne.Window
+		timeZoomRaster             *screenRaster
 	}
 )
 
@@ -407,6 +410,9 @@ func (scp *ScpDesc) refreshRasters() {
 		if scp.ftRaster != nil {
 			canvas.Refresh(scp.ftRaster)
 		}
+		if scp.timeZoomRaster != nil {
+			canvas.Refresh(scp.timeZoomRaster)
+		}
 	}
 }
 
@@ -531,26 +537,41 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.fvRaster.Hide()
 			scp.ffRaster.Hide()
 			scp.dftRaster.Show()
+			if scp.timeZoomButton != nil {
+				scp.timeZoomButton.Hide()
+			}
 		case fvTabIndex:
 			scp.ftRaster.Hide()
 			scp.dftRaster.Hide()
 			scp.ffRaster.Hide()
 			scp.fvRaster.Show()
+			if scp.timeZoomButton != nil {
+				scp.timeZoomButton.Hide()
+			}
 		case ffTabIndex:
 			scp.ftRaster.Hide()
 			scp.dftRaster.Hide()
 			scp.fvRaster.Hide()
 			scp.ffRaster.Show()
+			if scp.timeZoomButton != nil {
+				scp.timeZoomButton.Hide()
+			}
 		case rlcTabIndex:
 			scp.ftRaster.Show()
 			scp.dftRaster.Hide()
 			scp.fvRaster.Hide()
 			scp.ffRaster.Hide()
+			if scp.timeZoomButton != nil {
+				scp.timeZoomButton.Show()
+			}
 		default:
 			scp.dftRaster.Hide()
 			scp.fvRaster.Hide()
 			scp.ffRaster.Hide()
 			scp.ftRaster.Show()
+			if scp.timeZoomButton != nil {
+				scp.timeZoomButton.Show()
+			}
 		}
 
 		scp.updateAcquisitionParameters()
@@ -605,6 +626,14 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.fvRaster.Hide()
 		scp.ffRaster.Hide()
 	}
+
+	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+		scp.openTimeZoomWindow()
+	})
+	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex {
+		scp.timeZoomButton.Hide()
+	}
+
 	addToTest(scp.controlTab, ftFuncId)
 	addToTest(scp.controlTab, fvFuncId)
 	addToTest(scp.controlTab, dftFuncId)
@@ -779,6 +808,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.RemoveAll()
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
+			scp.toolbar.Add(scp.timeZoomButton)
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -795,6 +825,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
+			scp.toolbar.Add(scp.timeZoomButton)
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -824,7 +855,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.App.Quit()
 	})
 	if scp.Settings.Window.LeftControl {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, fullScreen, restoreScreen, changeSide,
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout,
 			layout.NewSpacer(),
@@ -832,7 +863,7 @@ func (scp *ScpDesc) build2000Gui() {
 		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
 	} else {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status, layout.NewSpacer(),
-			scp.runblockButton, scp.streamEnableButton, fullScreen, restoreScreen, changeSide,
+			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout)
 		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, activeRasterContainer)
@@ -1634,9 +1665,6 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 
 	// Transitioning from f(f) to non-f(f)
 	if prevTab == ffTabIndex && newTab != ffTabIndex {
-		if scp.status.Text == "Error: f(f) requires Simple, Advanced, or Window trigger" {
-			scp.status.SetText("")
-		}
 		scp.stopFfSweep() // stop any running Bode sweep
 		if scp.psControl != nil && scp.psControl.Con.ID == genericps.SimId {
 			for i := 0; i < int(scp.channelCount); i++ {
@@ -1704,4 +1732,29 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	scp.controlTab.Items = newItems
 	scp.controlTab.Refresh()
 	scp.controlTab.Select(tab)
+}
+
+func (scp *ScpDesc) timeZoomGenerator(wInt int, hInt int) image.Image {
+	if scp.ftScopeFullScreen != nil {
+		return scp.ftScopeFullScreen
+	}
+	return image.NewRGBA(image.Rect(0, 0, wInt, hInt))
+}
+
+func (scp *ScpDesc) openTimeZoomWindow() {
+	if scp.timeZoomWindow != nil {
+		scp.timeZoomWindow.RequestFocus()
+		return
+	}
+	scp.timeZoomWindow = scp.App.NewWindow("Time Zoom")
+	scp.timeZoomWindow.SetOnClosed(func() {
+		scp.timeZoomWindow = nil
+		scp.timeZoomRaster = nil
+	})
+
+	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
+
+	scp.timeZoomWindow.SetContent(scp.timeZoomRaster)
+	scp.timeZoomWindow.Resize(fyne.NewSize(800, 600))
+	scp.timeZoomWindow.Show()
 }
