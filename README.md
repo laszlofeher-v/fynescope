@@ -10,7 +10,7 @@
 
 Once the application is running, you can navigate between different visualization and control modes using the main tabs:
 
-- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time.
+- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon next to the timebase label at the bottom of the plot opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
 - **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators.
 <p align="center">
@@ -135,7 +135,8 @@ For more options, including displaying version, build date, and license informat
 - **Graphs and Plots**:
   - **Scroll Wheel**: On trigger point change the hysteresis.
   - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
-  - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase.
+  - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase. Click the magnifier icon to open the secondary **Time Zoom** window.
+  - **Time Zoom Window**: When the Time Zoom window is active, you can move the time labels on main window to zoom into different sections of the main window.
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
   - **Trigger Controls**: Use left click and drag or scroll on the trigger controls to adjust the trigger properties.
   - **Trigger Position**: Move the trigger position using the mouse left click and drag on the trigger position line.
@@ -144,6 +145,7 @@ For more options, including displaying version, build date, and license informat
   - When hovering over a digit in a numeric input (such as frequency or amplitude settings), use the mouse scroll wheel to quickly increment or decrement that specific digit's value. Left click or delete/backspace key clears the focused digit. Up/down arrows can also be used on the numeric input. Left/right arrows can also be used on the numeric input to move between digits. Numeric keypad can be used to enter values.
 - **Buttons/checkboxes**:
   - Use left click on the buttons/checkboxes to toggle the value.
+  - Use right click on a channel button to change channel color.
 - **Sliders**:
   - Use left click or mouse wheel on the sliders to adjust the value. 
 
@@ -274,7 +276,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 **Display & Navigation**
 
 - **English only UI**: The application interface is available only in English; localization to other languages is not supported.
-- **No zoom**: There is no waveform zoom or multi-zoom viewport support.
+- **Vertical Zoom limits**: While horizontal magnification is supported via the Time Zoom feature, vertical zooming or arbitrary multi-viewport zooming is not available.
 - **No rulers**: On-screen measurement rulers/cursors are not available.
 - **No multiple viewports**: Only a single view of each signal domain is shown at a time.
 
