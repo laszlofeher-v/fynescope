@@ -1757,6 +1757,7 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 	})
 
 	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
+	scp.timeZoomRaster.disableInput = true
 
 	scp.timeZoomWindow.SetContent(scp.timeZoomRaster)
 	scp.timeZoomWindow.Resize(fyne.NewSize(800, 600))

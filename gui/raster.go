@@ -78,6 +78,7 @@ type (
 	screenRaster struct {
 		mouseIn        bool
 		mouseX, mouseY float32
+		disableInput   bool
 		widget.BaseWidget
 		Window fyne.Window
 		raster *canvas.Raster
@@ -135,12 +136,18 @@ func (raster *screenRaster) Tapped(event *fyne.PointEvent) {
 func (raster *screenRaster) TappedSecondary(event *fyne.PointEvent) {
 }
 func (raster *screenRaster) MouseIn(event *desktop.MouseEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.Window.Canvas().Focus(raster)
 	raster.mouseIn = true
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 }
 func (raster *screenRaster) MouseMoved(event *desktop.MouseEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	drawers := raster.Drawers()
@@ -153,6 +160,9 @@ func (raster *screenRaster) MouseMoved(event *desktop.MouseEvent) {
 }
 
 func (raster *screenRaster) LeftMouseDown(event *desktop.MouseEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	x := int(math.Round(float64(event.Position.X)))
@@ -194,6 +204,9 @@ func (raster *screenRaster) LeftMouseDown(event *desktop.MouseEvent) {
 }
 
 func (raster *screenRaster) MouseDown(event *desktop.MouseEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	canvas.Refresh(raster)
@@ -213,6 +226,9 @@ func (raster *screenRaster) MouseDown(event *desktop.MouseEvent) {
 }
 
 func (raster *screenRaster) MouseUp(event *desktop.MouseEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	raster.scp.displayMovedDivs = 0
@@ -227,10 +243,16 @@ func (raster *screenRaster) MouseUp(event *desktop.MouseEvent) {
 }
 
 func (raster *screenRaster) MouseOut() {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseIn = false
 }
 
 func (raster *screenRaster) DragEnd() {
+	if raster.disableInput {
+		return
+	}
 	raster.scp.displayMovedDivs = 0
 	drawers := raster.Drawers()
 	for i := range drawers {
@@ -243,6 +265,9 @@ func (raster *screenRaster) DragEnd() {
 	raster.Refresh()
 }
 func (raster *screenRaster) TypedKey(k *fyne.KeyEvent) {
+	if raster.disableInput {
+		return
+	}
 	drawers := raster.Drawers()
 	for i := range drawers {
 		switch m := drawers[i].(type) {
@@ -283,6 +308,9 @@ func (raster *screenRaster) AcceptsTab() bool {
 }
 
 func (raster *screenRaster) Cursor() desktop.Cursor {
+	if raster.disableInput {
+		return desktop.DefaultCursor
+	}
 	drawers := raster.Drawers()
 	for i := range drawers {
 		switch m := drawers[i].(type) {
@@ -306,6 +334,9 @@ var _ desktop.Keyable = (*screenRaster)(nil)
 var _ fyne.Tabbable = (*screenRaster)(nil)
 
 func (raster *screenRaster) Scrolled(event *fyne.ScrollEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	x := event.Position.X
@@ -333,6 +364,9 @@ func (raster *screenRaster) Scrolled(event *fyne.ScrollEvent) {
 }
 
 func (raster *screenRaster) Dragged(event *fyne.DragEvent) {
+	if raster.disableInput {
+		return
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	x := event.Position.X
