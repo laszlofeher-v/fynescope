@@ -12,6 +12,8 @@ import (
 	"math"
 	"time"
 
+	"fyne.io/fyne/v2/theme"
+
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
 )
@@ -36,8 +38,8 @@ type (
 		inspectorDispVCur              []float32
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
-		instV    []float32
-		instVCur []float32
+		instV      []float32
+		instVCur   []float32
 		isTimeZoom bool
 	}
 )
@@ -156,6 +158,17 @@ func (sv *signalViewer) draw() {
 
 	if sv.showInspector && !sv.isTimeZoom {
 		sv.drawInspector(w, h, bounds)
+	}
+
+	if sv.isTimeZoom {
+		// Draw vertical lines where the main window starts and ends.
+		ratio := sv.scp.maxScreenTime / sv.scp.timeZoomMaxScreenTime
+		if ratio < 1.0 { // Only draw if zoomed in
+			rightEdge := float64(bounds.Min.X) + w*ratio
+			c := sv.scp.theme.Color(theme.ColorNameForeground, 0)
+			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(bounds.Min.X+1), float32(bounds.Min.Y), float32(bounds.Min.X+1), float32(bounds.Max.Y), c)
+			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(rightEdge), float32(bounds.Min.Y), float32(rightEdge), float32(bounds.Max.Y), c)
+		}
 	}
 }
 
@@ -741,7 +754,7 @@ func (sv *signalViewer) formatTime(seconds float64) string {
 	if absT < 1e-9 {
 		val *= 1e12
 		unit = "ps"
-	} else if absT < 1E-6 {
+	} else if absT < 1e-6 {
 		val *= 1e9
 		unit = "ns"
 	} else if absT < 1e-3 {
@@ -1055,7 +1068,7 @@ func (scp *ScpDesc) partitionTzScreen(w, h float32) {
 	scp.timeZoomScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
 		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
 		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
-		
+
 	scp.timeZoomBottomLabelViewer = newTimelLabelViewer(scp.timeZoomScopeFullScreen,
 		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
 			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, true)
