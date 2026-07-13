@@ -441,12 +441,42 @@ func (scp *ScpDesc) timeUnitDown() {
 	}
 }
 
+func (scp *ScpDesc) checkTimeZoomConstraint(proposedTimeDiv int, proposedTimeUnit int) bool {
+	if scp.timeZoomWindow != nil {
+		proposedMaxScreenTime := float64(proposedTimeDiv) * math.Pow(10, float64(proposedTimeUnit)) * 10
+		// We allow a small epsilon for float comparison
+		if proposedMaxScreenTime > scp.timeZoomMaxScreenTime*1.01 {
+			return false
+		}
+	}
+	return true
+}
+
 func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
+	prevTimeUnitStr := scp.Settings.Time.Unit
+	prevTimeDivStr := scp.Settings.Time.TimeDiv
+	prevOptions := scp.timeSelect.Options
 	prevTimeUnit := scp.timeUnit
+
 	scp.setTimeSelectOptions(option)
-	scp.timeUnit = tu[scp.timeUnitSelect.Selected]
-	scp.Settings.Time.Unit = scp.timeUnitSelect.Selected
+	proposedUnit := tu[scp.timeUnitSelect.Selected]
 	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
+
+	if !scp.checkTimeZoomConstraint(intTimeDiv, proposedUnit) {
+		scp.timeSelect.Options = prevOptions
+		scp.timeSelect.SilentSetSelected(prevTimeDivStr)
+		scp.timeUnitSelect.SilentSetSelected(prevTimeUnitStr)
+		if scp.statusChan != nil {
+			select {
+			case scp.statusChan <- "Cannot zoom out beyond Time Zoom snapshot":
+			default:
+			}
+		}
+		return
+	}
+
+	scp.timeUnit = proposedUnit
+	scp.Settings.Time.Unit = scp.timeUnitSelect.Selected
 	scp.timeDiv = intTimeDiv
 	scp.Settings.Time.TimeDiv = scp.timeSelect.Selected
 	scp.setMaxScreenTime()
@@ -464,6 +494,10 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 
 func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	tl := scp.ftBottomLabelViewer.(*timeLabelViewer)
+	prevTimeUnitStr := scp.Settings.Time.Unit
+	prevTimeDivStr := scp.Settings.Time.TimeDiv
+	prevOptions := scp.timeSelect.Options
+
 	switch {
 	case ex == selectscroll.Over:
 		scp.timeUnitDown()
@@ -471,11 +505,27 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 		scp.timeUnitUp()
 	default:
 	}
+
+	proposedUnit := tu[scp.timeUnitSelect.Selected]
+	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
+
+	if !scp.checkTimeZoomConstraint(intTimeDiv, proposedUnit) {
+		scp.timeSelect.Options = prevOptions
+		scp.timeSelect.SilentSetSelected(prevTimeDivStr)
+		scp.timeUnitSelect.SilentSetSelected(prevTimeUnitStr)
+		if scp.statusChan != nil {
+			select {
+			case scp.statusChan <- "Cannot zoom out beyond Time Zoom snapshot":
+			default:
+			}
+		}
+		return
+	}
+
 	prevTimeUnit := scp.timeUnit
-	scp.timeUnit = tu[scp.timeUnitSelect.Selected]
+	scp.timeUnit = proposedUnit
 	mul := math.Pow(10, float64(scp.timeUnit)) / math.Pow(10, float64(prevTimeUnit))
 	prevTime := scp.timeDiv
-	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
 	scp.timeDiv = intTimeDiv
 	scp.Settings.Time.TimeDiv = scp.timeSelect.Selected
 	tl.enableRefresh()
