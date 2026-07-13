@@ -78,7 +78,9 @@ func (tp *windowTriggerPointViewer) mouseMoved(x, y float32) {
 
 	if prevUh != tp.uhMouseAt || prevL != tp.lMouseAt || prevLh != tp.lhMouseAt || prevMain != tp.mouseAt {
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 }
 
@@ -131,12 +133,14 @@ func (tp *windowTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y flo
 	}
 	if refresh {
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 }
 
 func (tp *windowTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	if int(x) < bounds.Min.X || int(x) > bounds.Max.X ||
 		int(y) < bounds.Min.Y || int(y) > bounds.Max.Y {
 		return
@@ -161,8 +165,8 @@ func (tp *windowTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
 	tp.enableRefresh()
-	if tp.scp.ftRaster != nil {
-		tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
 	}
 }
 
@@ -203,7 +207,9 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 		tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 		return
 	}
 
@@ -230,13 +236,15 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			<-tp.scp.triggerSettingMsg.Done
 		}
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 		return
 	}
 }
 
 func (tp *windowTriggerPointViewer) setUpperHysteresisDispOffset(dyh float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	h := float64(bounds.Dy())
 	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
 		return
@@ -252,11 +260,13 @@ func (tp *windowTriggerPointViewer) setUpperHysteresisDispOffset(dyh float32) {
 	}
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 	tp.enableRefresh()
-	tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
+	}
 }
 
 func (tp *windowTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	h := float64(bounds.Dy())
 	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
 		return
@@ -277,7 +287,9 @@ func (tp *windowTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
 		<-tp.scp.triggerSettingMsg.Done
 	}
 	tp.enableRefresh()
-	tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
+	}
 }
 
 func (tp *windowTriggerPointViewer) scrolled(delta, x, y float32) {
@@ -335,7 +347,7 @@ func (tp *windowTriggerPointViewer) draw() {
 	}
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
-		bound := tp.scp.ftScopeSignalScreen.Bounds()
+		bound := tp.signalScreen().Bounds()
 		maxY := float32(bound.Max.Y)
 		minY := float32(bound.Min.Y)
 
@@ -408,28 +420,28 @@ func (tp *windowTriggerPointViewer) draw() {
 		if tp.selected || tp.mouseAt {
 			col = theme.SelectionColor()
 		}
-		drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, col)
+		drawCircle(tp.signalScreen(), x, y, triggerPointR, col)
 
 		col = theme.ForegroundColor()
 		if tp.uhSelected || tp.uhMouseAt {
 			col = theme.SelectionColor()
 		}
-		drawLine(tp.scp.ftScopeSignalScreen, x, y, x, yh, col)
-		drawLine(tp.scp.ftScopeSignalScreen, x-halfRectSize, yh, x+halfRectSize, yh, col)
+		drawLine(tp.signalScreen(), x, y, x, yh, col)
+		drawLine(tp.signalScreen(), x-halfRectSize, yh, x+halfRectSize, yh, col)
 
 		// Draw Lower
 		col = theme.ForegroundColor()
 		if tp.lSelected || tp.lMouseAt {
 			col = theme.SelectionColor()
 		}
-		drawCircle(tp.scp.ftScopeSignalScreen, lx, ly, triggerPointR, col)
+		drawCircle(tp.signalScreen(), lx, ly, triggerPointR, col)
 
 		col = theme.ForegroundColor()
 		if tp.lhSelected || tp.lhMouseAt {
 			col = theme.SelectionColor()
 		}
-		drawLine(tp.scp.ftScopeSignalScreen, lx, ly, lx, lyh, col)
-		drawLine(tp.scp.ftScopeSignalScreen, lx-halfRectSize, lyh, lx+halfRectSize, lyh, col)
+		drawLine(tp.signalScreen(), lx, ly, lx, lyh, col)
+		drawLine(tp.signalScreen(), lx-halfRectSize, lyh, lx+halfRectSize, lyh, col)
 
 		// Update Disp7s
 		if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
@@ -451,12 +463,12 @@ func (tp *windowTriggerPointViewer) draw() {
 	}
 }
 
-func newWindowTriggerPointViewer(img rasterImage, scp *ScpDesc) *windowTriggerPointViewer {
+func newWindowTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool) *windowTriggerPointViewer {
 	imgRect := image.Rect(int(math.Round(-triggerPointR)),
 		int(math.Round(-triggerPointR)),
 		int(math.Round(triggerPointR)),
 		int(math.Round(triggerPointR)))
 	// We init with huge rects, they will be refined in draw()
-	tp := &windowTriggerPointViewer{triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp}}
+	tp := &windowTriggerPointViewer{triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp, isTimeZoom: isTimeZoom}}
 	return tp
 }

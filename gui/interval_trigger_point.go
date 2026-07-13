@@ -25,9 +25,9 @@ var (
 	_ cursorable = (*intervalTriggerPointViewer)(nil)
 )
 
-func newIntervalTriggerPointViewer(img rasterImage, scp *ScpDesc) *intervalTriggerPointViewer {
+func newIntervalTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool) *intervalTriggerPointViewer {
 	tp := &intervalTriggerPointViewer{
-		advTriggerPointViewer: *newAdvTriggerPointViewer(img, scp),
+		advTriggerPointViewer: *newAdvTriggerPointViewer(img, scp, isTimeZoom),
 	}
 	return tp
 }
@@ -71,8 +71,8 @@ func (tp *intervalTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 	if prev != tp.mouseAt {
 		tp.enableRefresh()
-		if tp.scp.ftRaster != nil {
-			tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
 		}
 	}
 }
@@ -102,8 +102,8 @@ func (tp *intervalTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y f
 			tp.mouseAt = false
 		}
 		tp.enableRefresh()
-		if tp.scp.ftRaster != nil {
-			tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
 		}
 	}
 }
@@ -122,16 +122,16 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	}
 
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	w := float64(bounds.Dx())
 
-	if w <= 0 || tp.scp.maxScreenTime <= 0 {
+	if w <= 0 || tp.maxScreenTime() <= 0 {
 		return
 	}
 
 	// Convert x coordinate to time offset from trigger point
 	triggerX, _ := tp.timeMv2xy(channel.Trigger.Mv)
-	timeOffset := (float64(x-triggerX) / w) * tp.scp.maxScreenTime
+	timeOffset := (float64(x-triggerX) / w) * tp.maxScreenTime()
 	if timeOffset < 0 {
 		timeOffset = -timeOffset
 	}
@@ -178,8 +178,8 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	<-tp.scp.triggerSettingMsg.Done
 
 	tp.enableRefresh()
-	if tp.scp.ftRaster != nil {
-		tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
 	}
 }
 
@@ -192,11 +192,11 @@ func (tp *intervalTriggerPointViewer) draw() {
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
-		bounds := tp.scp.ftScopeSignalScreen.Bounds()
+		bounds := tp.signalScreen().Bounds()
 
 		w := float64(bounds.Dx())
 
-		if w <= 0 || tp.scp.maxScreenTime <= 0 {
+		if w <= 0 || tp.maxScreenTime() <= 0 {
 			return
 		}
 
@@ -214,7 +214,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 			} else { // GreaterThan
 				singleTime = channel.Trigger.IntervalTimeLower
 			}
-			singleDx := float32((singleTime / tp.scp.maxScreenTime) * w)
+			singleDx := float32((singleTime / tp.maxScreenTime()) * w)
 			xSingle := x - singleDx
 
 			// Use lowerHImgRect for the single handle's hit-test area
@@ -232,19 +232,19 @@ func (tp *intervalTriggerPointViewer) draw() {
 			}
 
 			// Draw horizontal line from trigger point to the single handle
-			drawLine(tp.scp.ftScopeSignalScreen, x, y, xSingle, y, colSingle)
+			drawLine(tp.signalScreen(), x, y, xSingle, y, colSingle)
 			if pwType == genericps.PwTypeLessThan {
 				// Point RIGHT (towards origin, meaning smaller time/less than)
 				// Tip is at xSingle. Base is at xSingle - halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle-halfRectSize, y-halfRectSize, xSingle-halfRectSize, y+halfRectSize, colSingle)
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle-halfRectSize, y-halfRectSize, xSingle, y, colSingle)
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle-halfRectSize, y+halfRectSize, xSingle, y, colSingle)
+				drawLine(tp.signalScreen(), xSingle-halfRectSize, y-halfRectSize, xSingle-halfRectSize, y+halfRectSize, colSingle)
+				drawLine(tp.signalScreen(), xSingle-halfRectSize, y-halfRectSize, xSingle, y, colSingle)
+				drawLine(tp.signalScreen(), xSingle-halfRectSize, y+halfRectSize, xSingle, y, colSingle)
 			} else {
 				// Point LEFT (away from origin, meaning larger time/greater than)
 				// Tip is at xSingle. Base is at xSingle + halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle+halfRectSize, y-halfRectSize, xSingle+halfRectSize, y+halfRectSize, colSingle)
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle+halfRectSize, y-halfRectSize, xSingle, y, colSingle)
-				drawLine(tp.scp.ftScopeSignalScreen, xSingle+halfRectSize, y+halfRectSize, xSingle, y, colSingle)
+				drawLine(tp.signalScreen(), xSingle+halfRectSize, y-halfRectSize, xSingle+halfRectSize, y+halfRectSize, colSingle)
+				drawLine(tp.signalScreen(), xSingle+halfRectSize, y-halfRectSize, xSingle, y, colSingle)
+				drawLine(tp.signalScreen(), xSingle+halfRectSize, y+halfRectSize, xSingle, y, colSingle)
 			}
 
 			// Update single ΔT disp
@@ -263,8 +263,8 @@ func (tp *intervalTriggerPointViewer) draw() {
 		} else {
 			// Range mode: two time handles + single trigger point
 			// Time handles
-			lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.scp.maxScreenTime) * w)
-			upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.scp.maxScreenTime) * w)
+			lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.maxScreenTime()) * w)
+			upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.maxScreenTime()) * w)
 
 			xLower := x - lowerDx
 			xUpper := x - upperDx
@@ -292,34 +292,34 @@ func (tp *intervalTriggerPointViewer) draw() {
 			}
 
 			// Draw horizontal line from trigger point to xLower
-			drawLine(tp.scp.ftScopeSignalScreen, x, y, xLower, y, colLower)
+			drawLine(tp.signalScreen(), x, y, xLower, y, colLower)
 			// Draw horizontal line from trigger point to xUpper
-			drawLine(tp.scp.ftScopeSignalScreen, x, y, xUpper, y, colUpper)
+			drawLine(tp.signalScreen(), x, y, xUpper, y, colUpper)
 
 			if pwType == genericps.PwTypeInRange {
 				// xLower points LEFT (inside)
 				// Tip is at xLower. Base is at xLower + halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xLower+halfRectSize, y-halfRectSize, xLower+halfRectSize, y+halfRectSize, colLower)
-				drawLine(tp.scp.ftScopeSignalScreen, xLower+halfRectSize, y-halfRectSize, xLower, y, colLower)
-				drawLine(tp.scp.ftScopeSignalScreen, xLower+halfRectSize, y+halfRectSize, xLower, y, colLower)
+				drawLine(tp.signalScreen(), xLower+halfRectSize, y-halfRectSize, xLower+halfRectSize, y+halfRectSize, colLower)
+				drawLine(tp.signalScreen(), xLower+halfRectSize, y-halfRectSize, xLower, y, colLower)
+				drawLine(tp.signalScreen(), xLower+halfRectSize, y+halfRectSize, xLower, y, colLower)
 				
 				// xUpper points RIGHT (inside)
 				// Tip is at xUpper. Base is at xUpper - halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper-halfRectSize, y-halfRectSize, xUpper-halfRectSize, y+halfRectSize, colUpper)
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper-halfRectSize, y-halfRectSize, xUpper, y, colUpper)
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper-halfRectSize, y+halfRectSize, xUpper, y, colUpper)
+				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper-halfRectSize, y+halfRectSize, colUpper)
+				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper, y, colUpper)
+				drawLine(tp.signalScreen(), xUpper-halfRectSize, y+halfRectSize, xUpper, y, colUpper)
 			} else if pwType == genericps.PwTypeOutOfRange {
 				// xLower points RIGHT (outside)
 				// Tip is at xLower. Base is at xLower - halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xLower-halfRectSize, y-halfRectSize, xLower-halfRectSize, y+halfRectSize, colLower)
-				drawLine(tp.scp.ftScopeSignalScreen, xLower-halfRectSize, y-halfRectSize, xLower, y, colLower)
-				drawLine(tp.scp.ftScopeSignalScreen, xLower-halfRectSize, y+halfRectSize, xLower, y, colLower)
+				drawLine(tp.signalScreen(), xLower-halfRectSize, y-halfRectSize, xLower-halfRectSize, y+halfRectSize, colLower)
+				drawLine(tp.signalScreen(), xLower-halfRectSize, y-halfRectSize, xLower, y, colLower)
+				drawLine(tp.signalScreen(), xLower-halfRectSize, y+halfRectSize, xLower, y, colLower)
 				
 				// xUpper points LEFT (outside)
 				// Tip is at xUpper. Base is at xUpper + halfRectSize.
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper+halfRectSize, y-halfRectSize, xUpper+halfRectSize, y+halfRectSize, colUpper)
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper+halfRectSize, y-halfRectSize, xUpper, y, colUpper)
-				drawLine(tp.scp.ftScopeSignalScreen, xUpper+halfRectSize, y+halfRectSize, xUpper, y, colUpper)
+				drawLine(tp.signalScreen(), xUpper+halfRectSize, y-halfRectSize, xUpper+halfRectSize, y+halfRectSize, colUpper)
+				drawLine(tp.signalScreen(), xUpper+halfRectSize, y-halfRectSize, xUpper, y, colUpper)
+				drawLine(tp.signalScreen(), xUpper+halfRectSize, y+halfRectSize, xUpper, y, colUpper)
 			}
 
 			// Update time disp7s

@@ -19,8 +19,16 @@ type (
 		channelIndex int
 		selected     bool
 		scp          *ScpDesc
+		isTimeZoom   bool
 	}
 )
+
+func (cl *ftChannelLabelViewer) raster() *screenRaster {
+	if cl.isTimeZoom {
+		return cl.scp.timeZoomRaster
+	}
+	return cl.scp.ftRaster
+}
 
 var (
 	_ mouser     = (*ftChannelLabelViewer)(nil)
@@ -41,10 +49,10 @@ func (cl *ftChannelLabelViewer) typedKey(x, y float32, keyName fyne.KeyName) {
 }
 
 func newFtChannelLabelViewer(img rasterImage, imgRect image.Rectangle, channelIndex int,
-	scopeSignalScreen image.Rectangle, scp *ScpDesc) ftChannelLabelViewer {
+	scopeSignalScreen image.Rectangle, scp *ScpDesc, isTimeZoom bool) ftChannelLabelViewer {
 	cl := ftChannelLabelViewer{rasterPartition: rasterPartition{img: img,
 		imgRect: imgRect, refreshFlag: true},
-		chLabelRect: scopeSignalScreen, channelIndex: channelIndex, scp: scp}
+		chLabelRect: scopeSignalScreen, channelIndex: channelIndex, scp: scp, isTimeZoom: isTimeZoom}
 	return cl
 }
 
@@ -77,6 +85,9 @@ func (cl *ftChannelLabelViewer) mouseDown(button desktop.MouseButton, x, y float
 			cl.scp.Settings.Channels[cl.channelIndex].DisplayVOffset = 0
 			
 			channelViewer.label.enableRefresh()
+			if channelViewer.tzLabel != nil {
+				channelViewer.tzLabel.enableRefresh()
+			}
 			channelViewer.dftLabel.enableRefresh()
 			
 			cl.scp.clearAllFtPersistentLayers()
@@ -121,6 +132,9 @@ func (cl *ftChannelLabelViewer) setChDispYOffset(dy, x, y float64, scroll bool) 
 				channelViewer.displayOffsetInt
 
 			channelViewer.label.enableRefresh()
+			if channelViewer.tzLabel != nil {
+				channelViewer.tzLabel.enableRefresh()
+			}
 			channelViewer.dftLabel.enableRefresh()
 
 			cl.scp.clearAllFtPersistentLayers()

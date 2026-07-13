@@ -35,6 +35,7 @@ type (
 		ffDisplayOffsetFraction  float64
 		label                    ftChannelLabelViewer
 		dftLabel                 dftChannelLabelViewer
+		tzLabel                  *ftChannelLabelViewer
 		leftLabel                bool
 		hasScreenPartition       bool
 		enableCheckbox           *checkcolorpick.CheckColorPick

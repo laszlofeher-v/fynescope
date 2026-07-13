@@ -253,6 +253,11 @@ type (
 		timeZoomDrawers            []drawer
 		timeZoomDivsX              [numberOfDivs + 1]float32
 		timeZoomDivsY              [numberOfDivs + 1]float32
+		timeZoomTriggerPoint       drawer
+		timeZoomBottomLabelViewer  drawer
+		timeZoomTimeDiv            int
+		timeZoomTimeUnit           int
+		tzRepartition              chan struct{}
 	}
 )
 
@@ -261,6 +266,9 @@ func createFlag() (ch chan struct{}) {
 	return
 }
 func setFlag(flag chan struct{}) {
+	if flag == nil {
+		return
+	}
 	select {
 	case flag <- struct{}{}:
 	default:
@@ -268,6 +276,9 @@ func setFlag(flag chan struct{}) {
 }
 
 func getFlag(flag chan struct{}) bool {
+	if flag == nil {
+		return false
+	}
 	select {
 	case <-flag:
 		return true
@@ -1083,6 +1094,7 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	addToTest(scp.ffRaster, ffRasterId)
 	scp.themeChanged = createFlag()
 	scp.repartition = createFlag()
+	scp.tzRepartition = createFlag()
 	scp.ffBufferDone = make(chan struct{}, 1)
 
 	err = scp.SetVariant()
@@ -1754,6 +1766,39 @@ func (scp *ScpDesc) timeZoomGenerator(wInt int, hInt int) image.Image {
 
 	if scp.timeZoomScopeFullScreen == nil || scp.timeZoomScopeFullScreen.Bounds().Dx() != wInt || scp.timeZoomScopeFullScreen.Bounds().Dy() != hInt {
 		scp.timeZoomScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
+			scp.timeZoomTriggerPoint = newTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Advanced:
+			scp.timeZoomTriggerPoint = newAdvTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Window:
+			scp.timeZoomTriggerPoint = newWindowTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Complex:
+			scp.timeZoomTriggerPoint = newComplexTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Interval, control.PulseWidth:
+			scp.timeZoomTriggerPoint = newIntervalTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		default:
+			scp.timeZoomTriggerPoint = newTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		}
+		scp.partitionTzScreen(w, h)
+		draw.Draw(scp.timeZoomScopeFullScreen, scp.timeZoomScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.setTzVDivsY()
+		scp.setTzHDivsX()
+	} else if getFlag(scp.tzRepartition) {
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
+			scp.timeZoomTriggerPoint = newTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Advanced:
+			scp.timeZoomTriggerPoint = newAdvTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Window:
+			scp.timeZoomTriggerPoint = newWindowTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Complex:
+			scp.timeZoomTriggerPoint = newComplexTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		case control.Interval, control.PulseWidth:
+			scp.timeZoomTriggerPoint = newIntervalTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		default:
+			scp.timeZoomTriggerPoint = newTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+		}
 		scp.partitionTzScreen(w, h)
 		draw.Draw(scp.timeZoomScopeFullScreen, scp.timeZoomScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
 		scp.setTzVDivsY()
@@ -1785,6 +1830,11 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 	})
 
 	scp.timeZoomMaxScreenTime = scp.maxScreenTime
+	scp.timeZoomTimeDiv = scp.timeDiv
+	scp.timeZoomTimeUnit = scp.timeUnit
+
+	// Trigger repartition for Time Zoom
+	setFlag(scp.tzRepartition)
 
 	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
 	scp.timeZoomRaster.disableInput = true
