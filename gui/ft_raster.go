@@ -35,8 +35,10 @@ type (
 		inspectorDispV                 []float32
 		inspectorDispVCur              []float32
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
+		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
 		instV    []float32
 		instVCur []float32
+		isTimeZoom bool
 	}
 )
 
@@ -45,9 +47,9 @@ var (
 )
 
 func newSignalViewer(img rasterImage, imgRect image.Rectangle,
-	scp *ScpDesc) *signalViewer {
+	scp *ScpDesc, isTimeZoom bool) *signalViewer {
 	sv := &signalViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect, refreshFlag: true},
-		scp: scp}
+		scp: scp, isTimeZoom: isTimeZoom}
 	return sv
 }
 
@@ -121,24 +123,38 @@ func (sv *signalViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (sv *signalViewer) draw() {
-	if !sv.scp.shouldDrawRaster(ftTabIndex) {
+	if !sv.scp.shouldDrawRaster(ftTabIndex) && !sv.isTimeZoom {
 		return
 	}
-	bounds := sv.scp.ftScopeSignalScreen.Bounds()
+	var bounds image.Rectangle
+	if sv.isTimeZoom {
+		bounds = sv.scp.timeZoomScopeSignalScreen.Bounds()
+	} else {
+		bounds = sv.scp.ftScopeSignalScreen.Bounds()
+	}
 	h := float64(bounds.Dy())
 	w := float64(bounds.Dx())
-	sv.scp.drawFtDivisions()
+	if sv.isTimeZoom {
+		sv.scp.drawTzDivisions()
+	} else {
+		sv.scp.drawFtDivisions()
+	}
 	zeroOffset := bounds.Min.Y + bounds.Dy()/2
 
+	maxScreenTime := sv.scp.maxScreenTime
+	if sv.isTimeZoom {
+		maxScreenTime = sv.scp.timeZoomMaxScreenTime
+	}
+
 	if sv.scp.triggerSettingMsg.Mode == control.ETS {
-		etsDx := float64(w) / (sv.scp.maxScreenTime * 1e15)
+		etsDx := float64(w) / (maxScreenTime * 1e15)
 		sv.drawETS(w, h, bounds, zeroOffset, etsDx)
 	} else {
-		deltaT := (w / sv.scp.maxScreenTime) * sv.scp.controlSamplingTimeInterval
+		deltaT := (w / maxScreenTime) * sv.scp.controlSamplingTimeInterval
 		sv.drawNormal(w, h, bounds, zeroOffset, deltaT)
 	}
 
-	if sv.showInspector {
+	if sv.showInspector && !sv.isTimeZoom {
 		sv.drawInspector(w, h, bounds)
 	}
 }
@@ -148,7 +164,11 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 	fMaxY := float64(bounds.Max.Y)
 	fMinX := float64(bounds.Min.X)
 	fMaxX := float64(bounds.Max.X)
-	unit := (w) / float64(sv.scp.maxScreenTime)
+	maxScreenTime := sv.scp.maxScreenTime
+	if sv.isTimeZoom {
+		maxScreenTime = sv.scp.timeZoomMaxScreenTime
+	}
+	unit := (w) / float64(maxScreenTime)
 	for channelIndex := range sv.scp.channelViewers {
 		channelViewer := &sv.scp.channelViewers[channelIndex]
 		channel := &sv.scp.Settings.Channels[channelIndex]
@@ -163,11 +183,16 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				}
 
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+				if sv.isTimeZoom {
+					targetImg = sv.scp.timeZoomScopeSignalScreen.(draw.Image)
+				}
 				if channel.Persistence {
-					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
-						sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+					if !sv.isTimeZoom {
+						if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
+							sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+						}
+						targetImg = sv.scp.ftPersistentLayers[channelIndex]
 					}
-					targetImg = sv.scp.ftPersistentLayers[channelIndex]
 				}
 
 				etsDrawDot := func() {
@@ -290,7 +315,7 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 					panic("Undefine interpolation mode")
 				}
 
-				if channel.Persistence {
+				if channel.Persistence && !sv.isTimeZoom {
 					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
 			}
@@ -299,7 +324,11 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 }
 
 func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOffset int, deltaT float64) {
-	unit := (w) / float64(sv.scp.maxScreenTime)
+	maxScreenTime := sv.scp.maxScreenTime
+	if sv.isTimeZoom {
+		maxScreenTime = sv.scp.timeZoomMaxScreenTime
+	}
+	unit := (w) / float64(maxScreenTime)
 
 	for channelIndex := range sv.scp.channelViewers {
 		channelViewer := &sv.scp.channelViewers[channelIndex]
@@ -335,11 +364,16 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				t0 -= extra * deltaT
 
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+				if sv.isTimeZoom {
+					targetImg = sv.scp.timeZoomScopeSignalScreen.(draw.Image)
+				}
 				if channel.Persistence {
-					if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
-						sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+					if !sv.isTimeZoom {
+						if sv.scp.ftPersistentLayers[channelIndex] == nil || sv.scp.ftPersistentLayers[channelIndex].Bounds() != bounds {
+							sv.scp.ftPersistentLayers[channelIndex] = image.NewRGBA(bounds)
+						}
+						targetImg = sv.scp.ftPersistentLayers[channelIndex]
 					}
-					targetImg = sv.scp.ftPersistentLayers[channelIndex]
 				}
 
 				drawDot := func() {
@@ -468,7 +502,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					panic("Undefined interpolation mode")
 				}
 
-				if channel.Persistence {
+				if channel.Persistence && !sv.isTimeZoom {
 					draw.Draw(sv.scp.ftScopeSignalScreen, bounds, sv.scp.ftPersistentLayers[channelIndex], bounds.Min, draw.Over)
 				}
 			}
@@ -880,7 +914,7 @@ func (scp *ScpDesc) partitionFtScreen(w, h float32) {
 		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
 			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp)
 	scp.addFtDrawer(scp.ftBottomLabelViewer)
-	scp.addFtDrawer(newSignalViewer(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), scp))
+	scp.addFtDrawer(newSignalViewer(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), scp, false))
 	scp.addFtDrawer(scp.triggerPoint)
 }
 
@@ -962,4 +996,80 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 		scp.ftDrawers[i].draw()
 	}
 	return scp.ftScopeFullScreen
+}
+
+func (scp *ScpDesc) addTzDrawer(drw drawer) {
+	scp.timeZoomDrawers = append(scp.timeZoomDrawers, drw)
+}
+
+func (scp *ScpDesc) partitionTzScreen(w, h float32) {
+	ip := scp.timeZoomScopeFullScreen.(*image.RGBA)
+	scp.timeZoomDrawers = nil
+	leftMargin := float32(defaultLeftMargin)
+	rightMargin := float32(defaultRightMargin)
+	scp.timeZoomScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
+		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
+		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
+	
+	scp.addTzDrawer(newSignalViewer(scp.timeZoomScopeFullScreen, scp.timeZoomScopeSignalScreen.Bounds(), scp, true))
+}
+
+func (scp *ScpDesc) setTzVDivsY() {
+	if scp.timeZoomScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.timeZoomScopeSignalScreen.Bounds()
+	h := float32(bounds.Dy())
+	dh := (h - 1) / numberOfDivs
+	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y); i, y = i+1, y+dh {
+		scp.timeZoomDivsY[i] = y
+	}
+}
+
+func (scp *ScpDesc) setTzHDivsX() {
+	if scp.timeZoomScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.timeZoomScopeSignalScreen.Bounds()
+	w := float64(bounds.Dx()) - 1
+	dx := (w) / float64(numberOfDivs)
+	unit := w / float64(scp.timeZoomMaxScreenTime)
+	offset := float64(scp.Settings.Time.TriggerTimeOffset) * unit
+	n := float64(math.Round(float64(offset / dx)))
+	offset = float64(snapN(float32(offset-n*dx), xSnapValue))
+	x := float64(bounds.Min.X)
+	for i := range scp.timeZoomDivsX {
+		scp.timeZoomDivsX[i] = float32(x + offset)
+		x = x + dx
+	}
+}
+
+func (scp *ScpDesc) drawTzDivisions() {
+	if scp.timeZoomScopeSignalScreen == nil {
+		return
+	}
+	bounds := scp.timeZoomScopeSignalScreen.Bounds()
+	drawDivs := func(yOffset float32, col color.Color) {
+		draw.Draw(scp.timeZoomScopeFullScreen, bounds, &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		for _, v := range scp.timeZoomDivsY {
+			counter := 0
+			for x := float64(bounds.Min.X); x <= float64(bounds.Max.X); x = x + 1.0 {
+				if counter%10 < 4 {
+					scp.timeZoomScopeSignalScreen.Set(int(math.Round(x)), int(math.Round(float64(v+yOffset))), col)
+				}
+				counter++
+			}
+		}
+		for _, v := range scp.timeZoomDivsX {
+			counter := 0
+			for y := float64(bounds.Min.Y); y <= float64(bounds.Max.Y); y = y + 1.0 {
+				if counter%10 < 4 {
+					scp.timeZoomScopeSignalScreen.Set(int(math.Round(float64(v))), int(math.Round(float64(y))), col)
+				}
+				counter++
+			}
+		}
+	}
+	col := scp.theme.Color(ColorNameDivision, 0)
+	drawDivs(0, col)
 }
