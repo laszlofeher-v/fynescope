@@ -104,6 +104,12 @@ func (scp *ScpDesc) setTriggerTime(xOffset float64) {
 		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
 		<-scp.triggerSettingMsg.Done
 	}
+	if scp.ftBottomLabelViewer != nil {
+		scp.ftBottomLabelViewer.(*timeLabelViewer).enableRefresh()
+	}
+	if scp.timeZoomBottomLabelViewer != nil {
+		scp.timeZoomBottomLabelViewer.(*timeLabelViewer).enableRefresh()
+	}
 }
 
 func (tp *triggerPointViewer) y2mv(y float64) (mv float64) {
