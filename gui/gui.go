@@ -58,6 +58,7 @@ const (
 
 	// ErrFrequencyCannotBeDetected is returned when f(f) cannot lock onto the signal.
 	ErrFrequencyCannotBeDetected = "Frequency cannot be detected"
+	ErrWrongFfTrigger            = "Error: f(f) requires Simple, Advanced, or Window trigger"
 )
 const (
 	ftTabIndex = iota
@@ -156,27 +157,27 @@ type (
 		ffNoiseAmplitudeDisp *disp7.DigitArray
 		ffPhaseNoiseDisp     *disp7.DigitArray
 
-		bodeBuffers                  [genericps.MaxChannel][]bodePoint
-		maxSamplingRate              uint32
-		segmentIndex                 uint32 // maxSamplingRate: sample/sec
-		controlTab                   *container.AppTabs
-		dftTab                       *container.TabItem
-		fraTab                       *container.TabItem
-		ftTab                        *container.TabItem
-		fvTab                        *container.TabItem
-		ffTab                        *container.TabItem
-		genTab                       *container.TabItem
-		rlcTab                       *container.TabItem
-		filterTab                    *container.TabItem
-		extgenTab                    *container.TabItem
-		setTab                       *container.TabItem
-		psControl                    *control.PscDesc
-		triggerHysteresisDisp        *disp7.DigitArray
-		triggerThresholdDisp         *disp7.DigitArray
-		boxTriggerHysteresisDisp     *fyne.Container
-		triggerLowerThresholdDisp    *disp7.DigitArray
-		triggerLowerHysteresisDisp   *disp7.DigitArray
-	// boxTriggerLowerDisp removed
+		bodeBuffers                [genericps.MaxChannel][]bodePoint
+		maxSamplingRate            uint32
+		segmentIndex               uint32 // maxSamplingRate: sample/sec
+		controlTab                 *container.AppTabs
+		dftTab                     *container.TabItem
+		fraTab                     *container.TabItem
+		ftTab                      *container.TabItem
+		fvTab                      *container.TabItem
+		ffTab                      *container.TabItem
+		genTab                     *container.TabItem
+		rlcTab                     *container.TabItem
+		filterTab                  *container.TabItem
+		extgenTab                  *container.TabItem
+		setTab                     *container.TabItem
+		psControl                  *control.PscDesc
+		triggerHysteresisDisp      *disp7.DigitArray
+		triggerThresholdDisp       *disp7.DigitArray
+		boxTriggerHysteresisDisp   *fyne.Container
+		triggerLowerThresholdDisp  *disp7.DigitArray
+		triggerLowerHysteresisDisp *disp7.DigitArray
+		// boxTriggerLowerDisp removed
 		intervalTypeSelect           *selectscroll.SelectScroll
 		intervalUnitSelect           *selectscroll.SelectScroll
 		intervalTimeLowerDisp        *disp7.DigitArray
@@ -582,18 +583,18 @@ func (scp *ScpDesc) build2000Gui() {
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
 				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth) {
 					scp.StopRunning()
-					scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
+					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				} else {
 					// Force block mode and ensure a trigger is set for f(v) and f(f)
 					scp.triggerSettingMsg.Mode = control.Auto
-				if scp.triggerSource == dontCare {
-					// Set arbitrary simple trigger on ChA if none selected
-					scp.triggerSource = chA
-					scp.Settings.Channels[chA].TriggerSource = true
-					scp.triggerSettingMsg.Source = chA
-					scp.triggerSettingMsg.Enabled = true
-					scp.triggerSettingMsg.Mv = 0
-				}
+					if scp.triggerSource == dontCare {
+						// Set arbitrary simple trigger on ChA if none selected
+						scp.triggerSource = chA
+						scp.Settings.Channels[chA].TriggerSource = true
+						scp.triggerSettingMsg.Source = chA
+						scp.triggerSettingMsg.Enabled = true
+						scp.triggerSettingMsg.Mv = 0
+					}
 				}
 			}
 
@@ -720,15 +721,15 @@ func (scp *ScpDesc) build2000Gui() {
 				}
 			}
 			if scp.status.Text == ErrFrequencyCannotBeDetected {
-				scp.status.SetText("")
+				scp.psControl.DisplayStatus("", control.Info)
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
 				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth {
-					scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
+					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 					return
 				}
 				if scp.Settings.Ff.PtsDec <= 0 {
-					scp.status.SetText("Error: Points per decade cannot be 0")
+					scp.psControl.DisplayStatus("Error: Points per decade cannot be 0", control.Warning)
 					return
 				}
 				// Set up the generator in non-sweep mode; the app controls stepping.
@@ -1342,9 +1343,9 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 			}
 
 			if len(missingGenChannels) > 0 {
-				scp.status.SetText("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input")
+				scp.psControl.DisplayStatus("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input", control.Warning)
 			} else if strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
-				scp.status.SetText("")
+				scp.psControl.DisplayStatus("", control.Info)
 			}
 
 			for i := 0; i < int(scp.channelCount); i++ {
@@ -1568,10 +1569,10 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 
 		if len(missingGenChannels) > 0 {
 			if scp.status != nil {
-				scp.status.SetText("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input")
+				scp.psControl.DisplayStatus("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input", control.Warning)
 			}
 		} else if scp.status != nil && strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
-			scp.status.SetText("")
+			scp.psControl.DisplayStatus("", control.Info)
 		}
 
 		for i := 0; i < int(scp.channelCount); i++ {
@@ -1665,6 +1666,9 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 
 	// Transitioning from f(f) to non-f(f)
 	if prevTab == ffTabIndex && newTab != ffTabIndex {
+		if scp.status.Text == ErrWrongFfTrigger {
+			scp.psControl.DisplayStatus("", control.Info)
+		}
 		scp.stopFfSweep() // stop any running Bode sweep
 		if scp.psControl != nil && scp.psControl.Con.ID == genericps.SimId {
 			for i := 0; i < int(scp.channelCount); i++ {
