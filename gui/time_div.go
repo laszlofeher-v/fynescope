@@ -740,9 +740,9 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval || option == settings.TriggerTypePulseWidth) {
 		scp.StopRunning()
-		scp.status.SetText("Error: f(f) requires Simple, Advanced, or Window trigger")
-	} else if scp.status.Text == "Error: f(f) requires Simple, Advanced, or Window trigger" {
-		scp.status.SetText("")
+		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
+	} else if scp.status.Text == ErrWrongFfTrigger {
+		scp.psControl.DisplayStatus("", control.Info)
 	}
 
 	scp.Settings.Trigger.Type = option
@@ -1008,7 +1008,7 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
-	
+
 	minTime, maxTime := scp.getScreenTimeLimits()
 	if valInSeconds < minTime {
 		valInSeconds = minTime
@@ -1079,7 +1079,7 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 	}
 	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
-	
+
 	minTime, maxTime := scp.getScreenTimeLimits()
 	if valInSeconds < minTime {
 		valInSeconds = minTime
@@ -1332,5 +1332,3 @@ func (scp *ScpDesc) getScreenTimeLimits() (minTime, maxTime float64) {
 	minTime = 0
 	return minTime, maxTime
 }
-
-
