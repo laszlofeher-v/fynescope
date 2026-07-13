@@ -154,9 +154,13 @@ func (tl *timeLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
 func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 	p := image.Point{X: int(x), Y: int(y)}
 	if p.In(tl.rect()) {
-		tl.scp.addFtXOffset(float64(dx))
-		// tl.scp.setTriggerTimeRatio(tl.scp.Settings.Time.XOffsetRatio)
-		tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
+		if !tl.isTimeZoom && tl.scp.timeZoomWindow != nil {
+			dt := float64(dx) * tl.scp.maxScreenTime / float64(tl.scp.ftScopeSignalScreen.Bounds().Dx())
+			tl.scp.addTimeZoomBoxOffset(dt)
+		} else {
+			tl.scp.addFtXOffset(float64(dx))
+			tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
+		}
 		tl.enableRefresh()
 		tl.scp.clearAllFtPersistentLayers()
 		tl.scp.clearAllDftPersistentLayers()
@@ -275,22 +279,13 @@ func (tl *timeLabelViewer) draw() {
 	y := bounds.Max.Y - fontSize
 	w := float64(signalScreen.Bounds().Dx() - 1)
 	v := float32(dt)
-	zeroAt := w*tl.scp.Settings.Time.TriggerTimeOffset/maxScreenTime + float64(signalScreen.Bounds().Min.X)
-	diff := float32(10000000)
-	// bestI := 0
-	for i := 0; i < len(divsX); i++ {
-		newDiff := float32(zeroAt) - divsX[i]
-		if newDiff < 0 {
-			newDiff = -newDiff
-		}
-		if newDiff < diff {
-			// bestI = i
-			diff = newDiff
-		} else if newDiff > diff {
-			break
-		}
-		v -= float32(dt)
+	triggerTimeOffset := tl.scp.Settings.Time.TriggerTimeOffset
+	if !tl.isTimeZoom {
+		triggerTimeOffset -= tl.scp.timeZoomBoxOffset
 	}
+	zeroAt := w*triggerTimeOffset/maxScreenTime + float64(signalScreen.Bounds().Min.X)
+	gridSpacing := w / float64(numberOfDivs)
+	v = float32(math.Round(float64(divsX[0]-float32(zeroAt))/gridSpacing)) * float32(dt)
 	for i, x := range divsX {
 		if v > -dt/8 && v < dt/8 { // avoid -0.0
 			v = 0

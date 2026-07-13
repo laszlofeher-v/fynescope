@@ -251,10 +251,11 @@ type (
 		timeZoomScopeFullScreen    rasterImage
 		timeZoomScopeSignalScreen  rasterImage
 		timeZoomDrawers            []drawer
+		timeZoomBoxOffset          float64
+		timeZoomBottomLabelViewer  drawer
 		timeZoomDivsX              [numberOfDivs + 1]float32
 		timeZoomDivsY              [numberOfDivs + 1]float32
 		timeZoomTriggerPoint       drawer
-		timeZoomBottomLabelViewer  drawer
 		timeZoomTimeDiv            int
 		timeZoomTimeUnit           int
 		tzRepartition              chan struct{}
@@ -1433,7 +1434,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					StopFrequency:  f,
 					Increment:      0,
 					DwellTime:      1,
-					SweepType:      genericps.SweepDown,
+					SweepType:       genericps.SweepDown,
 					WaveType:       scp.Settings.SimGenPanel[i].WaveType,
 					OffsetVoltage:  scp.Settings.SimGenPanel[i].OffsetVoltage,
 					PkToPK:         scp.Settings.SimGenPanel[i].Amplitude * 2,
@@ -1841,12 +1842,13 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 	scp.timeZoomMaxScreenTime = scp.maxScreenTime
 	scp.timeZoomTimeDiv = scp.timeDiv
 	scp.timeZoomTimeUnit = scp.timeUnit
+	scp.timeZoomBoxOffset = 0
 
 	// Trigger repartition for Time Zoom
 	setFlag(scp.tzRepartition)
 
 	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
-	scp.timeZoomRaster.disableInput = true
+	scp.timeZoomRaster.disableInput = false
 
 	scp.timeZoomWindow.SetContent(scp.timeZoomRaster)
 	scp.timeZoomWindow.Resize(fyne.NewSize(800, 600))

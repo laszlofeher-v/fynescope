@@ -98,7 +98,11 @@ func (tp *complexTriggerPointViewer) timeMv2xy(mv int32, channelIndex int) (x, y
 		mv = -mv
 	}
 	y = float32(-yScale*float64(mv) + yOffset + zeroOffset)
-	x = float32(bounds.Min.X) + float32(tp.scp.Settings.Time.TriggerTimeOffset)*
+	triggerTimeOffset := tp.scp.Settings.Time.TriggerTimeOffset
+	if !tp.isTimeZoom {
+		triggerTimeOffset -= tp.scp.timeZoomBoxOffset
+	}
+	x = float32(bounds.Min.X) + float32(triggerTimeOffset)*
 		float32(tp.signalScreen().Bounds().Dx())/float32(tp.maxScreenTime())
 	return
 }
