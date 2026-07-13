@@ -23,6 +23,7 @@ import (
 	"fynescope/selectscroll"
 	"fynescope/settings"
 	"image"
+	"image/draw"
 	"log/slog"
 	"math"
 	"strings"
@@ -246,6 +247,12 @@ type (
 		timeZoomButton             *widget.Button
 		timeZoomWindow             fyne.Window
 		timeZoomRaster             *screenRaster
+		timeZoomMaxScreenTime      float64
+		timeZoomScopeFullScreen    rasterImage
+		timeZoomScopeSignalScreen  rasterImage
+		timeZoomDrawers            []drawer
+		timeZoomDivsX              [numberOfDivs + 1]float32
+		timeZoomDivsY              [numberOfDivs + 1]float32
 	}
 )
 
@@ -1343,7 +1350,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 			}
 
 			if len(missingGenChannels) > 0 {
-				scp.psControl.DisplayStatus("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input", control.Warning)
+				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
 			} else if strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
@@ -1569,7 +1576,7 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 
 		if len(missingGenChannels) > 0 {
 			if scp.status != nil {
-				scp.psControl.DisplayStatus("Error: Channel " + strings.Join(missingGenChannels, ", ") + " has no active generator input", control.Warning)
+				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
 			}
 		} else if scp.status != nil && strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
 			scp.psControl.DisplayStatus("", control.Info)
@@ -1739,10 +1746,28 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 }
 
 func (scp *ScpDesc) timeZoomGenerator(wInt int, hInt int) image.Image {
-	if scp.ftScopeFullScreen != nil {
-		return scp.ftScopeFullScreen
+	defer scp.screenLocker.Unlock()
+	scp.screenLocker.Lock()
+
+	w := float32(wInt)
+	h := float32(hInt)
+
+	if scp.timeZoomScopeFullScreen == nil || scp.timeZoomScopeFullScreen.Bounds().Dx() != wInt || scp.timeZoomScopeFullScreen.Bounds().Dy() != hInt {
+		scp.timeZoomScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
+		scp.partitionTzScreen(w, h)
+		draw.Draw(scp.timeZoomScopeFullScreen, scp.timeZoomScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.setTzVDivsY()
+		scp.setTzHDivsX()
+	} else {
+		draw.Draw(scp.timeZoomScopeFullScreen, scp.timeZoomScopeSignalScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.setTzVDivsY()
+		scp.setTzHDivsX()
 	}
-	return image.NewRGBA(image.Rect(0, 0, wInt, hInt))
+
+	for i := range scp.timeZoomDrawers {
+		scp.timeZoomDrawers[i].draw()
+	}
+	return scp.timeZoomScopeFullScreen
 }
 
 func (scp *ScpDesc) openTimeZoomWindow() {
@@ -1754,7 +1779,12 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 	scp.timeZoomWindow.SetOnClosed(func() {
 		scp.timeZoomWindow = nil
 		scp.timeZoomRaster = nil
+		scp.timeZoomScopeFullScreen = nil
+		scp.timeZoomScopeSignalScreen = nil
+		scp.timeZoomDrawers = nil
 	})
+
+	scp.timeZoomMaxScreenTime = scp.maxScreenTime
 
 	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
 	scp.timeZoomRaster.disableInput = true
