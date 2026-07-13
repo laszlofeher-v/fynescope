@@ -1208,9 +1208,18 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 	default:
 		// Time domain mode: use time/div
 		scp.maxScreenTime = float64(scp.timeDiv) * math.Pow(10, float64(scp.timeUnit)) * 10 // 10 divs
-		scp.psControl.SetMaxScreenTimeCh <- scp.maxScreenTime
+		
+		reqScreenTime := scp.maxScreenTime
+		sampleMultiplier := 1.0
+		
+		if scp.timeZoomWindow != nil && scp.timeZoomMaxScreenTime > reqScreenTime {
+			reqScreenTime = scp.timeZoomMaxScreenTime
+			sampleMultiplier = scp.timeZoomMaxScreenTime / scp.maxScreenTime
+		}
+		
+		scp.psControl.SetMaxScreenTimeCh <- reqScreenTime
 		if scp.ftScopeSignalScreen != nil {
-			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()))
+			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()) * sampleMultiplier)
 		} else {
 			// Estimate the expected F(t) signal screen width if it hasn't been drawn yet
 			w := float32(scp.Settings.Window.Width)
@@ -1223,7 +1232,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 			}
 			leftMargin, rightMargin := scp.clipFtChRangeScrs(w, h)
 			expectedDx := int(math.Round(float64(w-rightMargin))) - int(math.Round(float64(leftMargin)))
-			scp.psControl.SetScopeScreenWidth(float64(expectedDx))
+			scp.psControl.SetScopeScreenWidth(float64(expectedDx) * sampleMultiplier)
 		}
 	}
 	scp.updateDftDataCollectionTime()
