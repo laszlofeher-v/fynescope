@@ -40,7 +40,8 @@ type (
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
 		instV      []float32
 		instVCur   []float32
-		isTimeZoom bool
+		isTimeZoom        bool
+		isDraggingZoomBox bool
 	}
 )
 
@@ -64,7 +65,31 @@ func (sv *signalViewer) mouseIn(x, y float32) bool {
 }
 
 func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
-	if button == desktop.RightMouseButton && sv.mouseIn(x, y) {
+	if sv.isTimeZoom && button == desktop.LeftMouseButton && sv.mouseIn(x, y) {
+		bounds := sv.scp.timeZoomScopeSignalScreen.Bounds()
+		w := float64(bounds.Dx())
+		ratio := sv.scp.maxScreenTime / sv.scp.timeZoomMaxScreenTime
+		if ratio < 1.0 {
+			pixelOffset := w * sv.scp.timeZoomBoxOffset / sv.scp.timeZoomMaxScreenTime
+			leftEdge := float32(float64(bounds.Min.X) + pixelOffset)
+			rightEdge := float32(float64(bounds.Min.X) + pixelOffset + w*ratio)
+			
+			// If click is within the zoom box bounds (with some margin), start dragging
+			margin := float32(10.0)
+			if x >= leftEdge-margin && x <= rightEdge+margin {
+				sv.isDraggingZoomBox = true
+			} else {
+				// Center box on click
+				sv.isDraggingZoomBox = true
+				boxCenterPixel := (leftEdge + rightEdge) / 2
+				dt := float64(x - boxCenterPixel) * sv.scp.timeZoomMaxScreenTime / w
+				sv.scp.addTimeZoomBoxOffset(dt)
+				sv.scp.clearAllFtPersistentLayers()
+				sv.scp.clearAllDftPersistentLayers()
+				sv.scp.refreshRasters()
+			}
+		}
+	} else if button == desktop.RightMouseButton && sv.mouseIn(x, y) {
 		sv.showInspector = true
 		sv.mouseX = x
 		sv.mouseY = y
@@ -74,7 +99,9 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 }
 
 func (sv *signalViewer) mouseUp(button desktop.MouseButton, x, y float32) {
-	if button == desktop.RightMouseButton {
+	if sv.isTimeZoom && button == desktop.LeftMouseButton {
+		sv.isDraggingZoomBox = false
+	} else if button == desktop.RightMouseButton {
 		sv.showInspector = false
 		sv.enableRefresh()
 		canvas.Refresh(sv.scp.ftRaster)
@@ -104,7 +131,15 @@ func (sv *signalViewer) mouseMoved(x, y float32) {
 }
 
 func (sv *signalViewer) dragged(dx, dy, x, y float32) {
-	if sv.showInspector {
+	if sv.isTimeZoom && sv.isDraggingZoomBox {
+		bounds := sv.scp.timeZoomScopeSignalScreen.Bounds()
+		w := float64(bounds.Dx())
+		dt := float64(dx) * sv.scp.timeZoomMaxScreenTime / w
+		sv.scp.addTimeZoomBoxOffset(dt)
+		sv.scp.clearAllFtPersistentLayers()
+		sv.scp.clearAllDftPersistentLayers()
+		sv.scp.refreshRasters()
+	} else if sv.showInspector {
 		sv.mouseX = x
 		sv.mouseY = y
 		if sv.mouseX < float32(sv.imgRect.Min.X) {
@@ -164,9 +199,11 @@ func (sv *signalViewer) draw() {
 		// Draw vertical lines where the main window starts and ends.
 		ratio := sv.scp.maxScreenTime / sv.scp.timeZoomMaxScreenTime
 		if ratio < 1.0 { // Only draw if zoomed in
-			rightEdge := float64(bounds.Min.X) + w*ratio
+			pixelOffset := w * sv.scp.timeZoomBoxOffset / sv.scp.timeZoomMaxScreenTime
+			leftEdge := float64(bounds.Min.X) + pixelOffset
+			rightEdge := leftEdge + w*ratio
 			c := sv.scp.theme.Color(theme.ColorNameForeground, 0)
-			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(bounds.Min.X+1), float32(bounds.Min.Y), float32(bounds.Min.X+1), float32(bounds.Max.Y), c)
+			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(leftEdge+1), float32(bounds.Min.Y), float32(leftEdge+1), float32(bounds.Max.Y), c)
 			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(rightEdge), float32(bounds.Min.Y), float32(rightEdge), float32(bounds.Max.Y), c)
 		}
 	}
@@ -374,6 +411,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
 					float64(sv.scp.controlXRoundError) +
 					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
+				
+				if !sv.isTimeZoom {
+					t0 -= sv.scp.timeZoomBoxOffset * unit
+				}
+				
 				t0 -= extra * deltaT
 
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
@@ -776,6 +818,20 @@ func (scp *ScpDesc) addFtXOffset(dx float64) {
 	case scp.Settings.Time.TriggerTimeOffset > scp.maxScreenTime:
 		scp.Settings.Time.TriggerTimeOffset = scp.maxScreenTime
 	default:
+	}
+}
+
+func (scp *ScpDesc) addTimeZoomBoxOffset(dt float64) {
+	scp.timeZoomBoxOffset += dt
+	maxOffset := scp.timeZoomMaxScreenTime - scp.maxScreenTime
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	if scp.timeZoomBoxOffset < 0 {
+		scp.timeZoomBoxOffset = 0
+	}
+	if scp.timeZoomBoxOffset > maxOffset {
+		scp.timeZoomBoxOffset = maxOffset
 	}
 }
 
