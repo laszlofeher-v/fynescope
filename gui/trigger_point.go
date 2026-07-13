@@ -4,6 +4,7 @@ import (
 	"fynescope/genericps"
 	"fynescope/settings"
 	"image"
+	"image/draw"
 	"log/slog"
 	"math"
 
@@ -19,6 +20,7 @@ type (
 		scp      *ScpDesc
 		selected bool
 		mouseAt  bool
+		isTimeZoom bool
 	}
 )
 
@@ -29,6 +31,27 @@ var (
 	_ drawer     = (*triggerPointViewer)(nil)
 	_ cursorable = (*triggerPointViewer)(nil)
 )
+
+func (tp *triggerPointViewer) signalScreen() draw.RGBA64Image {
+	if tp.isTimeZoom {
+		return tp.scp.timeZoomScopeSignalScreen
+	}
+	return tp.scp.ftScopeSignalScreen
+}
+
+func (tp *triggerPointViewer) maxScreenTime() float64 {
+	if tp.isTimeZoom {
+		return tp.scp.timeZoomMaxScreenTime
+	}
+	return tp.scp.maxScreenTime
+}
+
+func (tp *triggerPointViewer) raster() *screenRaster {
+	if tp.isTimeZoom {
+		return tp.scp.timeZoomRaster
+	}
+	return tp.scp.ftRaster
+}
 
 func (tp *triggerPointViewer) cursor(x, y float32) (desktop.Cursor, bool) {
 	if tp.mouseIn(x, y) || tp.selected {
@@ -57,8 +80,8 @@ func (tp *triggerPointViewer) mouseMoved(x, y float32) {
 	}
 	if prev != tp.mouseAt {
 		tp.enableRefresh()
-		if tp.scp.ftRaster != nil {
-			tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
 		}
 	}
 }
@@ -84,7 +107,7 @@ func (scp *ScpDesc) setTriggerTime(xOffset float64) {
 }
 
 func (tp *triggerPointViewer) y2mv(y float64) (mv float64) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	zeroOffset := float64(bounds.Min.Y + bounds.Dy()/2)
 	h := float64(bounds.Dy())
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
@@ -102,7 +125,7 @@ func (tp *triggerPointViewer) y2mv(y float64) (mv float64) {
 }
 
 func (tp *triggerPointViewer) timeMv2xy(mv int32) (x, y float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	zeroOffset := float64(bounds.Min.Y + bounds.Dy()/2)
 	h := float64(bounds.Dy())
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
@@ -117,12 +140,12 @@ func (tp *triggerPointViewer) timeMv2xy(mv int32) (x, y float32) {
 	}
 	y = float32(-yScale*float64(mv) + yOffset + zeroOffset)
 	x = float32(bounds.Min.X) + float32(tp.scp.Settings.Time.TriggerTimeOffset)*
-		float32(tp.scp.ftScopeSignalScreen.Bounds().Dx())/float32(tp.scp.maxScreenTime)
+		float32(tp.signalScreen().Bounds().Dx())/float32(tp.maxScreenTime())
 	return
 }
 
 func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()        // if new position is outside
+	bounds := tp.signalScreen().Bounds()        // if new position is outside
 	if int(x) < bounds.Min.X || int(x) > bounds.Max.X || // then return
 		int(y) < bounds.Min.Y || int(y) > bounds.Max.Y {
 		return
@@ -153,8 +176,8 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	tp.enableRefresh()
 	slog.Debug("setDispOffset")
 	// tp.scp.psControl.Restart()
-	if tp.scp.ftRaster != nil {
-		tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
 	}
 }
 func (tp *triggerPointViewer) dragged(dx, dy, x, y float32) {
@@ -179,7 +202,7 @@ func (tp *triggerPointViewer) draw() {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		if channel.TriggerSource {
 			x, y := tp.timeMv2xy(channel.Trigger.Mv)
-			bound := tp.scp.ftScopeSignalScreen.Bounds()
+			bound := tp.signalScreen().Bounds()
 			maxY := float32(bound.Max.Y)
 			minY := float32(bound.Min.Y)
 			switch {
@@ -193,7 +216,7 @@ func (tp *triggerPointViewer) draw() {
 				int(math.Round(float64(y-rectSize))),
 				int(math.Round(float64(x+rectSize))),
 				int(math.Round(float64(y+rectSize))))
-			drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, theme.ForegroundColor())
+			drawCircle(tp.signalScreen(), x, y, triggerPointR, theme.ForegroundColor())
 			if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 				tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 				tp.scp.triggerThresholdDisp.Refresh()
@@ -208,11 +231,11 @@ func (tp *triggerPointViewer) clear() {
 
 }
 
-func newTriggerPointViewer(img rasterImage, scp *ScpDesc) *triggerPointViewer {
+func newTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool) *triggerPointViewer {
 	imgRect := image.Rect(-triggerPointR,
 		-triggerPointR,
 		triggerPointR,
 		triggerPointR)
-	tp := &triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp}
+	tp := &triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp, isTimeZoom: isTimeZoom}
 	return tp
 }

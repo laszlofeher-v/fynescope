@@ -849,170 +849,6 @@ func (scp *ScpDesc) drawFtDivisions() {
 		drawDivs(0, col)
 	}
 }
-func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
-	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
-	if numberOfEnabledChannels == 0 {
-		leftMargin = defaultLeftMargin
-		rightMargin = defaultRightMargin
-		return
-	}
-	leftColumnCount := numberOfEnabledChannels / 2
-	rightColumnCount := numberOfEnabledChannels / 2
-	if numberOfEnabledChannels%2 != 0 {
-		leftColumnCount++
-	}
-	leftMargin = float32(leftColumnCount) * scp.rangeMargin
-	if rightColumnCount == 0 {
-		rightMargin = defaultRightMargin
-	} else {
-		rightMargin = float32(rightColumnCount) * scp.rangeMargin
-	}
-	start := float32(0)
-	end := scp.rangeMargin
-	for channelIndex := range scp.channelViewers {
-		channel := &scp.Settings.Channels[channelIndex]
-		channelViewer := &scp.channelViewers[channelIndex]
-		if channel.Enabled {
-			channelViewer.label = newFtChannelLabelViewer(scp.ftScopeFullScreen,
-				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
-				channelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
-					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), scp)
-			scp.addFtDrawer(&channelViewer.label)
-			switch {
-			case leftColumnCount > 1:
-				channelViewer.leftLabel = true
-				leftColumnCount--
-				start = end
-				end += scp.rangeMargin
-			case leftColumnCount == 1:
-				channelViewer.leftLabel = true
-				leftColumnCount--
-				start = w - rightMargin
-				end = start + scp.rangeMargin
-			default:
-				channelViewer.leftLabel = false
-				start = end
-				end += scp.rangeMargin
-			}
-			channelViewer.hasScreenPartition = true
-		} else {
-			channelViewer.hasScreenPartition = false
-		}
-	}
-	return
-}
-
-func (scp *ScpDesc) partitionFtScreen(w, h float32) {
-	ip := scp.ftScopeFullScreen.(*image.RGBA)
-	scp.ftDrawers = nil
-	leftMargin, rightMargin := scp.clipFtChRangeScrs(w, h)
-	scp.ftScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
-		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
-		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
-	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()))
-	scp.ftBottomLabelViewer = newTimelLabelViewer(scp.ftScopeFullScreen,
-		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
-			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp)
-	scp.addFtDrawer(scp.ftBottomLabelViewer)
-	scp.addFtDrawer(newSignalViewer(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), scp, false))
-	scp.addFtDrawer(scp.triggerPoint)
-}
-
-func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
-	ws := scp.Window.Canvas().Size()
-	scp.Settings.Window.Height = ws.Height
-	scp.Settings.Window.Width = ws.Width
-	defer scp.screenLocker.Unlock()
-	scp.screenLocker.Lock()
-	w := float32(wInt)
-	h := float32(hInt)
-	rect := scp.ftScopeFullScreen.Bounds()
-	if wInt != rect.Max.X-rect.Min.X || hInt != rect.Max.Y-rect.Min.Y { // window resized
-		slog.Debug("RESIZED")
-		scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
-		switch scp.triggerSettingMsg.Type {
-		case control.Simple:
-			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Advanced:
-			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Window:
-			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Complex:
-			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Interval, control.PulseWidth:
-			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		default:
-			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		}
-		rect = scp.ftScopeFullScreen.Bounds()
-		w = float32(rect.Dx())
-		h = float32(rect.Dy())
-		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
-		getFlag(scp.repartition) //clear flag
-		scp.partitionFtScreen(w, h)
-		scp.setFtVDivsY()
-		scp.setFtHDivsX()
-	} else if getFlag(scp.repartition) {
-		slog.Debug("REPARTITION")
-		switch scp.triggerSettingMsg.Type {
-		case control.Simple:
-			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Advanced:
-			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Window:
-			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Complex:
-			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		case control.Interval, control.PulseWidth:
-			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		default:
-			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp)
-		}
-		scp.partitionFtScreen(w, h)
-		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
-		scp.setFtVDivsY()
-		scp.setFtHDivsX()
-	} else if scp.ftScopeSignalScreen == nil {
-		slog.Debug("ftScopeSignalScreen == nil")
-		scp.setFtVDivsY()
-		scp.setFtHDivsX()
-	} else if getFlag(scp.themeChanged) {
-		slog.Debug("themeChanged")
-		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
-		for channelIndex := range scp.channelViewers {
-			channelViewer := &scp.channelViewers[channelIndex]
-			channelViewer.label.enableRefresh()
-		}
-		if scp.ftBottomLabelViewer != nil {
-			tl := scp.ftBottomLabelViewer.(*timeLabelViewer)
-			tl.enableRefresh()
-		}
-	} else { // display signal only
-		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
-	}
-	scp.setFtVDivsY()
-	scp.setFtHDivsX()
-	for i := range scp.ftDrawers {
-		scp.ftDrawers[i].draw()
-	}
-	return scp.ftScopeFullScreen
-}
-
-func (scp *ScpDesc) addTzDrawer(drw drawer) {
-	scp.timeZoomDrawers = append(scp.timeZoomDrawers, drw)
-}
-
-func (scp *ScpDesc) partitionTzScreen(w, h float32) {
-	ip := scp.timeZoomScopeFullScreen.(*image.RGBA)
-	scp.timeZoomDrawers = nil
-	leftMargin := float32(defaultLeftMargin)
-	rightMargin := float32(defaultRightMargin)
-	scp.timeZoomScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
-		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
-		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
-	
-	scp.addTzDrawer(newSignalViewer(scp.timeZoomScopeFullScreen, scp.timeZoomScopeSignalScreen.Bounds(), scp, true))
-}
 
 func (scp *ScpDesc) setTzVDivsY() {
 	if scp.timeZoomScopeSignalScreen == nil {
@@ -1070,6 +906,240 @@ func (scp *ScpDesc) drawTzDivisions() {
 			}
 		}
 	}
+	channelIndex := scp.displayMovedDivs - 1
 	col := scp.theme.Color(ColorNameDivision, 0)
-	drawDivs(0, col)
+	if channelIndex >= 0 {
+		if scp.displayMovedDivs > 0 && scp.channelViewers[channelIndex].displayOffsetInt != 0 {
+			drawDivs(0, gray)
+			yOffset := scp.offsetNToFtY(scp.channelViewers[channelIndex].displayOffsetInt)
+			drawDivs(float32(yOffset), scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex])
+		} else {
+			drawDivs(0, col)
+		}
+	} else {
+		drawDivs(0, col)
+	}
+}
+func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
+	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	if numberOfEnabledChannels == 0 {
+		leftMargin = defaultLeftMargin
+		rightMargin = defaultRightMargin
+		return
+	}
+	leftColumnCount := numberOfEnabledChannels / 2
+	rightColumnCount := numberOfEnabledChannels / 2
+	if numberOfEnabledChannels%2 != 0 {
+		leftColumnCount++
+	}
+	leftMargin = float32(leftColumnCount) * scp.rangeMargin
+	if rightColumnCount == 0 {
+		rightMargin = defaultRightMargin
+	} else {
+		rightMargin = float32(rightColumnCount) * scp.rangeMargin
+	}
+	start := float32(0)
+	end := scp.rangeMargin
+	for channelIndex := range scp.channelViewers {
+		channel := &scp.Settings.Channels[channelIndex]
+		channelViewer := &scp.channelViewers[channelIndex]
+		if channel.Enabled {
+			channelViewer.label = newFtChannelLabelViewer(scp.ftScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				channelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), scp, false)
+			scp.addFtDrawer(&channelViewer.label)
+			switch {
+			case leftColumnCount > 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				channelViewer.leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+			channelViewer.hasScreenPartition = true
+		} else {
+			channelViewer.hasScreenPartition = false
+		}
+	}
+	return
+}
+
+func (scp *ScpDesc) partitionFtScreen(w, h float32) {
+	ip := scp.ftScopeFullScreen.(*image.RGBA)
+	scp.ftDrawers = nil
+	leftMargin, rightMargin := scp.clipFtChRangeScrs(w, h)
+	scp.ftScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
+		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
+		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
+	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()))
+	scp.ftBottomLabelViewer = newTimelLabelViewer(scp.ftScopeFullScreen,
+		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
+			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, false)
+	scp.addFtDrawer(scp.ftBottomLabelViewer)
+	scp.addFtDrawer(newSignalViewer(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), scp, false))
+	scp.addFtDrawer(scp.triggerPoint)
+}
+
+func (scp *ScpDesc) addTzDrawer(d drawer) {
+	scp.timeZoomDrawers = append(scp.timeZoomDrawers, d)
+}
+
+func (scp *ScpDesc) clipTzChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
+	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	if numberOfEnabledChannels == 0 {
+		leftMargin = defaultLeftMargin
+		rightMargin = defaultRightMargin
+		return
+	}
+	leftColumnCount := numberOfEnabledChannels / 2
+	rightColumnCount := numberOfEnabledChannels / 2
+	if numberOfEnabledChannels%2 != 0 {
+		leftColumnCount++
+	}
+	leftMargin = float32(leftColumnCount) * scp.rangeMargin
+	if rightColumnCount == 0 {
+		rightMargin = defaultRightMargin
+	} else {
+		rightMargin = float32(rightColumnCount) * scp.rangeMargin
+	}
+	start := float32(0)
+	end := scp.rangeMargin
+	for channelIndex := range scp.channelViewers {
+		channel := &scp.Settings.Channels[channelIndex]
+		channelViewer := &scp.channelViewers[channelIndex]
+		if channel.Enabled {
+			tzLabel := newFtChannelLabelViewer(scp.timeZoomScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				channelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), scp, true)
+			channelViewer.tzLabel = &tzLabel
+			scp.addTzDrawer(channelViewer.tzLabel)
+			switch {
+			case leftColumnCount > 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				channelViewer.leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				channelViewer.leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+			channelViewer.hasScreenPartition = true
+		} else {
+			channelViewer.hasScreenPartition = false
+			channelViewer.tzLabel = nil
+		}
+	}
+	return
+}
+
+func (scp *ScpDesc) partitionTzScreen(w, h float32) {
+	ip := scp.timeZoomScopeFullScreen.(*image.RGBA)
+	scp.timeZoomDrawers = nil
+	leftMargin, rightMargin := scp.clipTzChRangeScrs(w, h)
+	scp.timeZoomScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
+		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
+		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
+		
+	scp.timeZoomBottomLabelViewer = newTimelLabelViewer(scp.timeZoomScopeFullScreen,
+		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
+			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, true)
+	scp.addTzDrawer(scp.timeZoomBottomLabelViewer)
+	scp.addTzDrawer(newSignalViewer(scp.timeZoomScopeFullScreen, scp.timeZoomScopeSignalScreen.Bounds(), scp, true))
+	scp.addTzDrawer(scp.timeZoomTriggerPoint)
+}
+
+func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
+	ws := scp.Window.Canvas().Size()
+	scp.Settings.Window.Height = ws.Height
+	scp.Settings.Window.Width = ws.Width
+	defer scp.screenLocker.Unlock()
+	scp.screenLocker.Lock()
+	w := float32(wInt)
+	h := float32(hInt)
+	rect := scp.ftScopeFullScreen.Bounds()
+	if wInt != rect.Max.X-rect.Min.X || hInt != rect.Max.Y-rect.Min.Y { // window resized
+		slog.Debug("RESIZED")
+		scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{wInt, hInt})
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Advanced:
+			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Window:
+			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Complex:
+			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Interval, control.PulseWidth:
+			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		default:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		}
+		rect = scp.ftScopeFullScreen.Bounds()
+		w = float32(rect.Dx())
+		h = float32(rect.Dy())
+		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		getFlag(scp.repartition) //clear flag
+		scp.partitionFtScreen(w, h)
+		scp.setFtVDivsY()
+		scp.setFtHDivsX()
+	} else if getFlag(scp.repartition) {
+		slog.Debug("REPARTITION")
+		switch scp.triggerSettingMsg.Type {
+		case control.Simple:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Advanced:
+			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Window:
+			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Complex:
+			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.Interval, control.PulseWidth:
+			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		default:
+			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		}
+		scp.partitionFtScreen(w, h)
+		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		scp.setFtVDivsY()
+		scp.setFtHDivsX()
+	} else if scp.ftScopeSignalScreen == nil {
+		slog.Debug("ftScopeSignalScreen == nil")
+		scp.setFtVDivsY()
+		scp.setFtHDivsX()
+	} else if getFlag(scp.themeChanged) {
+		slog.Debug("themeChanged")
+		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		for channelIndex := range scp.channelViewers {
+			channelViewer := &scp.channelViewers[channelIndex]
+			channelViewer.label.enableRefresh()
+		}
+		if scp.ftBottomLabelViewer != nil {
+			tl := scp.ftBottomLabelViewer.(*timeLabelViewer)
+			tl.enableRefresh()
+		}
+	} else { // display signal only
+		draw.Draw(scp.ftScopeFullScreen, scp.ftScopeSignalScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+	}
+	scp.setFtVDivsY()
+	scp.setFtHDivsX()
+	for i := range scp.ftDrawers {
+		scp.ftDrawers[i].draw()
+	}
+	return scp.ftScopeFullScreen
 }

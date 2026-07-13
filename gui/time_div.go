@@ -52,6 +52,7 @@ type (
 		rasterPartition
 		scp      *ScpDesc
 		selected bool
+		isTimeZoom bool
 	}
 )
 
@@ -181,9 +182,9 @@ func (tl *timeLabelViewer) typedKey(x, y float32, keyName fyne.KeyName) {
 		tl.scrolled(scrollDelta, x, y)
 	}
 }
-func newTimelLabelViewer(img rasterImage, imgRect image.Rectangle, scp *ScpDesc) *timeLabelViewer {
+func newTimelLabelViewer(img rasterImage, imgRect image.Rectangle, scp *ScpDesc, isTimeZoom bool) *timeLabelViewer {
 	tl := &timeLabelViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect, refreshFlag: true},
-		scp: scp}
+		scp: scp, isTimeZoom: isTimeZoom}
 	return tl
 }
 
@@ -240,21 +241,45 @@ func (tl *timeLabelViewer) draw() {
 	}
 	tl.clear()
 	var unitName string
-	dt := float32(tl.scp.timeDiv)
-	if tl.scp.timeDiv < 100 {
-		unitName = getTimeUnitName(tl.scp.timeUnit)
+	var dt float32
+	var maxScreenTime float64
+	var signalScreen draw.RGBA64Image
+	var divsX *[numberOfDivs + 1]float32
+	var fullScreen rasterImage
+	
+	if tl.isTimeZoom {
+		dt = float32(tl.scp.timeZoomTimeDiv)
+		if tl.scp.timeZoomTimeDiv < 100 {
+			unitName = getTimeUnitName(tl.scp.timeZoomTimeUnit)
+		} else {
+			dt, unitName = switchUpTimeUnit(dt, tl.scp.timeZoomTimeUnit)
+		}
+		maxScreenTime = tl.scp.timeZoomMaxScreenTime
+		signalScreen = tl.scp.timeZoomScopeSignalScreen
+		divsX = &tl.scp.timeZoomDivsX
+		fullScreen = tl.scp.timeZoomScopeFullScreen
 	} else {
-		dt, unitName = switchUpTimeUnit(dt, tl.scp.timeUnit)
+		dt = float32(tl.scp.timeDiv)
+		if tl.scp.timeDiv < 100 {
+			unitName = getTimeUnitName(tl.scp.timeUnit)
+		} else {
+			dt, unitName = switchUpTimeUnit(dt, tl.scp.timeUnit)
+		}
+		maxScreenTime = tl.scp.maxScreenTime
+		signalScreen = tl.scp.ftScopeSignalScreen
+		divsX = &tl.scp.ftDivsX
+		fullScreen = tl.scp.ftScopeFullScreen
 	}
+
 	bounds := tl.rect()
 	y := bounds.Max.Y - fontSize
-	w := float64(tl.scp.ftScopeSignalScreen.Bounds().Dx() - 1)
+	w := float64(signalScreen.Bounds().Dx() - 1)
 	v := float32(dt)
-	zeroAt := w*tl.scp.Settings.Time.TriggerTimeOffset/tl.scp.maxScreenTime + float64(tl.scp.ftScopeSignalScreen.Bounds().Min.X)
+	zeroAt := w*tl.scp.Settings.Time.TriggerTimeOffset/maxScreenTime + float64(signalScreen.Bounds().Min.X)
 	diff := float32(10000000)
 	// bestI := 0
-	for i := 0; i < len(tl.scp.ftDivsX); i++ {
-		newDiff := float32(zeroAt) - tl.scp.ftDivsX[i]
+	for i := 0; i < len(divsX); i++ {
+		newDiff := float32(zeroAt) - divsX[i]
 		if newDiff < 0 {
 			newDiff = -newDiff
 		}
@@ -266,7 +291,7 @@ func (tl *timeLabelViewer) draw() {
 		}
 		v -= float32(dt)
 	}
-	for i, x := range tl.scp.ftDivsX {
+	for i, x := range divsX {
 		if v > -dt/8 && v < dt/8 { // avoid -0.0
 			v = 0
 		}
@@ -275,7 +300,7 @@ func (tl *timeLabelViewer) draw() {
 			vstr = vstr + " " + unitName
 		}
 		left, _, right, _ := tl.scp.boundString(vstr)
-		tl.scp.addLabel(tl.scp.ftScopeFullScreen, int(math.Round(float64(x-(right+left)/2))), y, vstr, theme.ForegroundColor())
+		tl.scp.addLabel(fullScreen, int(math.Round(float64(x-(right+left)/2))), y, vstr, theme.ForegroundColor())
 		v += float32(dt)
 	}
 	tl.disableRefresh()

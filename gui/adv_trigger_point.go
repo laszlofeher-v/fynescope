@@ -65,7 +65,9 @@ func (tp *advTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 	if prev != tp.mouseAt {
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 }
 
@@ -91,7 +93,9 @@ func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float3
 			tp.mouseAt = false
 		}
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 }
 func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
@@ -104,7 +108,7 @@ func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 }
 
 func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
-	bounds := tp.scp.ftScopeSignalScreen.Bounds()
+	bounds := tp.signalScreen().Bounds()
 	h := float64(bounds.Dy())
 	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
 		slog.Error("setHysteresisDispOffset index error", "tp.scp.triggerSource", tp.scp.triggerSource)
@@ -121,7 +125,9 @@ func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
 	}
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 	tp.enableRefresh()
-	tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
+	}
 }
 
 func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
@@ -151,7 +157,9 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	}
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 	tp.enableRefresh()
-	tp.scp.ftRaster.Refresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
+	}
 }
 
 func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {
@@ -169,7 +177,9 @@ func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {
 			return
 		}
 		tp.enableRefresh()
-		tp.scp.ftRaster.Refresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 	tp.selected = false
 	tp.uhSelected = false
@@ -182,7 +192,7 @@ func (tp *advTriggerPointViewer) draw() {
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
-		bound := tp.scp.ftScopeSignalScreen.Bounds()
+		bound := tp.signalScreen().Bounds()
 		maxY := float32(bound.Max.Y)
 		minY := float32(bound.Min.Y)
 		switch {
@@ -216,13 +226,13 @@ func (tp *advTriggerPointViewer) draw() {
 		if tp.selected || tp.triggerPointViewer.mouseAt {
 			col = theme.SelectionColor()
 		}
-		drawCircle(tp.scp.ftScopeSignalScreen, x, y, triggerPointR, col)
+		drawCircle(tp.signalScreen(), x, y, triggerPointR, col)
 		col = theme.ForegroundColor()
 		if tp.uhSelected || tp.mouseAt {
 			col = theme.SelectionColor()
 		}
-		drawLine(tp.scp.ftScopeSignalScreen, x, y, x, yh, col)
-		drawLine(tp.scp.ftScopeSignalScreen, x-halfRectSize, yh, x+halfRectSize, yh, col)
+		drawLine(tp.signalScreen(), x, y, x, yh, col)
+		drawLine(tp.signalScreen(), x-halfRectSize, yh, x+halfRectSize, yh, col)
 		if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 			tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 			tp.scp.triggerThresholdDisp.Refresh()
@@ -234,7 +244,7 @@ func (tp *advTriggerPointViewer) draw() {
 	}
 }
 
-func newAdvTriggerPointViewer(img rasterImage, scp *ScpDesc) *advTriggerPointViewer {
+func newAdvTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool) *advTriggerPointViewer {
 	imgRect := image.Rect(int(math.Round(-triggerPointR)),
 		int(math.Round(-triggerPointR)),
 		int(math.Round(triggerPointR)),
@@ -243,6 +253,6 @@ func newAdvTriggerPointViewer(img rasterImage, scp *ScpDesc) *advTriggerPointVie
 		int(math.Round(triggerPointR)+100.0),
 		int(math.Round(triggerPointR)),
 		int(math.Round(triggerPointR+100.0)))
-	tp := &advTriggerPointViewer{uhImgRect: uhImgRect, triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp}}
+	tp := &advTriggerPointViewer{uhImgRect: uhImgRect, triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp, isTimeZoom: isTimeZoom}}
 	return tp
 }
