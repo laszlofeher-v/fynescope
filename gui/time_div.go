@@ -50,8 +50,8 @@ const (
 type (
 	timeLabelViewer struct {
 		rasterPartition
-		scp      *ScpDesc
-		selected bool
+		scp        *ScpDesc
+		selected   bool
 		isTimeZoom bool
 	}
 )
@@ -250,7 +250,7 @@ func (tl *timeLabelViewer) draw() {
 	var signalScreen draw.RGBA64Image
 	var divsX *[numberOfDivs + 1]float32
 	var fullScreen rasterImage
-	
+
 	if tl.isTimeZoom {
 		dt = float32(tl.scp.timeZoomTimeDiv)
 		if tl.scp.timeZoomTimeDiv < 100 {
@@ -461,9 +461,9 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 		scp.timeSelect.Options = prevOptions
 		scp.timeSelect.SilentSetSelected(prevTimeDivStr)
 		scp.timeUnitSelect.SilentSetSelected(prevTimeUnitStr)
-		if scp.statusChan != nil {
+		if scp.status != nil && scp.status.statusChan != nil {
 			select {
-			case scp.statusChan <- "Cannot zoom out beyond Time Zoom snapshot":
+			case scp.status.statusChan <- statusMessage{text: "Cannot zoom out beyond Time Zoom snapshot", code: StatusCannotZoomOut}:
 			default:
 			}
 		}
@@ -508,9 +508,9 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 		scp.timeSelect.Options = prevOptions
 		scp.timeSelect.SilentSetSelected(prevTimeDivStr)
 		scp.timeUnitSelect.SilentSetSelected(prevTimeUnitStr)
-		if scp.statusChan != nil {
+		if scp.status != nil && scp.status.statusChan != nil {
 			select {
-			case scp.statusChan <- "Cannot zoom out beyond Time Zoom snapshot":
+			case scp.status.statusChan <- statusMessage{text: "Cannot zoom out beyond Time Zoom snapshot", code: StatusCannotZoomOut}:
 			default:
 			}
 		}
@@ -809,9 +809,9 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval || option == settings.TriggerTypePulseWidth) {
-		scp.StopRunning()
+		// scp.StopRunning()
 		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
-	} else if scp.status.Text == ErrWrongFfTrigger {
+	} else if scp.status != nil && scp.status.Code() == StatusWrongFfTrigger {
 		scp.psControl.DisplayStatus("", control.Info)
 	}
 
