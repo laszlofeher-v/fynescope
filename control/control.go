@@ -326,6 +326,10 @@ func (psControl *PscDesc) setEverything() (err error) {
 }
 
 func (psControl *PscDesc) sendTrigger() (err error) {
+	if !psControl.triggerSetting.Enabled {
+		return psControl.sendSimpleTrigger()
+	}
+
 	switch psControl.triggerSetting.Type {
 	case Simple:
 		// if !psControl.triggerSetting.Enabled {

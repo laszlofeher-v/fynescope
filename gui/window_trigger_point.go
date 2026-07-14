@@ -347,6 +347,9 @@ func (tp *windowTriggerPointViewer) draw() {
 	}
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
+		if !channel.TriggerSource {
+			return
+		}
 		bound := tp.signalScreen().Bounds()
 		maxY := float32(bound.Max.Y)
 		minY := float32(bound.Min.Y)

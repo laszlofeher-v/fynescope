@@ -191,6 +191,9 @@ func (tp *intervalTriggerPointViewer) draw() {
 
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
+		if !channel.TriggerSource {
+			return
+		}
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
 		bounds := tp.signalScreen().Bounds()
 

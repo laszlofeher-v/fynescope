@@ -191,6 +191,9 @@ func (tp *advTriggerPointViewer) draw() {
 	}
 	if tp.scp.triggerSource != dontCare {
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
+		if !channel.TriggerSource {
+			return
+		}
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
 		bound := tp.signalScreen().Bounds()
 		maxY := float32(bound.Max.Y)

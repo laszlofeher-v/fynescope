@@ -157,26 +157,26 @@ type (
 		ffNoiseAmplitudeDisp *disp7.DigitArray
 		ffPhaseNoiseDisp     *disp7.DigitArray
 
-		bodeBuffers                [genericps.MaxChannel][]bodePoint
-		maxSamplingRate            uint32
-		segmentIndex               uint32 // maxSamplingRate: sample/sec
-		controlTab                 *container.AppTabs
-		dftTab                     *container.TabItem
-		fraTab                     *container.TabItem
-		ftTab                      *container.TabItem
-		fvTab                      *container.TabItem
-		ffTab                      *container.TabItem
-		genTab                     *container.TabItem
-		rlcTab                     *container.TabItem
-		filterTab                  *container.TabItem
-		extgenTab                  *container.TabItem
-		setTab                     *container.TabItem
-		psControl                  *control.PscDesc
-		triggerHysteresisDisp      *disp7.DigitArray
-		triggerThresholdDisp       *disp7.DigitArray
-		boxTriggerHysteresisDisp   *fyne.Container
-		triggerLowerThresholdDisp  *disp7.DigitArray
-		triggerLowerHysteresisDisp *disp7.DigitArray
+		bodeBuffers                  [genericps.MaxChannel][]bodePoint
+		maxSamplingRate              uint32
+		segmentIndex                 uint32 // maxSamplingRate: sample/sec
+		controlTab                   *container.AppTabs
+		dftTab                       *container.TabItem
+		fraTab                       *container.TabItem
+		ftTab                        *container.TabItem
+		fvTab                        *container.TabItem
+		ffTab                        *container.TabItem
+		genTab                       *container.TabItem
+		rlcTab                       *container.TabItem
+		filterTab                    *container.TabItem
+		extgenTab                    *container.TabItem
+		setTab                       *container.TabItem
+		psControl                    *control.PscDesc
+		triggerHysteresisDisp        *disp7.DigitArray
+		triggerThresholdDisp         *disp7.DigitArray
+		boxTriggerHysteresisDisp     *fyne.Container
+		triggerLowerThresholdDisp    *disp7.DigitArray
+		triggerLowerHysteresisDisp   *disp7.DigitArray
 		intervalTypeSelect           *selectscroll.SelectScroll
 		intervalTimeLowerDisp        *disp7.DigitArray
 		intervalTimeUpperDisp        *disp7.DigitArray
@@ -602,15 +602,15 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				} else {
 					// Force block mode and ensure a trigger is set for f(v) and f(f)
-					scp.triggerSettingMsg.Mode = control.Auto
-					if scp.triggerSource == dontCare {
-						// Set arbitrary simple trigger on ChA if none selected
-						scp.triggerSource = chA
-						scp.Settings.Channels[chA].TriggerSource = true
-						scp.triggerSettingMsg.Source = chA
-						scp.triggerSettingMsg.Enabled = true
-						scp.triggerSettingMsg.Mv = 0
-					}
+					// scp.triggerSettingMsg.Mode = control.Auto
+					// if scp.triggerSource == dontCare {
+					// 	// Set arbitrary simple trigger on ChA if none selected
+					// 	scp.triggerSource = chA
+					// 	scp.Settings.Channels[chA].TriggerSource = true
+					// 	scp.triggerSettingMsg.Source = chA
+					// 	scp.triggerSettingMsg.Enabled = true
+					// 	scp.triggerSettingMsg.Mv = 0
+					// }
 				}
 			}
 
@@ -724,18 +724,19 @@ func (scp *ScpDesc) build2000Gui() {
 		if !scp.running {
 			scp.clearAllFtPersistentLayers()
 			scp.clearAllDftPersistentLayers()
-			if scp.controlTab.SelectedIndex() == fvTabIndex || scp.controlTab.SelectedIndex() == ffTabIndex {
-				// Force block mode and ensure a trigger is set for f(v) and f(f)
-				scp.triggerSettingMsg.Mode = control.Auto
-				if scp.triggerSource == dontCare {
-					// Set arbitrary simple trigger on ChA if none selected
-					scp.triggerSource = chA
-					scp.Settings.Channels[chA].TriggerSource = true
-					scp.triggerSettingMsg.Source = chA
-					scp.triggerSettingMsg.Enabled = true
-					scp.triggerSettingMsg.Mv = 0
-				}
-			}
+			// if scp.controlTab.SelectedIndex() == fvTabIndex || scp.controlTab.SelectedIndex() == ffTabIndex {
+			// 	// Force block mode and ensure a trigger is set for f(v) and f(f)
+			// 	scp.triggerSettingMsg.Mode = control.Auto
+			// 	if scp.triggerSource == dontCare {
+			// 		?????
+			// 		// Set arbitrary simple trigger on ChA if none selected
+			// 		scp.triggerSource = chA
+			// 		scp.Settings.Channels[chA].TriggerSource = true
+			// 		scp.triggerSettingMsg.Source = chA
+			// 		scp.triggerSettingMsg.Enabled = true
+			// 		scp.triggerSettingMsg.Mv = 0
+			// 	}
+			// }
 			if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
