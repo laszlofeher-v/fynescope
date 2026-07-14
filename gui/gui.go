@@ -138,9 +138,8 @@ type (
 		ffBufferDone                        chan struct{}
 		currentFfFreq                       float64
 		measuredFfFreq                      float64
-		// statusChan / statusQuit for the status display goroutine
-		statusChan chan string
-		statusQuit chan struct{}
+		// status field containing UI label and numeric code
+		status *InitStatus
 		// FFT caches for processFfData — reallocated only when sample count changes
 		ffFftObj             *fourier.FFT
 		ffFftBuf             []float64
@@ -214,7 +213,7 @@ type (
 		streamEnableButton           *widget.Button
 		etsCycles                    *widget.Entry
 		// actualSampleTime                    *widget.Label
-		status                     *widget.Label
+
 		triggerCheck               []*widget.Check
 		displayBuffers             [][]float32 // signal stored in mv
 		channelViewers             []channelViewerDesc
@@ -601,7 +600,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
 				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth) {
-					scp.StopRunning()
+					// scp.StopRunning()
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				} else {
 					// Force block mode and ensure a trigger is set for f(v) and f(f)
@@ -739,13 +738,12 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.triggerSettingMsg.Mv = 0
 				}
 			}
-			if scp.status.Text == ErrFrequencyCannotBeDetected {
+			if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
 				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
-					return
 				}
 				if scp.Settings.Ff.PtsDec <= 0 {
 					scp.psControl.DisplayStatus("Error: Points per decade cannot be 0", control.Warning)
@@ -835,13 +833,13 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(themeChangeAction)
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
-			scp.toolbar.Add(scp.status)
+			scp.toolbar.Add(scp.status.label)
 			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
 			changeSide.SetIcon(theme.NavigateNextIcon())
 		} else {
 			scp.Settings.Window.LeftControl = false
 			scp.toolbar.RemoveAll()
-			scp.toolbar.Add(scp.status)
+			scp.toolbar.Add(scp.status.label)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
@@ -868,9 +866,9 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.psControl != nil {
 			scp.psControl.Shutdown()
 		}
-		if scp.statusQuit != nil {
-			close(scp.statusQuit)
-			scp.statusQuit = nil
+		if scp.status != nil && scp.status.statusQuit != nil {
+			close(scp.status.statusQuit)
+			scp.status.statusQuit = nil
 		}
 		scp.App.Quit()
 	})
@@ -879,10 +877,10 @@ func (scp *ScpDesc) build2000Gui() {
 			themeChangeAction,
 			logout,
 			layout.NewSpacer(),
-			scp.status)
+			scp.status.label)
 		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
 	} else {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status, layout.NewSpacer(),
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
 			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout)
@@ -1209,15 +1207,15 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 	default:
 		// Time domain mode: use time/div
 		scp.maxScreenTime = float64(scp.timeDiv) * math.Pow(10, float64(scp.timeUnit)) * 10 // 10 divs
-		
+
 		reqScreenTime := scp.maxScreenTime
 		sampleMultiplier := 1.0
-		
+
 		if scp.timeZoomWindow != nil && scp.timeZoomMaxScreenTime > reqScreenTime {
 			reqScreenTime = scp.timeZoomMaxScreenTime
 			sampleMultiplier = scp.timeZoomMaxScreenTime / scp.maxScreenTime
 		}
-		
+
 		scp.psControl.SetMaxScreenTimeCh <- reqScreenTime
 		if scp.ftScopeSignalScreen != nil {
 			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()) * sampleMultiplier)
@@ -1373,7 +1371,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 
 			if len(missingGenChannels) > 0 {
 				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
-			} else if strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
+			} else if scp.status.Code() == StatusChannelNoActiveGen {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
 
@@ -1434,7 +1432,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					StopFrequency:  f,
 					Increment:      0,
 					DwellTime:      1,
-					SweepType:       genericps.SweepDown,
+					SweepType:      genericps.SweepDown,
 					WaveType:       scp.Settings.SimGenPanel[i].WaveType,
 					OffsetVoltage:  scp.Settings.SimGenPanel[i].OffsetVoltage,
 					PkToPK:         scp.Settings.SimGenPanel[i].Amplitude * 2,
@@ -1600,7 +1598,7 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 			if scp.status != nil {
 				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
 			}
-		} else if scp.status != nil && strings.HasPrefix(scp.status.Text, "Error: Channel ") && strings.HasSuffix(scp.status.Text, " has no active generator input") {
+		} else if scp.status != nil && scp.status.Code() == StatusChannelNoActiveGen {
 			scp.psControl.DisplayStatus("", control.Info)
 		}
 
@@ -1695,7 +1693,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 
 	// Transitioning from f(f) to non-f(f)
 	if prevTab == ffTabIndex && newTab != ffTabIndex {
-		if scp.status.Text == ErrWrongFfTrigger {
+		if scp.status.Code() == StatusWrongFfTrigger {
 			scp.psControl.DisplayStatus("", control.Info)
 		}
 		scp.stopFfSweep() // stop any running Bode sweep

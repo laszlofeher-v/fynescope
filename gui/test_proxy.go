@@ -546,30 +546,14 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		scp.onTimeUnitChange("ms/div", selectscroll.None)
 		scp.triggerModeSelect.SetSelected("Auto")
 	})
-
+	tap(ffFuncId)
 	if scp.running {
 		tap(runblockButtonId) // Stop before switching to ensure sweep starts cleanly
 	}
-
-	tap(ffFuncId)
-	fyne.DoAndWait(func() {
-		scp.Settings.Ff.MinFreq = 1000
-		scp.Settings.Ff.MaxFreq = 10000
-		scp.Settings.Ff.PtsDec = 50
-		scp.Settings.Ff.DeltaT = 0.01
-		scp.ffMinFreqDisp.SetFloatValue(1000, 2)
-		scp.ffMaxFreqDisp.SetFloatValue(10000, 2)
-		scp.Settings.Ff.ReferenceChannel = 0
-		scp.Settings.Channels[0].Enabled = true
-		scp.Settings.Channels[0].RlcFilter.GeneratorSource = 0
-		scp.Settings.FfGen.On = true
-		scp.Settings.SimGenPanel[0].On = true
-	})
-
 	tap(runblockButtonId) // Start the sweep
 
 	// Wait for a few frequency steps to complete
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 60; i++ {
 		wait()
 	}
 

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fynescope/control"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -9,47 +10,79 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+type StatusCode int
+
+const (
+	StatusNone StatusCode = iota
+	StatusFrequencyCannotBeDetected
+	StatusWrongFfTrigger
+	StatusChannelNoActiveGen
+	StatusCannotZoomOut
+	StatusGeneralError
+)
+
+type InitStatus struct {
+	label      *widget.Label
+	code       StatusCode
+	statusChan chan statusMessage
+	statusQuit chan struct{}
+}
+
+func (is *InitStatus) Code() StatusCode {
+	return is.code
+}
+
+type statusMessage struct {
+	text string
+	code StatusCode
+}
+
 func (scp *ScpDesc) initStatus() {
-	scp.status = widget.NewLabel("                                                 ")
-	scp.status.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
-	scp.statusChan = make(chan string, 1)
-	scp.statusQuit = make(chan struct{})
+	scp.status = &InitStatus{
+		label:      widget.NewLabel("                                                 "),
+		statusChan: make(chan statusMessage, 1),
+		statusQuit: make(chan struct{}),
+	}
+	scp.status.label.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+
 	go func() {
 		var (
-			s         string
+			msg       statusMessage
 			count     int
 			afterTime time.Duration
 		)
 		afterTime = time.Second
 		for {
 			select {
-			case <-scp.statusQuit:
+			case <-scp.status.statusQuit:
 				return
-			case s = <-scp.statusChan:
+			case msg = <-scp.status.statusChan:
 			}
 			count = 0
 			for count < errorDisplayTime {
 				select {
-				case <-scp.statusQuit:
+				case <-scp.status.statusQuit:
 					return
-				case s = <-scp.statusChan:
+				case msg = <-scp.status.statusChan:
 					count = 0
 					afterTime = time.Second
-					scp.status.Text = s
-					fyne.DoAndWait(scp.status.Refresh)
-					scp.status.Importance = widget.DangerImportance
+					scp.status.label.Text = msg.text
+					scp.status.code = msg.code
+					fyne.Do(scp.status.label.Refresh)
+					scp.status.label.Importance = widget.DangerImportance
 				case <-time.After(afterTime):
-					if s != "" {
+					if msg.text != "" {
 						count++
-						scp.status.Importance = widget.SuccessImportance
-						s = " " + s[:len(s)-1]
-						scp.status.Text = s
-						fyne.DoAndWait(scp.status.Refresh)
+						scp.status.label.Importance = widget.SuccessImportance
+						msg.text = " " + msg.text[:len(msg.text)-1]
+						scp.status.label.Text = msg.text
+						fyne.Do(scp.status.label.Refresh)
 					}
 				}
 			}
-			scp.status.Text = ""
-			fyne.DoAndWait(scp.status.Refresh)
+			scp.status.label.Text = ""
+			scp.status.code = StatusNone
+			fyne.Do(scp.status.label.Refresh)
 		}
 	}()
 
@@ -62,6 +95,33 @@ func (scp *ScpDesc) initStatus() {
 				})
 			}
 		}
-		scp.statusChan <- s
+
+		code := StatusGeneralError
+		if s == ErrFrequencyCannotBeDetected {
+			code = StatusFrequencyCannotBeDetected
+		} else if s == ErrWrongFfTrigger {
+			code = StatusWrongFfTrigger
+		} else if strings.HasPrefix(s, "Error: Channel ") && strings.HasSuffix(s, " has no active generator input") {
+			code = StatusChannelNoActiveGen
+		} else if s == "Cannot zoom out beyond Time Zoom snapshot" {
+			code = StatusCannotZoomOut
+		} else if s == "" {
+			code = StatusNone
+		}
+
+		msg := statusMessage{text: s, code: code}
+		select {
+		case scp.status.statusChan <- msg:
+		default:
+			// If full, drain the old message and send the new one
+			select {
+			case <-scp.status.statusChan:
+			default:
+			}
+			select {
+			case scp.status.statusChan <- msg:
+			default:
+			}
+		}
 	}
 }
