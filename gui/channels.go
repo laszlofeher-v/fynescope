@@ -507,17 +507,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				}
 			}
 
-			if scp.intervalUnitSelect != nil {
-				if channel.Trigger.IntervalTimeUnit != "" && scp.intervalUnitSelect.Selected != channel.Trigger.IntervalTimeUnit {
-					scp.intervalUnitSelect.SilentSetSelected(channel.Trigger.IntervalTimeUnit)
-				}
-			}
-
 			if scp.intervalTimeLowerDisp != nil {
-				unit := channel.Trigger.IntervalTimeUnit
-				if unit == "" {
-					unit = scp.intervalUnitSelect.Selected
-				}
+				unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				scp.intervalTimeLowerDisp.SetUnit(unit)
 				scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(channel.Trigger.IntervalTimeLower / multiplier)))
@@ -525,10 +516,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			}
 
 			if scp.intervalTimeUpperDisp != nil {
-				unit := channel.Trigger.IntervalTimeUnit
-				if unit == "" {
-					unit = scp.intervalUnitSelect.Selected
-				}
+				unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				scp.intervalTimeUpperDisp.SetUnit(unit)
 				scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(channel.Trigger.IntervalTimeUpper / multiplier)))

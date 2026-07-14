@@ -73,7 +73,6 @@ const (
 	triggerTypeSelectId            = "triggerTypeSelect"
 	triggerCalculationModeSelectId = "triggerCalculationModeSelect"
 	intervalTypeSelectId           = "intervalTypeSelect"
-	intervalUnitSelectId           = "intervalUnitSelect"
 	intervalTimeLowerDispId        = "intervalTimeLowerDisp"
 	intervalTimeUpperDispId        = "intervalTimeUpperDisp"
 	intervalTimeSingleDispId       = "intervalTimeSingleDisp"

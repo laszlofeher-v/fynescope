@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"log/slog"
 	"math"
+	"strings"
 
 	"fyne.io/fyne/v2/widget"
 
@@ -484,6 +485,7 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 	mul := math.Pow(10, float64(scp.timeUnit)) / math.Pow(10, float64(prevTimeUnit))
 	scp.Settings.Time.TriggerTimeOffset *= mul
 	scp.setTriggerTime(scp.Settings.Time.TriggerTimeOffset)
+	scp.updateIntervalTimeGUI()
 	scp.SaveSettings()
 }
 
@@ -533,6 +535,9 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	mul *= float64(scp.timeDiv) / float64(prevTime)
 	scp.Settings.Time.TriggerTimeOffset *= mul
 	scp.setTriggerTime(scp.Settings.Time.TriggerTimeOffset)
+	if triggerTypes[scp.Settings.Trigger.Type] == control.Interval || triggerTypes[scp.Settings.Trigger.Type] == control.PulseWidth {
+		scp.updateIntervalTimeGUI()
+	}
 	scp.SaveSettings()
 }
 
@@ -988,11 +993,7 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		}
 		if scp.boxIntervalTimeSingle != nil {
 			scp.boxIntervalTimeSingle.Show()
-			// Sync the single disp value from the appropriate field
-			unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
-			if unit == "" && scp.intervalUnitSelect != nil {
-				unit = scp.intervalUnitSelect.Selected
-			}
+			unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 			multiplier := getIntervalUnitMultiplier(unit)
 			var timeVal float64
 			if pwType == genericps.PwTypeLessThan {
@@ -1000,6 +1001,7 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 			} else { // GreaterThan
 				timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
 			}
+			scp.intervalTimeSingleDisp.SetUnit(unit)
 			scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(timeVal / multiplier)))
 			scp.intervalTimeSingleDisp.Refresh()
 		}
@@ -1011,11 +1013,10 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		}
 		if scp.boxIntervalTimeRange != nil {
 			scp.boxIntervalTimeRange.Show()
-			unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
-			if unit == "" && scp.intervalUnitSelect != nil {
-				unit = scp.intervalUnitSelect.Selected
-			}
+			unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 			multiplier := getIntervalUnitMultiplier(unit)
+			scp.intervalTimeLowerDisp.SetUnit(unit)
+			scp.intervalTimeUpperDisp.SetUnit(unit)
 			scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
 			scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
 			scp.intervalTimeLowerDisp.Refresh()
@@ -1027,6 +1028,22 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		scp.triggerDisplays.Refresh()
 	}
 }
+func getBaseTimeUnit(timeUnitStr string) string {
+	if strings.HasPrefix(timeUnitStr, "ns") {
+		return " ns"
+	}
+	if strings.HasPrefix(timeUnitStr, "us") || strings.HasPrefix(timeUnitStr, "\u00B5s") {
+		return " us"
+	}
+	if strings.HasPrefix(timeUnitStr, "ms") {
+		return " ms"
+	}
+	if strings.HasPrefix(timeUnitStr, "s") {
+		return " s"
+	}
+	return " us"
+}
+
 func getIntervalUnitMultiplier(unit string) float64 {
 	switch unit {
 	case " ns":
@@ -1034,49 +1051,18 @@ func getIntervalUnitMultiplier(unit string) float64 {
 	case " us":
 		return 1e-7
 	case " ms":
-		return 1e-8
+		return 1e-4
 	case " s":
 		return 1e-1
 	}
 	return 1e-7 // default to us
 }
 
-func (scp *ScpDesc) onIntervalUnitChange(option string, ex selectscroll.Exception) {
-	if scp.triggerSource == dontCare {
-		return
-	}
-	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit = option
-
-	scp.intervalTimeLowerDisp.SetUnit(option)
-	scp.intervalTimeUpperDisp.SetUnit(option)
-	if scp.intervalTimeSingleDisp != nil {
-		scp.intervalTimeSingleDisp.SetUnit(option)
-	}
-
-	multiplier := getIntervalUnitMultiplier(option)
-	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
-	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
-
-	// Also update the single ΔT disp
-	if scp.intervalTimeSingleDisp != nil {
-		pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
-		var timeVal float64
-		if pwType == genericps.PwTypeLessThan {
-			timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
-		} else {
-			timeVal = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
-		}
-		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(timeVal / multiplier)))
-	}
-
-	scp.SaveSettings()
-}
-
 func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	if scp.triggerSource == dontCare {
 		return
 	}
-	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
 
 	minTime, maxTime := scp.getScreenTimeLimits()
@@ -1111,7 +1097,7 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	if scp.triggerSource == dontCare {
 		return
 	}
-	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
 
 	minTime, maxTime := scp.getScreenTimeLimits()
@@ -1147,7 +1133,7 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 	if scp.triggerSource == dontCare {
 		return
 	}
-	unit := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
+	unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 	valInSeconds := math.Round(v) * getIntervalUnitMultiplier(unit)
 
 	minTime, maxTime := scp.getScreenTimeLimits()
@@ -1313,14 +1299,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.triggerSettingMsg.IntervalTimeUpper = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
 	}
 
-	intervalUnits := []string{" ns", " us", " ms", " s"}
-	unitStr := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUnit
-	if unitStr == "" {
-		unitStr = " ms"
-	}
-	scp.intervalUnitSelect = selectscroll.NewSelectScroll(intervalUnits, scp.onIntervalUnitChange, unitStr)
-	addToTest(scp.intervalUnitSelect, intervalUnitSelectId)
-
+	unitStr := getBaseTimeUnit(scp.Settings.Time.Unit)
 	multiplier := getIntervalUnitMultiplier(unitStr)
 
 	scp.intervalTimeLowerDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
@@ -1356,7 +1335,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.intervalTimeSingleDisp.OnChanged = scp.onIntervalTimeSingleChange
 	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId)
 
-	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect, scp.intervalUnitSelect)
+	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect)
 	scp.boxIntervalTimeRange = container.New(layout.NewVBoxLayout(), scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)
 	scp.boxIntervalTimeSingle = container.New(layout.NewVBoxLayout(), scp.intervalTimeSingleDisp)
 	boxIntervalTimeValues := container.New(&fixedMaxLayout{}, scp.boxIntervalTimeSingle, scp.boxIntervalTimeRange)

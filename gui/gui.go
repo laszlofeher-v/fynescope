@@ -177,9 +177,7 @@ type (
 		boxTriggerHysteresisDisp   *fyne.Container
 		triggerLowerThresholdDisp  *disp7.DigitArray
 		triggerLowerHysteresisDisp *disp7.DigitArray
-		// boxTriggerLowerDisp removed
 		intervalTypeSelect           *selectscroll.SelectScroll
-		intervalUnitSelect           *selectscroll.SelectScroll
 		intervalTimeLowerDisp        *disp7.DigitArray
 		intervalTimeUpperDisp        *disp7.DigitArray
 		intervalTimeSingleDisp       *disp7.DigitArray
