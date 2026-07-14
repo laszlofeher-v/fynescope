@@ -86,6 +86,13 @@ func (scp *ScpDesc) initStatus() {
 		}
 	}()
 
+	statusMap := map[string]StatusCode{
+		ErrFrequencyCannotBeDetected:                StatusFrequencyCannotBeDetected,
+		ErrWrongFfTrigger:                           StatusWrongFfTrigger,
+		"Cannot zoom out beyond Time Zoom snapshot": StatusCannotZoomOut,
+		"":                                          StatusNone,
+	}
+
 	scp.psControl.DisplayStatus = func(s string, errorType control.ScopeError) {
 		if errorType == control.Fatal {
 			if scp.running {
@@ -97,16 +104,10 @@ func (scp *ScpDesc) initStatus() {
 		}
 
 		code := StatusGeneralError
-		if s == ErrFrequencyCannotBeDetected {
-			code = StatusFrequencyCannotBeDetected
-		} else if s == ErrWrongFfTrigger {
-			code = StatusWrongFfTrigger
+		if val, ok := statusMap[s]; ok {
+			code = val
 		} else if strings.HasPrefix(s, "Error: Channel ") && strings.HasSuffix(s, " has no active generator input") {
 			code = StatusChannelNoActiveGen
-		} else if s == "Cannot zoom out beyond Time Zoom snapshot" {
-			code = StatusCannotZoomOut
-		} else if s == "" {
-			code = StatusNone
 		}
 
 		msg := statusMessage{text: s, code: code}
