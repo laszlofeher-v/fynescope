@@ -247,6 +247,9 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 
 				etsDrawDot := func() {
 					startX := float64(bounds.Min.X)
+					if !sv.isTimeZoom {
+						startX -= sv.scp.timeZoomBoxOffset * unit
+					}
 					offsetFloat := float64(zeroOffset) + yOffset
 					s := displayBuffer[0]
 					if channel.Inverted {
@@ -281,6 +284,9 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				// Raw drawer
 				etsDrawRaw := func() {
 					startX := float64(bounds.Min.X) //+ float64(sv.scp.controlXRoundError)*unit
+					if !sv.isTimeZoom {
+						startX -= sv.scp.timeZoomBoxOffset * unit
+					}
 					offsetFloat := float64(zeroOffset) + yOffset
 					prevX := startX
 					s := displayBuffer[0]
@@ -331,6 +337,9 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 				// Linear interpolation 1
 				etsDrawLinear := func() {
 					startX := float64(bounds.Min.X)
+					if !sv.isTimeZoom {
+						startX -= sv.scp.timeZoomBoxOffset * unit
+					}
 					offsetFloat := float64(zeroOffset) + yOffset
 					prevX := startX
 					s := displayBuffer[0]
