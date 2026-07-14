@@ -249,10 +249,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 
 			// Update single ΔT disp
 			if tp.scp.intervalTimeSingleDisp != nil {
-				unit := channel.Trigger.IntervalTimeUnit
-				if unit == "" && tp.scp.intervalUnitSelect != nil {
-					unit = tp.scp.intervalUnitSelect.Selected
-				}
+				unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				val := int(math.Round(singleTime / multiplier))
 				if tp.scp.intervalTimeSingleDisp.Value != val {
@@ -324,10 +321,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 
 			// Update time disp7s
 			if tp.scp.intervalTimeLowerDisp != nil {
-				unit := channel.Trigger.IntervalTimeUnit
-				if unit == "" && tp.scp.intervalUnitSelect != nil {
-					unit = tp.scp.intervalUnitSelect.Selected
-				}
+				unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				val := int(math.Round(channel.Trigger.IntervalTimeLower / multiplier))
 				if tp.scp.intervalTimeLowerDisp.Value != val {
@@ -337,10 +331,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 			}
 
 			if tp.scp.intervalTimeUpperDisp != nil {
-				unit := channel.Trigger.IntervalTimeUnit
-				if unit == "" && tp.scp.intervalUnitSelect != nil {
-					unit = tp.scp.intervalUnitSelect.Selected
-				}
+				unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				val := int(math.Round(channel.Trigger.IntervalTimeUpper / multiplier))
 				if tp.scp.intervalTimeUpperDisp.Value != val {

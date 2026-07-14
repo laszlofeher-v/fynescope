@@ -49,7 +49,6 @@ type (
 		LowerMv           int32                        `yaml:"lowermv"`
 		LowerHysteresis   int32                        `yaml:"lowerhysteresis"`
 		IntervalType      genericps.PulseWidthType     `yaml:"intervaltype"`
-		IntervalTimeUnit  string                       `yaml:"intervaltimeunit"`
 		IntervalTimeLower float64                      `yaml:"intervaltimelower"`
 		IntervalTimeUpper float64                      `yaml:"intervaltimeupper"`
 	}
