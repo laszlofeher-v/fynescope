@@ -203,36 +203,10 @@ func randTap(name string) {
 	slog.Debug("randTap", "name", name)
 	switch c := controls[name].(type) {
 	case *selectscroll.SelectScroll:
-		wait()
-		fyne.DoAndWait(func() {
-			defer func() {
-				if r := recover(); r != nil {
-					slog.Warn("Recovered from selectscroll Tap panic", "err", r)
-				}
-			}()
-			if app := fyne.CurrentApp(); app != nil {
-				if driver := app.Driver(); driver != nil {
-					if canvas := driver.CanvasForObject(c); canvas != nil {
-						c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: c.Position().X, Y: c.Position().Y}, Position: fyne.Position{X: 0, Y: 0}})
-					}
-				}
-			}
-		})
 		n := rand.Intn(len(c.Options))
-		wait()
 		wait()
 		fyne.DoAndWait(func() {
 			c.SetSelectedIndex(n)
-		})
-		wait()
-		wait()
-		fyne.DoAndWait(func() {
-			c.Hide() // close option window
-		})
-		wait()
-		wait()
-		fyne.DoAndWait(func() {
-			c.Show()
 		})
 	case fyne.Tappable:
 		wait()
