@@ -160,7 +160,6 @@ func (ps *PsDesc) GetValuesAsync(startIndex, noOfSamples, downSampleRatio uint32
 
 func (ps *PsDesc) GetValues(startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
-	//	fmt.Println("cgo GetValues 1 reqNoOfSamples:", reqNoOfSamples)
 	stat := C.ps3000aGetValues((C.short)(ps.handle),
 		(C.uint)(startIndex),
 		(*C.uint)(&reqNoOfSamples),
@@ -168,11 +167,9 @@ func (ps *PsDesc) GetValues(startIndex, reqNoOfSamples, downSampleRatio uint32,
 		(C.PS3000A_RATIO_MODE)(downSampleRatioMode),
 		(C.uint)(segmentIndex),
 		(*C.short)(&overflow))
-	//	fmt.Println("cgo GetValues 2")
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValues:  %s", psc.StatStr(int(stat)))
 	}
-	//	fmt.Println("cgo GetValues 3 reqNoOfSamples:", reqNoOfSamples)
 	noOfSamples = reqNoOfSamples
 	return
 }
@@ -332,8 +329,6 @@ func (ps *PsDesc) GetTimebase2(timeBase uint32, noOfSamples int32, overSample in
 }
 
 func (ps *PsDesc) SetChannel(channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
-	// log.Println("channel=", channel, " enabled=", enabled, " dcCoupled=", couplingType,
-	// 	" range=", voltageRange, " offset=", analogOffset)
 	stat := C.ps3000aSetChannel((C.short)(ps.handle), (C.PS3000A_CHANNEL)(channel), (C.short)(boolToint16(enabled)),
 		(C.PS3000A_COUPLING)(couplingType), (C.PS3000A_RANGE)(voltageRange),
 		(C.float)(analogOffset))
@@ -384,8 +379,6 @@ func (ps *PsDesc) SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uin
 }
 
 func (ps *PsDesc) SetDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	// log.Println("handle=", ps.handle, " channel=", ch, " &bufferMax[0]", &bufferMin[0], " &bufferMax[0]", &bufferMin[0],
-	// 	" len=", len(bufferMax), "segmentIndex", segmentIndex, " RatioMode=", mode)
 	stat := C.ps3000aSetDataBuffers((C.short)(ps.handle), (C.PS3000A_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS3000A_RATIO_MODE)(mode))
@@ -396,8 +389,6 @@ func (ps *PsDesc) SetDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, seg
 }
 
 func (ps *PsDesc) SetUnscaledDataBuffers(ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	// log.Println("handle=", ps.handle, " channel=", ch, " &bufferMax[0]", &bufferMin[0], " &bufferMax[0]", &bufferMin[0],
-	// 	" len=", len(bufferMax), "segmentIndex", segmentIndex, " RatioMode=", mode)
 	stat := C.ps3000aSetDataBuffers((C.short)(ps.handle), (C.PS3000A_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS3000A_RATIO_MODE)(mode))
@@ -472,8 +463,6 @@ func (ps *PsDesc) RunBlock(noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
-	//	fmt.Println("noOfPreTriggerSamples=", noOfPreTriggerSamples, " noOfPostTriggerSamples=", noOfPostTriggerSamples,
-	//		" timeBase=", timeBase, " overSample=", overSample, " segmentIndex=", segmentIndex)
 	stat := C.ps3000aRunBlock((C.short)(ps.handle), (C.int)(noOfPreTriggerSamples),
 		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase), (C.short)(overSample),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps3000aBlockReady)(C.lpBlockReady),
@@ -487,7 +476,6 @@ func (ps *PsDesc) RunBlock(noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 func (ps *PsDesc) SetTriggerChannelProperties(channelProperties []TriggerChannelProperties, auxOutputEnable bool,
 	autoTriggerMs int32) (err error) {
 	var cTriggerChannelProperties []C.PS3000A_TRIGGER_CHANNEL_PROPERTIES
-	// log.Println("SetTriggerChannelProperties autoTriggerMs:", autoTriggerMs)
 	if len(channelProperties) > 0 {
 		cTriggerChannelProperties = make([]C.PS3000A_TRIGGER_CHANNEL_PROPERTIES, len(channelProperties))
 		for i := range channelProperties {

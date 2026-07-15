@@ -185,7 +185,6 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	lw.enableRefresh()
 	tp.enableRefresh()
 	slog.Debug("setDispOffset")
-	// tp.scp.psControl.Restart()
 	if tp.raster() != nil {
 		tp.raster().Refresh()
 	}
@@ -206,9 +205,7 @@ func (tp *triggerPointViewer) draw() {
 	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
 	}
-	// slog.Debug("triggerPointViewer draw 1")
 	if tp.scp.triggerSource != dontCare {
-		// slog.Debug("triggerPointViewer draw 2")
 		channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 		if channel.TriggerSource {
 			x, y := tp.timeMv2xy(channel.Trigger.Mv)
@@ -230,9 +227,6 @@ func (tp *triggerPointViewer) draw() {
 			if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 				tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 				tp.scp.triggerThresholdDisp.Refresh()
-				// if tp.scp.psControl.TriggerSetting.Mode == control.ETS {
-				// tp.scp.psControl.Restart()
-				// }
 			}
 		}
 	}

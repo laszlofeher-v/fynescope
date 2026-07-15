@@ -63,7 +63,6 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 		msg.WaveType = scp.Settings.GenPanel.WaveType
 		msg.OffsetVoltage = scp.Settings.GenPanel.OffsetVoltage
 		msg.PkToPK = scp.Settings.GenPanel.Amplitude * 2
-		// msg.WaveType = scp.waveType
 	} else {
 		msg.DwellTime = 0
 		msg.OffsetVoltage = 0
@@ -105,12 +104,6 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		waveTypeOptions []string
 		sweepOptions    = []string{sweepOff, sweepUp, sweepDown, sweepUpDown, sweepDownUp}
 		reloadData      chan struct{}
-
-		// triggerCalculationOptions = []string{"Interpolated", "Fine-grained"}
-		// triggerCalculationModes   = map[string]int{
-		// 	triggerCalculationOptions[0]: sim.InterpolatedTrigger,
-		// 	triggerCalculationOptions[1]: sim.FineGrainedTrigger,
-		// }
 	)
 	sortWaveTypes := func() {
 		type keyValDesc struct {
@@ -128,14 +121,10 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			"HalfSine":  genericps.HalfSine,
 			"DcVoltage": genericps.DcVoltage,
 		}
-		// log.Println("Wave consts:", genericps.Sine, genericps.Square,
-		//genericps.Triangle, genericps.RampUp, genericps.RampDown, genericps.SinC,
-		// genericps.Gaussian, genericps.HalfSine, genericps.DcVoltage)
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
 			keyVal = append(keyVal, keyValDesc{key, val})
 		}
-		// log.Println("keyVal:", keyVal)
 		sort.Slice(keyVal, func(i, j int) bool {
 			return keyVal[i].val < keyVal[j].val
 		})
@@ -143,13 +132,10 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		for i, kv := range keyVal {
 			waveTypeOptions[i] = kv.key
 		}
-		// log.Println(waveTypeOptions)
 	}
 
 	var newGenSettings func(undockable bool) (box *fyne.Container, err error)
 	newGenSettings = func(undockable bool) (box *fyne.Container, err error) {
-
-		// func (scp *ScpDesc) newGenSettings(undockable bool) (box *fyne.Container, err error) {
 		var (
 			top, analog, digital, sweepBox, frqBox *fyne.Container
 			freqSetAnalog, ampSetAnalog            *sliderscroll.SliderScroll
@@ -159,9 +145,8 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			stepFreq                               *disp7.DigitArray
 			offset                                 *disp7.DigitArray
 			amp                                    *disp7.DigitArray
-			// raiseFallTimeDisp, noiseAmplitudeDisp, phaseNoiseDisp *disp7.DigitArray
-			dwellTime    *disp7.DigitArray
-			undockButton *widget.Button
+			dwellTime                              *disp7.DigitArray
+			undockButton                           *widget.Button
 		)
 		if reloadData == nil {
 			reloadData = make(chan struct{})
@@ -227,20 +212,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		waveTypeChanged := func(option string, e selectscroll.Exception) {
-			// scp.waveType = waveTypeMap[option]
 			scp.Settings.GenPanel.WaveType = waveTypeMap[option]
-			// if scp.psControl.Con.ID == genericps.SimId {
-			// 	switch scp.Settings.Generator.WaveType {
-			// 	case genericps.Square:
-			// 		fallthrough
-			// 	case genericps.RampUp:
-			// 		fallthrough
-			// 	case genericps.RampDown:
-			// 		raiseFallTimeDisp.Show()
-			// 	default:
-			// 		raiseFallTimeDisp.Hide()
-			// 	}
-			// }
 			scp.applyInternalGenSettings(check.Checked)
 		}
 		sweepChanged := func(option string, e selectscroll.Exception) {
@@ -333,7 +305,6 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		ampSetAnalog.SilentSetValue(float64(scp.Settings.GenPanel.Amplitude))
 		addToTest(ampSetAnalog, genAmpdSetId)
 		ampSetAnalog.OnChanged = ampChanged
-		// fractionWidth := 2
 		disp7Width := fractionWidth
 		f := int(math.Round(genericps.SineMaxFrequency))
 		for f > 0 {
@@ -365,7 +336,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
-			disp7.DefaultVCursorSpace, "∆t   :", " s") //TODO change unit
+			disp7.DefaultVCursorSpace, "∆t   :", " s")
 		if err != nil {
 			return
 		}
