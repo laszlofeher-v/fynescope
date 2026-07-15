@@ -25,19 +25,18 @@ import (
 
 const (
 	nsUsMssubSetIndex = 3
-	// psSubSetIndex     = 7
-	picoSec       = "ps"
-	nanoSec       = "ns"
-	microSec      = "µs"
-	milliSec      = "ms"
-	sec           = "s"
-	min           = "min"
-	div           = "/div"
-	dot           = "Dot"
-	raw           = "Raw"
-	linear        = "Linear"
-	sinc          = "Sinc"
-	autoTriggerMs = 1000 // TODO make it adjustable
+	picoSec           = "ps"
+	nanoSec           = "ns"
+	microSec          = "µs"
+	milliSec          = "ms"
+	sec               = "s"
+	min               = "min"
+	div               = "/div"
+	dot               = "Dot"
+	raw               = "Raw"
+	linear            = "Linear"
+	sinc              = "Sinc"
+	autoTriggerMs     = 1000 // TODO make it adjustable
 )
 
 // Interval type option string constants.
@@ -613,7 +612,6 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				scp.triggerTypeSelect.Refresh()
 			}
 			scp.triggerSource = genericps.ChA // only channel A is allowed
-			//TODO Is it ps2000 specific?
 			channelViewer := &scp.channelViewers[genericps.ChA]
 			channel := &scp.Settings.Channels[genericps.ChA]
 			channelViewer.enableCheckbox.Set()
@@ -678,7 +676,6 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 }
 
 func (scp *ScpDesc) updateTriggerSourceState(option string) {
-	//TODO review and refactor
 	if scp.triggerSource == dontCare || int(scp.triggerSource) >= len(scp.Settings.Channels) {
 		return
 	}
@@ -814,7 +811,6 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval || option == settings.TriggerTypePulseWidth) {
-		// scp.StopRunning()
 		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 	} else if scp.status != nil && scp.status.Code() == StatusWrongFfTrigger {
 		scp.psControl.DisplayStatus("", control.Info)
@@ -896,7 +892,6 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 	intV := int32(math.Round(v))
 	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
-		// if intV > upperMv {
 		if intV > upperMv-genericps.MinThresholdDiff {
 			intV = upperMv - genericps.MinThresholdDiff
 			scp.triggerLowerThresholdDisp.SilentSetValue(int(intV))
@@ -1241,9 +1236,6 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	tType := triggerTypes[scp.Settings.Trigger.Type]
-	slog.Debug("trg", "tType", tType)
-	slog.Debug("set", "Trigger", scp.Settings.Trigger)
-	slog.Debug("trg", "triggerTypes", triggerTypes)
 	if tType != control.Window && tType != control.Interval {
 		scp.triggerLowerThresholdDisp.Hide()
 		scp.triggerLowerHysteresisDisp.Hide()

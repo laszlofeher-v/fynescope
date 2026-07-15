@@ -196,7 +196,6 @@ func randKey(name string) {
 		})
 		wait()
 	default:
-		// log.Printf("%s cannot use type %T\n", name, c)
 	}
 }
 func randTap(name string) {
@@ -391,7 +390,6 @@ func scroll(name string, n int) {
 			e.Scrolled.DY = delta
 			e.AbsolutePosition = ap
 			e.Position = p
-			//e.PointEvent=
 			fyne.DoAndWait(func() {
 				c.Scrolled(e)
 			})
@@ -424,7 +422,6 @@ func scroll(name string, n int) {
 			e.Scrolled.DY = delta
 			e.AbsolutePosition = ap
 			e.Position = p
-			//e.PointEvent=
 			fyne.DoAndWait(func() {
 				c.Scrolled(e)
 			})
@@ -469,7 +466,6 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 	scroll(genStepFreqId, 5)
 	for i := 0; i < 1; i++ {
 		randTap(runblockButtonId)
-		//imgCheck(imgName)
 		tap(themeChangeActionId)
 		drag(genFreqSetId, 100000)
 		tap(genCheckId)
@@ -495,10 +491,8 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		scroll(vRangeId+"B", -2)
 		scroll(vRangeId+"C", -3)
 		scroll(genFreqSetId, -500)
-		// log.Println(1)
 		tap(chEnableId + "A")
 		tap(genCheckId)
-		// log.Println(2)
 		tap(runblockButtonId)
 		tap(themeChangeActionId)
 		wait()
@@ -569,7 +563,6 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 	for time.Now().Before(deadline) {
 		wait()
 		control = rand.Intn(len(controls))
-		// slog.Debug("name", "name", a[control], "short", a[control][0:3])
 		var targetTab int
 		if len(a[control]) >= 2 && a[control][0:2] == "ff" {
 			targetTab = 3
@@ -595,12 +588,10 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			case 0:
 				n := rand.Intn(32) - 16
 				randDrag(a[control], float32(n))
-				// log.Println(k, a[j])
 			case 1:
 				n = rand.Intn(10) - 5
 				randScroll(a[control], n)
 			case 2:
-				// log.Println(control, a)
 				randTap(a[control])
 			case 3:
 				randKey(a[control])

@@ -402,13 +402,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	}
 	inverted := func(c bool) {
 		scp.Settings.Channels[chIndex].Inverted = c
-		// channel.inverted = c
-		//		fmt.Println("inverted ", chIndex, chName, c)
 		scp.ResetFfSweep()
 		scp.clearAllFtPersistentLayers()
 		scp.clearAllDftPersistentLayers()
 		scp.SaveSettings()
-		//		setChannel()
 	}
 	x10Changed := func(c bool) {
 		scp.changeChannelX10(chIndex, c)
