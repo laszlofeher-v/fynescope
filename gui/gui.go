@@ -595,22 +595,9 @@ func (scp *ScpDesc) build2000Gui() {
 		activeRasterContainer.Refresh()
 
 		if scp.running {
-
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
 				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth) {
-					// scp.StopRunning()
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
-				} else {
-					// Force block mode and ensure a trigger is set for f(v) and f(f)
-					// scp.triggerSettingMsg.Mode = control.Auto
-					// if scp.triggerSource == dontCare {
-					// 	// Set arbitrary simple trigger on ChA if none selected
-					// 	scp.triggerSource = chA
-					// 	scp.Settings.Channels[chA].TriggerSource = true
-					// 	scp.triggerSettingMsg.Source = chA
-					// 	scp.triggerSettingMsg.Enabled = true
-					// 	scp.triggerSettingMsg.Mv = 0
-					// }
 				}
 			}
 
@@ -724,19 +711,6 @@ func (scp *ScpDesc) build2000Gui() {
 		if !scp.running {
 			scp.clearAllFtPersistentLayers()
 			scp.clearAllDftPersistentLayers()
-			// if scp.controlTab.SelectedIndex() == fvTabIndex || scp.controlTab.SelectedIndex() == ffTabIndex {
-			// 	// Force block mode and ensure a trigger is set for f(v) and f(f)
-			// 	scp.triggerSettingMsg.Mode = control.Auto
-			// 	if scp.triggerSource == dontCare {
-			// 		?????
-			// 		// Set arbitrary simple trigger on ChA if none selected
-			// 		scp.triggerSource = chA
-			// 		scp.Settings.Channels[chA].TriggerSource = true
-			// 		scp.triggerSettingMsg.Source = chA
-			// 		scp.triggerSettingMsg.Enabled = true
-			// 		scp.triggerSettingMsg.Mv = 0
-			// 	}
-			// }
 			if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
