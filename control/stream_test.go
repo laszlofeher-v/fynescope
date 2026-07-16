@@ -31,8 +31,6 @@ func TestStreamModeTransition(t *testing.T) {
 		stateChannel:           make(chan state, 1),
 		restartChannel:         make(chan struct{}, 1),
 		stopChannel:            make(chan struct{}, 1),
-		SetMaxScreenTimeCh:     make(chan float64, 1),
-		getMaxScreenTimeCh:     make(chan *getMaxScreenTimeMsg, 1),
 		SetChannelCh:           make(chan *settings.ChSettings, 1),
 		getChannelCh:           make(chan *getChannelMsg, 1),
 		getNumOfEnabledCh:      make(chan *getNumOfEnabledChMsg, 1),
@@ -51,13 +49,11 @@ func TestStreamModeTransition(t *testing.T) {
 	psControl.StreamEnabled.Store(true)
 	psControl.getChannel.newSettings = make(chan bool, 1)
 	psControl.getNumOfEnabled.n = make(chan int, 1)
-	psControl.getMaxScreenTime.newSetting = make(chan bool, 1)
 	psControl.getScopeScreenWidth.newSetting = make(chan bool, 1)
 	psControl.getInterpolationMode.newSetting = make(chan bool, 1)
 	psControl.getGenerator.newSetting = make(chan bool, 1)
 	psControl.getTrigger.newSettings = make(chan bool, 1)
 
-	go psControl.screenTimeMonitor()
 	go psControl.channelStateMachine(4)
 	go psControl.generatorMonitor()
 	go psControl.simGeneratorMonitor()
@@ -68,7 +64,7 @@ func TestStreamModeTransition(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Start with maxScreenTime < StreamThreshold
-	psControl.SetMaxScreenTimeCh <- 1.0 // 1.0 < 2.1
+	psControl.SetMaxScreenTime(1.0) // 1.0 < 2.1
 	time.Sleep(10 * time.Millisecond)
 
 	// Run stateMachine in a background goroutine
@@ -79,7 +75,7 @@ func TestStreamModeTransition(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Update maxScreenTime >= StreamThreshold
-	psControl.SetMaxScreenTimeCh <- 3.0 // 3.0 >= 2.1
+	psControl.SetMaxScreenTime(3.0) // 3.0 >= 2.1
 	time.Sleep(10 * time.Millisecond)
 
 	// Trigger restart to make blockMode re-evaluate and transition to streamMode
