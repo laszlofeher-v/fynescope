@@ -1808,6 +1808,14 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 		scp.timeZoomScopeFullScreen = nil
 		scp.timeZoomScopeSignalScreen = nil
 		scp.timeZoomDrawers = nil
+		scp.timeZoomBoxOffset = 0
+		scp.setMaxScreenTime()
+		scp.clearAllFtPersistentLayers()
+		scp.clearAllDftPersistentLayers()
+		scp.refreshRasters()
+		if scp.ftBottomLabelViewer != nil {
+			scp.ftBottomLabelViewer.(*timeLabelViewer).enableRefresh()
+		}
 	})
 
 	scp.timeZoomMaxScreenTime = scp.maxScreenTime
