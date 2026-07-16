@@ -1126,7 +1126,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 		// For DFT, we want at least 2 * Bins samples to avoid heavy zero padding
 		samples := float64(scp.Settings.Dft.Bins * 2)
 		scp.maxScreenTime = samples / fs
-		scp.psControl.SetMaxScreenTimeCh <- scp.maxScreenTime
+		scp.psControl.SetMaxScreenTime(scp.maxScreenTime)
 		scp.psControl.SetScopeScreenWidth(samples)
 	case ffTabIndex:
 		// f(f) Bode mode: automatically adapt the capture window so there are
@@ -1168,7 +1168,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 
 		if needsUpdate {
 			scp.maxScreenTime = targetScreenTime
-			scp.psControl.SetMaxScreenTimeCh <- scp.maxScreenTime
+			scp.psControl.SetMaxScreenTime(scp.maxScreenTime)
 		}
 
 		// Use the f(f) raster pixel width if available, else fall back to f(t) width.
@@ -1189,7 +1189,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 			sampleMultiplier = scp.timeZoomMaxScreenTime / scp.maxScreenTime
 		}
 
-		scp.psControl.SetMaxScreenTimeCh <- reqScreenTime
+		scp.psControl.SetMaxScreenTime(reqScreenTime)
 		if scp.ftScopeSignalScreen != nil {
 			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx() - 1) * sampleMultiplier)
 		} else {

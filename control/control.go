@@ -102,11 +102,6 @@ type (
 		newSetting chan bool
 	}
 
-	getMaxScreenTimeMsg struct {
-		maxScreenTime float64
-		newSetting    chan bool
-	}
-
 	GeneratorDesc struct {
 		OffsetVoltage                                       int32
 		PkToPK                                              uint32
@@ -164,10 +159,6 @@ type (
 		SetScopeScreenWidthCh chan int32
 		getScopeScreenWidthCh chan *getScopeScreenWidthMsg
 		getScopeScreenWidth   getScopeScreenWidthMsg
-
-		SetMaxScreenTimeCh chan float64
-		getMaxScreenTimeCh chan *getMaxScreenTimeMsg
-		getMaxScreenTime   getMaxScreenTimeMsg
 
 		triggerSetting       TriggerDesc
 		chEnabled            []atomic.Bool
@@ -240,10 +231,6 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	psControl.getScopeScreenWidthCh = make(chan *getScopeScreenWidthMsg)
 	psControl.getScopeScreenWidth.newSetting = make(chan bool)
 
-	psControl.SetMaxScreenTimeCh = make(chan float64)
-	psControl.getMaxScreenTimeCh = make(chan *getMaxScreenTimeMsg)
-	psControl.getMaxScreenTime.newSetting = make(chan bool)
-
 	psControl.SetTriggerCh = make(chan *TriggerDescMsg)
 	psControl.getTriggerCh = make(chan *getTriggerMsg)
 	psControl.getTrigger.triggerSettings = &psControl.triggerSetting
@@ -253,16 +240,10 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	go psControl.generatorMonitor()
 	go psControl.simGeneratorMonitor()
 	go psControl.interpolationMonitor()
-	go psControl.screenTimeMonitor()
 	return psControl
 }
 
-func (psControl *PscDesc) setMaxScreenTime() {
-	psControl.getMaxScreenTimeCh <- &psControl.getMaxScreenTime
-	if <-psControl.getMaxScreenTime.newSetting { // wait for data
-		psControl.maxScreenTime = psControl.getMaxScreenTime.maxScreenTime
-	}
-}
+
 func (psControl *PscDesc) getAnalogueOffset(voltageRange int,
 	coupling genericps.Coupling) (maximumVoltage, minimumVoltage float32, err error) {
 	maximumVoltage, minimumVoltage, err =
@@ -311,7 +292,6 @@ func (psControl *PscDesc) setIpMode() {
 
 func (psControl *PscDesc) setEverything() (err error) {
 	psControl.setIpMode()
-	psControl.setMaxScreenTime()
 	err = psControl.setGenerator()
 	if err != nil {
 		slog.Error("setGenerator", "error", err)
@@ -353,6 +333,13 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 func (psControl *PscDesc) SetScopeScreenWidth(w float64) {
 	if psControl.scopeScreenWidth != w {
 		psControl.scopeScreenWidth = w
+		psControl.requestRestart()
+	}
+}
+
+func (psControl *PscDesc) SetMaxScreenTime(t float64) {
+	if psControl.maxScreenTime != t {
+		psControl.maxScreenTime = t
 		psControl.requestRestart()
 	}
 }
