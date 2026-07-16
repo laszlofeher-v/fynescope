@@ -123,7 +123,7 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	bounds := tp.signalScreen().Bounds()
-	w := float64(bounds.Dx())
+	w := float64(bounds.Dx() - 1)
 
 	if w <= 0 || tp.maxScreenTime() <= 0 {
 		return
@@ -197,7 +197,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
 		bounds := tp.signalScreen().Bounds()
 
-		w := float64(bounds.Dx())
+		w := float64(bounds.Dx() - 1)
 
 		if w <= 0 || tp.maxScreenTime() <= 0 {
 			return

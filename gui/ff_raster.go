@@ -114,7 +114,10 @@ func (ff *ffViewer) draw() {
 		ff.labelBounds = make(map[int]image.Rectangle)
 	}
 	bounds := ff.scp.ffScopeSignalScreen.Bounds()
-	w := float64(bounds.Dx())
+	w := float64(bounds.Dx() - 1)
+	if w <= 0 {
+		w = 1
+	}
 	h := float64(bounds.Dy())
 
 	// Background and Grid

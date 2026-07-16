@@ -51,7 +51,10 @@ func (fv *fvViewer) draw() {
 
 	// Draw grid
 	gridCol := fv.scp.theme.Color(ColorNameDivision, 0)
-	w := float64(bounds.Dx())
+	w := float64(bounds.Dx() - 1)
+	if w <= 0 {
+		w = 1
+	}
 	h := float64(bounds.Dy())
 
 	// Find X channel (argument)

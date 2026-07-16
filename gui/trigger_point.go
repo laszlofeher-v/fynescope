@@ -150,7 +150,7 @@ func (tp *triggerPointViewer) timeMv2xy(mv int32) (x, y float32) {
 		triggerTimeOffset -= tp.scp.timeZoomBoxOffset
 	}
 	x = float32(bounds.Min.X) + float32(triggerTimeOffset)*
-		float32(tp.signalScreen().Bounds().Dx())/float32(tp.maxScreenTime())
+		float32(tp.signalScreen().Bounds().Dx()-1)/float32(tp.maxScreenTime())
 	return
 }
 
