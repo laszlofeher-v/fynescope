@@ -38,8 +38,8 @@ type (
 		inspectorDispVCur              []float32
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
-		instV      []float32
-		instVCur   []float32
+		instV             []float32
+		instVCur          []float32
 		isTimeZoom        bool
 		isDraggingZoomBox bool
 	}
@@ -73,7 +73,7 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 			pixelOffset := w * sv.scp.timeZoomBoxOffset / sv.scp.timeZoomMaxScreenTime
 			leftEdge := float32(float64(bounds.Min.X) + pixelOffset)
 			rightEdge := float32(float64(bounds.Min.X) + pixelOffset + w*ratio)
-			
+
 			// If click is within the zoom box bounds (with some margin), start dragging
 			margin := float32(10.0)
 			if x >= leftEdge-margin && x <= rightEdge+margin {
@@ -82,7 +82,7 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 				// Center box on click
 				sv.isDraggingZoomBox = true
 				boxCenterPixel := (leftEdge + rightEdge) / 2
-				dt := float64(x - boxCenterPixel) * sv.scp.timeZoomMaxScreenTime / w
+				dt := float64(x-boxCenterPixel) * sv.scp.timeZoomMaxScreenTime / w
 				sv.scp.addTimeZoomBoxOffset(dt)
 				sv.scp.clearAllFtPersistentLayers()
 				sv.scp.clearAllDftPersistentLayers()
@@ -420,11 +420,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
 					float64(sv.scp.controlXRoundError) +
 					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
-				
+
 				if !sv.isTimeZoom {
 					t0 -= sv.scp.timeZoomBoxOffset * unit
 				}
-				
+
 				t0 -= extra * deltaT
 
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
@@ -591,6 +591,9 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 	unit := w / sv.scp.maxScreenTime
 	tAtCursor := (float64(sv.mouseX)-float64(bounds.Min.X))/unit - sv.scp.Settings.Time.TriggerTimeOffset
+	if !sv.isTimeZoom {
+		tAtCursor += sv.scp.timeZoomBoxOffset
+	}
 
 	var info []struct {
 		text string
@@ -641,11 +644,10 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 			var v float32
 			if sv.scp.triggerSettingMsg.Mode == control.ETS {
-				// Find nearest in ETS
-				etsDx := w / (sv.scp.maxScreenTime * 1e15)
-				startX := float64(bounds.Min.X)
+				// // Find nearest in ETS
+				// etsDx := w / (sv.scp.maxScreenTime * 1e15)
 				// targetTime is in femtoseconds relative to trigger point
-				targetTime := (float64(sv.mouseX)-startX)/etsDx - sv.scp.Settings.Time.TriggerTimeOffset*1e15
+				targetTime := tAtCursor * 1e15
 
 				// Binary search or linear search in etsBuffer
 				bestIdx := 0
