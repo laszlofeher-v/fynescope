@@ -43,7 +43,7 @@ func newFvViewer(img rasterImage, imgRect image.Rectangle, scp *ScpDesc) *fvView
 }
 
 func (fv *fvViewer) draw() {
-	if !fv.scp.shouldDrawRaster(fvTabIndex) {
+	if !fv.scp.shouldDrawRaster(fvTabIndex) || fv.scp.fvScopeSignalScreen == nil {
 		return
 	}
 	bounds := fv.scp.fvScopeSignalScreen.Bounds()
@@ -424,6 +424,9 @@ func (fv *fvViewer) formatVoltage(mv float32, vRange genericps.RangeEnum) string
 }
 
 func (fv *fvViewer) mouseInSignalScreen(x, y float32) bool {
+	if fv.scp.fvScopeSignalScreen == nil {
+		return false
+	}
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
 	return p.In(fv.scp.fvScopeSignalScreen.Bounds())
 }
@@ -486,6 +489,9 @@ func (fv *fvViewer) mouseUp(button desktop.MouseButton, x, y float32) {
 
 func (fv *fvViewer) mouseMoved(x, y float32) {
 	if fv.showInspector {
+		if fv.scp.fvScopeSignalScreen == nil {
+			return
+		}
 		fv.mouseX = x
 		fv.mouseY = y
 		bounds := fv.scp.fvScopeSignalScreen.Bounds()
@@ -531,12 +537,18 @@ func (fv *fvViewer) typedKey(x, y float32, keyName fyne.KeyName) {
 }
 
 func (fv *fvViewer) offsetNToFv(n int) float64 {
+	if fv.scp.fvScopeSignalScreen == nil {
+		return 0
+	}
 	h := float64(fv.scp.fvScopeSignalScreen.Bounds().Dy())
 	yRasterDiv := (h / float64(numberOfDivs)) / 5.0
 	return float64(n) * yRasterDiv
 }
 
 func (fv *fvViewer) snapYToFvN(y float64) int {
+	if fv.scp.fvScopeSignalScreen == nil {
+		return 0
+	}
 	h := float64(fv.scp.fvScopeSignalScreen.Bounds().Dy())
 	yRasterDiv := (h / float64(numberOfDivs)) / 5.0
 	return int(math.Round(y / yRasterDiv))
@@ -566,6 +578,9 @@ func (fv *fvViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 
 func (fv *fvViewer) dragged(dx, dy, x, y float32) {
 	if fv.showInspector {
+		if fv.scp.fvScopeSignalScreen == nil {
+			return
+		}
 		fv.mouseX = x
 		fv.mouseY = y
 		bounds := fv.scp.fvScopeSignalScreen.Bounds()
