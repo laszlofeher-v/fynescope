@@ -1173,9 +1173,9 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 
 		// Use the f(f) raster pixel width if available, else fall back to f(t) width.
 		if scp.ffScopeSignalScreen != nil {
-			scp.psControl.SetScopeScreenWidth(float64(scp.ffScopeSignalScreen.Bounds().Dx()))
+			scp.psControl.SetScopeScreenWidth(float64(scp.ffScopeSignalScreen.Bounds().Dx() - 1))
 		} else if scp.ftScopeSignalScreen != nil {
-			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()))
+			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx() - 1))
 		}
 	default:
 		// Time domain mode: use time/div
@@ -1191,7 +1191,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 
 		scp.psControl.SetMaxScreenTimeCh <- reqScreenTime
 		if scp.ftScopeSignalScreen != nil {
-			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()) * sampleMultiplier)
+			scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx() - 1) * sampleMultiplier)
 		} else {
 			// Estimate the expected F(t) signal screen width if it hasn't been drawn yet
 			w := float32(scp.Settings.Window.Width)

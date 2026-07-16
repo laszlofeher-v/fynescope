@@ -155,7 +155,7 @@ func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 	p := image.Point{X: int(x), Y: int(y)}
 	if p.In(tl.rect()) {
 		if !tl.isTimeZoom && tl.scp.timeZoomWindow != nil {
-			dt := float64(dx) * tl.scp.maxScreenTime / float64(tl.scp.ftScopeSignalScreen.Bounds().Dx())
+			dt := float64(dx) * tl.scp.maxScreenTime / float64(tl.scp.ftScopeSignalScreen.Bounds().Dx()-1)
 			tl.scp.addTimeZoomBoxOffset(dt)
 		} else {
 			tl.scp.addFtXOffset(float64(dx))
@@ -174,7 +174,7 @@ func (tl *timeLabelViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (tl *timeLabelViewer) scrolled(delta, x, y float32) {
-	nX := (float32(tl.scp.ftScopeSignalScreen.Bounds().Dx()) / float32(numberOfDivs)) / 10
+	nX := (float32(tl.scp.ftScopeSignalScreen.Bounds().Dx()-1) / float32(numberOfDivs)) / 10
 	tl.setDtDispXOffset(delta*nX, x, y)
 }
 

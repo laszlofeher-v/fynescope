@@ -67,7 +67,10 @@ func (sv *signalViewer) mouseIn(x, y float32) bool {
 func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	if sv.isTimeZoom && button == desktop.LeftMouseButton && sv.mouseIn(x, y) {
 		bounds := sv.scp.timeZoomScopeSignalScreen.Bounds()
-		w := float64(bounds.Dx())
+		w := float64(bounds.Dx() - 1)
+		if w <= 0 {
+			w = 1
+		}
 		ratio := sv.scp.maxScreenTime / sv.scp.timeZoomMaxScreenTime
 		if ratio < 1.0 {
 			pixelOffset := w * sv.scp.timeZoomBoxOffset / sv.scp.timeZoomMaxScreenTime
@@ -133,7 +136,10 @@ func (sv *signalViewer) mouseMoved(x, y float32) {
 func (sv *signalViewer) dragged(dx, dy, x, y float32) {
 	if sv.isTimeZoom && sv.isDraggingZoomBox {
 		bounds := sv.scp.timeZoomScopeSignalScreen.Bounds()
-		w := float64(bounds.Dx())
+		w := float64(bounds.Dx() - 1)
+		if w <= 0 {
+			w = 1
+		}
 		dt := float64(dx) * sv.scp.timeZoomMaxScreenTime / w
 		sv.scp.addTimeZoomBoxOffset(dt)
 		sv.scp.clearAllFtPersistentLayers()
@@ -170,7 +176,10 @@ func (sv *signalViewer) draw() {
 		bounds = sv.scp.ftScopeSignalScreen.Bounds()
 	}
 	h := float64(bounds.Dy())
-	w := float64(bounds.Dx())
+	w := float64(bounds.Dx() - 1)
+	if w <= 0 {
+		w = 1
+	}
 	if sv.isTimeZoom {
 		sv.scp.drawTzDivisions()
 	} else {
@@ -1060,7 +1069,7 @@ func (scp *ScpDesc) partitionFtScreen(w, h float32) {
 	scp.ftScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
 		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
 		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
-	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()))
+	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx() - 1))
 	scp.ftBottomLabelViewer = newTimelLabelViewer(scp.ftScopeFullScreen,
 		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
 			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, false)
