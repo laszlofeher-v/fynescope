@@ -154,9 +154,9 @@ func (tl *timeLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
 func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 	p := image.Point{X: int(x), Y: int(y)}
 	if p.In(tl.rect()) {
-		if !tl.isTimeZoom && tl.scp.timeZoomWindow != nil {
-			dt := float64(dx) * tl.scp.maxScreenTime / float64(tl.scp.ftScopeSignalScreen.Bounds().Dx()-1)
-			tl.scp.addTimeZoomBoxOffset(dt)
+		if tl.isTimeZoom && tl.scp.timeZoomWindow != nil {
+			dt := float64(dx) * tl.scp.timeZoomMaxScreenTime / float64(tl.scp.timeZoomScopeSignalScreen.Bounds().Dx()-1)
+			tl.scp.addTimeZoomBoxOffset(-dt)
 		} else {
 			tl.scp.addFtXOffset(float64(dx))
 			tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
