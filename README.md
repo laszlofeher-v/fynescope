@@ -62,6 +62,7 @@ The application can be compiled with different features enabled via build tags:
 
 - `noscope`: Build without the PicoScope C driver libraries (simulator mode only).
 - `scpi`: Include the external SCPI signal generator module (requires `libusb-1.0-0-dev`).
+- `web`: Include the read-only web server for sharing the GUI over the network via MJPEG streaming.
 
 **Build Examples:**
 
@@ -75,6 +76,12 @@ If you want to build the application with installed libps2000 driver and externa
 
 ```bash
 go build -tags=scpi -o fynescope .
+```
+
+If you want to build with simulator and web server support:
+
+```bash
+go build -tags="noscope,web" -o fynescope .
 ```
 
 If you want to build the application with installed libps2000 driver but without the SCPI/USB dependency: 
@@ -121,7 +128,22 @@ For more options, including displaying version, build date, and license informat
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
 | `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
+| `-webport` | `0` | Start a read-only web server on the specified port (requires `web` build tag, 0 to disable) |
 | `-about` | — | Print version, build date, and license info, then exit |
+
+## Web Server (Read-Only GUI Sharing)
+
+When compiled with the `web` build tag, `fynescope` can stream a live, read-only view of the GUI to any web browser on the network using MJPEG. This allows remote observation of the oscilloscope interface without requiring physical access to the machine.
+
+To enable it, start the application with the `-webport` flag:
+
+```bash
+./fynescope -sim -webport=8080
+```
+
+Then open `http://<host>:8080` in a web browser. The stream is read-only — browser users can observe the interface but cannot interact with it. The server binds to `0.0.0.0`, so it is accessible from other machines on the local network.
+
+*Note: If the application was compiled without the `web` build tag, specifying `-webport` will log a warning and the server will not start.*
 
 ## Interaction & Controls
 
