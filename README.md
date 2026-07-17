@@ -13,7 +13,7 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon next to the timebase label at the bottom of the plot opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
-- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators.
+- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. *Note: Sweeping at very low frequencies is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
 <p align="center">
   <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
 </p>
@@ -252,7 +252,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 |---|---|
 | `control/` | Channel state machine, screen time and ETS timing, interpolation modes, stream mode transitions, built-in generator state |
 | `control/scpi/` | SCPI command builder and parser |
-| `gui/` | FIR/IIR digital filter application, frequency conversion helpers, Bode sweep raster logic |
+| `gui/` | Modular graphical interface components (panels, drawers, tabs), time zoom logic, FIR/IIR digital filter application, frequency conversion helpers, Bode sweep raster logic |
 | `sim/` | Simulator waveform generation, digital filter simulation |
 | `genericps/` | Generic PicoScope device registry and open/close lifecycle |
 | `settings/` | Settings save/load, checksum validation |
