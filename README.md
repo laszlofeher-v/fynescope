@@ -131,19 +131,22 @@ For more options, including displaying version, build date, and license informat
 | `-webport` | `0` | Start a read-only web server on the specified port (requires `web` build tag, 0 to disable) |
 | `-about` | — | Print version, build date, and license info, then exit |
 
-## Web Server (Read-Only GUI Sharing)
+## Web Server & Voice Control
 
-When compiled with the `web` build tag, `fynescope` can stream a live, read-only view of the GUI to any web browser on the network using MJPEG. This allows remote observation of the oscilloscope interface without requiring physical access to the machine.
+When compiled with the `web` build tag, `fynescope` can stream a live view of the GUI to any web browser on the network using MJPEG. It also includes an integrated **Voice Control** interface powered by the Web Speech API, allowing hands-free operation of basic oscilloscope functions!
 
-To enable it, start the application with the `-webport` flag:
+To enable the web server, start the application with the `-webport` flag:
 
 ```bash
 ./fynescope -sim -webport=8080
 ```
 
-Then open `http://<host>:8080` in a web browser. The stream is read-only — browser users can observe the interface but cannot interact with it. The server binds to `0.0.0.0`, so it is accessible from other machines on the local network.
+Then open `https://localhost:8080` (or `https://<host>:8080` over the network) in a modern web browser like Chrome or Edge.
 
-*Note: If the application was compiled without the `web` build tag, specifying `-webport` will log a warning and the server will not start.*
+**Important Notes:**
+- **HTTPS & Self-Signed Certs:** To securely access the microphone, modern browsers require HTTPS. The Fynescope server generates a self-signed TLS certificate automatically on startup. Your browser will display a "Your connection is not private" warning; you must click "Advanced -> Proceed to site" to access it.
+- **Voice Control Features:** Click "Start Voice Control" in the web UI. You can say commands like *"Run"*, *"Stop"*, or *"Enable/Disable Channel A/B/C/D"* to control the application remotely!
+- *If the application was compiled without the `web` build tag, specifying `-webport` will log a warning and the server will not start.*
 
 ## Interaction & Controls
 
