@@ -995,7 +995,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
 		}
 		if scp.dftRaster != nil {
-			go scp.dftRaster.Refresh()
+			fyne.Do(func() { scp.dftRaster.Refresh() })
 		}
 		scp.SaveSettings()
 	}
