@@ -1,3 +1,4 @@
+<img width="1733" height="987" alt="fv" src="https://github.com/user-attachments/assets/43cc8b9c-d61e-44fb-9e8b-2a632f0e9cd5" />
 # fynescope
 
 <p align="center">
