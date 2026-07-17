@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/google/gousb"
@@ -26,19 +25,6 @@ func New(cfg Config) GeneratorIface {
 	return &Generator{cfg: cfg}
 }
 
-func parseHex(s string) uint16 {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0
-	}
-	s = strings.TrimPrefix(s, "0x")
-	s = strings.TrimPrefix(s, "0X")
-	v, err := strconv.ParseUint(s, 16, 16)
-	if err != nil {
-		return 0
-	}
-	return uint16(v)
-}
 
 func (g *Generator) setupDevice(dev *gousb.Device) error {
 	slog.Debug("Device found", "dev", dev)

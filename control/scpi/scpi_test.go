@@ -70,22 +70,5 @@ func TestGeneratorCommands(t *testing.T) {
 	}
 }
 
-func TestParseHex(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected uint16
-	}{
-		{"0x5345", 0x5345},
-		{"5345", 0x5345},
-		{"0X1234", 0x1234},
-		{"", 0},
-		{"invalid", 0},
-	}
 
-	for _, tt := range tests {
-		got := parseHex(tt.input)
-		if got != tt.expected {
-			t.Errorf("parseHex(%q) = %x, expected %x", tt.input, got, tt.expected)
-		}
-	}
-}
+
