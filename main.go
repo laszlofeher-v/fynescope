@@ -5,11 +5,13 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"image"
 	"fynescope/genericps"
 	"fynescope/gui"
 	_ "fynescope/ps2000a"
 	"fynescope/settings"
 	"fynescope/sim"
+	"fynescope/web"
 	"log/slog"
 	"os"
 	"path"
@@ -228,12 +230,14 @@ func startProfile(n int) error {
 //	-profile:  Enables CPU profiling when set to true
 //	-sim:      Runs in simulator-only mode when set to true
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
-func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool) {
+//	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
+func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	simulator = flag.Bool("sim", false, "-sim=true")
 	chCount = flag.Int("chcount", sim.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (simulator only)", sim.MinChannels, sim.MaxChannels))
 	about := flag.Bool("about", false, "show version, build date and license")
+	webPort = flag.Int("webport", 0, "-webport=8080 (starts web server on specified port, 0 to disable)")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := registerExtGenFlag(inTestMode)
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
@@ -466,7 +470,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit := parseFlags()
+	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort := parseFlags()
 	setLogging(logLevel)
 
 	err = sim.SetChannelCount(*chCount, chCountExplicit)
@@ -485,6 +489,15 @@ func main() {
 		ExtGenEnabled: extGenEnabled,
 	}
 	scp.App = app.New()
+
+	if *webPort > 0 {
+		web.StartServer(*webPort, func() image.Image {
+			if scp.Window == nil || scp.Window.Canvas() == nil {
+				return nil
+			}
+			return scp.Window.Canvas().Capture()
+		})
+	}
 
 	// Determine which devices to show in the selection dialog
 	if *simulatorOnly {
