@@ -496,7 +496,7 @@ func main() {
 				return nil
 			}
 			return scp.Window.Canvas().Capture()
-		})
+		}, scp.ExecuteVoiceCommand)
 	}
 
 	// Determine which devices to show in the selection dialog
