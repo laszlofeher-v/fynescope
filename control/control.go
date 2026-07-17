@@ -70,10 +70,8 @@ type (
 		IntervalType       genericps.PulseWidthType
 		IntervalTimeLower  float64
 		IntervalTimeUpper  float64
-		// TimeOffset         int32
-		// TriggerPreRatio float32
-		XOffset       float64
-		AutoTriggerMs int16
+		XOffset            float64
+		AutoTriggerMs      int16
 	}
 	TriggerDescMsg struct {
 		TriggerDesc
@@ -160,29 +158,29 @@ type (
 		getScopeScreenWidthCh chan *getScopeScreenWidthMsg
 		getScopeScreenWidth   getScopeScreenWidthMsg
 
-		triggerSetting       TriggerDesc
-		chEnabled            []atomic.Bool
-		triggerTimeOffset    int64
-		receiveBuffer        [][]int16   // raw data buffer, only for real channel
-		displayBuffer        [][]float32 // signal stored in mv
-		EtsInBuffer          []int64
+		triggerSetting              TriggerDesc
+		chEnabled                   []atomic.Bool
+		triggerTimeOffset           int64
+		receiveBuffer               [][]int16   // raw data buffer, only for real channel
+		displayBuffer               [][]float32 // signal stored in mv
+		EtsInBuffer                 []int64
 		overSample                  int16
 		SamplingTimeInterval        float64
 		lastTriggerSamplingInterval float64
 		SampleCountRequired         int32
-		NPre, NPro           int32
-		XRoundError          float64
-		timeBase             uint32
-		ipmode               settings.InterpolationType
-		numOfSamplesAcquired uint32
-		downSampleRatioMode  genericps.RatioMode
-		downSampleRatio      uint32
-		maxValue             int16
-		maxScreenTime        float64
-		scopeScreenWidth     float64
-		timeBaseDec          uint32
-		minValue             int16
-		RefreshCallback      func(buffers [][]int16, startTimeOffset int64,
+		NPre, NPro                  int32
+		XRoundError                 float64
+		timeBase                    uint32
+		ipmode                      settings.InterpolationType
+		numOfSamplesAcquired        uint32
+		downSampleRatioMode         genericps.RatioMode
+		downSampleRatio             uint32
+		maxValue                    int16
+		maxScreenTime               float64
+		scopeScreenWidth            float64
+		timeBaseDec                 uint32
+		minValue                    int16
+		RefreshCallback             func(buffers [][]int16, startTimeOffset int64,
 			xRoundError, samplingTimeInterval float64)
 		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64)
 		BufferCallback     func(size int)
@@ -242,7 +240,6 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	go psControl.interpolationMonitor()
 	return psControl
 }
-
 
 func (psControl *PscDesc) getAnalogueOffset(voltageRange int,
 	coupling genericps.Coupling) (maximumVoltage, minimumVoltage float32, err error) {
@@ -312,9 +309,7 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 
 	switch psControl.triggerSetting.Type {
 	case Simple:
-		// if !psControl.triggerSetting.Enabled {
 		err = psControl.sendSimpleTrigger()
-		// }
 	case Advanced:
 		err = psControl.sendAdvancedTrigger()
 	case Complex:
