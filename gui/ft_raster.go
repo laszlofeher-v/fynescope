@@ -888,7 +888,13 @@ func (scp *ScpDesc) setFtHDivsX() {
 	w := float64(bounds.Dx()) - 1
 	dx := (w) / float64(numberOfDivs)
 	unit := w / float64(scp.maxScreenTime)
-	offset := float64(scp.Settings.Time.TriggerTimeOffset) * unit
+	// When zoom window is open, use the view-relative phase so the grid slides
+	// with timeZoomBoxOffset without moving TriggerTimeOffset (trigger point stays fixed).
+	phaseTime := scp.Settings.Time.TriggerTimeOffset
+	if scp.timeZoomWindow != nil {
+		phaseTime -= scp.timeZoomBoxOffset
+	}
+	offset := phaseTime * unit
 	n := float64(math.Round(float64(offset / dx)))
 	offset = float64(snapN(float32(offset-n*dx), xSnapValue))
 	x := float64(bounds.Min.X)
