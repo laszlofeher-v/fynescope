@@ -12,6 +12,26 @@ disable_commands:
     - disable
     - turn off
     - hide
+trigger_commands:
+    - trigger
+    - set trigger
+x10_commands:
+    - x10
+    - times 10
+    - times ten
+inv_commands:
+    - invert
+    - inv
+ac_commands:
+    - ac
+dc_commands:
+    - dc
+rising_commands:
+    - rising
+    - rise
+falling_commands:
+    - falling
+    - fall
 channel_a:
     - channel a
     - ch a

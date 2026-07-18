@@ -10,6 +10,26 @@ enable_commands:
 disable_commands:
     - deshabilitar
     - apagar
+trigger_commands:
+    - disparador
+    - gatillo
+    - trigger
+x10_commands:
+    - x10
+    - por diez
+inv_commands:
+    - invertir
+    - inv
+ac_commands:
+    - ac
+dc_commands:
+    - dc
+rising_commands:
+    - ascendente
+    - subida
+falling_commands:
+    - descendente
+    - bajada
 channel_a:
     - canal a
 channel_b:
