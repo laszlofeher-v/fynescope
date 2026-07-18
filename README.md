@@ -180,7 +180,7 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
   - **Trigger Controls**: Use left click and drag or scroll on the trigger controls to adjust the trigger properties.
   - **Trigger Position**: Move the trigger position using the mouse left click and drag on the trigger position line.
-  - **Measurement Cursor**: Right click on the plot to toggle measurement cursor.
+  - **Measurement Cursor**: Right click on the plot to display the measurement cursor at the current position. Hold **Shift + Right Click** to place a persistent reference point. While a reference point is active, the measurement inspector will display absolute values alongside relative delta (Δ) measurements (e.g., ΔT, ΔV, ΔF) compared to the reference. Press the **Delete** key while hovering over the plot to remove the reference point.
 - **Input Controls (Numeric Displays)**:
   - When hovering over a digit in a numeric input (such as frequency or amplitude settings), use the mouse scroll wheel to quickly increment or decrement that specific digit's value. Left click or delete/backspace key clears the focused digit. Up/down arrows can also be used on the numeric input. Left/right arrows can also be used on the numeric input to move between digits. Numeric keypad can be used to enter values.
 - **Buttons/checkboxes**:
