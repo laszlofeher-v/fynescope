@@ -19,7 +19,9 @@ import (
 	"log/slog"
 	"math/big"
 	"net/http"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -57,17 +59,55 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 
 // StartServer launches an HTTPS server providing a read-only MJPEG view of the GUI
 // and a voice command interface.
-func StartServer(port int, getCapture func() image.Image, onCommand func(string)) {
+func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) {
 	if port <= 0 {
 		return
+	}
+
+	adminUser, adminPass := "", ""
+	if authAdmin != "" {
+		parts := strings.SplitN(authAdmin, ":", 2)
+		if len(parts) == 2 {
+			adminUser, adminPass = parts[0], parts[1]
+		} else {
+			adminUser = parts[0]
+		}
+	}
+
+	viewUser, viewPass := "", ""
+	if authView != "" {
+		parts := strings.SplitN(authView, ":", 2)
+		if len(parts) == 2 {
+			viewUser, viewPass = parts[0], parts[1]
+		} else {
+			viewUser = parts[0]
+		}
+	}
+
+	checkAuth := func(r *http.Request) (bool, bool) {
+		if adminUser == "" && viewUser == "" {
+			return true, true // No auth required
+		}
+		u, p, ok := r.BasicAuth()
+		if !ok {
+			return false, false
+		}
+		if adminUser != "" && u == adminUser && p == adminPass {
+			return true, true
+		}
+		if viewUser != "" && u == viewUser && p == viewPass {
+			return true, false
+		}
+		return false, false
 	}
 
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	slog.Info("Starting HTTPS web server with voice control", "addr", addr)
 
 	var (
-		latestFrame []byte
-		frameMu     sync.RWMutex
+		latestFrame   []byte
+		frameMu       sync.RWMutex
+		activeClients atomic.Int32
 	)
 
 	// Capture frames loop
@@ -75,6 +115,9 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 		ticker := time.NewTicker(100 * time.Millisecond) // ~10 FPS
 		defer ticker.Stop()
 		for range ticker.C {
+			if activeClients.Load() <= 0 {
+				continue
+			}
 			fyne.Do(func() {
 				img := getCapture()
 				if img == nil {
@@ -93,8 +136,7 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		html := `<!DOCTYPE html>
+	htmlAdmin := `<!DOCTYPE html>
 <html>
 <head>
 	<title>Fynescope</title>
@@ -191,11 +233,49 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 	</script>
 </body>
 </html>`
+
+	htmlView := `<!DOCTYPE html>
+<html>
+<head>
+	<title>Fynescope (Read-Only)</title>
+	<style>
+		body { margin: 0; background-color: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+		img { max-width: 100%; max-height: 100%; object-fit: contain; }
+	</style>
+</head>
+<body>
+	<img src="/stream" alt="Fynescope Stream" />
+</body>
+</html>`
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Fynescope"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(html))
+		if isAdmin {
+			w.Write([]byte(htmlAdmin))
+		} else {
+			w.Write([]byte(htmlView))
+		}
 	})
 
 	mux.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Fynescope"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if !isAdmin {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
 		if r.Method == http.MethodPost {
 			body, _ := io.ReadAll(r.Body)
 			cmd := string(body)
@@ -208,8 +288,179 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 	})
 
 	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		authOk, _ := checkAuth(r)
+		if !authOk {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Fynescope"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 		w.Header().Set("Cache-Control", "no-cache")
+
+		activeClients.Add(1)
+		defer activeClients.Add(-1)
+
+		for {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+			}
+
+			frameMu.RLock()
+			frame := latestFrame
+			frameMu.RUnlock()
+
+			if frame != nil {
+				_, err := fmt.Fprintf(w, "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n", len(frame))
+				if err != nil {
+					return
+				}
+				if _, err = w.Write(frame); err != nil {
+					return
+				}
+				if _, err = w.Write([]byte("\r\n")); err != nil {
+					return
+				}
+				if f, ok := w.(http.Flusher); ok {
+					f.Flush()
+				}
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	})
+
+	cert, err := generateSelfSignedCert()
+	if err != nil {
+		slog.Error("Failed to generate self-signed certificate", "err", err)
+		return
+	}
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		},
+	}
+
+	go func() {
+		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			slog.Error("HTTPS Web server error", "err", err)
+		}
+	}()
+}
+
+// StartServerNoVoice launches an HTTPS server providing a read-only MJPEG view of the GUI without voice control.
+func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() image.Image) {
+	if port <= 0 {
+		return
+	}
+
+	adminUser, adminPass := "", ""
+	if authAdmin != "" {
+		parts := strings.SplitN(authAdmin, ":", 2)
+		if len(parts) == 2 {
+			adminUser, adminPass = parts[0], parts[1]
+		} else {
+			adminUser = parts[0]
+		}
+	}
+
+	viewUser, viewPass := "", ""
+	if authView != "" {
+		parts := strings.SplitN(authView, ":", 2)
+		if len(parts) == 2 {
+			viewUser, viewPass = parts[0], parts[1]
+		} else {
+			viewUser = parts[0]
+		}
+	}
+
+	checkAuth := func(r *http.Request) bool {
+		if adminUser == "" && viewUser == "" {
+			return true // No auth required
+		}
+		u, p, ok := r.BasicAuth()
+		if !ok {
+			return false
+		}
+		if adminUser != "" && u == adminUser && p == adminPass {
+			return true
+		}
+		if viewUser != "" && u == viewUser && p == viewPass {
+			return true
+		}
+		return false
+	}
+
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
+	slog.Info("Starting HTTPS web server (read-only, no voice)", "addr", addr)
+
+	var (
+		latestFrame   []byte
+		frameMu       sync.RWMutex
+		activeClients atomic.Int32
+	)
+
+	// Capture frames loop
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond) // ~10 FPS
+		defer ticker.Stop()
+		for range ticker.C {
+			if activeClients.Load() <= 0 {
+				continue
+			}
+			fyne.Do(func() {
+				img := getCapture()
+				if img == nil {
+					return
+				}
+				var buf bytes.Buffer
+				if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
+					return
+				}
+				frameMu.Lock()
+				latestFrame = buf.Bytes()
+				frameMu.Unlock()
+			})
+		}
+	}()
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		html := `<!DOCTYPE html>
+<html>
+<head>
+	<title>Fynescope (Read-Only)</title>
+	<style>
+		body { margin: 0; background-color: #111; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+		img { max-width: 100%; max-height: 100%; object-fit: contain; }
+	</style>
+</head>
+<body>
+	<img src="/stream" alt="Fynescope Stream" />
+</body>
+</html>`
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(html))
+	})
+
+	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAuth(r) {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Fynescope"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+		w.Header().Set("Cache-Control", "no-cache")
+
+		activeClients.Add(1)
+		defer activeClients.Add(-1)
 
 		for {
 			select {

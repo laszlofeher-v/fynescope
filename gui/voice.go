@@ -3,10 +3,157 @@ package gui
 import (
 	"fynescope/genericps"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"gopkg.in/yaml.v3"
 )
+
+type VoiceCommands struct {
+	RunCommands     []string `yaml:"run_commands"`
+	StopCommands    []string `yaml:"stop_commands"`
+	EnableCommands  []string `yaml:"enable_commands"`
+	DisableCommands []string `yaml:"disable_commands"`
+	ChannelA        []string `yaml:"channel_a"`
+	ChannelB        []string `yaml:"channel_b"`
+	ChannelC        []string `yaml:"channel_c"`
+	ChannelD        []string `yaml:"channel_d"`
+}
+
+var ActiveVoiceCommands VoiceCommands
+
+func init() {
+	InitVoiceCommands()
+}
+
+func InitVoiceCommands() {
+	dir := "voice_commands"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		slog.Error("failed to create voice_commands directory", "err", err)
+		return
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		slog.Error("failed to read voice_commands directory", "err", err)
+		return
+	}
+
+	var hasYaml bool
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".yaml" {
+			hasYaml = true
+			break
+		}
+	}
+
+	if !hasYaml {
+		writeDefaultVoiceCommands(dir)
+		entries, _ = os.ReadDir(dir)
+	}
+
+	// load and merge all
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".yaml" {
+			path := filepath.Join(dir, entry.Name())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				slog.Error("failed to read voice command file", "file", path, "err", err)
+				continue
+			}
+
+			var cmds VoiceCommands
+			if err := yaml.Unmarshal(data, &cmds); err != nil {
+				slog.Error("failed to parse voice command file", "file", path, "err", err)
+				continue
+			}
+
+			mergeVoiceCommands(&ActiveVoiceCommands, &cmds)
+		}
+	}
+}
+
+func mergeVoiceCommands(dest, src *VoiceCommands) {
+	dest.RunCommands = append(dest.RunCommands, src.RunCommands...)
+	dest.StopCommands = append(dest.StopCommands, src.StopCommands...)
+	dest.EnableCommands = append(dest.EnableCommands, src.EnableCommands...)
+	dest.DisableCommands = append(dest.DisableCommands, src.DisableCommands...)
+	dest.ChannelA = append(dest.ChannelA, src.ChannelA...)
+	dest.ChannelB = append(dest.ChannelB, src.ChannelB...)
+	dest.ChannelC = append(dest.ChannelC, src.ChannelC...)
+	dest.ChannelD = append(dest.ChannelD, src.ChannelD...)
+}
+
+func writeDefaultVoiceCommands(dir string) {
+	en := VoiceCommands{
+		RunCommands:     []string{"start", "run"},
+		StopCommands:    []string{"stop", "halt"},
+		EnableCommands:  []string{"enable", "turn on", "show"},
+		DisableCommands: []string{"disable", "turn off", "hide"},
+		ChannelA:        []string{"channel a", "ch a"},
+		ChannelB:        []string{"channel b", "ch b"},
+		ChannelC:        []string{"channel c", "ch c"},
+		ChannelD:        []string{"channel d", "ch d"},
+	}
+	writeYaml(filepath.Join(dir, "en.yaml"), en)
+
+	es := VoiceCommands{
+		RunCommands:     []string{"iniciar", "arrancar"},
+		StopCommands:    []string{"detener", "parar"},
+		EnableCommands:  []string{"habilitar", "encender"},
+		DisableCommands: []string{"deshabilitar", "apagar"},
+		ChannelA:        []string{"canal a"},
+		ChannelB:        []string{"canal b"},
+		ChannelC:        []string{"canal c"},
+		ChannelD:        []string{"canal d"},
+	}
+	writeYaml(filepath.Join(dir, "es.yaml"), es)
+
+	fr := VoiceCommands{
+		RunCommands:     []string{"démarrer"},
+		StopCommands:    []string{"arrêter"},
+		EnableCommands:  []string{"activer", "allumer", "afficher"},
+		DisableCommands: []string{"désactiver", "éteindre", "masquer"},
+		ChannelA:        []string{"voie a"},
+		ChannelB:        []string{"voie b"},
+		ChannelC:        []string{"voie c"},
+		ChannelD:        []string{"voie d"},
+	}
+	writeYaml(filepath.Join(dir, "fr.yaml"), fr)
+
+	de := VoiceCommands{
+		RunCommands:     []string{"starten"},
+		StopCommands:    []string{"stoppen"},
+		EnableCommands:  []string{"aktivieren", "einschalten", "zeigen"},
+		DisableCommands: []string{"deaktivieren", "ausschalten", "verstecken"},
+		ChannelA:        []string{"kanal a"},
+		ChannelB:        []string{"kanal b"},
+		ChannelC:        []string{"kanal c"},
+		ChannelD:        []string{"kanal d"},
+	}
+	writeYaml(filepath.Join(dir, "de.yaml"), de)
+
+	hu := VoiceCommands{
+		RunCommands:     []string{"indulás", "indítás", "futás"},
+		StopCommands:    []string{"állj", "leállítás", "megállítás"},
+		EnableCommands:  []string{"engedélyezés", "bekapcsolás", "mutat"},
+		DisableCommands: []string{"tiltás", "kikapcsolás", "elrejt"},
+		ChannelA:        []string{"a csatorna", "csatorna a"},
+		ChannelB:        []string{"b csatorna", "csatorna b"},
+		ChannelC:        []string{"c csatorna", "csatorna c"},
+		ChannelD:        []string{"d csatorna", "csatorna d"},
+	}
+	writeYaml(filepath.Join(dir, "hu.yaml"), hu)
+}
+
+func writeYaml(path string, cmds VoiceCommands) {
+	data, err := yaml.Marshal(cmds)
+	if err == nil {
+		os.WriteFile(path, data, 0644)
+	}
+}
 
 // ExecuteVoiceCommand processes natural language text commands
 // and executes the corresponding UI/backend logic.
@@ -15,9 +162,9 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 	slog.Debug("ExecuteVoiceCommand parsing", "cmd", cmd)
 
 	// Helper to check for multiple keywords
-	containsAny := func(s string, subs ...string) bool {
+	containsAny := func(s string, subs []string) bool {
 		for _, sub := range subs {
-			if strings.Contains(s, sub) {
+			if sub != "" && strings.Contains(s, sub) {
 				return true
 			}
 		}
@@ -28,12 +175,12 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 	// of these commands will update Fyne widgets (checkboxes, buttons).
 	fyne.Do(func() {
 		// Run / Stop commands
-		if containsAny(cmd, "start", "run", "iniciar", "arrancar", "démarrer", "starten", "indulás", "indítás", "futás") {
+		if containsAny(cmd, ActiveVoiceCommands.RunCommands) {
 			// Try to start if stopped
 			if scp.streamEnableButton != nil && !scp.streamEnableButton.Disabled() {
 				scp.runblockButton.Tapped(&fyne.PointEvent{})
 			}
-		} else if containsAny(cmd, "stop", "halt", "detener", "parar", "arrêter", "stoppen", "állj", "leállítás", "megállítás") {
+		} else if containsAny(cmd, ActiveVoiceCommands.StopCommands) {
 			// Trigger the stop action if running
 			if scp.runblockButton != nil && !scp.runblockButton.Disabled() {
 				scp.runblockButton.Tapped(&fyne.PointEvent{})
@@ -41,19 +188,19 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 		}
 
 		// Channel Enable/Disable commands
-		enable := containsAny(cmd, "enable", "turn on", "show", "habilitar", "encender", "activer", "allumer", "afficher", "aktivieren", "einschalten", "zeigen", "engedélyezés", "bekapcsolás", "mutat")
-		disable := containsAny(cmd, "disable", "turn off", "hide", "deshabilitar", "apagar", "désactiver", "éteindre", "masquer", "deaktivieren", "ausschalten", "verstecken", "tiltás", "kikapcsolás", "elrejt")
+		enable := containsAny(cmd, ActiveVoiceCommands.EnableCommands)
+		disable := containsAny(cmd, ActiveVoiceCommands.DisableCommands)
 
 		if enable || disable {
 			// Find which channel is mentioned
 			var ch genericps.ChannelId = -1
-			if containsAny(cmd, "channel a", "ch a", "canal a", "voie a", "kanal a", "a csatorna", "csatorna a") {
+			if containsAny(cmd, ActiveVoiceCommands.ChannelA) {
 				ch = genericps.ChA
-			} else if containsAny(cmd, "channel b", "ch b", "canal b", "voie b", "kanal b", "b csatorna", "csatorna b") {
+			} else if containsAny(cmd, ActiveVoiceCommands.ChannelB) {
 				ch = genericps.ChB
-			} else if containsAny(cmd, "channel c", "ch c", "canal c", "voie c", "kanal c", "c csatorna", "csatorna c") {
+			} else if containsAny(cmd, ActiveVoiceCommands.ChannelC) {
 				ch = genericps.ChC
-			} else if containsAny(cmd, "channel d", "ch d", "canal d", "voie d", "kanal d", "d csatorna", "csatorna d") {
+			} else if containsAny(cmd, ActiveVoiceCommands.ChannelD) {
 				ch = genericps.ChD
 			}
 
