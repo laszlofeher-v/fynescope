@@ -43,6 +43,7 @@ type (
 		dftCheckbox              *widget.Check
 		triggerCheckbox          *widget.Check
 		persistenceCheckbox      *widget.Check
+		invertCheckbox           *widget.Check
 		dftPersistenceCheckbox   *widget.Check
 		minV                     *disp7.DigitArray
 		maxV                     *disp7.DigitArray
@@ -60,6 +61,7 @@ type (
 		simGenDisplays           []*disp7.DigitArray
 		triggerDirectionSelect   *selectscroll.SelectScroll
 		triggerConditionSelect   *selectscroll.SelectScroll
+		acdcSelect               *selectscroll.SelectScroll
 	}
 )
 
@@ -588,6 +590,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
 	invert = widget.NewCheck("Inv", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
+	channelViewer.invertCheckbox = invert
 	addToTest(invert, invertId+chId)
 	trigger = widget.NewCheck("Trig", triggerSelected)
 	channelViewer.triggerCheckbox = trigger
@@ -631,6 +634,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	addToTest(vRange, vRangeId+chId)
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, cChanged, "AC")
 	acdc.SetSelected(coupleTypeNames[scp.Settings.Channels[chIndex].CoupleType])
+	channelViewer.acdcSelect = acdc
 	addToTest(acdc, acdcId+chId)
 	var activeTriggerDirectionOptions []string
 	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {

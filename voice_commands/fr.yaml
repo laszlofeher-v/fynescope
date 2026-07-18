@@ -10,6 +10,23 @@ disable_commands:
     - désactiver
     - éteindre
     - masquer
+trigger_commands:
+    - déclencheur
+    - trigger
+x10_commands:
+    - x10
+    - fois dix
+inv_commands:
+    - inverser
+    - inv
+ac_commands:
+    - ac
+dc_commands:
+    - dc
+rising_commands:
+    - montant
+falling_commands:
+    - descendant
 channel_a:
     - voie a
 channel_b:
