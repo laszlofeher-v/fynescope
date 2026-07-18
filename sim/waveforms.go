@@ -45,45 +45,32 @@ func NewWaveformGenerator(waveType WaveTypeEnum) WaveformGenerator {
 // NewPrbsGenerator returns a WaveformGenerator that produces a PRBS signal
 // (Pseudo-Random Binary Sequence) using a 15-bit maximal-length LFSR.
 // The bit-clock period is 1/freq, so the configured frequency controls the
-// bit-rate. At each bit boundary the LFSR advances one step producing a
-// deterministic but pseudo-random ±1 sequence.
+// NewPrbsGenerator returns a WaveformGenerator that produces a PRBS signal.
+// To ensure it is entirely stateless and can evaluate time non-monotonically
+// without corrupting the sequence, it uses a SplitMix64 hash of the bit period index.
+// This provides an infinitely non-repeating pseudo-random sequence.
 func NewPrbsGenerator() WaveformGenerator {
-	// 15-bit LFSR with taps at positions 15 and 14 (polynomial x^15 + x^14 + 1)
-	lfsr := uint32(1)
-	prevBit := float64(0) // current output level (+1 or -1)
-	prevBitIndex := int64(-1)
-
 	return func(t float64, freq float64) float64 {
 		if freq <= 0 {
 			return 0
 		}
 		// Which bit period are we in?
-		bitIndex := int64(t * freq / (2 * math.Pi))
-		if bitIndex != prevBitIndex {
-			// Advance LFSR for each elapsed bit period
-			steps := bitIndex - prevBitIndex
-			if steps < 0 {
-				steps = 1
-			}
-			if steps > 65535 {
-				steps = 65535
-			}
-			for i := int64(0); i < steps; i++ {
-				// Galois LFSR: tap bits 15 and 14 (1-indexed)
-				bit := (lfsr ^ (lfsr >> 1)) & 1
-				lfsr = (lfsr >> 1) | (bit << 14)
-				if lfsr == 0 {
-					lfsr = 1 // avoid zero state
-				}
-			}
-			prevBitIndex = bitIndex
-			if lfsr&1 == 1 {
-				prevBit = 1.0
-			} else {
-				prevBit = -1.0
-			}
+		// `t` here is phase in radians: t = t_seconds * freq * 2π
+		// So t / (2π) = t_seconds * freq = number of elapsed bit periods.
+		bitIndex := int64(t / (2 * math.Pi))
+		
+		// Use a fast, high-quality 64-bit integer hash (SplitMix64) 
+		// to deterministically generate a bit for this specific bit index.
+		x := uint64(bitIndex)
+		x += 0x9e3779b97f4a7c15 // Weyl constant
+		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9
+		x = (x ^ (x >> 27)) * 0x94d049bb133111eb
+		x = x ^ (x >> 31)
+
+		if x&1 == 1 {
+			return 1.0
 		}
-		return prevBit
+		return -1.0
 	}
 }
 

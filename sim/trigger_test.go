@@ -11,7 +11,7 @@ func TestTriggerDetector_FindTriggerPoint_IntervalLessThan(t *testing.T) {
 
 	// Configure PWQ for "Less Than" 100 units
 	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
-	td.SetPulseWidthQualifier(conds, TriggerRising, 100, 0, PwTypeLessThan)
+	td.SetPulseWidthQualifier(conds, TriggerRisingLower, 100, 0, PwTypeLessThan)
 
 	// Create a mock signal function that creates a rising edge at t=100 and falling at t=125
 	// Pulse Width should be 25, which is < 100, so it should trigger exactly at t=125 (end of pulse).
@@ -45,7 +45,7 @@ func TestTriggerDetector_FindTriggerPoint_IntervalGreaterThan(t *testing.T) {
 
 	// Configure PWQ for "Greater Than" 100 units
 	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
-	td.SetPulseWidthQualifier(conds, TriggerFalling, 100, 0, PwTypeGreaterThan)
+	td.SetPulseWidthQualifier(conds, TriggerFallingLower, 100, 0, PwTypeGreaterThan)
 
 	// Create a mock signal function that creates a negative pulse
 	// Falling edge at t=100
@@ -82,7 +82,7 @@ func TestTriggerDetector_FindTriggerPoint_IntervalInRange(t *testing.T) {
 
 	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
 	// Pulse Width must be between 80 and 120
-	td.SetPulseWidthQualifier(conds, TriggerRising, 80, 120, PwTypeInRange)
+	td.SetPulseWidthQualifier(conds, TriggerRisingLower, 80, 120, PwTypeInRange)
 
 	signalFunc := func(time float64, ch ChannelId) float64 {
 		if ch != ChA {
@@ -107,3 +107,38 @@ func TestTriggerDetector_FindTriggerPoint_IntervalInRange(t *testing.T) {
 		t.Errorf("Expected trigger near t=349, got %v", triggerTime)
 	}
 }
+
+func TestTriggerDetector_FindTriggerPoint_TrueInterval(t *testing.T) {
+	td := NewTriggerDetector(true, 50, 10, TriggerRising, ChA)
+
+	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
+	// Interval must be Greater Than 100
+	td.SetPulseWidthQualifier(conds, TriggerRising, 100, 0, PwTypeGreaterThan)
+
+	signalFunc := func(time float64, ch ChannelId) float64 {
+		if ch != ChA {
+			return 0
+		}
+		// Edges:
+		// t=100: Rising Edge 1
+		// t=120: Falling Edge 1
+		// t=150: Rising Edge 2. Interval = 150-100 = 50. Not > 100.
+		// t=170: Falling Edge 2
+		// t=300: Rising Edge 3. Interval = 300-150 = 150. IS > 100!
+		// It should trigger at t=300 exactly.
+		if time >= 100 && time < 120 { return 100 }
+		if time >= 150 && time < 170 { return 100 }
+		if time >= 300 && time < 320 { return 100 }
+		return 0
+	}
+
+	dt := 1.0
+	maxTime := 500.0
+	triggerTime := td.FindTriggerPoint(signalFunc, 1000, maxTime, dt)
+
+	// Due to dt being 1.0 and checking logic edgeTriggerTime = t - dt, it will be 299
+	if math.Abs(triggerTime-299.0) > 1.0 {
+		t.Errorf("Expected trigger near t=299, got %v", triggerTime)
+	}
+}
+
