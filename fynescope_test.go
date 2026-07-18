@@ -2,11 +2,11 @@
 package main
 
 import (
-	"log"
-	"os"
 	"fynescope/genericps"
 	"fynescope/gui"
 	"fynescope/settings"
+	"log"
+	"os"
 	"testing"
 	"time"
 
