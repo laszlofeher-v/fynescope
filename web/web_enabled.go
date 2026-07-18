@@ -112,6 +112,13 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 <body>
 	<div id="controls">
 		<button id="micBtn">Start Voice Control</button>
+		<select id="langSelect">
+			<option value="en-US" selected>English</option>
+			<option value="es-ES">Español</option>
+			<option value="fr-FR">Français</option>
+			<option value="de-DE">Deutsch</option>
+			<option value="hu-HU">Magyar</option>
+		</select>
 		<div id="status">Voice control inactive. Note: Requires Chrome/Edge. Click to allow microphone.</div>
 	</div>
 	<div id="stream-container">
@@ -119,6 +126,7 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 	</div>
 	<script>
 		const micBtn = document.getElementById('micBtn');
+		const langSelect = document.getElementById('langSelect');
 		const status = document.getElementById('status');
 		let recognition = null;
 		let isListening = false;
@@ -128,7 +136,14 @@ func StartServer(port int, getCapture func() image.Image, onCommand func(string)
 			recognition = new SpeechRecognition();
 			recognition.continuous = true;
 			recognition.interimResults = false;
-			recognition.lang = 'en-US';
+			recognition.lang = langSelect.value;
+
+			langSelect.onchange = () => {
+				recognition.lang = langSelect.value;
+				if (isListening) {
+					recognition.stop(); // onend will auto-restart with new language
+				}
+			};
 
 			recognition.onstart = () => {
 				isListening = true;

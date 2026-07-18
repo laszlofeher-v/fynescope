@@ -2,8 +2,6 @@
 
 package ps3000a
 
-//"fynescope/psi"
-
 type (
 	PwqConditions struct {
 		ChannelA TriggerState
