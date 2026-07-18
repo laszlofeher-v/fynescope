@@ -14,16 +14,26 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 	cmd = strings.ToLower(strings.TrimSpace(cmd))
 	slog.Debug("ExecuteVoiceCommand parsing", "cmd", cmd)
 
+	// Helper to check for multiple keywords
+	containsAny := func(s string, subs ...string) bool {
+		for _, sub := range subs {
+			if strings.Contains(s, sub) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// Ensure execution happens on the main UI thread, as many
 	// of these commands will update Fyne widgets (checkboxes, buttons).
 	fyne.Do(func() {
 		// Run / Stop commands
-		if strings.Contains(cmd, "start") || strings.Contains(cmd, "run") {
+		if containsAny(cmd, "start", "run", "iniciar", "arrancar", "démarrer", "starten", "indulás", "indítás", "futás") {
 			// Try to start if stopped
 			if scp.streamEnableButton != nil && !scp.streamEnableButton.Disabled() {
 				scp.runblockButton.Tapped(&fyne.PointEvent{})
 			}
-		} else if strings.Contains(cmd, "stop") || strings.Contains(cmd, "halt") {
+		} else if containsAny(cmd, "stop", "halt", "detener", "parar", "arrêter", "stoppen", "állj", "leállítás", "megállítás") {
 			// Trigger the stop action if running
 			if scp.runblockButton != nil && !scp.runblockButton.Disabled() {
 				scp.runblockButton.Tapped(&fyne.PointEvent{})
@@ -31,24 +41,19 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 		}
 
 		// Channel Enable/Disable commands
-		enable := false
-		disable := false
-		if strings.Contains(cmd, "enable") || strings.Contains(cmd, "turn on") || strings.Contains(cmd, "show") {
-			enable = true
-		} else if strings.Contains(cmd, "disable") || strings.Contains(cmd, "turn off") || strings.Contains(cmd, "hide") {
-			disable = true
-		}
+		enable := containsAny(cmd, "enable", "turn on", "show", "habilitar", "encender", "activer", "allumer", "afficher", "aktivieren", "einschalten", "zeigen", "engedélyezés", "bekapcsolás", "mutat")
+		disable := containsAny(cmd, "disable", "turn off", "hide", "deshabilitar", "apagar", "désactiver", "éteindre", "masquer", "deaktivieren", "ausschalten", "verstecken", "tiltás", "kikapcsolás", "elrejt")
 
 		if enable || disable {
 			// Find which channel is mentioned
 			var ch genericps.ChannelId = -1
-			if strings.Contains(cmd, "channel a") || strings.Contains(cmd, "ch a") {
+			if containsAny(cmd, "channel a", "ch a", "canal a", "voie a", "kanal a", "a csatorna", "csatorna a") {
 				ch = genericps.ChA
-			} else if strings.Contains(cmd, "channel b") || strings.Contains(cmd, "ch b") {
+			} else if containsAny(cmd, "channel b", "ch b", "canal b", "voie b", "kanal b", "b csatorna", "csatorna b") {
 				ch = genericps.ChB
-			} else if strings.Contains(cmd, "channel c") || strings.Contains(cmd, "ch c") {
+			} else if containsAny(cmd, "channel c", "ch c", "canal c", "voie c", "kanal c", "c csatorna", "csatorna c") {
 				ch = genericps.ChC
-			} else if strings.Contains(cmd, "channel d") || strings.Contains(cmd, "ch d") {
+			} else if containsAny(cmd, "channel d", "ch d", "canal d", "voie d", "kanal d", "d csatorna", "csatorna d") {
 				ch = genericps.ChD
 			}
 
