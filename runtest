@@ -3,4 +3,5 @@ go clean -testcache
 #go test -tags=noscope -tags=testsw -v
 go test -v -tags=noscope -tags=testsw  -run Test0 -timeout 105m
 #time go test -tags=noscope -tags=testsw -v -timeout 99999s
+#go test -v -tags="noscope,testsw,web" -run Test1 -timeout 120m
 

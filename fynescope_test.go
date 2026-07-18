@@ -5,6 +5,8 @@ import (
 	"fynescope/genericps"
 	"fynescope/gui"
 	"fynescope/settings"
+	"fynescope/web"
+	"image"
 	"log"
 	"os"
 	"testing"
@@ -97,5 +99,36 @@ func Test0(t *testing.T) {
 		}
 	}
 	log.Printf("timeout: %v", timeout)
+	scp.Random(timeout)
+}
+
+// Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout flag.
+// Run with: go test -tags="noscope,testsw,web" -v -run Test1 -timeout 105m
+func Test1(t *testing.T) {
+	if deadline, ok := t.Deadline(); ok {
+		if time.Until(deadline) < 20*time.Minute {
+			t.Skip("Skipping fuzzer test")
+		}
+	}
+	if scp == nil {
+		t.Fatal("scp is nil — app failed to initialize")
+	}
+	var timeout time.Duration
+	if deadline, ok := t.Deadline(); ok {
+		log.Printf("deadline: %v", deadline)
+		timeout = time.Until(deadline) - 10*time.Second
+		if timeout < 0 {
+			timeout = 0
+		}
+	}
+	log.Printf("timeout: %v", timeout)
+
+	web.StartServerNoVoice(8080, "", "", func() image.Image {
+		if scp.Window == nil || scp.Window.Canvas() == nil {
+			panic("8080")
+			return nil
+		}
+		return scp.Window.Canvas().Capture()
+	})
 	scp.Random(timeout)
 }
