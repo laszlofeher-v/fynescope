@@ -1,0 +1,47 @@
+run_commands:
+    - indulás
+    - indítás
+    - futás
+stop_commands:
+    - állj
+    - leállítás
+    - megállítás
+enable_commands:
+    - engedélyezés
+    - bekapcsolás
+    - mutat
+disable_commands:
+    - tiltás
+    - kikapcsolás
+    - elrejt
+trigger_commands:
+    - trigger
+    - indítási feltétel
+x10_commands:
+    - x10
+    - szer tíz
+inv_commands:
+    - invertálás
+    - inv
+ac_commands:
+    - ac
+    - váltakozó
+dc_commands:
+    - dc
+    - egyen
+rising_commands:
+    - felfutó
+falling_commands:
+    - lefutó
+channel_a:
+    - a csatorna
+    - csatorna a
+channel_b:
+    - b csatorna
+    - csatorna b
+channel_c:
+    - c csatorna
+    - csatorna c
+channel_d:
+    - d csatorna
+    - csatorna d

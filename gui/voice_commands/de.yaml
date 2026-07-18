@@ -1,0 +1,37 @@
+run_commands:
+    - starten
+stop_commands:
+    - stoppen
+enable_commands:
+    - aktivieren
+    - einschalten
+    - zeigen
+disable_commands:
+    - deaktivieren
+    - ausschalten
+    - verstecken
+trigger_commands:
+    - trigger
+    - auslöser
+x10_commands:
+    - x10
+    - mal zehn
+inv_commands:
+    - invertieren
+    - inv
+ac_commands:
+    - ac
+dc_commands:
+    - dc
+rising_commands:
+    - steigend
+falling_commands:
+    - fallend
+channel_a:
+    - kanal a
+channel_b:
+    - kanal b
+channel_c:
+    - kanal c
+channel_d:
+    - kanal d
