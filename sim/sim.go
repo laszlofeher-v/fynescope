@@ -26,6 +26,7 @@ type (
 		genOffsetVoltage int32
 		genWaveFunction  WaveformGenerator
 		sweepController  *SweepController
+		isPrbs           bool
 		phase            float64
 		// RLC Filter settings
 		genSource  ChannelId
@@ -320,6 +321,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 	var triggerTime float64
 	freq := float64(0)
+	isPrbs := false
 	sourceCh := triggerDetector.GetSource()
 	if sourceCh >= 0 && int(sourceCh) < MaxChannels {
 		genSrc := channels[sourceCh].genSource
@@ -329,6 +331,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		if channels[genSrc].sweepController != nil {
 			freq = channels[genSrc].sweepController.GetCurrentFrequency()
 		}
+		isPrbs = channels[genSrc].isPrbs
 	}
 
 	minIter := int(reqNoOfSamples)
@@ -339,7 +342,11 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 	if freq > 0 && timeIntervalNanoseconds > 0 {
 		samplesPerPeriod := 1.0 / (freq * timeIntervalNanoseconds * 1e-9)
-		calcIter := int(samplesPerPeriod * 2.5)
+		multiplier := 2.5
+		if isPrbs {
+			multiplier = 20.0
+		}
+		calcIter := int(samplesPerPeriod * multiplier)
 		if calcIter > maxIter {
 			maxIter = calcIter
 		}
@@ -1010,6 +1017,7 @@ func (s *SimDesc) SetSimGen(channel genericps.ChannelId, on bool, offsetVoltage 
 	}
 
 	channels[ch].genOn = on
+	channels[ch].isPrbs = (operation == genericps.Prbs)
 	switch operation {
 	case genericps.Prbs:
 		channels[ch].genWaveFunction = NewPrbsGenerator()

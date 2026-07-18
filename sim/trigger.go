@@ -181,12 +181,14 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				continue
 			}
 
-			// If PWQ is active for this channel, the main trigger marks the END of the pulse,
-			// so it must trigger on the opposite edge.
+			// If PWQ is active for this channel and it's a Pulse Width trigger (Lower modes),
+			// the main trigger marks the END of the pulse, so it must trigger on the opposite edge.
+			// If it's an Interval trigger (standard Rising/Falling modes), the main trigger marks
+			// the next identical edge, so we leave the direction unchanged.
 			if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
-				if td.pwqConfig.Direction == TriggerRisingLower || td.pwqConfig.Direction == TriggerRising {
+				if td.pwqConfig.Direction == TriggerRisingLower {
 					cfg.Direction = TriggerFalling
-				} else {
+				} else if td.pwqConfig.Direction == TriggerFallingLower {
 					cfg.Direction = TriggerRising
 				}
 			}
