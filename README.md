@@ -158,8 +158,8 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
 
 **Important Notes:**
 - **HTTPS & Self-Signed Certs:** To securely access the microphone, modern browsers require HTTPS. The Fynescope server generates a self-signed TLS certificate automatically on startup. Your browser will display a "Your connection is not private" warning; you must click "Advanced -> Proceed to site" to access it.
-- **Voice Control Features:** Click "Start Voice Control" in the web UI. You can say commands like *"Run"*, *"Stop"*, or *"Enable/Disable Channel A/B/C/D"* to control the application remotely!
-- **Voice Command Configuration:** Voice commands are dynamically loaded from YAML files located in the `voice_commands/` directory. If this directory doesn't exist, Fynescope will create it and populate it with default templates for English, Spanish, French, German, and Hungarian. You can edit these YAML files to add custom voice trigger phrases for actions like running, stopping, and toggling channels.
+- **Voice Control Features:** Click "Start Voice Control" in the web UI. You can say commands like *"Run"*, *"Stop"*, or *"Enable Channel A"* to control the application remotely! You can also control specific channel properties by saying things like *"AC channel A"*, *"Invert channel B"*, *"x10 channel C"*, or *"Rising channel A"* (for edge trigger direction). You can even set a channel as the primary trigger source by saying *"Trigger channel A"*.
+- **Voice Command Configuration:** Voice commands are dynamically loaded from YAML files located in the `voice_commands/` directory. If this directory doesn't exist, Fynescope will create it and populate it with default templates for English, Spanish, French, German, and Hungarian. You can edit these YAML files to add custom voice trigger phrases for actions like running, stopping, toggling channels, AC/DC coupling, inversion, x10 multipliers, and trigger edge settings.
 - *If the application was compiled without the `web` build tag, specifying `-webport` will log a warning and the server will not start.*
 
 ## Interaction & Controls
