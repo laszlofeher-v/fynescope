@@ -1,0 +1,28 @@
+run_commands:
+    - indulás
+    - indítás
+    - futás
+stop_commands:
+    - állj
+    - leállítás
+    - megállítás
+enable_commands:
+    - engedélyezés
+    - bekapcsolás
+    - mutat
+disable_commands:
+    - tiltás
+    - kikapcsolás
+    - elrejt
+channel_a:
+    - a csatorna
+    - csatorna a
+channel_b:
+    - b csatorna
+    - csatorna b
+channel_c:
+    - c csatorna
+    - csatorna c
+channel_d:
+    - d csatorna
+    - csatorna d

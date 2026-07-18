@@ -232,13 +232,16 @@ func startProfile(n int) error {
 //	-sim:      Runs in simulator-only mode when set to true
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
-func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int) {
+func parseFlags() (profile, simulator *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	simulator = flag.Bool("sim", false, "-sim=true")
 	chCount = flag.Int("chcount", sim.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (simulator only)", sim.MinChannels, sim.MaxChannels))
 	about := flag.Bool("about", false, "show version, build date and license")
 	webPort = flag.Int("webport", 0, "-webport=8080 (starts web server on specified port, 0 to disable)")
+	webPortNoVoice = flag.Int("webport-novoice", 0, "-webport-novoice=8081 (starts web server without voice control on specified port, 0 to disable)")
+	webAuth = flag.String("webauth", "", "-webauth=user:pass (credentials for full access, voice + stream)")
+	webAuthView = flag.String("webauth-view", "", "-webauth-view=user:pass (credentials for read-only stream access)")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := registerExtGenFlag(inTestMode)
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
@@ -471,7 +474,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort := parseFlags()
+	profile, simulatorOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView := parseFlags()
 	setLogging(logLevel)
 
 	err = sim.SetChannelCount(*chCount, chCountExplicit)
@@ -492,12 +495,21 @@ func main() {
 	scp.App = app.New()
 
 	if *webPort > 0 {
-		web.StartServer(*webPort, func() image.Image {
+		web.StartServer(*webPort, *webAuth, *webAuthView, func() image.Image {
 			if scp.Window == nil || scp.Window.Canvas() == nil {
 				return nil
 			}
 			return scp.Window.Canvas().Capture()
 		}, scp.ExecuteVoiceCommand)
+	}
+
+	if *webPortNoVoice > 0 {
+		web.StartServerNoVoice(*webPortNoVoice, *webAuth, *webAuthView, func() image.Image {
+			if scp.Window == nil || scp.Window.Canvas() == nil {
+				return nil
+			}
+			return scp.Window.Canvas().Capture()
+		})
 	}
 
 	// Determine which devices to show in the selection dialog

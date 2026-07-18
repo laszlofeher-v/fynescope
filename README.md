@@ -129,6 +129,9 @@ For more options, including displaying version, build date, and license informat
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
 | `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
 | `-webport` | `0` | Start a read-only web server on the specified port (requires `web` build tag, 0 to disable) |
+| `-webport-novoice` | `0` | Start a web server without voice control on the specified port (0 to disable) |
+| `-webauth` | — | Credentials for full access (voice + stream) in `user:password` format |
+| `-webauth-view` | — | Credentials for read-only stream access in `user:password` format |
 | `-about` | — | Print version, build date, and license info, then exit |
 
 ## Web Server & Voice Control
@@ -141,11 +144,22 @@ To enable the web server, start the application with the `-webport` flag:
 ./fynescope -sim -webport=8080
 ```
 
+You can secure the web server using HTTP Basic Authentication by providing the `-webauth` and `-webauth-view` flags:
+
+```bash
+./fynescope -sim -webport=8080 -webauth=admin:secret -webauth-view=guest:hello
+```
+
+When authentication is enabled, logging in with the `-webauth` credentials grants full access (including voice control), while the `-webauth-view` credentials grant read-only access to the stream.
+
+If you want to start a secondary port that strictly serves the stream without the voice control interface, use `-webport-novoice=8081`.
+
 Then open `https://localhost:8080` (or `https://<host>:8080` over the network) in a modern web browser like Chrome or Edge.
 
 **Important Notes:**
 - **HTTPS & Self-Signed Certs:** To securely access the microphone, modern browsers require HTTPS. The Fynescope server generates a self-signed TLS certificate automatically on startup. Your browser will display a "Your connection is not private" warning; you must click "Advanced -> Proceed to site" to access it.
 - **Voice Control Features:** Click "Start Voice Control" in the web UI. You can say commands like *"Run"*, *"Stop"*, or *"Enable/Disable Channel A/B/C/D"* to control the application remotely!
+- **Voice Command Configuration:** Voice commands are dynamically loaded from YAML files located in the `voice_commands/` directory. If this directory doesn't exist, Fynescope will create it and populate it with default templates for English, Spanish, French, German, and Hungarian. You can edit these YAML files to add custom voice trigger phrases for actions like running, stopping, and toggling channels.
 - *If the application was compiled without the `web` build tag, specifying `-webport` will log a warning and the server will not start.*
 
 ## Interaction & Controls

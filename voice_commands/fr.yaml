@@ -1,0 +1,20 @@
+run_commands:
+    - démarrer
+stop_commands:
+    - arrêter
+enable_commands:
+    - activer
+    - allumer
+    - afficher
+disable_commands:
+    - désactiver
+    - éteindre
+    - masquer
+channel_a:
+    - voie a
+channel_b:
+    - voie b
+channel_c:
+    - voie c
+channel_d:
+    - voie d
