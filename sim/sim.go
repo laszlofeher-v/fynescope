@@ -320,8 +320,15 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 	var triggerTime float64
 	freq := float64(0)
-	if channels[0].sweepController != nil {
-		freq = channels[0].sweepController.GetCurrentFrequency()
+	sourceCh := triggerDetector.GetSource()
+	if sourceCh >= 0 && int(sourceCh) < MaxChannels {
+		genSrc := channels[sourceCh].genSource
+		if genSrc < 0 || int(genSrc) >= MaxChannels {
+			genSrc = sourceCh
+		}
+		if channels[genSrc].sweepController != nil {
+			freq = channels[genSrc].sweepController.GetCurrentFrequency()
+		}
 	}
 
 	minIter := int(reqNoOfSamples)
