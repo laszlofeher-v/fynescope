@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
@@ -84,7 +85,7 @@ func (tp *windowTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 }
 
-func (tp *windowTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (tp *windowTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
@@ -99,7 +100,7 @@ func (tp *windowTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y f
 	}
 }
 
-func (tp *windowTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tp *windowTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}

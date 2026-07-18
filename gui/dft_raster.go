@@ -38,6 +38,11 @@ type dftViewer struct {
 	inspectorDispVCur   []float64
 	inspectorSamples    int
 	inspectorLastUpdate time.Time
+
+	// Reference point state for interval measurement
+	refActive bool
+	refX      float32
+	refY      float32
 }
 
 var (
@@ -100,10 +105,10 @@ func (frql *frqLabelViewer) mousIn(x, y float32) bool {
 	}
 	return false
 }
-func (frql *frqLabelViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (frql *frqLabelViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	frql.selected = frql.mousIn(x, y)
 }
-func (tl *frqLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tl *frqLabelViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	tl.selected = false
 }
 
@@ -285,9 +290,15 @@ func (dv *dftViewer) mousIn(x, y float32) bool {
 	return p.In(dv.rect())
 }
 
-func (dv *dftViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (dv *dftViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton && dv.mousIn(x, y) {
-		dv.showInspector = true
+		if modifier&fyne.KeyModifierShift != 0 {
+			dv.refActive = true
+			dv.refX = x
+			dv.refY = y
+		} else {
+			dv.showInspector = true
+		}
 		dv.mouseX = x
 		dv.mouseY = y
 		dv.enableRefresh()
@@ -297,7 +308,7 @@ func (dv *dftViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	dv.selected = dv.mousIn(x, y)
 }
 
-func (dv *dftViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (dv *dftViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		dv.showInspector = false
 		dv.enableRefresh()
@@ -335,6 +346,11 @@ func (dv *dftViewer) scrolled(delta, x, y float32) {
 }
 
 func (dv *dftViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	if keyName == fyne.KeyDelete && dv.mousIn(x, y) {
+		dv.refActive = false
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+	}
 	dv.scp.dftBottomLabelViewer.(*frqLabelViewer).typedKey(x, y, keyName)
 }
 func (scp *ScpDesc) snapYToDftN(y float64) int {
@@ -523,9 +539,55 @@ func (dv *dftViewer) draw() {
 	dv.mCache = m
 	dv.fsCache = fs
 
-	if dv.showInspector {
+	if dv.showInspector || dv.refActive {
 		dv.drawInspector(float64(w), float64(h), bounds)
 	}
+}
+
+func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (freqAtCursor float64, instV, instVCur []float64) {
+	minFreq := dv.scp.Settings.Dft.MinFreq
+	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+	fs := dv.fsCache
+	maxFreqAvailable := fs / 2
+	if maxFreqPlot <= 0 {
+		maxFreqPlot = 1e6
+	}
+	if maxFreqPlot > maxFreqAvailable {
+		maxFreqPlot = maxFreqAvailable
+	}
+
+	fractionAtCursor := (float64(mx) - float64(bounds.Min.X)) / w
+	freqAtCursor = minFreq + fractionAtCursor*maxFreqPlot
+
+	n := len(dv.scp.channelViewers)
+	instV = make([]float64, n)
+	instVCur = make([]float64, n)
+
+	binIdx := int(math.Round((freqAtCursor / maxFreqAvailable) * float64(dv.mCache/2)))
+
+	for chIdx := range dv.scp.channelViewers {
+		channel := &dv.scp.Settings.Channels[chIdx]
+		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
+			magnitudes := dv.magnitudesCache[chIdx]
+			var val float64
+			if binIdx >= 0 && binIdx < len(magnitudes) {
+				val = magnitudes[binIdx]
+			}
+
+			yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
+			var v_cursor float64
+			dbFloor := -100.0
+			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				v_cursor = (float64(bounds.Min.Y) + h + yOffset - float64(my)) / h
+			} else {
+				v_cursor = (float64(my) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
+			}
+
+			instV[chIdx] = val
+			instVCur[chIdx] = v_cursor
+		}
+	}
+	return freqAtCursor, instV, instVCur
 }
 
 func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
@@ -543,20 +605,29 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		dv.scp.dftScopeFullScreen.Set(mx, i, crosscol)
 	}
 
-	// Map mouseX to frequency
-	minFreq := dv.scp.Settings.Dft.MinFreq
-	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
-	fs := dv.fsCache
-	maxFreqAvailable := fs / 2
-	if maxFreqPlot <= 0 {
-		maxFreqPlot = 1e6
-	}
-	if maxFreqPlot > maxFreqAvailable {
-		maxFreqPlot = maxFreqAvailable
+	if dv.refActive {
+		refcol := color.RGBA{255, 255, 0, 180}
+		rx := int(dv.refX)
+		ry := int(dv.refY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			dv.scp.dftScopeFullScreen.Set(i, ry, refcol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			dv.scp.dftScopeFullScreen.Set(rx, i, refcol)
+		}
 	}
 
-	fractionAtCursor := (float64(dv.mouseX) - float64(bounds.Min.X)) / w
-	freqAtCursor := minFreq + fractionAtCursor*maxFreqPlot
+	if !dv.showInspector {
+		return
+	}
+
+	freqAtCursor, instVLocal, instVCurLocal := dv.calcValuesAt(dv.mouseX, dv.mouseY, w, h, bounds)
+	
+	var refFreq float64
+	var refInstV, refInstVCur []float64
+	if dv.refActive {
+		refFreq, refInstV, refInstVCur = dv.calcValuesAt(dv.refX, dv.refY, w, h, bounds)
+	}
 
 	var info []struct {
 		text string
@@ -566,6 +637,14 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		text string
 		col  color.Color
 	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
+	
+	if dv.refActive {
+		df := freqAtCursor - refFreq
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"ΔF: " + formatFreq(df) + "Hz", color.White})
+	}
 
 	moved := false
 	if dv.mouseX != dv.inspectorLastX || dv.mouseY != dv.inspectorLastY {
@@ -589,38 +668,9 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		dv.inspectorSamples = 0
 	}
 
-	instV := make([]float64, len(dv.scp.channelViewers))
-	instVCur := make([]float64, len(dv.scp.channelViewers))
-
-	binIdx := int(math.Round((freqAtCursor / maxFreqAvailable) * float64(dv.mCache/2)))
-
-	for chIdx := range dv.scp.channelViewers {
-		channel := &dv.scp.Settings.Channels[chIdx]
-		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
-			magnitudes := dv.magnitudesCache[chIdx]
-			var val float64
-			if binIdx >= 0 && binIdx < len(magnitudes) {
-				val = magnitudes[binIdx]
-			}
-
-			// Calculate cursor-level amplitude
-			yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
-			var v_cursor float64
-			dbFloor := -100.0
-			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-				v_cursor = (float64(bounds.Min.Y) + h + yOffset - float64(dv.mouseY)) / h
-			} else {
-				v_cursor = (float64(dv.mouseY) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
-			}
-
-			instV[chIdx] = val
-			instVCur[chIdx] = v_cursor
-		}
-	}
-
 	for i := range dv.scp.channelViewers {
-		dv.inspectorSumV[i] += instV[i]
-		dv.inspectorSumVCur[i] += instVCur[i]
+		dv.inspectorSumV[i] += instVLocal[i]
+		dv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
 	dv.inspectorSamples++
 
@@ -660,11 +710,29 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				valStr = fmt.Sprintf("%.1fdB", v)
 				curStr = fmt.Sprintf("%.1fdB", v_cursor)
 			}
+			
+			text := fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, valStr, curStr)
+			if dv.refActive {
+				dvV := v - refInstV[chIdx]
+				dvCurV := v_cursor - refInstVCur[chIdx]
+				
+				var dvValStr, dvCurStr string
+				if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+					mv := dvV * float64(genericps.RangeValuesMv[channel.VRange])
+					mvCur := dvCurV * float64(genericps.RangeValuesMv[channel.VRange])
+					dvValStr = formatVoltageFloat64(mv, channel.VRange)
+					dvCurStr = formatVoltageFloat64(mvCur, channel.VRange)
+				} else {
+					dvValStr = fmt.Sprintf("%.1fdB", dvV)
+					dvCurStr = fmt.Sprintf("%.1fdB", dvCurV)
+				}
+				text += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", dvValStr, dvCurStr)
+			}
 
 			info = append(info, struct {
 				text string
 				col  color.Color
-			}{fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, valStr, curStr), col})
+			}{text, col})
 		}
 	}
 

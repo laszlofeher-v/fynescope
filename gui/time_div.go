@@ -16,8 +16,8 @@ import (
 	"fynescope/selectscroll"
 	"strconv"
 
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -144,10 +144,10 @@ func (tl *timeLabelViewer) mousIn(x, y float32) bool {
 	}
 	return false
 }
-func (tl *timeLabelViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (tl *timeLabelViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	tl.selected = tl.mousIn(x, y)
 }
-func (tl *timeLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tl *timeLabelViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	tl.selected = false
 }
 

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
@@ -71,21 +72,21 @@ func (tp *advTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 }
 
-func (tp *advTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (tp *advTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.triggerPointViewer.mouseDown(button, x, y)
+	tp.triggerPointViewer.mouseDown(button, modifier, x, y)
 	if !tp.selected {
 		tp.uhSelected = tp.mouseAtHysteresisPoint(x, y)
 	}
 }
 
-func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.triggerPointViewer.mouseUp(button, x, y)
+	tp.triggerPointViewer.mouseUp(button, modifier, x, y)
 	prev := tp.uhSelected
 	tp.uhSelected = false
 	if prev {
@@ -166,7 +167,7 @@ func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.mouseDown(desktop.MouseButtonTertiary, x, y)
+	tp.mouseDown(desktop.MouseButtonTertiary, 0, x, y)
 	if tp.selected {
 		switch {
 		case delta > 0:

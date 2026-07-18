@@ -33,6 +33,11 @@ type (
 		inspectorDispVCur   []float32
 		inspectorSamples    int
 		inspectorLastUpdate time.Time
+
+		// Reference point state for interval measurement
+		refActive bool
+		refX      float32
+		refY      float32
 	}
 )
 
@@ -216,9 +221,69 @@ func (fv *fvViewer) draw() {
 		}
 	}
 
-	if fv.showInspector {
+	if fv.showInspector || fv.refActive {
 		fv.drawInspector(w, h, bounds)
 	}
+}
+
+func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle, xCh int) (instV, instVCur []float32) {
+	instV = make([]float32, len(fv.scp.channelViewers))
+	instVCur = make([]float32, len(fv.scp.channelViewers))
+
+	if xCh == -1 {
+		return instV, instVCur
+	}
+
+	xRange := genericps.RangeValuesMv[fv.scp.Settings.Channels[xCh].VRange]
+	xScale := w / (2.0 * float64(xRange))
+	xOffset := fv.offsetNToFv(fv.scp.Settings.Channels[xCh].DisplayVOffset)
+	xZero := float64(bounds.Min.X) + w/2.0 + xOffset
+
+	v_cursor_x := float32((float64(mx) - xZero) / xScale)
+
+	xBuffer := fv.scp.displayBuffers[xCh]
+	if len(xBuffer) == 0 {
+		return instV, instVCur
+	}
+
+	bestIdx := 0
+	minDiffX := math.MaxFloat64
+	for s := 0; s < len(xBuffer); s++ {
+		cx := xZero + float64(xBuffer[s])*xScale
+		diff := math.Abs(cx - float64(mx))
+		if diff < minDiffX {
+			minDiffX = diff
+			bestIdx = s
+		}
+	}
+
+	instV[xCh] = xBuffer[bestIdx]
+	instVCur[xCh] = v_cursor_x
+
+	for channelIndex := 0; channelIndex < int(fv.scp.channelCount); channelIndex++ {
+		if channelIndex == xCh {
+			continue
+		}
+		channel := &fv.scp.Settings.Channels[channelIndex]
+		if channel.FvMode == settings.FvValue && channel.Enabled && len(fv.scp.displayBuffers) > channelIndex {
+			displayBuffer := fv.scp.displayBuffers[channelIndex]
+			if len(displayBuffer) == 0 || bestIdx >= len(displayBuffer) {
+				continue
+			}
+
+			yRange := genericps.RangeValuesMv[channel.VRange]
+			yScale := h / (2.0 * float64(yRange))
+			yOffset := fv.offsetNToFv(channel.DisplayVOffset)
+			yZero := float64(bounds.Min.Y) + h/2.0 + yOffset
+
+			v_cursor := float32((yZero - float64(my)) / yScale)
+
+			instV[channelIndex] = displayBuffer[bestIdx]
+			instVCur[channelIndex] = v_cursor
+		}
+	}
+
+	return instV, instVCur
 }
 
 func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
@@ -242,17 +307,32 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		fv.scp.fvScopeFullScreen.Set(mx, i, crosscol)
 	}
 
-	if xCh == -1 {
+	if fv.refActive {
+		refcol := color.RGBA{255, 255, 0, 180}
+		rx := int(fv.refX)
+		ry := int(fv.refY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			fv.scp.fvScopeFullScreen.Set(i, ry, refcol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			fv.scp.fvScopeFullScreen.Set(rx, i, refcol)
+		}
+	}
+
+	if xCh == -1 || (!fv.showInspector && !fv.refActive) {
+		return
+	}
+	
+	if !fv.showInspector {
 		return
 	}
 
-	// Calculate cursor X voltage
-	xRange := genericps.RangeValuesMv[fv.scp.Settings.Channels[xCh].VRange]
-	xScale := w / (2.0 * float64(xRange))
-	xOffset := fv.offsetNToFv(fv.scp.Settings.Channels[xCh].DisplayVOffset)
-	xZero := float64(bounds.Min.X) + w/2.0 + xOffset
-
-	v_cursor_x := float32((float64(fv.mouseX) - xZero) / xScale)
+	instVLocal, instVCurLocal := fv.calcValuesAt(fv.mouseX, fv.mouseY, w, h, bounds, xCh)
+	
+	var refInstV, refInstVCur []float32
+	if fv.refActive {
+		refInstV, refInstVCur = fv.calcValuesAt(fv.refX, fv.refY, w, h, bounds, xCh)
+	}
 
 	var info []struct {
 		text string
@@ -281,54 +361,9 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		fv.inspectorSamples = 0
 	}
 
-	xBuffer := fv.scp.displayBuffers[xCh]
-	if len(xBuffer) == 0 {
-		return
-	}
-
-	bestIdx := 0
-	minDiffX := math.MaxFloat64
-	for s := 0; s < len(xBuffer); s++ {
-		cx := xZero + float64(xBuffer[s])*xScale
-		diff := math.Abs(cx - float64(fv.mouseX))
-		if diff < minDiffX {
-			minDiffX = diff
-			bestIdx = s
-		}
-	}
-
-	instV := make([]float32, len(fv.scp.channelViewers))
-	instVCur := make([]float32, len(fv.scp.channelViewers))
-
-	instV[xCh] = xBuffer[bestIdx]
-	instVCur[xCh] = v_cursor_x
-
-	for channelIndex := 0; channelIndex < int(fv.scp.channelCount); channelIndex++ {
-		if channelIndex == xCh {
-			continue
-		}
-		channel := &fv.scp.Settings.Channels[channelIndex]
-		if channel.FvMode == settings.FvValue && channel.Enabled && len(fv.scp.displayBuffers) > channelIndex {
-			displayBuffer := fv.scp.displayBuffers[channelIndex]
-			if len(displayBuffer) == 0 || bestIdx >= len(displayBuffer) {
-				continue
-			}
-
-			yRange := genericps.RangeValuesMv[channel.VRange]
-			yScale := h / (2.0 * float64(yRange))
-			yOffset := fv.offsetNToFv(channel.DisplayVOffset)
-			yZero := float64(bounds.Min.Y) + h/2.0 + yOffset
-
-			v_cursor := float32((yZero - float64(fv.mouseY)) / yScale)
-
-			instV[channelIndex] = displayBuffer[bestIdx]
-			instVCur[channelIndex] = v_cursor
-		}
-	}
-
 	for i := range fv.scp.channelViewers {
-		fv.inspectorSumV[i] += instV[i]
-		fv.inspectorSumVCur[i] += instVCur[i]
+		fv.inspectorSumV[i] += instVLocal[i]
+		fv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
 	fv.inspectorSamples++
 
@@ -352,10 +387,16 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	xCol := fv.scp.Settings.Channels[xCh].Col[fv.scp.Settings.ChannelColorIndex]
+	xText := fmt.Sprintf("Ch%c(X): %s (Cur: %s)", 'A'+xCh, fv.formatVoltage(fv.inspectorDispV[xCh], fv.scp.Settings.Channels[xCh].VRange), fv.formatVoltage(fv.inspectorDispVCur[xCh], fv.scp.Settings.Channels[xCh].VRange))
+	if fv.refActive {
+		dvX := fv.inspectorDispV[xCh] - refInstV[xCh]
+		dvXCur := fv.inspectorDispVCur[xCh] - refInstVCur[xCh]
+		xText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvX, fv.scp.Settings.Channels[xCh].VRange), fv.formatVoltage(dvXCur, fv.scp.Settings.Channels[xCh].VRange))
+	}
 	info = append(info, struct {
 		text string
 		col  color.Color
-	}{fmt.Sprintf("Ch%c(X): %s (Cur: %s)", 'A'+xCh, fv.formatVoltage(fv.inspectorDispV[xCh], fv.scp.Settings.Channels[xCh].VRange), fv.formatVoltage(fv.inspectorDispVCur[xCh], fv.scp.Settings.Channels[xCh].VRange)), xCol})
+	}{xText, xCol})
 
 	for channelIndex := 0; channelIndex < int(fv.scp.channelCount); channelIndex++ {
 		if channelIndex == xCh {
@@ -366,10 +407,17 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			v := fv.inspectorDispV[channelIndex]
 			v_cursor := fv.inspectorDispVCur[channelIndex]
 			col := channel.Col[fv.scp.Settings.ChannelColorIndex]
+			
+			yText := fmt.Sprintf("Ch%c(Y): %s (Cur: %s)", 'A'+channelIndex, fv.formatVoltage(v, channel.VRange), fv.formatVoltage(v_cursor, channel.VRange))
+			if fv.refActive {
+				dvY := v - refInstV[channelIndex]
+				dvYCur := v_cursor - refInstVCur[channelIndex]
+				yText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvY, channel.VRange), fv.formatVoltage(dvYCur, channel.VRange))
+			}
 			info = append(info, struct {
 				text string
 				col  color.Color
-			}{fmt.Sprintf("Ch%c(Y): %s (Cur: %s)", 'A'+channelIndex, fv.formatVoltage(v, channel.VRange), fv.formatVoltage(v_cursor, channel.VRange)), col})
+			}{yText, col})
 		}
 	}
 
@@ -448,9 +496,15 @@ func (fv *fvViewer) mouseIn(x, y float32) bool {
 	return false
 }
 
-func (fv *fvViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (fv *fvViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton && fv.mouseInSignalScreen(x, y) {
-		fv.showInspector = true
+		if modifier&fyne.KeyModifierShift != 0 {
+			fv.refActive = true
+			fv.refX = x
+			fv.refY = y
+		} else {
+			fv.showInspector = true
+		}
 		fv.mouseX = x
 		fv.mouseY = y
 		fv.enableRefresh()
@@ -477,7 +531,7 @@ func (fv *fvViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	}
 }
 
-func (fv *fvViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (fv *fvViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		fv.showInspector = false
 		fv.enableRefresh()
@@ -513,6 +567,11 @@ func (fv *fvViewer) mouseMoved(x, y float32) {
 }
 
 func (fv *fvViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	if keyName == fyne.KeyDelete && fv.mouseInSignalScreen(x, y) {
+		fv.refActive = false
+		fv.enableRefresh()
+		canvas.Refresh(fv.scp.fvRaster)
+	}
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
 	for chIdx, bounds := range fv.labelBounds {
 		if p.In(bounds) {

@@ -74,7 +74,7 @@ func (cl *ftChannelLabelViewer) mouseIn(x, y float32) bool {
 	return false
 }
 
-func (cl *ftChannelLabelViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (cl *ftChannelLabelViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.MouseButtonSecondary && cl.mouseIn(x, y) {
 		channel := &cl.scp.Settings.Channels[cl.channelIndex]
 		if channel.Enabled {
@@ -97,7 +97,7 @@ func (cl *ftChannelLabelViewer) mouseDown(button desktop.MouseButton, x, y float
 		cl.selected = cl.mouseIn(x, y)
 	}
 }
-func (cl *ftChannelLabelViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (cl *ftChannelLabelViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	cl.selected = false
 	// tl.scp.dispTimeOffsetRatio = tl.scp.xOffsetRatio(tl.scp.dispTimeOffsetAbsolute)
 }
