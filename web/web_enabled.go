@@ -27,6 +27,18 @@ import (
 	"fyne.io/fyne/v2"
 )
 
+// parseAuth splits a "user:pass" credential string into its components.
+func parseAuth(auth string) (user, pass string) {
+	if auth == "" {
+		return "", ""
+	}
+	parts := strings.SplitN(auth, ":", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
+}
+
 // generateSelfSignedCert creates a self-signed TLS certificate in memory.
 func generateSelfSignedCert() (tls.Certificate, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -57,36 +69,17 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 	return tls.X509KeyPair(certPEM, keyPEM)
 }
 
-// StartServer launches an HTTPS server providing a read-only MJPEG view of the GUI
-// and a voice command interface.
-func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) {
-	if port <= 0 {
-		return
-	}
+// newServerMux builds the HTTP handler mux for the full server (stream + voice control).
+// It is intentionally separated from StartServer so it can be exercised directly
+// in tests using net/http/httptest without needing a live TLS listener or CLI flags.
+func newServerMux(authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) *http.ServeMux {
+	adminUser, adminPass := parseAuth(authAdmin)
+	viewUser, viewPass := parseAuth(authView)
 
-	adminUser, adminPass := "", ""
-	if authAdmin != "" {
-		parts := strings.SplitN(authAdmin, ":", 2)
-		if len(parts) == 2 {
-			adminUser, adminPass = parts[0], parts[1]
-		} else {
-			adminUser = parts[0]
-		}
-	}
-
-	viewUser, viewPass := "", ""
-	if authView != "" {
-		parts := strings.SplitN(authView, ":", 2)
-		if len(parts) == 2 {
-			viewUser, viewPass = parts[0], parts[1]
-		} else {
-			viewUser = parts[0]
-		}
-	}
-
+	// checkAuth returns (authenticated, isAdmin)
 	checkAuth := func(r *http.Request) (bool, bool) {
 		if adminUser == "" && viewUser == "" {
-			return true, true // No auth required
+			return true, true // No auth configured — open access
 		}
 		u, p, ok := r.BasicAuth()
 		if !ok {
@@ -101,16 +94,13 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 		return false, false
 	}
 
-	addr := fmt.Sprintf("0.0.0.0:%d", port)
-	slog.Info("Starting HTTPS web server with voice control", "addr", addr)
-
 	var (
 		latestFrame   []byte
 		frameMu       sync.RWMutex
 		activeClients atomic.Int32
 	)
 
-	// Capture frames loop
+	// Background goroutine: captures frames only while clients are connected.
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond) // ~10 FPS
 		defer ticker.Stop()
@@ -183,7 +173,7 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 			langSelect.onchange = () => {
 				recognition.lang = langSelect.value;
 				if (isListening) {
-					recognition.stop(); // onend will auto-restart with new language
+					recognition.stop();
 				}
 			};
 
@@ -209,7 +199,7 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 
 			recognition.onend = () => {
 				if (isListening) {
-					recognition.start(); // Keep listening if not intentionally stopped
+					recognition.start();
 				} else {
 					micBtn.textContent = 'Start Voice Control';
 					micBtn.classList.remove('listening');
@@ -255,7 +245,6 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
 		w.Header().Set("Content-Type", "text/html")
 		if isAdmin {
 			w.Write([]byte(htmlAdmin))
@@ -275,7 +264,6 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-
 		if r.Method == http.MethodPost {
 			body, _ := io.ReadAll(r.Body)
 			cmd := string(body)
@@ -294,7 +282,6 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
 		w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 		w.Header().Set("Cache-Control", "no-cache")
 
@@ -307,7 +294,6 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 				return
 			default:
 			}
-
 			frameMu.RLock()
 			frame := latestFrame
 			frameMu.RUnlock()
@@ -327,25 +313,34 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 					f.Flush()
 				}
 			}
-
 			time.Sleep(100 * time.Millisecond)
 		}
 	})
+
+	return mux
+}
+
+// StartServer launches an HTTPS server providing a read-only MJPEG view of the GUI
+// and a voice command interface.
+func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) {
+	if port <= 0 {
+		return
+	}
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
+	slog.Info("Starting HTTPS web server with voice control", "addr", addr)
 
 	cert, err := generateSelfSignedCert()
 	if err != nil {
 		slog.Error("Failed to generate self-signed certificate", "err", err)
 		return
 	}
-
 	server := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: newServerMux(authAdmin, authView, getCapture, onCommand),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		},
 	}
-
 	go func() {
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTPS Web server error", "err", err)
@@ -353,35 +348,16 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 	}()
 }
 
-// StartServerNoVoice launches an HTTPS server providing a read-only MJPEG view of the GUI without voice control.
-func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() image.Image) {
-	if port <= 0 {
-		return
-	}
-
-	adminUser, adminPass := "", ""
-	if authAdmin != "" {
-		parts := strings.SplitN(authAdmin, ":", 2)
-		if len(parts) == 2 {
-			adminUser, adminPass = parts[0], parts[1]
-		} else {
-			adminUser = parts[0]
-		}
-	}
-
-	viewUser, viewPass := "", ""
-	if authView != "" {
-		parts := strings.SplitN(authView, ":", 2)
-		if len(parts) == 2 {
-			viewUser, viewPass = parts[0], parts[1]
-		} else {
-			viewUser = parts[0]
-		}
-	}
+// newServerNoVoiceMux builds the HTTP handler mux for the read-only (no voice) server.
+// It is intentionally separated from StartServerNoVoice so it can be exercised directly
+// in tests using net/http/httptest without needing a live TLS listener or CLI flags.
+func newServerNoVoiceMux(authAdmin, authView string, getCapture func() image.Image) *http.ServeMux {
+	adminUser, adminPass := parseAuth(authAdmin)
+	viewUser, viewPass := parseAuth(authView)
 
 	checkAuth := func(r *http.Request) bool {
 		if adminUser == "" && viewUser == "" {
-			return true // No auth required
+			return true
 		}
 		u, p, ok := r.BasicAuth()
 		if !ok {
@@ -396,18 +372,15 @@ func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() 
 		return false
 	}
 
-	addr := fmt.Sprintf("0.0.0.0:%d", port)
-	slog.Info("Starting HTTPS web server (read-only, no voice)", "addr", addr)
-
 	var (
 		latestFrame   []byte
 		frameMu       sync.RWMutex
 		activeClients atomic.Int32
 	)
 
-	// Capture frames loop
+	// Background goroutine: captures frames only while clients are connected.
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond) // ~10 FPS
+		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 		for range ticker.C {
 			if activeClients.Load() <= 0 {
@@ -455,7 +428,6 @@ func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() 
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
 		w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 		w.Header().Set("Cache-Control", "no-cache")
 
@@ -468,7 +440,6 @@ func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() 
 				return
 			default:
 			}
-
 			frameMu.RLock()
 			frame := latestFrame
 			frameMu.RUnlock()
@@ -488,25 +459,33 @@ func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() 
 					f.Flush()
 				}
 			}
-
 			time.Sleep(100 * time.Millisecond)
 		}
 	})
+
+	return mux
+}
+
+// StartServerNoVoice launches an HTTPS server providing a read-only MJPEG view of the GUI without voice control.
+func StartServerNoVoice(port int, authAdmin, authView string, getCapture func() image.Image) {
+	if port <= 0 {
+		return
+	}
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
+	slog.Info("Starting HTTPS web server (read-only, no voice)", "addr", addr)
 
 	cert, err := generateSelfSignedCert()
 	if err != nil {
 		slog.Error("Failed to generate self-signed certificate", "err", err)
 		return
 	}
-
 	server := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: newServerNoVoiceMux(authAdmin, authView, getCapture),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		},
 	}
-
 	go func() {
 		if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTPS Web server error", "err", err)
