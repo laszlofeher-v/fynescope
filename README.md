@@ -239,7 +239,7 @@ With Complex mode, a trigger fires only when **all** channels with a `True` cond
 
 #### Simulator Support
 
-The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The simulator accurately tracks state for Window triggering boundaries (Enter/Exit direction rules) and evaluates Interval (Pulse Width) durations with sample-precision. The trigger fires at the first time step where all `True` conditions and time constraints are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution.
+The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The simulator accurately tracks state for Window triggering boundaries (Enter/Exit direction rules) and evaluates Interval and Pulse Width durations with sample-precision. The trigger fires at the first time step where all `True` conditions and time constraints are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution. Additionally, the simulator's built-in signal generator supports infinite, non-repeating PRBS sequences using a fast hash algorithm; the trigger's behavior when using PRBS is not identical to that of the real hardware.
 
 #### Limitations & Known Issues
 
@@ -353,7 +353,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 
 **Signal Generator**
 
-- **No arbitrary waveform generator (AWG)**: Only standard waveforms are supported; importing custom waveforms from CSV or drawing them by hand is not available.
+- **No arbitrary waveform generator (AWG)**: Only standard built-in waveforms (Sine, Square, Triangle, DC, PRBS, etc.) are supported; importing custom waveforms from CSV or drawing them by hand is not available.
 
 ## Debugging
 
