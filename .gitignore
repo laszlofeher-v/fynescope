@@ -9,7 +9,7 @@ vendor
 scopesetting*.yaml
 output_verify.txt
 fynescope
-fynescope.test
+*.test
 *.log
 *.txt
 *.nogo
