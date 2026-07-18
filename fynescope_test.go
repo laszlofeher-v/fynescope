@@ -125,7 +125,6 @@ func Test1(t *testing.T) {
 
 	web.StartServerNoVoice(8080, "", "", func() image.Image {
 		if scp.Window == nil || scp.Window.Canvas() == nil {
-			panic("8080")
 			return nil
 		}
 		return scp.Window.Canvas().Capture()
