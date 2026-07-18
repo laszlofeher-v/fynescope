@@ -12,10 +12,10 @@ import (
 	"math"
 	"time"
 
-	"fyne.io/fyne/v2/theme"
-
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/theme"
 )
 
 const (
@@ -42,6 +42,13 @@ type (
 		instVCur          []float32
 		isTimeZoom        bool
 		isDraggingZoomBox bool
+
+		// Reference point state for interval measurement
+		refActive bool
+		refX      float32
+		refY      float32
+		refTime   float64
+		refVolts  []float32
 	}
 )
 
@@ -64,7 +71,7 @@ func (sv *signalViewer) mouseIn(x, y float32) bool {
 	return false
 }
 
-func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (sv *signalViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if sv.isTimeZoom && button == desktop.LeftMouseButton && sv.mouseIn(x, y) {
 		bounds := sv.scp.timeZoomScopeSignalScreen.Bounds()
 		w := float64(bounds.Dx() - 1)
@@ -93,7 +100,13 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 			}
 		}
 	} else if button == desktop.RightMouseButton && sv.mouseIn(x, y) {
-		sv.showInspector = true
+		if modifier&fyne.KeyModifierShift != 0 {
+			sv.refActive = true
+			sv.refX = x
+			sv.refY = y
+		} else {
+			sv.showInspector = true
+		}
 		sv.mouseX = x
 		sv.mouseY = y
 		sv.enableRefresh()
@@ -101,7 +114,15 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 	}
 }
 
-func (sv *signalViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (sv *signalViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	if keyName == fyne.KeyDelete && sv.mouseIn(x, y) {
+		sv.refActive = false
+		sv.enableRefresh()
+		canvas.Refresh(sv.scp.ftRaster)
+	}
+}
+
+func (sv *signalViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if sv.isTimeZoom && button == desktop.LeftMouseButton {
 		sv.isDraggingZoomBox = false
 	} else if button == desktop.RightMouseButton {
@@ -200,7 +221,7 @@ func (sv *signalViewer) draw() {
 		sv.drawNormal(w, h, bounds, zeroOffset, deltaT)
 	}
 
-	if sv.showInspector && !sv.isTimeZoom {
+	if (sv.showInspector || sv.refActive) && !sv.isTimeZoom {
 		sv.drawInspector(w, h, bounds)
 	}
 
@@ -583,6 +604,79 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 	}
 }
 
+func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (tAtCursor float64, instV, instVCur []float32) {
+	unit := w / sv.scp.maxScreenTime
+	tAtCursor = (float64(mx)-float64(bounds.Min.X))/unit - sv.scp.Settings.Time.TriggerTimeOffset
+	if !sv.isTimeZoom {
+		tAtCursor += sv.scp.timeZoomBoxOffset
+	}
+
+	n := len(sv.scp.channelViewers)
+	instV = make([]float32, n)
+	instVCur = make([]float32, n)
+
+	for channelIndex := range sv.scp.channelViewers {
+		channel := &sv.scp.Settings.Channels[channelIndex]
+		if channel.Enabled && len(sv.scp.displayBuffers) > channelIndex {
+			displayBuffer := sv.scp.displayBuffers[channelIndex]
+			if len(displayBuffer) == 0 {
+				continue
+			}
+
+			var v float32
+			if sv.scp.triggerSettingMsg.Mode == control.ETS {
+				targetTime := tAtCursor * 1e15
+				bestIdx := 0
+				minDiff := math.MaxFloat64
+				for i, val := range sv.scp.etsBuffer {
+					diff := math.Abs(float64(val) - targetTime)
+					if diff < minDiff {
+						minDiff = diff
+						bestIdx = i
+					}
+				}
+				if bestIdx < len(displayBuffer) {
+					v = displayBuffer[bestIdx]
+				}
+			} else {
+				var leftPadding float64
+				if sv.scp.Settings.Time.Interpolation == settings.Sinc {
+					totalSamples := len(displayBuffer)
+					displaySamples := totalSamples / control.SincWMultiplier
+					leftPadding = float64(totalSamples-displaySamples) / 2.0
+				} else {
+					leftPadding = float64(control.LeftOut) + 1.5
+				}
+
+				deltaT_samples := sv.scp.controlSamplingTimeInterval
+				t_start_of_buffer_rel_to_trigger := -leftPadding*deltaT_samples +
+					float64(sv.scp.controlXRoundError) +
+					float64(sv.scp.controlTriggerTimeOffset)/1e15 -
+					sv.scp.Settings.Time.TriggerTimeOffset
+
+				i := (tAtCursor - t_start_of_buffer_rel_to_trigger) / deltaT_samples
+				idx := int(math.Round(i))
+				if idx >= 0 && idx < len(displayBuffer) {
+					v = displayBuffer[idx]
+				}
+			}
+			zeroOffset := float64(bounds.Min.Y) + h/2.0
+			yScale := h / float64(2.0*genericps.RangeValuesMv[channel.VRange])
+			channelViewer := &sv.scp.channelViewers[channelIndex]
+			yOffset := float64(0)
+			if channelViewer.displayOffsetInt != 0 {
+				yOffset = sv.scp.offsetNToFtY(channelViewer.displayOffsetInt)
+			}
+			offsetFloat := zeroOffset + yOffset
+			v_cursor := float32((offsetFloat - float64(my)) / yScale)
+
+			instV[channelIndex] = v
+			instVCur[channelIndex] = v_cursor
+		}
+	}
+	return tAtCursor, instV, instVCur
+}
+
 func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	if sv.scp.maxScreenTime == 0 {
 		return
@@ -598,10 +692,28 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		sv.scp.ftScopeFullScreen.Set(mx, i, crosscol)
 	}
 
-	unit := w / sv.scp.maxScreenTime
-	tAtCursor := (float64(sv.mouseX)-float64(bounds.Min.X))/unit - sv.scp.Settings.Time.TriggerTimeOffset
-	if !sv.isTimeZoom {
-		tAtCursor += sv.scp.timeZoomBoxOffset
+	if sv.refActive {
+		refcol := color.RGBA{255, 255, 0, 180}
+		rx := int(sv.refX)
+		ry := int(sv.refY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			sv.scp.ftScopeFullScreen.Set(i, ry, refcol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			sv.scp.ftScopeFullScreen.Set(rx, i, refcol)
+		}
+	}
+
+	if !sv.showInspector {
+		return
+	}
+
+	tAtCursor, instVLocal, instVCurLocal := sv.calcValuesAt(sv.mouseX, sv.mouseY, w, h, bounds)
+
+	var refTime float64
+	var refInstV, refInstVCur []float32
+	if sv.refActive {
+		refTime, refInstV, refInstVCur = sv.calcValuesAt(sv.refX, sv.refY, w, h, bounds)
 	}
 
 	var info []struct {
@@ -612,6 +724,18 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		text string
 		col  color.Color
 	}{"T: " + sv.formatTime(tAtCursor), color.White})
+
+	if sv.refActive {
+		dt := tAtCursor - refTime
+		freqStr := ""
+		if dt != 0 {
+			freqStr = fmt.Sprintf(" (%.2f Hz)", 1.0/math.Abs(dt))
+		}
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"ΔT: " + sv.formatTime(dt) + freqStr, color.White})
+	}
 
 	moved := false
 	if sv.mouseX != sv.inspectorLastX || sv.mouseY != sv.inspectorLastY {
@@ -635,87 +759,9 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		sv.inspectorSamples = 0
 	}
 
-	n := len(sv.scp.channelViewers)
-	if len(sv.instV) != n {
-		sv.instV = make([]float32, n)
-		sv.instVCur = make([]float32, n)
-	}
-	instV := sv.instV
-	instVCur := sv.instVCur
-
-	for channelIndex := range sv.scp.channelViewers {
-		channel := &sv.scp.Settings.Channels[channelIndex]
-		if channel.Enabled && len(sv.scp.displayBuffers) > channelIndex {
-			displayBuffer := sv.scp.displayBuffers[channelIndex]
-			if len(displayBuffer) == 0 {
-				continue
-			}
-
-			var v float32
-			if sv.scp.triggerSettingMsg.Mode == control.ETS {
-				// // Find nearest in ETS
-				// etsDx := w / (sv.scp.maxScreenTime * 1e15)
-				// targetTime is in femtoseconds relative to trigger point
-				targetTime := tAtCursor * 1e15
-
-				// Binary search or linear search in etsBuffer
-				bestIdx := 0
-				minDiff := math.MaxFloat64
-				for i, val := range sv.scp.etsBuffer {
-					diff := math.Abs(float64(val) - targetTime)
-					if diff < minDiff {
-						minDiff = diff
-						bestIdx = i
-					}
-				}
-				if bestIdx < len(displayBuffer) {
-					v = displayBuffer[bestIdx]
-				}
-			} else {
-				// Normal mode
-				var leftPadding float64
-				if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-					totalSamples := len(displayBuffer)
-					displaySamples := totalSamples / control.SincWMultiplier
-					leftPadding = float64(totalSamples-displaySamples) / 2.0
-				} else { //TODO Why added 1.5?
-					leftPadding = float64(control.LeftOut) + 1.5
-				}
-
-				deltaT_samples := sv.scp.controlSamplingTimeInterval
-				// Time of sample 0 relative to trigger point
-				t_start_of_buffer_rel_to_trigger := -leftPadding*deltaT_samples +
-					float64(sv.scp.controlXRoundError) +
-					float64(sv.scp.controlTriggerTimeOffset)/1e15 -
-					sv.scp.Settings.Time.TriggerTimeOffset
-
-				// Time at sample i is t_start_of_buffer_rel_to_trigger + i * deltaT_samples
-				// So i = (tAtCursor - t_start_of_buffer_rel_to_trigger) / deltaT_samples
-				i := (tAtCursor - t_start_of_buffer_rel_to_trigger) / deltaT_samples
-				idx := int(math.Round(i))
-				if idx >= 0 && idx < len(displayBuffer) {
-					v = displayBuffer[idx]
-				}
-			}
-			// Cursor voltage for this channel
-			zeroOffset := float64(bounds.Min.Y) + h/2.0
-			yScale := h / float64(2.0*genericps.RangeValuesMv[channel.VRange])
-			channelViewer := &sv.scp.channelViewers[channelIndex]
-			yOffset := float64(0)
-			if channelViewer.displayOffsetInt != 0 {
-				yOffset = sv.scp.offsetNToFtY(channelViewer.displayOffsetInt)
-			}
-			offsetFloat := zeroOffset + yOffset
-			v_cursor := float32((offsetFloat - float64(sv.mouseY)) / yScale)
-
-			instV[channelIndex] = v
-			instVCur[channelIndex] = v_cursor
-		}
-	}
-
 	for i := range sv.scp.channelViewers {
-		sv.inspectorSumV[i] += instV[i]
-		sv.inspectorSumVCur[i] += instVCur[i]
+		sv.inspectorSumV[i] += instVLocal[i]
+		sv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
 	sv.inspectorSamples++
 
@@ -744,10 +790,16 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			v := sv.inspectorDispV[channelIndex]
 			v_cursor := sv.inspectorDispVCur[channelIndex]
 			col := channel.Col[sv.scp.Settings.ChannelColorIndex]
+			text := fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+channelIndex, sv.formatVoltage(v, channel.VRange), sv.formatVoltage(v_cursor, channel.VRange))
+			if sv.refActive {
+				dv := v - refInstV[channelIndex]
+				dvCur := v_cursor - refInstVCur[channelIndex]
+				text += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", sv.formatVoltage(dv, channel.VRange), sv.formatVoltage(dvCur, channel.VRange))
+			}
 			info = append(info, struct {
 				text string
 				col  color.Color
-			}{fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+channelIndex, sv.formatVoltage(v, channel.VRange), sv.formatVoltage(v_cursor, channel.VRange)), col})
+			}{text, col})
 		}
 	}
 

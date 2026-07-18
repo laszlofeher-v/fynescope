@@ -62,8 +62,8 @@ type (
 		cursor(x, y float32) (desktop.Cursor, bool)
 	}
 	mouser interface {
-		mouseDown(button desktop.MouseButton, x, y float32)
-		mouseUp(button desktop.MouseButton, x, y float32)
+		mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32)
+		mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32)
 		mouseMoved(x, y float32)
 	}
 	scroller interface {
@@ -220,7 +220,7 @@ func (raster *screenRaster) MouseDown(event *desktop.MouseEvent) {
 	for i := range drawers {
 		switch m := drawers[i].(type) {
 		case mouser:
-			m.mouseDown(event.Button, event.Position.X, event.Position.Y)
+			m.mouseDown(event.Button, event.Modifier, event.Position.X, event.Position.Y)
 		}
 	}
 }
@@ -236,7 +236,7 @@ func (raster *screenRaster) MouseUp(event *desktop.MouseEvent) {
 	for i := range drawers {
 		switch m := drawers[i].(type) {
 		case mouser:
-			m.mouseUp(event.Button, event.Position.X, event.Position.Y)
+			m.mouseUp(event.Button, event.Modifier, event.Position.X, event.Position.Y)
 		}
 	}
 	raster.Refresh()
@@ -258,8 +258,8 @@ func (raster *screenRaster) DragEnd() {
 	for i := range drawers {
 		switch m := drawers[i].(type) {
 		case mouser:
-			m.mouseUp(desktop.RightMouseButton, raster.mouseX, raster.mouseY)
-			m.mouseUp(desktop.LeftMouseButton, raster.mouseX, raster.mouseY)
+			m.mouseUp(desktop.RightMouseButton, 0, raster.mouseX, raster.mouseY)
+			m.mouseUp(desktop.LeftMouseButton, 0, raster.mouseX, raster.mouseY)
 		}
 	}
 	raster.Refresh()

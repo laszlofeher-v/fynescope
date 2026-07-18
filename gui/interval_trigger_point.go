@@ -5,6 +5,7 @@ import (
 	"image"
 	"math"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
@@ -77,11 +78,11 @@ func (tp *intervalTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 }
 
-func (tp *intervalTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (tp *intervalTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.advTriggerPointViewer.mouseDown(button, x, y)
+	tp.advTriggerPointViewer.mouseDown(button, modifier, x, y)
 	if !tp.selected && !tp.uhSelected {
 		p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
 		tp.lowerSelected = p.In(tp.lowerHImgRect)
@@ -89,11 +90,11 @@ func (tp *intervalTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y
 	}
 }
 
-func (tp *intervalTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tp *intervalTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
-	tp.advTriggerPointViewer.mouseUp(button, x, y)
+	tp.advTriggerPointViewer.mouseUp(button, modifier, x, y)
 	prev := tp.lowerSelected || tp.upperSelected
 	tp.lowerSelected = false
 	tp.upperSelected = false

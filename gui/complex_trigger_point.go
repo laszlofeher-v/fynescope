@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 )
@@ -182,14 +183,14 @@ func (tp *complexTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 }
 
-func (tp *complexTriggerPointViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (tp *complexTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}
 	tp.selectedHit = tp.getHit(x, y)
 }
 
-func (tp *complexTriggerPointViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (tp *complexTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
 	}

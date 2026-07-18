@@ -74,6 +74,12 @@ type (
 		inspectorDispPhaseCur []float64 // Averaged Y-position phase displayed in the inspector overlay.
 		inspectorSamples      int       // Count of data frames collected in the current averaging period.
 		inspectorLastUpdate   time.Time // Timestamp of the last visual update of the inspector values.
+
+		// Reference point state for interval measurement
+		refActive bool
+		refX      float32
+		refY      float32
+
 		// cached scratch slices reused per drawInspector/drawChannels call to avoid per-frame allocs
 		instAmp          []float64
 		instPhase        []float64
@@ -555,13 +561,12 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 			}
 		}
 	}
+	if ff.showInspector || ff.refActive {
+		ff.drawInspector(w, h, ff.scp.ffScopeSignalScreen.Bounds())
+	}
 }
 
-// drawInspector draws a measurement overlay (crosshairs + dynamic info panel) on the screen.
-// It is active while the user holds the right mouse button. It identifies the closest
-// frequency point to the mouse cursor, reads/interpolates both amplitude and phase for each channel,
-// and averages these values over short epochs to prevent visual jitter.
-func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
+func (ff *ffViewer) calcValuesAt(mx float32, my float32, w float64, h float64, bounds image.Rectangle) (freqAtCursor float64, instAmp []float64, instPhase []float64, instAmpCur []float64, instPhaseCur []float64) {
 	minFreq := ff.scp.Settings.Ff.MinFreq
 	maxFreq := ff.scp.Settings.Ff.MaxFreq
 	freqRange := maxFreq - minFreq
@@ -569,80 +574,19 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		freqRange = 1000
 	}
 
-	crosscol := color.RGBA{180, 180, 180, 180}
-	mx := int(ff.mouseX)
-	my := int(ff.mouseY)
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		ff.scp.ffScopeFullScreen.Set(i, my, crosscol)
-	}
-	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
-		ff.scp.ffScopeFullScreen.Set(mx, i, crosscol)
-	}
-
 	logMin := math.Log10(math.Max(minFreq, 1e-6))
 	logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
 	logRange := logMax - logMin
 
-	fractionAtCursor := (float64(ff.mouseX) - float64(bounds.Min.X)) / w
+	fractionAtCursor := (float64(mx) - float64(bounds.Min.X)) / w
 	logF := logMin + fractionAtCursor*logRange
-	freqAtCursor := math.Pow(10, logF)
-
-	var info []struct {
-		text string
-		col  color.Color
-	}
-	info = append(info, struct {
-		text string
-		col  color.Color
-	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
-
-	moved := false
-	if ff.mouseX != ff.inspectorLastX || ff.mouseY != ff.inspectorLastY {
-		moved = true
-		ff.inspectorLastX = ff.mouseX
-		ff.inspectorLastY = ff.mouseY
-	}
-
-	if ff.inspectorSumAmp == nil || len(ff.inspectorSumAmp) != len(ff.scp.channelViewers) {
-		ff.inspectorSumAmp = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumPhase = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumAmpCur = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumPhaseCur = make([]float64, len(ff.scp.channelViewers))
-
-		ff.inspectorDispAmp = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispPhase = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispAmpCur = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispPhaseCur = make([]float64, len(ff.scp.channelViewers))
-	}
-
-	if moved {
-		for i := range ff.inspectorSumAmp {
-			ff.inspectorSumAmp[i] = 0
-			ff.inspectorSumPhase[i] = 0
-			ff.inspectorSumAmpCur[i] = 0
-			ff.inspectorSumPhaseCur[i] = 0
-		}
-		ff.inspectorSamples = 0
-	}
+	freqAtCursor = math.Pow(10, logF)
 
 	n := len(ff.scp.channelViewers)
-	if len(ff.instAmp) != n {
-		ff.instAmp = make([]float64, n)
-		ff.instPhase = make([]float64, n)
-		ff.instAmpCur = make([]float64, n)
-		ff.instPhaseCur = make([]float64, n)
-	}
-	instAmp := ff.instAmp
-	instPhase := ff.instPhase
-	instAmpCur := ff.instAmpCur
-	instPhaseCur := ff.instPhaseCur
-	// zero out reused slices
-	for i := range instAmp {
-		instAmp[i] = 0
-		instPhase[i] = 0
-		instAmpCur[i] = 0
-		instPhaseCur[i] = 0
-	}
+	instAmp = make([]float64, n)
+	instPhase = make([]float64, n)
+	instAmpCur = make([]float64, n)
+	instPhaseCur = make([]float64, n)
 
 	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
 		ch := ff.scp.Settings.Channels[chIdx]
@@ -682,22 +626,113 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		}
 
 		yOffset := ff.offsetNToFf(ch.FfDisplayVOffset)
-		instPhaseCur[chIdx] = 180.0 - (float64(ff.mouseY)-float64(bounds.Min.Y))/h*360.0
+		instPhaseCur[chIdx] = 180.0 - (float64(my)-float64(bounds.Min.Y))/h*360.0
 
 		if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-			val_cursor := (float64(bounds.Min.Y) + h + yOffset - float64(ff.mouseY)) / h
+			val_cursor := (float64(bounds.Min.Y) + h + yOffset - float64(my)) / h
 			instAmpCur[chIdx] = val_cursor * float64(genericps.RangeValuesMv[ch.VRange])
 		} else {
 			dbFloor := -80.0
-			instAmpCur[chIdx] = (float64(ff.mouseY) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
+			instAmpCur[chIdx] = (float64(my) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
+		}
+	}
+	return freqAtCursor, instAmp, instPhase, instAmpCur, instPhaseCur
+}
+
+// drawInspector draws a measurement overlay (crosshairs + dynamic info panel) on the screen.
+func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
+	minFreq := ff.scp.Settings.Ff.MinFreq
+	maxFreq := ff.scp.Settings.Ff.MaxFreq
+	freqRange := maxFreq - minFreq
+	if freqRange <= 0 {
+		freqRange = 1000
+	}
+
+	crosscol := color.RGBA{180, 180, 180, 180}
+	mx := int(ff.mouseX)
+	my := int(ff.mouseY)
+	for i := bounds.Min.X; i < bounds.Max.X; i++ {
+		ff.scp.ffScopeFullScreen.Set(i, my, crosscol)
+	}
+	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+		ff.scp.ffScopeFullScreen.Set(mx, i, crosscol)
+	}
+
+	if ff.refActive {
+		refcol := color.RGBA{255, 255, 0, 180}
+		rx := int(ff.refX)
+		ry := int(ff.refY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			ff.scp.ffScopeFullScreen.Set(i, ry, refcol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			ff.scp.ffScopeFullScreen.Set(rx, i, refcol)
 		}
 	}
 
+	if !ff.showInspector {
+		return
+	}
+
+	freqAtCursor, instAmpLocal, instPhaseLocal, instAmpCurLocal, instPhaseCurLocal := ff.calcValuesAt(ff.mouseX, ff.mouseY, w, h, bounds)
+
+	var refFreq float64
+	var refInstAmp, refInstPhase, refInstAmpCur, refInstPhaseCur []float64
+	if ff.refActive {
+		refFreq, refInstAmp, refInstPhase, refInstAmpCur, refInstPhaseCur = ff.calcValuesAt(ff.refX, ff.refY, w, h, bounds)
+	}
+
+	var info []struct {
+		text string
+		col  color.Color
+	}
+	info = append(info, struct {
+		text string
+		col  color.Color
+	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
+	
+	if ff.refActive {
+		df := freqAtCursor - refFreq
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"ΔF: " + formatFreq(df) + "Hz", color.White})
+	}
+
+	moved := false
+	if ff.mouseX != ff.inspectorLastX || ff.mouseY != ff.inspectorLastY {
+		moved = true
+		ff.inspectorLastX = ff.mouseX
+		ff.inspectorLastY = ff.mouseY
+	}
+
+	if ff.inspectorSumAmp == nil || len(ff.inspectorSumAmp) != len(ff.scp.channelViewers) {
+		ff.inspectorSumAmp = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorSumPhase = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorSumAmpCur = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorSumPhaseCur = make([]float64, len(ff.scp.channelViewers))
+
+		ff.inspectorDispAmp = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorDispPhase = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorDispAmpCur = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorDispPhaseCur = make([]float64, len(ff.scp.channelViewers))
+	}
+
+	if moved {
+		for i := range ff.inspectorSumAmp {
+			ff.inspectorSumAmp[i] = 0
+			ff.inspectorSumPhase[i] = 0
+			ff.inspectorSumAmpCur[i] = 0
+			ff.inspectorSumPhaseCur[i] = 0
+		}
+		ff.inspectorSamples = 0
+	}
+
 	for i := range ff.scp.channelViewers {
-		ff.inspectorSumAmp[i] += instAmp[i]
-		ff.inspectorSumPhase[i] += instPhase[i]
-		ff.inspectorSumAmpCur[i] += instAmpCur[i]
-		ff.inspectorSumPhaseCur[i] += instPhaseCur[i]
+		ff.inspectorSumAmp[i] += instAmpLocal[i]
+		ff.inspectorSumPhase[i] += instPhaseLocal[i]
+		ff.inspectorSumAmpCur[i] += instAmpCurLocal[i]
+		ff.inspectorSumPhaseCur[i] += instPhaseCurLocal[i]
 	}
 	ff.inspectorSamples++
 
@@ -768,6 +803,38 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			line = fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, ampStr, ampCurStr)
 		} else {
 			line = fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, phaseStr, phaseCurStr)
+		}
+		
+		if ff.refActive {
+			var dAmpStr, dAmpCurStr, dPhaseStr, dPhaseCurStr string
+			
+			if ch.Enabled {
+				dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
+				dvAmpCur := ff.inspectorDispAmpCur[chIdx] - refInstAmpCur[chIdx]
+				
+				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+					mv := dvAmp * float64(genericps.RangeValuesMv[ch.VRange])
+					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[ch.VRange])
+					dAmpStr = formatVoltageFloat64(mv, ch.VRange)
+					dAmpCurStr = formatVoltageFloat64(mvCur, ch.VRange)
+				} else {
+					// for dB, the delta is technically a ratio if we subtract dBs, which is fine
+					dAmpStr = fmt.Sprintf("%.1fdB", dvAmp)
+					dAmpCurStr = fmt.Sprintf("%.1fdB", dvAmpCur)
+				}
+			}
+			if ch.FfPhaseEnabled {
+				dPhaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx]-refInstPhase[chIdx])
+				dPhaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx]-refInstPhaseCur[chIdx])
+			}
+			
+			if ch.Enabled && ch.FfPhaseEnabled {
+				line += fmt.Sprintf(" Δ: %s/%s (ΔCur: %s/%s)", dAmpStr, dPhaseStr, dAmpCurStr, dPhaseCurStr)
+			} else if ch.Enabled {
+				line += fmt.Sprintf(" Δ: %s (ΔCur: %s)", dAmpStr, dAmpCurStr)
+			} else {
+				line += fmt.Sprintf(" Δ: %s (ΔCur: %s)", dPhaseStr, dPhaseCurStr)
+			}
 		}
 
 		info = append(info, struct {
@@ -871,9 +938,16 @@ func (ff *ffViewer) mouseIn(x, y float32) bool {
 
 // mouseDown handles mouse press events. Right-clicking toggles the measurement inspector overlay,
 // while left-clicking is checked against label hitboxes to register scroll/drag focus.
-func (ff *ffViewer) mouseDown(button desktop.MouseButton, x, y float32) {
+func (ff *ffViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton && ff.mouseInSignalScreen(x, y) {
-		ff.showInspector = true
+		if modifier&fyne.KeyModifierShift != 0 {
+			ff.refActive = true
+			ix, iy := ff.fyneToImg(x, y)
+			ff.refX = float32(ix)
+			ff.refY = float32(iy)
+		} else {
+			ff.showInspector = true
+		}
 		ix, iy := ff.fyneToImg(x, y)
 		ff.mouseX = float32(ix)
 		ff.mouseY = float32(iy)
@@ -907,7 +981,7 @@ func (ff *ffViewer) mouseDown(button desktop.MouseButton, x, y float32) {
 }
 
 // mouseUp handles mouse release events, hiding the inspector if active, and resetting interactive states.
-func (ff *ffViewer) mouseUp(button desktop.MouseButton, x, y float32) {
+func (ff *ffViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		ff.showInspector = false
 		ff.scp.ffFullRefresh = true
@@ -1062,6 +1136,12 @@ func (ff *ffViewer) scrolled(delta, x, y float32) {
 
 // typedKey handles arrow key presses when focusing interactive label coordinates.
 func (ff *ffViewer) typedKey(x, y float32, keyName fyne.KeyName) {
+	if keyName == fyne.KeyDelete && ff.mouseInSignalScreen(x, y) {
+		ff.refActive = false
+		ff.scp.ffFullRefresh = true
+		ff.enableRefresh()
+		canvas.Refresh(ff.scp.ffRaster)
+	}
 	ix, iy := ff.fyneToImg(x, y)
 	p := image.Point{X: ix, Y: iy}
 	for chIdx, bounds := range ff.labelBounds {
