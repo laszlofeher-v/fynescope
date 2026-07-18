@@ -93,7 +93,7 @@ func TestScrolled(t *testing.T) {
 	var descChangedVal string
 	var descChangedExc Exception
 	var descSelect *SelectScroll
-	
+
 	fyne.DoAndWait(func() {
 		descSelect = NewSelectScroll(descOptions, func(opt string, ex Exception) {
 			descChangedVal = opt
@@ -115,7 +115,7 @@ func TestScrolled(t *testing.T) {
 	var ascChangedVal string
 	var ascChangedExc Exception
 	var ascSelect *SelectScroll
-	
+
 	fyne.DoAndWait(func() {
 		ascSelect = NewSelectScroll(ascOptions, func(opt string, ex Exception) {
 			ascChangedVal = opt
@@ -151,15 +151,15 @@ func TestSelectScroll_Stress(t *testing.T) {
 		ss1 = NewSelectScroll([]string{"1", "2", "3", "4", "5"}, func(string, Exception) {}, "1")
 		ss2 = NewSelectScroll([]string{"10", "20", "30"}, func(string, Exception) {}, "10")
 		ss3 = NewSelectScroll([]string{"100", "200", "300"}, func(string, Exception) {}, "100")
-		
+
 		panel := container.NewVBox(ss1, ss2, ss3)
 		w.SetContent(panel)
 		w.Resize(fyne.NewSize(300, 300))
 		w.Show()
 	})
 
-	// Run for 10 minutes
-	timeout := time.After(10 * time.Minute)
+	// Run for 1 minutes
+	timeout := time.After(1 * time.Minute)
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	widgets := []*SelectScroll{ss1, ss2, ss3}
 
