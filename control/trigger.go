@@ -44,6 +44,7 @@ func (psControl *PscDesc) triggerMonitor() {
 			a.UpperHysteresis != b.UpperHysteresis ||
 			a.Source != b.Source ||
 			a.ThresholdDirection != b.ThresholdDirection ||
+			a.ThresholdMode != b.ThresholdMode ||
 			a.Mode != b.Mode ||
 			a.Type != b.Type ||
 			a.Mv != b.Mv ||

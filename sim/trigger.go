@@ -156,11 +156,16 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				// PWQ evaluates against the main channel's thresholds
 				cfg := td.channels[i]
 
-				// Create a temporary config for PWQ with its own direction
+				// Determine start edge of the pulse
+				pwqDir := TriggerRising
+				if td.pwqConfig.Direction == TriggerFallingLower || td.pwqConfig.Direction == TriggerFalling {
+					pwqDir = TriggerFalling
+				}
+
 				pwqCfg := TriggerChannelConfig{
 					Threshold:  cfg.Threshold,
 					Hysteresis: cfg.Hysteresis,
-					Direction:  td.pwqConfig.Direction,
+					Direction:  pwqDir,
 				}
 
 				_, fired := td.evaluateLevelTrigger(pwqCfg, &pwqStates[i], level)
@@ -174,6 +179,16 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		for i, cfg := range td.channels {
 			if !cfg.Enabled || cfg.Condition == CondDontCare {
 				continue
+			}
+
+			// If PWQ is active for this channel, the main trigger marks the END of the pulse,
+			// so it must trigger on the opposite edge.
+			if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
+				if td.pwqConfig.Direction == TriggerRisingLower || td.pwqConfig.Direction == TriggerRising {
+					cfg.Direction = TriggerFalling
+				} else {
+					cfg.Direction = TriggerRising
+				}
 			}
 
 			level := signalFunc(t, ChannelId(i))
