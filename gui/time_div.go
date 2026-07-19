@@ -382,8 +382,12 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		scp.triggerSettingMsg.LowerHysteresisADC = lowerHysteresisADC
 		scp.triggerSettingMsg.LowerTriggerADC = lowerTriggerADC
 		scp.triggerSettingMsg.ThresholdMode = thresholdMode
-		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-		<-scp.triggerSettingMsg.Done
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}(triggerCopy)
 	} else {
 		slog.Debug("not new trigger")
 	}
@@ -667,8 +671,12 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 		}
 	}
 	scp.triggerSettingMsg.Mode = triggerModes[option]
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg // send to control
-	<-scp.triggerSettingMsg.Done                         // wait for done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -800,8 +808,12 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 		scp.buildComplexTriggerMessage()
 	}
 
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 
 	scp.updateTriggerUIForType()
 	setFlag(scp.repartition)
@@ -837,8 +849,12 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 		scp.buildComplexTriggerMessage()
 	}
 
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 
 	scp.updateTriggerUIForType()
 
@@ -856,15 +872,22 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
 		if intV < lowerMv+genericps.MinThresholdDiff {
 			intV = lowerMv + genericps.MinThresholdDiff
-			scp.triggerThresholdDisp.SilentSetValue(int(intV))
+			fyne.Do(func() {
+				scp.triggerThresholdDisp.SilentSetValue(int(intV))
+				scp.triggerThresholdDisp.Refresh()
+			})
 		}
 	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.Mv = intV
 	scp.triggerSettingMsg.Mv = intV
 	scp.triggerSettingMsg.TriggerADC = int16(scp.mvToAdc(intV,
 		scp.Settings.Channels[scp.triggerSource].VRange))
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -895,15 +918,22 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
 		if intV > upperMv-genericps.MinThresholdDiff {
 			intV = upperMv - genericps.MinThresholdDiff
-			scp.triggerLowerThresholdDisp.SilentSetValue(int(intV))
+			fyne.Do(func() {
+				scp.triggerLowerThresholdDisp.SilentSetValue(int(intV))
+				scp.triggerLowerThresholdDisp.Refresh()
+			})
 		}
 	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv = intV
 	scp.triggerSettingMsg.LowerMv = intV
 	scp.triggerSettingMsg.LowerTriggerADC = int16(scp.mvToAdc(intV,
 		scp.Settings.Channels[scp.triggerSource].VRange))
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -919,8 +949,12 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.LowerHysteresis = intV
 	scp.triggerSettingMsg.LowerHysteresis = intV
 	scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(intV, scp.Settings.Channels[scp.triggerSource].VRange))
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -957,8 +991,12 @@ func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exceptio
 
 	scp.updateIntervalTimeGUI()
 
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -1064,13 +1102,17 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	minTime, maxTime := scp.getScreenTimeLimits()
 	if valInSeconds < minTime {
 		valInSeconds = minTime
-		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeLowerDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeLowerDisp.Refresh()
+		})
 	}
 	if valInSeconds > maxTime {
 		valInSeconds = maxTime
-		scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeLowerDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeLowerDisp.Refresh()
+		})
 	}
 
 	if valInSeconds > scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper {
@@ -1080,8 +1122,12 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower = valInSeconds
 	scp.triggerSettingMsg.IntervalTimeLower = valInSeconds
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -1099,13 +1145,17 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	minTime, maxTime := scp.getScreenTimeLimits()
 	if valInSeconds < minTime {
 		valInSeconds = minTime
-		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeUpperDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeUpperDisp.Refresh()
+		})
 	}
 	if valInSeconds > maxTime {
 		valInSeconds = maxTime
-		scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeUpperDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeUpperDisp.Refresh()
+		})
 	}
 
 	if valInSeconds < scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower {
@@ -1115,8 +1165,12 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	}
 	scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper = valInSeconds
 	scp.triggerSettingMsg.IntervalTimeUpper = valInSeconds
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -1135,13 +1189,17 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 	minTime, maxTime := scp.getScreenTimeLimits()
 	if valInSeconds < minTime {
 		valInSeconds = minTime
-		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeSingleDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeSingleDisp.Refresh()
+		})
 	}
 	if valInSeconds > maxTime {
 		valInSeconds = maxTime
-		scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
-		scp.intervalTimeSingleDisp.Refresh()
+		fyne.Do(func() {
+			scp.intervalTimeSingleDisp.SilentSetValue(int(math.Round(valInSeconds / getIntervalUnitMultiplier(unit))))
+			scp.intervalTimeSingleDisp.Refresh()
+		})
 	}
 
 	pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
@@ -1152,8 +1210,12 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 		scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower = valInSeconds
 		scp.triggerSettingMsg.IntervalTimeLower = valInSeconds
 	}
-	scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-	<-scp.triggerSettingMsg.Done
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	go func(t control.TriggerDescMsg) {
+		scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}(triggerCopy)
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -1201,7 +1263,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		return nil, err
 	}
 	addToTest(scp.triggerThresholdDisp, triggerThresholdDispId)
-	scp.triggerThresholdDisp.OnChanged = scp.onThresholdChange
+	scp.triggerThresholdDisp.OnChanged = func(v float64) {
+		go scp.onThresholdChange(v)
+	}
 
 	scp.triggerLowerThresholdDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, -20000,
 		disp7.Signed, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -1210,7 +1274,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	scp.triggerLowerThresholdDisp.OnChanged = scp.onLowerThresholdChange
+	scp.triggerLowerThresholdDisp.OnChanged = func(v float64) {
+		go scp.onLowerThresholdChange(v)
+	}
 
 	scp.triggerHysteresisDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, 0,
 		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -1220,7 +1286,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		return nil, err
 	}
 	addToTest(scp.triggerHysteresisDisp, triggerHysteresisDispId)
-	scp.triggerHysteresisDisp.OnChanged = scp.onHysteresisChange
+	scp.triggerHysteresisDisp.OnChanged = func(v float64) {
+		go scp.onHysteresisChange(v)
+	}
 
 	scp.triggerLowerHysteresisDisp, err = disp7.NewCustomDisp7Array(5, 3, 20000, 0,
 		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -1229,7 +1297,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	scp.triggerLowerHysteresisDisp.OnChanged = scp.onLowerHysteresisChange
+	scp.triggerLowerHysteresisDisp.OnChanged = func(v float64) {
+		go scp.onLowerHysteresisChange(v)
+	}
 
 	scp.boxTriggerHysteresisDisp = container.New(&tightHBoxLayout{gap: -25}, scp.triggerHysteresisDisp, scp.triggerLowerHysteresisDisp)
 	if triggerTypes[scp.Settings.Trigger.Type] == control.Simple {
@@ -1302,7 +1372,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	scp.intervalTimeLowerDisp.OnChanged = scp.onIntervalTimeLowerChange
+	scp.intervalTimeLowerDisp.OnChanged = func(v float64) {
+		go scp.onIntervalTimeLowerChange(v)
+	}
 	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
 	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId)
 
@@ -1313,7 +1385,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	scp.intervalTimeUpperDisp.OnChanged = scp.onIntervalTimeUpperChange
+	scp.intervalTimeUpperDisp.OnChanged = func(v float64) {
+		go scp.onIntervalTimeUpperChange(v)
+	}
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
 	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId)
 
@@ -1325,7 +1399,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	scp.intervalTimeSingleDisp.OnChanged = scp.onIntervalTimeSingleChange
+	scp.intervalTimeSingleDisp.OnChanged = func(v float64) {
+		go scp.onIntervalTimeSingleChange(v)
+	}
 	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId)
 
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect)

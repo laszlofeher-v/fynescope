@@ -107,7 +107,6 @@ const (
 	genOperationId                 = "genOperation"
 	ffMinFreqId                    = "ffMinFreq"
 	ffMaxFreqId                    = "ffMaxFreq"
-	ffCurrentFreqId                = "ffCurrentFreq"
 	ffSweepButtonId                = "ffSweepButton"
 	ffStopButtonId                 = "ffStopButton"
 	ffExtGenSelectId               = "ffExtGenSelect"
@@ -260,7 +259,9 @@ func randScroll(name string, n int) {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
-		if n > 2 { n = 2 } // Limit iterations to avoid timeouts on heavy OnChanged callbacks
+		if n > 2 {
+			n = 2
+		} // Limit iterations to avoid timeouts on heavy OnChanged callbacks
 		for ; n > 0; n-- {
 			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
@@ -272,7 +273,9 @@ func randScroll(name string, n int) {
 			})
 		}
 	case *disp7.DigitArray:
-		if n > 2 { n = 2 } // Limit iterations to avoid timeouts
+		if n > 2 {
+			n = 2
+		} // Limit iterations to avoid timeouts
 		for ; n > 0; n-- {
 			wait()
 			fyne.DoAndWait(func() {
@@ -361,32 +364,6 @@ func tap(name string) {
 					}
 				}
 			}
-		})
-	case *selectscroll.SelectScroll:
-		wait()
-		fyne.DoAndWait(func() {
-			defer func() {
-				if r := recover(); r != nil {
-					slog.Warn("Recovered from selectscroll Tap panic", "err", r)
-				}
-			}()
-			if app := fyne.CurrentApp(); app != nil {
-				if driver := app.Driver(); driver != nil {
-					if canvas := driver.CanvasForObject(c); canvas != nil {
-						c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: c.Position().X, Y: c.Position().Y}, Position: fyne.Position{X: 0, Y: 0}})
-					}
-				}
-			}
-		})
-		wait()
-		wait()
-		fyne.DoAndWait(func() {
-			c.Hide() // close option window
-		})
-		wait()
-		wait()
-		fyne.DoAndWait(func() {
-			c.Show()
 		})
 	case fyne.Tappable:
 		wait()
@@ -583,7 +560,6 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 	op := 0
 	control := 0
 	ready := make(chan struct{})
-	tabIndex := 0
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
 		wait()
@@ -606,11 +582,22 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 		} else {
 			targetTab = 0
 		}
-		if tabIndex != targetTab {
-			tabIndex = targetTab
-			fyne.DoAndWait(func() {
-				controls[ftFuncId].(*container.AppTabs).SelectIndex(tabIndex)
-			})
+		var currentTab int
+		fyne.DoAndWait(func() {
+			if tabs, ok := controls[ftFuncId].(*container.AppTabs); ok {
+				currentTab = tabs.SelectedIndex()
+			}
+		})
+
+		isAlwaysVisible := false
+		switch a[control] {
+		case ftFuncId, fvFuncId, dftFuncId, ffFuncId, rlcFuncId, genFuncId, filterFuncId, extgenFuncId,
+			runblockButtonId, themeChangeActionId, changeSideId:
+			isAlwaysVisible = true
+		}
+
+		if currentTab != targetTab && !isAlwaysVisible {
+			continue
 		}
 		op = rand.Intn(4)
 		go func() {

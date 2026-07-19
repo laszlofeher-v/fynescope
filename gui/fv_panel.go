@@ -87,27 +87,29 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 	for i := range xChecks {
 		idx := i
 		xChecks[idx].OnChanged = func(b bool) {
-			if b {
-				// Uncheck others
-				for j, c := range xChecks {
-					if idx != j {
-						c.SetChecked(false)
+			go func() {
+				if b {
+					// Uncheck others
+					for j, c := range xChecks {
+						if idx != j {
+							c.SetChecked(false)
+						}
 					}
-				}
-				// Update settings
-				for j := 0; j < int(scp.channelCount); j++ {
-					if idx == j {
-						scp.Settings.Channels[j].FvMode = settings.FvArgument
-					} else {
-						scp.Settings.Channels[j].FvMode = settings.FvValue
+					// Update settings
+					for j := 0; j < int(scp.channelCount); j++ {
+						if idx == j {
+							scp.Settings.Channels[j].FvMode = settings.FvArgument
+						} else {
+							scp.Settings.Channels[j].FvMode = settings.FvValue
+						}
 					}
+				} else {
+					// If unchecked, set this one to FvValue as well
+					scp.Settings.Channels[idx].FvMode = settings.FvValue
 				}
-			} else {
-				// If unchecked, set this one to FvValue as well
-				scp.Settings.Channels[idx].FvMode = settings.FvValue
-			}
-			scp.refreshRasters()
-			scp.SaveSettings()
+				scp.refreshRasters()
+				scp.SaveSettings()
+			}()
 		}
 	}
 

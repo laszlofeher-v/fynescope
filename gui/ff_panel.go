@@ -7,13 +7,14 @@ import (
 	"log/slog"
 	"math"
 
+	"fynescope/settings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"fynescope/settings"
 )
 
 // newFfPanel initializes the graphical control panel container for the F(f) tab.
@@ -136,27 +137,31 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	for i := 0; i < int(scp.channelCount); i++ {
 		idx := i
 		refChecks[idx].OnChanged = func(b bool) {
-			if b {
-				scp.Settings.Ff.ReferenceChannel = idx
-				for j, rc := range refChecks {
-					if j != idx {
-						rc.SetChecked(false)
+			go func() {
+				if b {
+					scp.Settings.Ff.ReferenceChannel = idx
+					for j, rc := range refChecks {
+						if j != idx {
+							rc.SetChecked(false)
+						}
 					}
-				}
 
-				// Update disp7 widget colors based on reference channel
-				refCol := scp.Settings.Channels[idx].Col[scp.Settings.ChannelColorIndex]
-				if scp.ffMinFreqDisp != nil {
-					scp.ffMinFreqDisp.SetOncolor(refCol)
-					scp.ffMaxFreqDisp.SetOncolor(refCol)
-					// deltaDisp and deltaTDisp color updates removed
-					if scp.ffCurrentFreqDisp != nil {
-						scp.ffCurrentFreqDisp.SetOncolor(refCol)
-					}
-				}
+					// Update disp7 widget colors based on reference channel
+					refCol := scp.Settings.Channels[idx].Col[scp.Settings.ChannelColorIndex]
+					fyne.Do(func() {
+						if scp.ffMinFreqDisp != nil {
+							scp.ffMinFreqDisp.SetOncolor(refCol)
+							scp.ffMaxFreqDisp.SetOncolor(refCol)
+							// deltaDisp and deltaTDisp color updates removed
+							if scp.ffCurrentFreqDisp != nil {
+								scp.ffCurrentFreqDisp.SetOncolor(refCol)
+							}
+						}
+					})
 
-				scp.ResetFfSweep()
-			}
+					scp.ResetFfSweep()
+				}
+			}()
 		}
 		if scp.Settings.Ff.ReferenceChannel == i {
 			refChecks[i].SetChecked(true)
@@ -217,8 +222,10 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		disp7.DefaultVCursorSpace, "Pts/dec:", "")
 
 	scp.ffStepFreqDisp.OnChanged = func(v float64) {
-		scp.Settings.Ff.PtsDec = v
-		scp.SaveSettings()
+		go func() {
+			scp.Settings.Ff.PtsDec = v
+			scp.SaveSettings()
+		}()
 	}
 	if scp.Settings.Ff.PtsDec < 5 {
 		scp.Settings.Ff.PtsDec = 5
@@ -251,32 +258,38 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	}
 
 	scp.ffDeltaTDisp.OnChanged = func(v float64) {
-		scp.Settings.Ff.DeltaT = v / 1000.0
-		scp.ResetFfSweep()
-		syncGenStartStopAndStep()
+		go func() {
+			scp.Settings.Ff.DeltaT = v / 1000.0
+			scp.ResetFfSweep()
+			syncGenStartStopAndStep()
+		}()
 	}
 
 	scp.ffMinFreqDisp.OnChanged = func(v float64) {
-		scp.Settings.Ff.MinFreq = v / 100.0
-		if scp.Settings.Ff.MinFreq > scp.Settings.Ff.MaxFreq {
-			scp.Settings.Ff.MaxFreq = scp.Settings.Ff.MinFreq
-			if scp.ffMaxFreqDisp != nil {
-				scp.ffMaxFreqDisp.SetFloatValue(scp.Settings.Ff.MaxFreq, 2)
+		go func() {
+			scp.Settings.Ff.MinFreq = v / 100.0
+			if scp.Settings.Ff.MinFreq > scp.Settings.Ff.MaxFreq {
+				scp.Settings.Ff.MaxFreq = scp.Settings.Ff.MinFreq
+				if scp.ffMaxFreqDisp != nil {
+					scp.ffMaxFreqDisp.SetFloatValue(scp.Settings.Ff.MaxFreq, 2)
+				}
 			}
-		}
-		scp.ResetFfSweep()
-		syncGenStartStopAndStep()
+			scp.ResetFfSweep()
+			syncGenStartStopAndStep()
+		}()
 	}
 	scp.ffMaxFreqDisp.OnChanged = func(v float64) {
-		scp.Settings.Ff.MaxFreq = v / 100.0
-		if scp.Settings.Ff.MaxFreq < scp.Settings.Ff.MinFreq {
-			scp.Settings.Ff.MinFreq = scp.Settings.Ff.MaxFreq
-			if scp.ffMinFreqDisp != nil {
-				scp.ffMinFreqDisp.SetFloatValue(scp.Settings.Ff.MinFreq, 2)
+		go func() {
+			scp.Settings.Ff.MaxFreq = v / 100.0
+			if scp.Settings.Ff.MaxFreq < scp.Settings.Ff.MinFreq {
+				scp.Settings.Ff.MinFreq = scp.Settings.Ff.MaxFreq
+				if scp.ffMinFreqDisp != nil {
+					scp.ffMinFreqDisp.SetFloatValue(scp.Settings.Ff.MinFreq, 2)
+				}
 			}
-		}
-		scp.ResetFfSweep()
-		syncGenStartStopAndStep()
+			scp.ResetFfSweep()
+			syncGenStartStopAndStep()
+		}()
 	}
 
 	if scp.Settings.Dft.DisplayMode == "" {
@@ -314,7 +327,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.Settings.Ff.UseExternalGen = checked
 		scp.updateFfWidgetLimits()
 		scp.SaveSettings()
-		
+
 		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
 			scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
 		} else {
@@ -347,7 +360,6 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 	addToTest(scp.ffMinFreqDisp, ffMinFreqId)
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId)
-	addToTest(scp.ffCurrentFreqDisp, ffCurrentFreqId)
 	addToTest(dispModeSelect, ffDispModeSelectId)
 	addToTest(scp.useExtGenCheck, ffExtGenSelectId)
 

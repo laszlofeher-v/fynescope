@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/control"
 	"fynescope/genericps"
 	"image"
 	"log/slog"
@@ -103,8 +104,12 @@ func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 	if scp.triggerSettingMsg.UpperHysteresis != mv {
 		scp.triggerSettingMsg.UpperHysteresis = mv
 		scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
-		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-		<-scp.triggerSettingMsg.Done
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}(triggerCopy)
 	}
 }
 

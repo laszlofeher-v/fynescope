@@ -78,7 +78,9 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
 	if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
-		scp.psControl.SetGeneratorCh <- msg
+		go func(m *control.GeneratorDescMsg) {
+			scp.psControl.SetGeneratorCh <- m
+		}(msg)
 	}
 }
 

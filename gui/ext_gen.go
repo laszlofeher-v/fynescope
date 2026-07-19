@@ -50,16 +50,20 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 	extGenPid.SetText(scp.Settings.Ff.ExternalGenUsbPid)
 
 	extGenVid.OnChanged = func(s string) {
-		scp.Settings.Ff.ExternalGenUsbVid = s
-		scp.extGen.Disconnect()
-		updateStatus()
-		scp.SaveSettings()
+		go func() {
+			scp.Settings.Ff.ExternalGenUsbVid = s
+			scp.extGen.Disconnect()
+			updateStatus()
+			scp.SaveSettings()
+		}()
 	}
 	extGenPid.OnChanged = func(s string) {
-		scp.Settings.Ff.ExternalGenUsbPid = s
-		scp.extGen.Disconnect()
-		updateStatus()
-		scp.SaveSettings()
+		go func() {
+			scp.Settings.Ff.ExternalGenUsbPid = s
+			scp.extGen.Disconnect()
+			updateStatus()
+			scp.SaveSettings()
+		}()
 	}
 
 	// ── Connect / Disconnect buttons ─────────────────────────────────────────
@@ -139,9 +143,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		onOffCheck := widget.NewCheck(chName, func(b bool) {
 			scp.Settings.ExtGen[chIdx].On = b
 			if scp.extGen.Connected() {
-				if err := scp.extGen.SetOutput(scpiCh, b); err != nil {
-					slog.Error("extgen set output", "err", err)
-				}
+				go func(isOn bool) {
+					if err := scp.extGen.SetOutput(scpiCh, isOn); err != nil {
+						slog.Error("extgen set output", "err", err)
+					}
+				}(b)
 			}
 			scp.SaveSettings()
 		})
@@ -160,30 +166,32 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		waveTypeSelect := selectscroll.NewSelectScroll(waveTypeOptions, func(option string, ex selectscroll.Exception) {
 			scp.Settings.ExtGen[chIdx].WaveType = waveTypeMap[option]
 			if scp.extGen.Connected() {
-				var err error
-				switch scp.Settings.ExtGen[chIdx].WaveType {
-				case genericps.Sine:
-					err = scp.extGen.SetWaveform(scpiCh, "SINusoid")
-				case genericps.Square:
-					err = scp.extGen.SetWaveform(scpiCh, "SQUare")
-				case genericps.Triangle:
-					if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
-						err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 50")
+				go func(wt genericps.WaveTypeEnum) {
+					var err error
+					switch wt {
+					case genericps.Sine:
+						err = scp.extGen.SetWaveform(scpiCh, "SINusoid")
+					case genericps.Square:
+						err = scp.extGen.SetWaveform(scpiCh, "SQUare")
+					case genericps.Triangle:
+						if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
+							err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 50")
+						}
+					case genericps.RampUp:
+						if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
+							err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 100")
+						}
+					case genericps.RampDown:
+						if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
+							err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 0")
+						}
+					default:
+						err = scp.extGen.SetWaveform(scpiCh, "SINusoid")
 					}
-				case genericps.RampUp:
-					if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
-						err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 100")
+					if err != nil {
+						slog.Error("extgen set waveform", "err", err)
 					}
-				case genericps.RampDown:
-					if err = scp.extGen.SetWaveform(scpiCh, "RAMP"); err == nil {
-						err = scp.extGen.SetRampSymmetry(scpiCh, "RAMP:SYMMetry 0")
-					}
-				default:
-					err = scp.extGen.SetWaveform(scpiCh, "SINusoid")
-				}
-				if err != nil {
-					slog.Error("extgen set waveform", "err", err)
-				}
+				}(scp.Settings.ExtGen[chIdx].WaveType)
 			}
 			scp.SaveSettings()
 		}, "RampDown")
@@ -223,16 +231,18 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		addToTest(frequency, extGenFreqId)
 		frequency.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Frequency))
 		frequency.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].Frequency = v
-			if scp.extGen.Connected() {
-				if err := scp.extGen.SetFrequency(scpiCh, scp.Settings.ExtGen[chIdx].Frequency); err != nil {
-					slog.Error("external gen set freq failed", "err", err)
-					if scp.psControl != nil && scp.psControl.DisplayStatus != nil {
-						scp.psControl.DisplayStatus("ExtGen: "+err.Error(), control.Warning)
+			go func() {
+				scp.Settings.ExtGen[chIdx].Frequency = v
+				if scp.extGen.Connected() {
+					if err := scp.extGen.SetFrequency(scpiCh, v); err != nil {
+						slog.Error("external gen set freq failed", "err", err)
+						if scp.psControl != nil && scp.psControl.DisplayStatus != nil {
+							scp.psControl.DisplayStatus("ExtGen: "+err.Error(), control.Warning)
+						}
 					}
 				}
-			}
-			scp.SaveSettings()
+				scp.SaveSettings()
+			}()
 		}
 
 		amp, _ := disp7.NewCustomDisp7Array(7, 6, maxV, 0,
@@ -244,13 +254,15 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		addToTest(amp, extGenAmpId)
 		amp.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Amplitude))
 		amp.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].Amplitude = uint32(v)
-			if scp.extGen.Connected() {
-				if err := scp.extGen.SetAmplitude(scpiCh, float64(v)/1000000.0); err != nil {
-					slog.Error("extgen set amplitude", "err", err)
+			go func() {
+				scp.Settings.ExtGen[chIdx].Amplitude = uint32(v)
+				if scp.extGen.Connected() {
+					if err := scp.extGen.SetAmplitude(scpiCh, v/1000000.0); err != nil {
+						slog.Error("extgen set amplitude", "err", err)
+					}
 				}
-			}
-			scp.SaveSettings()
+				scp.SaveSettings()
+			}()
 		}
 
 		offset, _ := disp7.NewCustomDisp7Array(7, 6, maxV, -maxV,
@@ -262,13 +274,15 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		addToTest(offset, extGenOffsetId)
 		offset.SilentSetValue(int(scp.Settings.ExtGen[chIdx].OffsetVoltage))
 		offset.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v)
-			if scp.extGen.Connected() {
-				if err := scp.extGen.SetOffset(scpiCh, float64(v)/1000000.0); err != nil {
-					slog.Error("extgen set offset", "err", err)
+			go func() {
+				scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v)
+				if scp.extGen.Connected() {
+					if err := scp.extGen.SetOffset(scpiCh, v/1000000.0); err != nil {
+						slog.Error("extgen set offset", "err", err)
+					}
 				}
-			}
-			scp.SaveSettings()
+				scp.SaveSettings()
+			}()
 		}
 
 		phase, _ := disp7.NewCustomDisp7Array(4, 1, 3600, 0,
@@ -280,13 +294,15 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		addToTest(phase, extGenPhaseId)
 		phase.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Phase * 10))
 		phase.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].Phase = v / 10.0
-			if scp.extGen.Connected() {
-				if err := scp.extGen.SetPhase(scpiCh, scp.Settings.ExtGen[chIdx].Phase); err != nil {
-					slog.Error("extgen set phase", "err", err)
+			go func() {
+				scp.Settings.ExtGen[chIdx].Phase = v / 10.0
+				if scp.extGen.Connected() {
+					if err := scp.extGen.SetPhase(scpiCh, v/10.0); err != nil {
+						slog.Error("extgen set phase", "err", err)
+					}
 				}
-			}
-			scp.SaveSettings()
+				scp.SaveSettings()
+			}()
 		}
 
 		// ── Impedance ─────────────────────────────────────────────────────────
@@ -308,13 +324,15 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		addToTest(impedanceOhmsWidget, extGenImpOhmsId)
 		impedanceOhmsWidget.SilentSetValue(scp.Settings.ExtGen[chIdx].ImpedanceOhms)
 		impedanceOhmsWidget.OnChanged = func(v float64) {
-			scp.Settings.ExtGen[chIdx].ImpedanceOhms = int(v)
-			if scp.extGen.Connected() {
-				if err := scp.extGen.SetImpedance(scpiCh, fmt.Sprintf("%d", int(v))); err != nil {
-					slog.Error("extgen set impedance", "err", err)
+			go func() {
+				scp.Settings.ExtGen[chIdx].ImpedanceOhms = int(v)
+				if scp.extGen.Connected() {
+					if err := scp.extGen.SetImpedance(scpiCh, fmt.Sprintf("%d", int(v))); err != nil {
+						slog.Error("extgen set impedance", "err", err)
+					}
 				}
-			}
-			scp.SaveSettings()
+				scp.SaveSettings()
+			}()
 		}
 
 		// Show/hide the ohms widget depending on selected mode.
@@ -330,15 +348,17 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			scp.Settings.ExtGen[chIdx].ImpedanceMode = option
 			setImpedanceOhmsVisible(option)
 			if scp.extGen.Connected() {
-				var val string
-				if option == "Ohms" {
-					val = fmt.Sprintf("%d", scp.Settings.ExtGen[chIdx].ImpedanceOhms)
-				} else {
-					val = option
-				}
-				if err := scp.extGen.SetImpedance(scpiCh, val); err != nil {
-					slog.Error("extgen set impedance", "err", err)
-				}
+				go func(opt string, ohms int) {
+					var val string
+					if opt == "Ohms" {
+						val = fmt.Sprintf("%d", ohms)
+					} else {
+						val = opt
+					}
+					if err := scp.extGen.SetImpedance(scpiCh, val); err != nil {
+						slog.Error("extgen set impedance", "err", err)
+					}
+				}(option, scp.Settings.ExtGen[chIdx].ImpedanceOhms)
 			}
 			scp.SaveSettings()
 		}, "INFinity")
@@ -368,9 +388,11 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 	scpiTestEntry.SetPlaceHolder("Test SCPI Cmd (e.g. :VOLT1 1.0)")
 	scpiSendBtn := widget.NewButton("Send", func() {
 		if scp.extGen.Connected() {
-			if err := scp.extGen.SendRaw(scpiTestEntry.Text); err != nil {
-				slog.Error("scpi test error", "err", err)
-			}
+			go func(cmd string) {
+				if err := scp.extGen.SendRaw(cmd); err != nil {
+					slog.Error("scpi test error", "err", err)
+				}
+			}(scpiTestEntry.Text)
 		}
 	})
 	scpiRow := container.NewBorder(nil, nil, widget.NewLabel("Raw Cmd:"), scpiSendBtn, scpiTestEntry)
