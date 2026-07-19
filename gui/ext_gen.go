@@ -204,7 +204,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		const maxFreq = 100000000.0 // 100 MHz
 		const minFreq = 1.0
 
-		disp7Width := 9
+		disp7Width := 0
 		// Allocate enough digits for the maximum supported frequency (100 MHz).
 		f := int(math.Round(maxFreq))
 		for f > 0 {
