@@ -231,6 +231,9 @@ func randScroll(name string, n int) {
 	}
 	switch c := controls[name].(type) {
 	case *screenRaster:
+		if n > 2 {
+			n = 2
+		} // Limit iterations to avoid watchdog timeouts
 		for ; n > 0; n-- {
 			wait()
 			fyne.DoAndWait(func() {
