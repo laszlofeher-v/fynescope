@@ -71,7 +71,7 @@ func (d7 *DigitArray) TypedKey(k *fyne.KeyEvent) {
 	d := int(math.Round(math.Pow(10, float64(d7.digitCursor))))
 	switch k.Name {
 	case fyne.KeyUp:
-		d7.setValue(d7.Value + d)
+		d7.SetValue(d7.Value + d)
 	case fyne.KeyDown:
 		d7.down(d7.digitCursor)
 	case fyne.KeyLeft:
@@ -156,7 +156,7 @@ func (d7 *DigitArray) setDigitAtIndex(digit, index int) {
 		tmp += int(math.Pow(10, float64(index))) * d7.digits[index].val
 		tmp -= int(math.Pow(10, float64(index))) * digit
 	}
-	d7.setValue(tmp)
+	d7.SetValue(tmp)
 	d7.Refresh()
 }
 
@@ -207,23 +207,23 @@ func (d7 *DigitArray) down(digitIndex int) {
 	step := int(math.Pow(10, float64(digitIndex)))
 	switch {
 	case d7.digits[digitIndex].val >= 1:
-		d7.setValue(d7.Value - step)
+		d7.SetValue(d7.Value - step)
 	case d7.digits[digitIndex].val == 0:
 		for i := digitIndex + 1; i < len(d7.digits); i++ {
 			if d7.digits[i].val > 0 {
-				d7.setValue(d7.Value - step)
+				d7.SetValue(d7.Value - step)
 				return
 			}
 		}
 		for i := digitIndex; i >= 0; i-- {
 			step = int(math.Pow(10, float64(i)))
 			if d7.digits[i].val > 0 {
-				d7.setValue(d7.Value - step)
+				d7.SetValue(d7.Value - step)
 				return
 			}
 		}
 		step = int(math.Pow(10, float64(digitIndex)))
-		d7.setValue(d7.Value - step)
+		d7.SetValue(d7.Value - step)
 	}
 }
 
@@ -233,7 +233,7 @@ func (d7 *DigitArray) Scrolled(event *fyne.ScrollEvent) {
 	}
 	step := int(math.Pow(10, float64(d7.digitCursor)))
 	if event.Scrolled.DY > 0 {
-		d7.setValue(d7.Value + step)
+		d7.SetValue(d7.Value + step)
 	} else {
 		d7.down(d7.digitCursor)
 	}

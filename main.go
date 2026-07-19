@@ -88,7 +88,7 @@ var (
 		"gui/screen_draw.go":                 false,
 		"control/screen_time.go":             false,
 		"selectscroll/selectscroll.go":       false,
-		"settings/settings.go":               false,
+		"settings/settings.go":               true,
 		"sim/sim.go":                         false,
 		"sim/sim_gen.go":                     false,
 		"sliderscroll/slider_scroll.go":      false,
