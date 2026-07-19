@@ -816,12 +816,12 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	boxWidth := int(maxW) + 15
 	boxHeight := len(info)*lineHeight + 10
 
-	x := int(sv.mouseX) + 10
-	y := int(sv.mouseY)
+	x := int(sv.mouseX) + 20
+	y := int(sv.mouseY) + 20
 
 	// Flip to left if it would touch or go beyond the right edge (with small margin)
 	if x+boxWidth > bounds.Max.X-2 {
-		x = int(sv.mouseX) - boxWidth - 10
+		x = int(sv.mouseX) - boxWidth - 20
 	}
 	// Constrain to left edge
 	if x < bounds.Min.X+2 {
@@ -830,7 +830,7 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 	// Ensure it's within Y bounds
 	if y+boxHeight > bounds.Max.Y-2 {
-		y = bounds.Max.Y - boxHeight - 2
+		y = int(sv.mouseY) - boxHeight - 20
 	}
 	if y < bounds.Min.Y+2 {
 		y = bounds.Min.Y + 2
