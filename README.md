@@ -11,7 +11,7 @@
 
 Once the application is running, you can navigate between different visualization and control modes using the main tabs:
 
-- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon next to the timebase label at the bottom of the plot opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
+- **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon on the top toolbar opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
 - **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. *Note: Sweeping at very low frequencies is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
 <p align="center">
@@ -21,8 +21,8 @@ Once the application is running, you can navigate between different visualizatio
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
 - **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR).
-- **Simulator Mode**: Explore the interface without physical hardware using the built-in simulator.
 
+Additionally, the application features a **Simulator Mode**, allowing you to explore the interface without physical hardware using the built-in software simulator.
 ## Getting Started
 
 ### Prerequisites
@@ -34,7 +34,7 @@ Once the application is running, you can navigate between different visualizatio
 
 To use **real hardware**, the PicoScope driver libraries are also required:
 
-- `libps2000` (PicoScope 2000 Series driver) — available from the [Pico Technology downloads page](https://www.picotech.com/downloads/linux).
+- `libps2000a` (PicoScope 2000a Series driver) — available from the [Pico Technology downloads page](https://www.picotech.com/downloads/linux).
 
 If you only want to explore the UI in **simulator mode**, no PicoScope drivers are needed. Use the `noscope` build tag (see [Building](#building) below).
 
@@ -72,7 +72,7 @@ To build the application purely for the simulator without requiring the PicoScop
 go build -tags=noscope -o fynescope .
 ```
 
-If you want to build the application with installed libps2000 driver and external SCPI generator support: 
+If you want to build the application with installed libps2000a driver and external SCPI generator support: 
 
 ```bash
 go build -tags=scpi -o fynescope .
@@ -84,7 +84,7 @@ If you want to build with simulator and web server support:
 go build -tags="noscope,web" -o fynescope .
 ```
 
-If you want to build the application with installed libps2000 driver but without the SCPI/USB dependency: 
+If you want to build the application with installed libps2000a driver but without the SCPI/USB dependency: 
 
 ```bash
 go build -o fynescope .
@@ -175,7 +175,7 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
 - **Graphs and Plots**:
   - **Scroll Wheel**: On trigger point change the hysteresis.
   - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
-  - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase. Click the magnifier icon to open the secondary **Time Zoom** window.
+  - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase. Click the magnifier icon on the top toolbar to open the secondary **Time Zoom** window.
   - **Time Zoom Window**: When the Time Zoom window is active, you can move the time labels on main window to zoom into different sections of the main window.
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
   - **Trigger Controls**: Use left click and drag or scroll on the trigger controls to adjust the trigger properties.
@@ -309,7 +309,7 @@ time go test -tags=noscope -tags=testsw -v -timeout 99999s
 **Platform & Hardware**
 
 - **Linux only**: CGo bindings to the PicoScope driver are Linux-specific. Windows and macOS are not supported.
-- **PicoScope 2000 Series only**: Tied to the `libps2000` driver; PS3000, PS4000, PS5000, PS6000, etc. are not supported.
+- **PicoScope 2000 Series only**: Tied to the `libps2000a` driver; PS3000, PS4000, PS5000, PS6000, etc. are not supported. *Note: Older models like the 2104, 2105, 2202, 2203, 2204, 2205, 2204A, and 2205A use the older `libps2000` library and are therefore NOT supported, despite being part of the 2000 series.*
 - **No MSO support**: Digital channels on Mixed-Signal Oscilloscope variants are not implemented.
 - **Single device only**: Using multiple PicoScope devices simultaneously is not supported.
 
