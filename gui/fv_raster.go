@@ -432,17 +432,17 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	boxWidth := int(maxW) + 15
 	boxHeight := len(info)*lineHeight + 10
 
-	xBox := int(fv.mouseX) + 10
-	yBox := int(fv.mouseY)
+	xBox := int(fv.mouseX) + 20
+	yBox := int(fv.mouseY) + 20
 
 	if xBox+boxWidth > bounds.Max.X-2 {
-		xBox = int(fv.mouseX) - boxWidth - 10
+		xBox = int(fv.mouseX) - boxWidth - 20
 	}
 	if xBox < bounds.Min.X+2 {
 		xBox = bounds.Min.X + 2
 	}
 	if yBox+boxHeight > bounds.Max.Y-2 {
-		yBox = bounds.Max.Y - boxHeight - 2
+		yBox = int(fv.mouseY) - boxHeight - 20
 	}
 	if yBox < bounds.Min.Y+2 {
 		yBox = bounds.Min.Y + 2
