@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fynescope/checkcolorpick"
+	"fynescope/control"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
@@ -214,57 +215,59 @@ func (scp *ScpDesc) isDigitalFilterEnabled(chIndex genericps.ChannelId) bool {
 }
 
 func (scp *ScpDesc) refreshFilterWarning(chIndex genericps.ChannelId) {
-	if int(chIndex) >= len(scp.channelViewers) {
-		return
-	}
-	cv := &scp.channelViewers[chIndex]
-	filtered := scp.isDigitalFilterEnabled(chIndex)
+	fyne.Do(func() {
+		if int(chIndex) >= len(scp.channelViewers) {
+			return
+		}
+		cv := &scp.channelViewers[chIndex]
+		filtered := scp.isDigitalFilterEnabled(chIndex)
 
-	if cv.filterWarning != nil {
-		if filtered {
-			cv.filterWarning.Show()
-		} else {
-			cv.filterWarning.Hide()
+		if cv.filterWarning != nil {
+			if filtered {
+				cv.filterWarning.Show()
+			} else {
+				cv.filterWarning.Hide()
+			}
+			cv.filterWarning.Refresh()
 		}
-		cv.filterWarning.Refresh()
-	}
 
-	chName := channelNames[chIndex]
-	textBase := "Ch " + chName + ":"
-	warnText := textBase + " ⚠️"
+		chName := channelNames[chIndex]
+		textBase := "Ch " + chName + ":"
+		warnText := textBase + " ⚠️"
 
-	if cv.fvNameLabel != nil {
-		if filtered {
-			cv.fvNameLabel.Text = warnText
-		} else {
-			cv.fvNameLabel.Text = textBase
+		if cv.fvNameLabel != nil {
+			if filtered {
+				cv.fvNameLabel.Text = warnText
+			} else {
+				cv.fvNameLabel.Text = textBase
+			}
+			cv.fvNameLabel.Refresh()
 		}
-		cv.fvNameLabel.Refresh()
-	}
-	if cv.dftNameLabel != nil {
-		if filtered {
-			cv.dftNameLabel.Text = warnText
-		} else {
-			cv.dftNameLabel.Text = textBase
+		if cv.dftNameLabel != nil {
+			if filtered {
+				cv.dftNameLabel.Text = warnText
+			} else {
+				cv.dftNameLabel.Text = textBase
+			}
+			cv.dftNameLabel.Refresh()
 		}
-		cv.dftNameLabel.Refresh()
-	}
-	if cv.ffNameLabel != nil {
-		if filtered {
-			cv.ffNameLabel.Text = warnText
-		} else {
-			cv.ffNameLabel.Text = textBase
+		if cv.ffNameLabel != nil {
+			if filtered {
+				cv.ffNameLabel.Text = warnText
+			} else {
+				cv.ffNameLabel.Text = textBase
+			}
+			cv.ffNameLabel.Refresh()
 		}
-		cv.ffNameLabel.Refresh()
-	}
-	if cv.rlcNameLabel != nil {
-		if filtered {
-			cv.rlcNameLabel.Text = warnText
-		} else {
-			cv.rlcNameLabel.Text = textBase
+		if cv.rlcNameLabel != nil {
+			if filtered {
+				cv.rlcNameLabel.Text = warnText
+			} else {
+				cv.rlcNameLabel.Text = textBase
+			}
+			cv.rlcNameLabel.Refresh()
 		}
-		cv.rlcNameLabel.Refresh()
-	}
+	})
 }
 
 func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
@@ -328,8 +331,12 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 		}
 		if scp.Settings.Trigger.ComplexEnabled {
 			scp.buildComplexTriggerMessage()
-			scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-			<-scp.triggerSettingMsg.Done
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
 			scp.clearAllFtPersistentLayers()
 			scp.refreshRasters()
 			scp.SaveSettings()
@@ -373,11 +380,17 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		/*defer*/ setFlag(scp.repartition)
 		channel.ID = chIndex
 		channelCopy := scp.Settings.Channels[chIndex]
-		scp.psControl.SetChannelCh <- &channelCopy
+		go func(c settings.ChSettings) {
+			scp.psControl.SetChannelCh <- &c
+		}(channelCopy)
 		if channelViewer.enableCheckbox.Val &&
 			channelViewer.triggerCheckbox.Checked {
-			scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-			<-scp.triggerSettingMsg.Done
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
 		}
 		scp.ResetFfSweep()
 		scp.clearAllFtPersistentLayers()
@@ -564,8 +577,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.channelViewers[chIndex].offset.SetFloatValue(float64(channel.Offset),
 			3)
 		scp.channelViewers[chIndex].offset.OnChanged = func(v float64) {
-			channel.Offset = float32(v) / 1000.0
-			setChannel()
+			go func() {
+				channel.Offset = float32(v) / 1000.0
+				setChannel()
+			}()
 		}
 		channelOffsetBox = container.New(layout.NewHBoxLayout(),
 			scp.channelViewers[chIndex].offset)
@@ -786,11 +801,17 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 
 	// Update the device
 	channelCopy := scp.Settings.Channels[chIndex]
-	scp.psControl.SetChannelCh <- &channelCopy
+	go func(c settings.ChSettings) {
+		scp.psControl.SetChannelCh <- &c
+	}(channelCopy)
 	if channelViewer.enableCheckbox.Val &&
 		channelViewer.triggerCheckbox.Checked {
-		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-		<-scp.triggerSettingMsg.Done
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}(triggerCopy)
 	}
 	scp.SaveSettings()
 }
@@ -847,11 +868,17 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 		// Just send channel update since X10 state changed
 		channel.ID = chIndex
 		channelCopy := scp.Settings.Channels[chIndex]
-		scp.psControl.SetChannelCh <- &channelCopy
+		go func(c settings.ChSettings) {
+			scp.psControl.SetChannelCh <- &c
+		}(channelCopy)
 		if channelViewer.enableCheckbox.Val &&
 			channelViewer.triggerCheckbox.Checked {
-			scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-			<-scp.triggerSettingMsg.Done
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
 		}
 		scp.ResetFfSweep()
 		scp.SaveSettings()
@@ -900,10 +927,16 @@ func (scp *ScpDesc) EnableChannel(chIndex genericps.ChannelId, c bool) {
 	// Update device
 	channel.ID = chIndex
 	channelCopy := *channel
-	scp.psControl.SetChannelCh <- &channelCopy
+	go func(c settings.ChSettings) {
+		scp.psControl.SetChannelCh <- &c
+	}(channelCopy)
 	if channel.Enabled && channel.TriggerSource {
-		scp.psControl.SetTriggerCh <- &scp.triggerSettingMsg
-		<-scp.triggerSettingMsg.Done
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}(triggerCopy)
 	}
 }
 

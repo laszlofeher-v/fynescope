@@ -289,32 +289,34 @@ func (scp *ScpDesc) refreshRasters() {
 	if scp.Settings == nil {
 		return
 	}
-	targetFunction := scp.Settings.Window.Function
-	if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
-		targetFunction = scp.Settings.Window.LastDispFunction
-	}
+	fyne.Do(func() {
+		targetFunction := scp.Settings.Window.Function
+		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
+			targetFunction = scp.Settings.Window.LastDispFunction
+		}
 
-	switch targetFunction {
-	case dftTabIndex:
-		if scp.dftRaster != nil {
-			canvas.Refresh(scp.dftRaster)
+		switch targetFunction {
+		case dftTabIndex:
+			if scp.dftRaster != nil {
+				canvas.Refresh(scp.dftRaster)
+			}
+		case fvTabIndex:
+			if scp.fvRaster != nil {
+				canvas.Refresh(scp.fvRaster)
+			}
+		case ffTabIndex:
+			if scp.ffRaster != nil {
+				canvas.Refresh(scp.ffRaster)
+			}
+		default:
+			if scp.ftRaster != nil {
+				canvas.Refresh(scp.ftRaster)
+			}
+			if scp.timeZoomRaster != nil {
+				canvas.Refresh(scp.timeZoomRaster)
+			}
 		}
-	case fvTabIndex:
-		if scp.fvRaster != nil {
-			canvas.Refresh(scp.fvRaster)
-		}
-	case ffTabIndex:
-		if scp.ffRaster != nil {
-			canvas.Refresh(scp.ffRaster)
-		}
-	default:
-		if scp.ftRaster != nil {
-			canvas.Refresh(scp.ftRaster)
-		}
-		if scp.timeZoomRaster != nil {
-			canvas.Refresh(scp.timeZoomRaster)
-		}
-	}
+	})
 }
 
 func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {

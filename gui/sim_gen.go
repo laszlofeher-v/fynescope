@@ -195,8 +195,10 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 
 		addToTest(check, genCheckId)
 		dwellTimeChanged := func(v float64) {
-			genSettings.Dwelltime = v / 10000000
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.Dwelltime = v / 10000000
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 
 		// Initialize channel name label
@@ -205,20 +207,28 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		scp.channelViewers[ch].simGenNameLabel = nameLabel
 
 		freqChanged := func(v float64) {
-			genSettings.Frequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.Frequency = v / 100
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		startFreqChanged := func(v float64) {
-			genSettings.StartFrequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.StartFrequency = v / 100
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		stopFreqChanged := func(v float64) {
-			genSettings.StopFrequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.StopFrequency = v / 100
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		stepFreqChanged := func(v float64) {
-			genSettings.Increment = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.Increment = v / 100
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		setOffsetMinMax := func() {
 			maxOffset := maxV - int(genSettings.Amplitude)
@@ -226,13 +236,17 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			offset.SetMinMax(minOffset, maxOffset)
 		}
 		ampChanged := func(v float64) {
-			genSettings.Amplitude = uint32(v)
-			setOffsetMinMax()
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.Amplitude = uint32(v)
+				setOffsetMinMax()
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		offsetChanged := func(v float64) {
-			genSettings.OffsetVoltage = int32(v)
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.OffsetVoltage = int32(v)
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 		raiseFallTimeDisp, err = disp7.NewCustomDisp7Array(5, 2,
@@ -248,9 +262,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			return
 		}
 		raiseFallTimeDisp.OnChanged = func(v float64) {
-			genSettings.RaiseFallTimePercent = v / 100.0 // Value comes back in % * 100, e.g. 159 for 1.59%
-			sim.SetRaiseFallTimePercent(v / 10000.0)     // 1.59% -> 0.0159
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.RaiseFallTimePercent = v / 100.0 // Value comes back in % * 100, e.g. 159 for 1.59%
+				sim.SetRaiseFallTimePercent(v / 10000.0)     // 1.59% -> 0.0159
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
 
@@ -268,9 +284,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			return
 		}
 		noiseAmplitudeDisp.OnChanged = func(v float64) {
-			genSettings.NoiseAmplitude = v
-			sim.SetNoiseAmplitude(int(ch), v)
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.NoiseAmplitude = v
+				sim.SetNoiseAmplitude(int(ch), v)
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
 		sim.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
@@ -287,10 +305,12 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			return
 		}
 		phaseNoiseDisp.OnChanged = func(v float64) {
-			genSettings.PhaseNoiseDegree = v / 100.0
-			slog.Debug("phaseNoiseDisp", "PhaseNoiseDegree", genSettings.PhaseNoiseDegree)
-			sim.SetPhaseNoiseDegree(int(ch), v / 100.0)
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.PhaseNoiseDegree = v / 100.0
+				slog.Debug("phaseNoiseDisp", "PhaseNoiseDegree", genSettings.PhaseNoiseDegree)
+				sim.SetPhaseNoiseDegree(int(ch), v / 100.0)
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
 		phaseDisp, err = disp7.NewCustomDisp7Array(3, 0,
@@ -306,8 +326,10 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			return
 		}
 		phaseDisp.OnChanged = func(v float64) {
-			genSettings.Phase = v
-			scp.applySimGenSettings(ch, genSettings)
+			go func() {
+				genSettings.Phase = v
+				scp.applySimGenSettings(ch, genSettings)
+			}()
 		}
 		phaseDisp.SilentSetValue(int(genSettings.Phase))
 

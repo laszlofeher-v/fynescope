@@ -49,14 +49,16 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		}
 
 		genSourceSelect := selectscroll.NewSelectScroll(genSourceOptions, func(s string, exc selectscroll.Exception) {
-			for j, opt := range genSourceOptions {
-				if opt == s {
-					chSettings.RlcFilter.GeneratorSource = genericps.ChannelId(j)
-					break
+			go func() {
+				for j, opt := range genSourceOptions {
+					if opt == s {
+						chSettings.RlcFilter.GeneratorSource = genericps.ChannelId(j)
+						break
+					}
 				}
-			}
-			scp.SaveSettings()
-			notifySim()
+				scp.SaveSettings()
+				notifySim()
+			}()
 		}, "")
 
 		// Ensure it defaults to something valid
@@ -68,10 +70,12 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 
 		filterTypes := []string{settings.RlcFilterTypeDisabled, "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
 		typeSelect := selectscroll.NewSelectScroll(filterTypes, func(s string, exc selectscroll.Exception) {
-			chSettings.RlcFilter.Type = s
-			chSettings.RlcFilter.Enabled = (s != settings.RlcFilterTypeDisabled)
-			scp.SaveSettings()
-			notifySim()
+			go func() {
+				chSettings.RlcFilter.Type = s
+				chSettings.RlcFilter.Enabled = (s != settings.RlcFilterTypeDisabled)
+				scp.SaveSettings()
+				notifySim()
+			}()
 		}, "")
 		if chSettings.RlcFilter.Type == "" {
 			chSettings.RlcFilter.Type = "Lowpass RC"
@@ -91,9 +95,11 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			entry.SetText(strconv.FormatFloat(*value, 'f', -1, 64))
 
 			unitSelect := selectscroll.NewSelectScroll(units, func(s string, exc selectscroll.Exception) {
-				*unit = s
-				scp.SaveSettings()
-				notifySim()
+				go func() {
+					*unit = s
+					scp.SaveSettings()
+					notifySim()
+				}()
 			}, "")
 			if *unit == "" {
 				*unit = units[1]
@@ -101,12 +107,14 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			unitSelect.SetSelected(*unit)
 
 			entry.OnChanged = func(s string) {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					*value = v
-					scp.SaveSettings()
-					notifySim()
-				}
+				go func() {
+					v, err := strconv.ParseFloat(s, 64)
+					if err == nil {
+						*value = v
+						scp.SaveSettings()
+						notifySim()
+					}
+				}()
 			}
 
 			// Keep entry width manageable

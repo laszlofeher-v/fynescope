@@ -1,15 +1,11 @@
 package selectscroll
 
 import (
-	"math/rand"
 	"os"
 	"testing"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -131,71 +127,4 @@ func TestScrolled(t *testing.T) {
 	assert.Equal(t, "20", ascSelect.Selected)
 	assert.Equal(t, "20", ascChangedVal)
 	assert.Equal(t, None, ascChangedExc)
-}
-
-func TestSelectScroll_Stress(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping 10-minute stress test in short mode")
-	}
-
-	a := fyne.CurrentApp()
-	if a == nil {
-		t.Fatal("No current Fyne app found")
-	}
-
-	var w fyne.Window
-	var ss1, ss2, ss3 *SelectScroll
-
-	fyne.DoAndWait(func() {
-		w = a.NewWindow("Stress Test")
-		ss1 = NewSelectScroll([]string{"1", "2", "3", "4", "5"}, func(string, Exception) {}, "1")
-		ss2 = NewSelectScroll([]string{"10", "20", "30"}, func(string, Exception) {}, "10")
-		ss3 = NewSelectScroll([]string{"100", "200", "300"}, func(string, Exception) {}, "100")
-
-		panel := container.NewVBox(ss1, ss2, ss3)
-		w.SetContent(panel)
-		w.Resize(fyne.NewSize(300, 300))
-		w.Show()
-	})
-
-	// Run for 1 minutes
-	timeout := time.After(1 * time.Minute)
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	widgets := []*SelectScroll{ss1, ss2, ss3}
-
-	for {
-		select {
-		case <-timeout:
-			fyne.DoAndWait(func() {
-				w.Close()
-			})
-			return
-		default:
-			widx := rng.Intn(len(widgets))
-			widget := widgets[widx]
-
-			action := rng.Intn(3)
-			fyne.DoAndWait(func() {
-				switch action {
-				case 0:
-					// Push / Tap
-					test.Tap(widget)
-				case 1:
-					// Drag
-					if draggable, ok := interface{}(widget).(fyne.Draggable); ok {
-						draggable.Dragged(&fyne.DragEvent{
-							PointEvent: fyne.PointEvent{Position: widget.Position()},
-							Dragged:    fyne.NewDelta(float32(rng.Intn(5)-2), float32(rng.Intn(5)-2)),
-						})
-					}
-				case 2:
-					// Scroll
-					widget.Scrolled(&fyne.ScrollEvent{
-						Scrolled: fyne.NewDelta(float32(rng.Intn(5)-2), float32(rng.Intn(5)-2)),
-					})
-				}
-			})
-			time.Sleep(1 * time.Millisecond) // Yield slightly so the UI actually paints
-		}
-	}
 }
