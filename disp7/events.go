@@ -29,11 +29,15 @@ func (d7 *DigitArray) Disabled() bool {
 }
 func (d7 *DigitArray) Tapped(event *fyne.PointEvent) {
 	d7.lock.Lock()
-	if d7.Readonly {
-		d7.lock.Unlock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
 	d7.clearDigitAt(event.Position.X)
+
+	d7.lock.Lock()
 	d7.mousePos = event.Position
 	focus := d7.setDigitCursor(event.Position.X)
 	d7.lock.Unlock()
@@ -63,57 +67,89 @@ func (d7 *DigitArray) cursorRight() {
 	}
 }
 func (d7 *DigitArray) TypedKey(k *fyne.KeyEvent) {
-	defer d7.lock.Unlock()
 	d7.lock.Lock()
-	if d7.Readonly {
+	readonly := d7.Readonly
+	cursor := d7.digitCursor
+	value := d7.Value
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
-	d := int(math.Round(math.Pow(10, float64(d7.digitCursor))))
+	d := int(math.Round(math.Pow(10, float64(cursor))))
 	switch k.Name {
 	case fyne.KeyUp:
-		d7.SetValue(d7.Value + d)
+		d7.SetValue(value + d)
 	case fyne.KeyDown:
-		d7.down(d7.digitCursor)
+		d7.down(cursor)
 	case fyne.KeyLeft:
+		d7.lock.Lock()
 		d7.cursorLeft()
+		d7.lock.Unlock()
 	case fyne.KeyRight:
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.KeyDelete:
 		d7.setDigitAtDigitCursor(0)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.KeyBackspace:
 		d7.setDigitAtDigitCursor(0)
+		d7.lock.Lock()
 		d7.cursorLeft()
+		d7.lock.Unlock()
 	case fyne.Key0:
 		d7.setDigitAtDigitCursor(0)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key1:
 		d7.setDigitAtDigitCursor(1)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key2:
 		d7.setDigitAtDigitCursor(2)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key3:
 		d7.setDigitAtDigitCursor(3)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key4:
 		d7.setDigitAtDigitCursor(4)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key5:
 		d7.setDigitAtDigitCursor(5)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key6:
 		d7.setDigitAtDigitCursor(6)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key7:
 		d7.setDigitAtDigitCursor(7)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key8:
 		d7.setDigitAtDigitCursor(8)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	case fyne.Key9:
 		d7.setDigitAtDigitCursor(9)
+		d7.lock.Lock()
 		d7.cursorRight()
+		d7.lock.Unlock()
 	default:
 	}
 	d7.Refresh()
@@ -148,6 +184,7 @@ func (d7 *DigitArray) KeyDown(k *fyne.KeyEvent) {
 }
 
 func (d7 *DigitArray) setDigitAtIndex(digit, index int) {
+	d7.lock.Lock()
 	tmp := d7.Value
 	if tmp >= 0 {
 		tmp -= int(math.Pow(10, float64(index))) * d7.digits[index].val
@@ -156,23 +193,37 @@ func (d7 *DigitArray) setDigitAtIndex(digit, index int) {
 		tmp += int(math.Pow(10, float64(index))) * d7.digits[index].val
 		tmp -= int(math.Pow(10, float64(index))) * digit
 	}
+	d7.lock.Unlock()
+
 	d7.SetValue(tmp)
 	d7.Refresh()
 }
 
 func (d7 *DigitArray) setDigitAtDigitCursor(digit int) {
-	if d7.digitCursor >= 0 && d7.digitCursor < len(d7.digits) {
-		d7.setDigitAtIndex(digit, d7.digitCursor)
+	d7.lock.Lock()
+	cursor := d7.digitCursor
+	valid := cursor >= 0 && cursor < len(d7.digits)
+	d7.lock.Unlock()
+
+	if valid {
+		d7.setDigitAtIndex(digit, cursor)
 	}
 }
 
 func (d7 *DigitArray) setDigitAtX(x float32, digit int) {
+	d7.lock.Lock()
+	targetIndex := -1
 	for digitIndex := range d7.digits {
 		pos := d7.digits[digitIndex].relPos
 		if x > pos.X {
-			d7.setDigitAtIndex(digit, digitIndex)
+			targetIndex = digitIndex
 			break
 		}
+	}
+	d7.lock.Unlock()
+
+	if targetIndex != -1 {
+		d7.setDigitAtIndex(digit, targetIndex)
 	}
 }
 
@@ -180,7 +231,11 @@ func (d7 *DigitArray) clearDigitAt(x float32) {
 	d7.setDigitAtX(x, 0)
 }
 func (d7 *DigitArray) Dragged(event *fyne.DragEvent) {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
 	d7.clearDigitAt(event.Position.X)
@@ -189,7 +244,11 @@ func (d7 *DigitArray) DragEnd() {
 }
 
 func (d7 *DigitArray) MouseDown(event *desktop.MouseEvent) {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
 	if event.Button == desktop.MouseButtonPrimary {
@@ -201,41 +260,63 @@ func (d7 *DigitArray) MouseUp(event *desktop.MouseEvent) {
 }
 
 func (d7 *DigitArray) down(digitIndex int) {
+	d7.lock.Lock()
 	if digitIndex < 0 || digitIndex >= len(d7.digits) || d7.Value <= d7.minValue {
+		d7.lock.Unlock()
 		return
 	}
 	step := int(math.Pow(10, float64(digitIndex)))
+	var newVal *int
 	switch {
 	case d7.digits[digitIndex].val >= 1:
-		d7.SetValue(d7.Value - step)
+		v := d7.Value - step
+		newVal = &v
 	case d7.digits[digitIndex].val == 0:
 		for i := digitIndex + 1; i < len(d7.digits); i++ {
 			if d7.digits[i].val > 0 {
-				d7.SetValue(d7.Value - step)
-				return
+				v := d7.Value - step
+				newVal = &v
+				break
 			}
 		}
-		for i := digitIndex; i >= 0; i-- {
-			step = int(math.Pow(10, float64(i)))
-			if d7.digits[i].val > 0 {
-				d7.SetValue(d7.Value - step)
-				return
+		if newVal == nil {
+			for i := digitIndex; i >= 0; i-- {
+				step = int(math.Pow(10, float64(i)))
+				if d7.digits[i].val > 0 {
+					v := d7.Value - step
+					newVal = &v
+					break
+				}
 			}
 		}
-		step = int(math.Pow(10, float64(digitIndex)))
-		d7.SetValue(d7.Value - step)
+		if newVal == nil {
+			step = int(math.Pow(10, float64(digitIndex)))
+			v := d7.Value - step
+			newVal = &v
+		}
+	}
+	d7.lock.Unlock()
+
+	if newVal != nil {
+		d7.SetValue(*newVal)
 	}
 }
 
 func (d7 *DigitArray) Scrolled(event *fyne.ScrollEvent) {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	cursor := d7.digitCursor
+	value := d7.Value
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
-	step := int(math.Pow(10, float64(d7.digitCursor)))
+	step := int(math.Pow(10, float64(cursor)))
 	if event.Scrolled.DY > 0 {
-		d7.SetValue(d7.Value + step)
+		d7.SetValue(value + step)
 	} else {
-		d7.down(d7.digitCursor)
+		d7.down(cursor)
 	}
 	d7.Refresh()
 }
@@ -251,32 +332,54 @@ func (d7 *DigitArray) setDigitCursor(x float32) bool {
 	return true
 }
 func (d7 *DigitArray) MouseIn(e *desktop.MouseEvent) {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
+	d7.lock.Lock()
 	d7.mousePos = e.Position
-	if d7.setDigitCursor(e.Position.X) {
+	focus := d7.setDigitCursor(e.Position.X)
+	d7.lock.Unlock()
+
+	if focus {
 		d7.Window.Canvas().Focus(d7)
 	}
 	d7.Refresh()
 }
 
 func (d7 *DigitArray) MouseMoved(e *desktop.MouseEvent) {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
+	d7.lock.Lock()
 	d7.mousePos = e.Position
-	if d7.setDigitCursor(e.Position.X) {
+	focus := d7.setDigitCursor(e.Position.X)
+	d7.lock.Unlock()
+
+	if focus {
 		d7.Window.Canvas().Focus(d7)
 	}
 	d7.Refresh()
 }
 
 func (d7 *DigitArray) MouseOut() {
-	if d7.Readonly {
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+
+	if readonly {
 		return
 	}
 	d7.Window.Canvas().Unfocus()
+	d7.lock.Lock()
 	d7.digitCursor = digitCursorOut
+	d7.lock.Unlock()
 	d7.Refresh()
 }
