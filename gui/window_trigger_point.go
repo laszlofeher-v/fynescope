@@ -161,8 +161,12 @@ func (tp *windowTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	channel.Trigger.LowerMv = newMv
 	tp.scp.triggerSettingMsg.LowerMv = newMv
 	tp.scp.triggerSettingMsg.LowerTriggerADC = int16(tp.scp.mvToAdc(newMv, channel.VRange))
-	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-	<-tp.scp.triggerSettingMsg.Done
+	t := tp.scp.triggerSettingMsg
+	t.Done = make(chan struct{}, 1)
+	go func() {
+		tp.scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}()
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
 	tp.enableRefresh()
@@ -233,8 +237,12 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		if tp.scp.triggerSettingMsg.LowerHysteresis != channel.Trigger.LowerHysteresis {
 			tp.scp.triggerSettingMsg.LowerHysteresis = channel.Trigger.LowerHysteresis
 			tp.scp.triggerSettingMsg.LowerHysteresisADC = uint16(tp.scp.mvToUAdc(channel.Trigger.LowerHysteresis, channel.VRange))
-			tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-			<-tp.scp.triggerSettingMsg.Done
+			t := tp.scp.triggerSettingMsg
+			t.Done = make(chan struct{}, 1)
+			go func() {
+				tp.scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}()
 		}
 		tp.enableRefresh()
 		if tp.raster() != nil {
@@ -284,8 +292,12 @@ func (tp *windowTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
 	if tp.scp.triggerSettingMsg.LowerHysteresis != channel.Trigger.LowerHysteresis {
 		tp.scp.triggerSettingMsg.LowerHysteresis = channel.Trigger.LowerHysteresis
 		tp.scp.triggerSettingMsg.LowerHysteresisADC = uint16(tp.scp.mvToUAdc(channel.Trigger.LowerHysteresis, channel.VRange))
-		tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-		<-tp.scp.triggerSettingMsg.Done
+		t := tp.scp.triggerSettingMsg
+		t.Done = make(chan struct{}, 1)
+		go func() {
+			tp.scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}()
 	}
 	tp.enableRefresh()
 	if tp.raster() != nil {
