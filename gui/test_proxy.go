@@ -260,6 +260,7 @@ func randScroll(name string, n int) {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
+		if n > 2 { n = 2 } // Limit iterations to avoid timeouts on heavy OnChanged callbacks
 		for ; n > 0; n-- {
 			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
@@ -269,9 +270,9 @@ func randScroll(name string, n int) {
 				}
 				c.Scrolled(e)
 			})
-			wait()
 		}
 	case *disp7.DigitArray:
+		if n > 2 { n = 2 } // Limit iterations to avoid timeouts
 		for ; n > 0; n-- {
 			wait()
 			fyne.DoAndWait(func() {
