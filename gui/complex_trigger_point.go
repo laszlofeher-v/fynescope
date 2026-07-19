@@ -237,8 +237,12 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	channel.Trigger.Mv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
-	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-	<-tp.scp.triggerSettingMsg.Done
+	t := tp.scp.triggerSettingMsg
+	t.Done = make(chan struct{}, 1)
+	go func() {
+		tp.scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}()
 
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
@@ -278,8 +282,12 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	channel.Trigger.LowerMv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
-	tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-	<-tp.scp.triggerSettingMsg.Done
+	t := tp.scp.triggerSettingMsg
+	t.Done = make(chan struct{}, 1)
+	go func() {
+		tp.scp.psControl.SetTriggerCh <- &t
+		<-t.Done
+	}()
 
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
@@ -345,8 +353,12 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 
 		tp.scp.buildComplexTriggerMessage()
-		tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-		<-tp.scp.triggerSettingMsg.Done
+		t := tp.scp.triggerSettingMsg
+		t.Done = make(chan struct{}, 1)
+		go func() {
+			tp.scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}()
 		tp.enableRefresh()
 		if tp.raster() != nil {
 			tp.raster().Refresh()
@@ -369,8 +381,12 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 
 		tp.scp.buildComplexTriggerMessage()
-		tp.scp.psControl.SetTriggerCh <- &tp.scp.triggerSettingMsg
-		<-tp.scp.triggerSettingMsg.Done
+		t := tp.scp.triggerSettingMsg
+		t.Done = make(chan struct{}, 1)
+		go func() {
+			tp.scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}()
 		tp.enableRefresh()
 		if tp.raster() != nil {
 			tp.raster().Refresh()
