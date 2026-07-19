@@ -511,8 +511,12 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 				maxViewer := channelViewer.maxV
 				min = avg.min
 				max = avg.max
-				minViewer.SetFloatValue(float64(min/1000), 3)
-				maxViewer.SetFloatValue(float64(max/1000), 3)
+				minViewer.SilentSetFloatValue(float64(min/1000), 3)
+				maxViewer.SilentSetFloatValue(float64(max/1000), 3)
+				fyne.Do(func() {
+					minViewer.Refresh()
+					maxViewer.Refresh()
+				})
 
 				avg.max = 0
 				avg.min = 0
@@ -528,8 +532,12 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 				}
 
 				if f == 0 {
-					scp.channelViewers[channelIndex].frq.SetFloatValue(0, 0)
-					scp.channelViewers[channelIndex].period.SetFloatValue(0, 0)
+					scp.channelViewers[channelIndex].frq.SilentSetFloatValue(0, 0)
+					scp.channelViewers[channelIndex].period.SilentSetFloatValue(0, 0)
+					fyne.Do(func() {
+						scp.channelViewers[channelIndex].frq.Refresh()
+						scp.channelViewers[channelIndex].period.Refresh()
+					})
 					continue
 				}
 
@@ -567,7 +575,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 					unit = 2
 					dpos = 1
 				}
-				scp.channelViewers[channelIndex].frq.SetFloatValue(f, dpos)
+				scp.channelViewers[channelIndex].frq.SilentSetFloatValue(f, dpos)
 				scp.channelViewers[channelIndex].frq.SetUnit(frqUnits[unit])
 				fyne.Do(scp.channelViewers[channelIndex].frq.Refresh)
 
@@ -605,7 +613,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 					unit = 3
 					dpos = 1
 				}
-				scp.channelViewers[channelIndex].period.SetFloatValue(period, dpos)
+				scp.channelViewers[channelIndex].period.SilentSetFloatValue(period, dpos)
 				scp.channelViewers[channelIndex].period.SetUnit(periodUnits[unit])
 				fyne.Do(scp.channelViewers[channelIndex].period.Refresh)
 			}

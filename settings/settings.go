@@ -372,8 +372,12 @@ func Save(fileName string, settings *PsSettings) error {
 	}
 	sum := fmt.Sprintf("%x\n", h.Sum(nil))
 	d = append([]byte(sum), d...)
-	// Attempt to set write permission before writing
-	_ = os.Chmod(fileName, 0644)
+	// Attempt to set write permission before writing.
+	// If this fails (e.g., file is owned by root due to prior sudo run),
+	// we remove the file so it can be cleanly recreated.
+	if err := os.Chmod(fileName, 0644); err != nil {
+		_ = os.Remove(fileName)
+	}
 	if err := os.WriteFile(fileName, d, 0444); err != nil {
 		return fmt.Errorf("write settings file: %w", err)
 	}
