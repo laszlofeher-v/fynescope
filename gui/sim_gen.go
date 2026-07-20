@@ -189,11 +189,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			}
 		}
 		show := widget.NewCheck("Digital", showChanged)
-		addToTest(show, genShowId)
+		addToTest(show, genShowId, genTabIndex)
 		check := widget.NewCheck("On", checked)
 		check.Checked = genSettings.On
 
-		addToTest(check, genCheckId)
+		addToTest(check, genCheckId, genTabIndex)
 		dwellTimeChanged := func(v float64) {
 			go func() {
 				genSettings.Dwelltime = v / 10000000
@@ -257,7 +257,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Rise/Fall:", " %")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, raiseFallTimeDisp)
-		addToTest(raiseFallTimeDisp, genRiseFallTimeId)
+		addToTest(raiseFallTimeDisp, genRiseFallTimeId, genTabIndex)
 		if err != nil {
 			return
 		}
@@ -279,7 +279,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Noise:", " mV")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, noiseAmplitudeDisp)
-		addToTest(noiseAmplitudeDisp, genNoiseAmpId)
+		addToTest(noiseAmplitudeDisp, genNoiseAmpId, genTabIndex)
 		if err != nil {
 			return
 		}
@@ -300,7 +300,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Phase Noise:", " °")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, phaseNoiseDisp)
-		addToTest(phaseNoiseDisp, genPhaseNoiseId)
+		addToTest(phaseNoiseDisp, genPhaseNoiseId, genTabIndex)
 		if err != nil {
 			return
 		}
@@ -321,7 +321,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Phase      :", " °")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, phaseDisp)
-		addToTest(phaseDisp, genPhaseId)
+		addToTest(phaseDisp, genPhaseId, genTabIndex)
 		if err != nil {
 			return
 		}
@@ -389,7 +389,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
 		waveType.SetSelected(waveTypeOptions[genSettings.WaveType])
-		addToTest(waveType, genWaveTypeId)
+		addToTest(waveType, genWaveTypeId, genTabIndex)
 		if undockable {
 			undockButton = widget.NewButtonWithIcon(undock, theme.ViewFullScreenIcon(), func() {
 				// Errors logged with Fyne 2.6.0, 2.6.1 2.7.0
@@ -435,11 +435,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			})
 		}
 		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
-		addToTest(freqSetAnalog, genFreqSetId)
+		addToTest(freqSetAnalog, genFreqSetId, genTabIndex)
 		freqSetAnalog.OnChanged = freqChanged
 		ampSetAnalog = sliderscroll.NewSliderScroll(0, maxV)
 		ampSetAnalog.SilentSetValue(float64(genSettings.Amplitude))
-		addToTest(ampSetAnalog, genAmpdSetId)
+		addToTest(ampSetAnalog, genAmpdSetId, genTabIndex)
 		ampSetAnalog.OnChanged = ampChanged
 		disp7Width := fractionWidth
 		f := int(math.Round(genericps.SineMaxFrequency))
@@ -461,7 +461,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		frequency.OnChanged = freqChanged
 		frequency.SilentSetValue(int(genSettings.Frequency) * pow10tab[fractionWidth])
-		addToTest(frequency, genFreqId)
+		addToTest(frequency, genFreqId, genTabIndex)
 
 		dwellTime, err = disp7.NewCustomDisp7Array(11, 7,
 			int(genericps.MaxDwellTime)*1000, int(500),
@@ -471,7 +471,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "∆t   :", " s")
 		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, dwellTime)
-		addToTest(dwellTime, genDwellTimeId)
+		addToTest(dwellTime, genDwellTimeId, genTabIndex)
 		if err != nil {
 			return
 		}
@@ -492,7 +492,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		}
 		startFrqDisp.OnChanged = startFreqChanged
 		startFrqDisp.SilentSetValue(int(genSettings.StartFrequency) * pow10tab[fractionWidth])
-		addToTest(startFrqDisp, genMinFrqId)
+		addToTest(startFrqDisp, genMinFrqId, genTabIndex)
 		stopFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
 			int(genericps.SineMaxFrequency)*100, int(genericps.MinFrequency)*pow10tab[fractionWidth],
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -504,7 +504,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		if err != nil {
 			return
 		}
-		addToTest(stopFrqDisp, genMaxFrqId)
+		addToTest(stopFrqDisp, genMaxFrqId, genTabIndex)
 		stopFrqDisp.OnChanged = stopFreqChanged
 		stopFrqDisp.SilentSetValue(int(genSettings.StopFrequency) * pow10tab[fractionWidth])
 		stepFreq, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
@@ -518,7 +518,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		if err != nil {
 			return
 		}
-		addToTest(stepFreq, genStepFreqId)
+		addToTest(stepFreq, genStepFreqId, genTabIndex)
 		stepFreq.OnChanged = stepFreqChanged
 		stepFreq.SilentSetValue(int(genSettings.Increment) * pow10tab[fractionWidth])
 		amp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
@@ -532,7 +532,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			return
 		}
 		amp.SilentSetValue(int(genSettings.Amplitude))
-		addToTest(amp, genAmpId)
+		addToTest(amp, genAmpId, genTabIndex)
 		amp.OnChanged = ampChanged
 		offset, err = disp7.NewCustomDisp7Array(7, 6,
 			maxV, -maxV,
@@ -545,7 +545,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		if err != nil {
 			return
 		}
-		addToTest(offset, genOffsetId)
+		addToTest(offset, genOffsetId, genTabIndex)
 		offset.OnChanged = offsetChanged
 		setOffsetMinMax()
 		offset.SilentSetValue(int(genSettings.OffsetVoltage))
@@ -568,7 +568,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 				container.New(layout.NewVBoxLayout(), waveType))
 		}
 
-		addToTest(sweepMenu, genSweepId)
+		addToTest(sweepMenu, genSweepId, genTabIndex)
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Sweep "), sweepMenu)
 
@@ -578,12 +578,12 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		} else {
 			operationSelect.SetSelected(operationNormal)
 		}
-		addToTest(operationSelect, genOperationId)
+		addToTest(operationSelect, genOperationId, genTabIndex)
 		operationBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Operation:"), operationSelect)
 
 		scp.triggerCalculationModeSelect = selectscroll.NewSelectScroll(triggerCalculationOptions, onTriggerCalculationModeChange, triggerCalculationOptions[0])
-		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId)
+		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId, genTabIndex)
 		scp.triggerCalculationModeSelect.SetSelected(triggerCalculationOptions[scp.Settings.Trigger.CalculationMode])
 		// initialize simulator with saved setting
 		sim.SetTriggerCalculationMode(scp.Settings.Trigger.CalculationMode)

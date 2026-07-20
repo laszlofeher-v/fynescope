@@ -151,7 +151,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}
 			scp.SaveSettings()
 		})
-		addToTest(onOffCheck, extGenOnOffId+chName)
+		addToTest(onOffCheck, extGenOnOffId+chName, extgenTabIndex)
 		onOffCheck.SetChecked(scp.Settings.ExtGen[chIdx].On)
 
 		waveTypeOptions := []string{"Sine", "Square", "Triangle", "RampUp", "RampDown"}
@@ -195,7 +195,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}
 			scp.SaveSettings()
 		}, "RampDown")
-		addToTest(waveTypeSelect, extGenWaveTypeId)
+		addToTest(waveTypeSelect, extGenWaveTypeId, extgenTabIndex)
 
 		for key, val := range waveTypeMap {
 			if val == scp.Settings.ExtGen[chIdx].WaveType {
@@ -228,7 +228,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Freq  ", " Hz")
-		addToTest(frequency, extGenFreqId)
+		addToTest(frequency, extGenFreqId, extgenTabIndex)
 		frequency.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Frequency))
 		frequency.OnChanged = func(v float64) {
 			go func() {
@@ -251,7 +251,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Amp   ", " V")
-		addToTest(amp, extGenAmpId)
+		addToTest(amp, extGenAmpId, extgenTabIndex)
 		amp.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Amplitude))
 		amp.OnChanged = func(v float64) {
 			go func() {
@@ -271,7 +271,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Offs  ", " V")
-		addToTest(offset, extGenOffsetId)
+		addToTest(offset, extGenOffsetId, extgenTabIndex)
 		offset.SilentSetValue(int(scp.Settings.ExtGen[chIdx].OffsetVoltage))
 		offset.OnChanged = func(v float64) {
 			go func() {
@@ -291,7 +291,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Phase ", " °")
-		addToTest(phase, extGenPhaseId)
+		addToTest(phase, extGenPhaseId, extgenTabIndex)
 		phase.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Phase * 10))
 		phase.OnChanged = func(v float64) {
 			go func() {
@@ -321,7 +321,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Load  ", " Ω")
-		addToTest(impedanceOhmsWidget, extGenImpOhmsId)
+		addToTest(impedanceOhmsWidget, extGenImpOhmsId, extgenTabIndex)
 		impedanceOhmsWidget.SilentSetValue(scp.Settings.ExtGen[chIdx].ImpedanceOhms)
 		impedanceOhmsWidget.OnChanged = func(v float64) {
 			go func() {

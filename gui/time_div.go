@@ -1228,19 +1228,19 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.timeUnitSelect = selectscroll.NewSelectScroll(units, scp.onTimeUnitChange, milliSec+div)
 	scp.timeUnitSelect.SilentSetSelected(scp.Settings.Time.Unit)
 	scp.timeUnit = tu[scp.timeUnitSelect.Selected]
-	addToTest(scp.timeUnitSelect, unitSelectId)
+	addToTest(scp.timeUnitSelect, unitSelectId, -1)
 	tOption := nsUsMsTimesSubset
 	if scp.timeUnitSelect.Selected == sec+div {
 		tOption = times
 	}
 	scp.timeSelect = selectscroll.NewSelectScroll(tOption, scp.onTimeDivChange, strconv.Itoa(500))
-	addToTest(scp.timeSelect, timeSelectId)
+	addToTest(scp.timeSelect, timeSelectId, -1)
 	scp.timeSelect.SilentSetSelected(scp.Settings.Time.TimeDiv)
 	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
 	scp.timeDiv = intTimeDiv
 	scp.ipmSelect = selectscroll.NewSelectScroll(interpolationModeOptions, scp.onInterpolationModeChange, linear)
 	scp.ipmSelect.SetSelected(interpolationModeOptions[scp.Settings.Time.Interpolation])
-	addToTest(scp.ipmSelect, ipmId)
+	addToTest(scp.ipmSelect, ipmId, -1)
 	return container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
 }
 
@@ -1262,7 +1262,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	addToTest(scp.triggerThresholdDisp, triggerThresholdDispId)
+	addToTest(scp.triggerThresholdDisp, triggerThresholdDispId, -1)
 	scp.triggerThresholdDisp.OnChanged = func(v float64) {
 		go scp.onThresholdChange(v)
 	}
@@ -1285,7 +1285,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	addToTest(scp.triggerHysteresisDisp, triggerHysteresisDispId)
+	addToTest(scp.triggerHysteresisDisp, triggerHysteresisDispId, -1)
 	scp.triggerHysteresisDisp.OnChanged = func(v float64) {
 		go scp.onHysteresisChange(v)
 	}
@@ -1313,7 +1313,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	scp.triggerModeSelect = selectscroll.NewSelectScroll(triggerModeOptions, scp.onTriggerModeChange, triggerModeOptions[2])
-	addToTest(scp.triggerModeSelect, triggerModeSelectId)
+	addToTest(scp.triggerModeSelect, triggerModeSelectId, -1)
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
@@ -1328,7 +1328,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	triggerTypes[settings.TriggerTypeComplex] = control.Complex
 	triggerTypes[settings.TriggerTypeInterval] = control.Interval
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions, scp.onTriggerTypeChange, settings.TriggerTypeAdvanced)
-	addToTest(scp.triggerTypeSelect, triggerTypeSelectId)
+	addToTest(scp.triggerTypeSelect, triggerTypeSelectId, -1)
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
 
 	if scp.Settings.Trigger.ComplexEnabled {
@@ -1345,7 +1345,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions, scp.onIntervalTypeChange, IntervalTypeOutOfRange)
-	addToTest(scp.intervalTypeSelect, intervalTypeSelectId)
+	addToTest(scp.intervalTypeSelect, intervalTypeSelectId, -1)
 
 	// Convert pulse width type enum back to string
 	pwTypeStr := intervalTypeRevMap[scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType]
@@ -1376,7 +1376,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		go scp.onIntervalTimeLowerChange(v)
 	}
 	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
-	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId)
+	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId, -1)
 
 	scp.intervalTimeUpperDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
@@ -1389,7 +1389,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		go scp.onIntervalTimeUpperChange(v)
 	}
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
-	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId)
+	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId, -1)
 
 	// Single ΔT display for Greater Than / Less Than modes
 	scp.intervalTimeSingleDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
@@ -1402,7 +1402,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.intervalTimeSingleDisp.OnChanged = func(v float64) {
 		go scp.onIntervalTimeSingleChange(v)
 	}
-	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId)
+	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId, -1)
 
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect)
 	scp.boxIntervalTimeRange = container.New(layout.NewVBoxLayout(), scp.intervalTimeLowerDisp, scp.intervalTimeUpperDisp)

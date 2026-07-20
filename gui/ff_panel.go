@@ -124,11 +124,11 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		}
 		vbox.Add(chBox)
 
-		addToTest(enabledCheck, ffEnableId+chName)
-		addToTest(phaseCheck, ffPhaseCheckId+chName)
-		addToTest(refCheck, ffRefCheckId+chName)
-		addToTest(vRange, ffVRangeId+chName)
-		addToTest(x10Check, ffX10Id+chName)
+		addToTest(enabledCheck, ffEnableId+chName, ffTabIndex)
+		addToTest(phaseCheck, ffPhaseCheckId+chName, ffTabIndex)
+		addToTest(refCheck, ffRefCheckId+chName, ffTabIndex)
+		addToTest(vRange, ffVRangeId+chName, ffTabIndex)
+		addToTest(x10Check, ffX10Id+chName, ffTabIndex)
 	}
 
 	// Declare disp7 widgets first so they can be referenced in the OnChanged closure
@@ -356,10 +356,10 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		dispModeControls, genVBox)
 	panel.Add(genSettings)
 
-	addToTest(scp.ffMinFreqDisp, ffMinFreqId)
-	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId)
-	addToTest(dispModeSelect, ffDispModeSelectId)
-	addToTest(scp.useExtGenCheck, ffExtGenSelectId)
+	addToTest(scp.ffMinFreqDisp, ffMinFreqId, ffTabIndex)
+	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
+	addToTest(dispModeSelect, ffDispModeSelectId, ffTabIndex)
+	addToTest(scp.useExtGenCheck, ffExtGenSelectId, ffTabIndex)
 
 	scp.updateFfWidgetLimits()
 }

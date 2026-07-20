@@ -525,14 +525,14 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.timeZoomButton.Hide()
 	}
 
-	addToTest(scp.controlTab, ftFuncId)
-	addToTest(scp.controlTab, fvFuncId)
-	addToTest(scp.controlTab, dftFuncId)
-	addToTest(scp.controlTab, ffFuncId)
-	addToTest(scp.controlTab, rlcFuncId)
-	addToTest(scp.controlTab, genFuncId)
-	addToTest(scp.controlTab, filterFuncId)
-	addToTest(scp.controlTab, extgenFuncId)
+	addToTest(scp.controlTab, ftFuncId, -1)
+	addToTest(scp.controlTab, fvFuncId, -1)
+	addToTest(scp.controlTab, dftFuncId, -1)
+	addToTest(scp.controlTab, ffFuncId, -1)
+	addToTest(scp.controlTab, rlcFuncId, -1)
+	addToTest(scp.controlTab, genFuncId, -1)
+	addToTest(scp.controlTab, filterFuncId, -1)
+	addToTest(scp.controlTab, extgenFuncId, -1)
 	scp.newChannelPanels(ftLayout)
 	scp.newSetTimeDivPanel(ftLayout)
 
@@ -575,7 +575,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.refreshRasters()
 		scp.SaveSettings()
 	})
-	addToTest(themeChangeAction, themeChangeActionId)
+	addToTest(themeChangeAction, themeChangeActionId, -1)
 
 	scp.streamEnableButton = widget.NewButton(streamEnabledLabel, func() {
 		if scp.psControl == nil {
@@ -670,7 +670,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.StopRunning()
 		}
 	})
-	addToTest(scp.runblockButton, runblockButtonId)
+	addToTest(scp.runblockButton, runblockButtonId, -1)
 	setfullscreen := func() {
 		scp.Settings.Window.Fullscreen = true
 		scp.Window.SetFullScreen(true)
@@ -721,7 +721,7 @@ func (scp *ScpDesc) build2000Gui() {
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
-	addToTest(changeSide, changeSideId)
+	addToTest(changeSide, changeSideId, -1)
 	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
 			scp.psControl.Shutdown()
@@ -947,10 +947,10 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	scp.ffRaster = scp.newScreenRaster(scp.ffRasterGenerator, scp.Window, false, false, true)
 	scp.fvViewer = newFvViewer(scp.fvScopeFullScreen, image.Rect(0, 0, 1024, 768), scp)
 	scp.addFvDrawer(scp.fvViewer)
-	addToTest(scp.ftRaster, ftRasterId)
-	addToTest(scp.dftRaster, dftRasterId)
-	addToTest(scp.fvRaster, fvRasterId)
-	addToTest(scp.ffRaster, ffRasterId)
+	addToTest(scp.ftRaster, ftRasterId, ftTabIndex)
+	addToTest(scp.dftRaster, dftRasterId, dftTabIndex)
+	addToTest(scp.fvRaster, fvRasterId, fvTabIndex)
+	addToTest(scp.ffRaster, ffRasterId, ffTabIndex)
 	scp.themeChanged = createFlag()
 	scp.repartition = createFlag()
 	scp.tzRepartition = createFlag()

@@ -584,7 +584,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		}
 		channelOffsetBox = container.New(layout.NewHBoxLayout(),
 			scp.channelViewers[chIndex].offset)
-		addToTest(scp.channelViewers[chIndex].offset, chOffsetId+chId)
+		addToTest(scp.channelViewers[chIndex].offset, chOffsetId+chId, ftTabIndex)
 		return
 	}
 
@@ -600,17 +600,17 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	channelViewer.enableCheckbox = checkcolorpick.NewCheckColorPick(scp.Window,
 		enableChanged, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
 		fyne.Size{Width: checkColorPickMinSize, Height: checkColorPickMinSize})
-	addToTest(channelViewer.enableCheckbox, chEnableId+chId)
+	addToTest(channelViewer.enableCheckbox, chEnableId+chId, ftTabIndex)
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
 	invert = widget.NewCheck("Inv", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
 	channelViewer.invertCheckbox = invert
-	addToTest(invert, invertId+chId)
+	addToTest(invert, invertId+chId, ftTabIndex)
 	trigger = widget.NewCheck("Trig", triggerSelected)
 	channelViewer.triggerCheckbox = trigger
 	scp.triggerCheck = append(scp.triggerCheck, trigger)
-	addToTest(trigger, triggerCheckId+chId)
+	addToTest(trigger, triggerCheckId+chId, ftTabIndex)
 
 	persSelected := func(checked bool) {
 		channel.Persistence = checked
@@ -624,7 +624,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	pers := widget.NewCheck("Pers", persSelected)
 	pers.SetChecked(scp.Settings.Channels[chIndex].Persistence)
 	channelViewer.persistenceCheckbox = pers
-	addToTest(pers, persId+chId)
+	addToTest(pers, persId+chId, ftTabIndex)
 
 	rangesEnum, err := scp.psControl.ChannelRanges(chIndex)
 	switch {
@@ -643,14 +643,14 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	}
 	x10 = widget.NewCheck("X10", x10Changed)
 	x10.SetChecked(scp.Settings.Channels[chIndex].X10)
-	addToTest(x10, x10Id+chId)
+	addToTest(x10, x10Id+chId, ftTabIndex)
 	channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10)
 	channelViewer.vRangeSelects = append(channelViewer.vRangeSelects, vRange)
-	addToTest(vRange, vRangeId+chId)
+	addToTest(vRange, vRangeId+chId, ftTabIndex)
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, cChanged, "AC")
 	acdc.SetSelected(coupleTypeNames[scp.Settings.Channels[chIndex].CoupleType])
 	channelViewer.acdcSelect = acdc
-	addToTest(acdc, acdcId+chId)
+	addToTest(acdc, acdcId+chId, ftTabIndex)
 	var activeTriggerDirectionOptions []string
 	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
 		activeTriggerDirectionOptions = triggerWindowDirectionOptions
@@ -666,7 +666,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	triggerDirection := selectscroll.NewSelectScroll(activeTriggerDirectionOptions,
 		triggerTypeChanged, defaultDir)
 	channelViewer.triggerDirectionSelect = triggerDirection
-	addToTest(triggerDirection, triggerDirectionId)
+	addToTest(triggerDirection, triggerDirectionId, ftTabIndex)
 
 	// Validate that the saved setting is valid for the current options
 	savedName := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]
