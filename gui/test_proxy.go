@@ -142,9 +142,11 @@ type (
 var (
 	controls map[string]fyne.CanvasObject
 )
+var visibleCh chan bool
 
 func init() {
 	controls = make(map[string]fyne.CanvasObject)
+	visibleCh = make(chan bool, 1)
 }
 
 func addToTest(obj fyne.CanvasObject, name string) {
@@ -162,7 +164,6 @@ var keyNames = []fyne.KeyName{
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
 func randKey(name string) {
-	visibleCh := make(chan bool, 1)
 	fyne.Do(func() {
 		if c, ok := controls[name]; ok && c != nil {
 			visibleCh <- c.Visible()
@@ -212,7 +213,6 @@ func randKey(name string) {
 	}
 }
 func randTap(name string) {
-	visibleCh := make(chan bool, 1)
 	fyne.Do(func() {
 		if c, ok := controls[name]; ok && c != nil {
 			visibleCh <- c.Visible()
@@ -276,7 +276,6 @@ func randTap(name string) {
 	}
 }
 func randScroll(name string, n int) {
-	visibleCh := make(chan bool, 1)
 	fyne.Do(func() {
 		if c, ok := controls[name]; ok && c != nil {
 			visibleCh <- c.Visible()
@@ -363,7 +362,6 @@ func randScroll(name string, n int) {
 	}
 }
 func randDrag(name string, delta float32) {
-	visibleCh := make(chan bool, 1)
 	fyne.Do(func() {
 		if c, ok := controls[name]; ok && c != nil {
 			visibleCh <- c.Visible()
