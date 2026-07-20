@@ -123,6 +123,7 @@ type (
 		ffFullRefresh                       bool
 		screenLocker                        sync.Mutex
 		ffLocker                            sync.Mutex
+		settingsLocker                      sync.Mutex
 		ffSweepQuit                         chan struct{}
 		ffSweepDataReady                    chan struct{}
 		ffSweepAcquireTime                  time.Time
@@ -280,9 +281,13 @@ func (scp *ScpDesc) SaveSettings() {
 	if scp.SettingFileName == "" {
 		return
 	}
-	if err := settings.Save(scp.SettingFileName, scp.Settings); err != nil {
-		slog.Error("failed to save settings", "err", err)
-	}
+	go func() {
+		scp.settingsLocker.Lock()
+		defer scp.settingsLocker.Unlock()
+		if err := settings.Save(scp.SettingFileName, scp.Settings); err != nil {
+			slog.Error("failed to save settings", "err", err)
+		}
+	}()
 }
 
 func (scp *ScpDesc) refreshRasters() {

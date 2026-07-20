@@ -167,7 +167,7 @@ func randKey(name string) {
 	case *disp7.DigitArray:
 		wait()
 		key := keyNames[rand.Intn(len(keyNames))]
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -175,7 +175,7 @@ func randKey(name string) {
 			c.KeyDown(&fyne.KeyEvent{Name: key})
 		})
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -184,7 +184,7 @@ func randKey(name string) {
 		})
 	case *digitEntry:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -206,7 +206,7 @@ func randTap(name string) {
 	case *selectscroll.SelectScroll:
 		n := rand.Intn(len(c.Options))
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -214,7 +214,7 @@ func randTap(name string) {
 		})
 	case fyne.Tappable:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if obj, ok := controls[name]; ok && !obj.Visible() {
 				return
 			}
@@ -236,7 +236,7 @@ func randScroll(name string, n int) {
 		} // Limit iterations to avoid watchdog timeouts
 		for ; n > 0; n-- {
 			wait()
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 					return
 				}
@@ -255,7 +255,7 @@ func randScroll(name string, n int) {
 	case *sliderscroll.SliderScroll:
 		wait()
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -268,7 +268,7 @@ func randScroll(name string, n int) {
 		for ; n > 0; n-- {
 			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				if !c.Visible() {
 					return
 				}
@@ -281,7 +281,7 @@ func randScroll(name string, n int) {
 		} // Limit iterations to avoid timeouts
 		for ; n > 0; n-- {
 			wait()
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 					return
 				}
@@ -304,7 +304,7 @@ func randDrag(name string, delta float32) {
 	switch c := controls[name].(type) {
 	case *screenRaster:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 				return
 			}
@@ -319,7 +319,7 @@ func randDrag(name string, delta float32) {
 		})
 	case *sliderscroll.SliderScroll:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -327,7 +327,7 @@ func randDrag(name string, delta float32) {
 		})
 	case *disp7.DigitArray:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if !c.Visible() {
 				return
 			}
@@ -339,7 +339,7 @@ func randDrag(name string, delta float32) {
 func tap(name string) {
 	switch c := controls[name].(type) {
 	case *container.AppTabs:
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			var targetText string
 			switch name {
 			case ftFuncId:
@@ -370,7 +370,7 @@ func tap(name string) {
 		})
 	case fyne.Tappable:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
@@ -395,21 +395,21 @@ func scroll(name string, n int) {
 			e.Scrolled.DY = delta
 			e.AbsolutePosition = ap
 			e.Position = p
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				c.Scrolled(e)
 			})
 		}
 	case *sliderscroll.SliderScroll:
 		wait()
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
 		for ; n > 0; n-- {
 			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				c.Scrolled(e)
 			})
 		}
@@ -427,7 +427,7 @@ func scroll(name string, n int) {
 			e.Scrolled.DY = delta
 			e.AbsolutePosition = ap
 			e.Position = p
-			fyne.DoAndWait(func() {
+			fyne.Do(func() {
 				c.Scrolled(e)
 			})
 		}
@@ -445,17 +445,17 @@ func drag(name string, delta float32) {
 		e := fyne.PointEvent{}
 		e.AbsolutePosition = ap
 		e.Position = p
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			c.Dragged(&fyne.DragEvent{PointEvent: e, Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *sliderscroll.SliderScroll:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *disp7.DigitArray:
 		wait()
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
@@ -511,7 +511,7 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		wait()
 	}
 
-	fyne.DoAndWait(func() {
+	fyne.Do(func() {
 		// Set time division to 10 ms/div so that low frequency signals (10Hz-1000Hz) have enough periods on screen to measure frequency
 		scp.timeUnitSelect.SilentSetSelected("ms/div")
 		scp.timeSelect.SilentSetSelected("10")
@@ -534,13 +534,13 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		log.Fatalf("FAIL: expected bode buffers to have data before clear")
 	}
 	// Pause the run if it hasn't automatically finished
-	fyne.DoAndWait(func() {
+	fyne.Do(func() {
 		if scp.running {
 			scp.StopRunning()
 		}
 	})
 	wait()
-	fyne.DoAndWait(func() {
+	fyne.Do(func() {
 		scp.ResetFfSweep()
 	})
 	wait()
@@ -586,7 +586,7 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			targetTab = 0
 		}
 		var currentTab int
-		fyne.DoAndWait(func() {
+		fyne.Do(func() {
 			if tabs, ok := controls[ftFuncId].(*container.AppTabs); ok {
 				currentTab = tabs.SelectedIndex()
 			}
