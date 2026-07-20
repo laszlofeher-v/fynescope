@@ -133,21 +133,17 @@ type (
 		// status field containing UI label and numeric code
 		status *InitStatus
 		// FFT caches for processFfData — reallocated only when sample count changes
-		ffFftObj             *fourier.FFT
-		ffFftBuf             []float64
-		ffFftResult          []complex128
-		ffFftSamples         int
-		ffCurrentFreqDisp    *disp7.DigitArray
-		ffMinFreqDisp        *disp7.DigitArray
-		ffMaxFreqDisp        *disp7.DigitArray
-		ffStepFreqDisp       *disp7.DigitArray
-		ffDeltaTDisp         *disp7.DigitArray
-		ffAmpDisp            *disp7.DigitArray
-		ffOffsetDisp         *disp7.DigitArray
-		ffPhaseDisp          *disp7.DigitArray
-		ffRaiseFallTimeDisp  *disp7.DigitArray
-		ffNoiseAmplitudeDisp *disp7.DigitArray
-		ffPhaseNoiseDisp     *disp7.DigitArray
+		ffFftObj          *fourier.FFT
+		ffFftBuf          []float64
+		ffFftResult       []complex128
+		ffFftSamples      int
+		ffCurrentFreqDisp *disp7.DigitArray
+		ffMinFreqDisp     *disp7.DigitArray
+		ffMaxFreqDisp     *disp7.DigitArray
+		ffStepFreqDisp    *disp7.DigitArray
+		ffDeltaTDisp      *disp7.DigitArray
+		ffAmpDisp         *disp7.DigitArray
+		ffOffsetDisp      *disp7.DigitArray
 
 		bodeBuffers                  [genericps.MaxChannel][]bodePoint
 		maxSamplingRate              uint32

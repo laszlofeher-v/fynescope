@@ -273,7 +273,7 @@ func NewDefaultSettings() *PsSettings {
 		},
 
 		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDB, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s"},
-		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 100, MaxFreq: 10000, DisplayMode: ModeDB, PtsDec: 100, DeltaT: 0.1, Amplitude: defaultAmplitude},
+		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDB, PtsDec: 100, DeltaT: 0.1, Amplitude: defaultAmplitude},
 		Theme:         DarkTheme,
 		StreamEnabled: &streamDefault,
 	}
