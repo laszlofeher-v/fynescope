@@ -128,7 +128,7 @@ const (
 	rlcLUnitId     = "rlcLUnit"
 	rlcCId         = "rlcC"
 	rlcCUnitId     = "rlcCUnit"
-	sleepTime      = 500 * time.Millisecond
+	sleepTime      = 100 * time.Millisecond
 	timeout        = time.Duration(30) * time.Second
 )
 
