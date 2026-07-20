@@ -563,7 +563,9 @@ func (scp *ScpDesc) Test() {
 		scp.triggerModeSelect.SetSelected("Auto")
 	})
 	tap(ffFuncId)
+	scroll(ffMinFreqId, 100)
 	wait()
+
 	for !scp.running {
 		wait()
 		tap(runblockButtonId) // Start the sweep

@@ -132,7 +132,6 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	}
 
 	// Declare disp7 widgets first so they can be referenced in the OnChanged closure
-	// deltaDisp, deltaTDisp removed
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		idx := i
@@ -152,7 +151,6 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 						if scp.ffMinFreqDisp != nil {
 							scp.ffMinFreqDisp.SetOncolor(refCol)
 							scp.ffMaxFreqDisp.SetOncolor(refCol)
-							// deltaDisp and deltaTDisp color updates removed
 							if scp.ffCurrentFreqDisp != nil {
 								scp.ffCurrentFreqDisp.SetOncolor(refCol)
 							}
