@@ -162,6 +162,17 @@ var keyNames = []fyne.KeyName{
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
 func randKey(name string) {
+	visibleCh := make(chan bool, 1)
+	fyne.Do(func() {
+		if c, ok := controls[name]; ok && c != nil {
+			visibleCh <- c.Visible()
+		} else {
+			visibleCh <- false
+		}
+	})
+	if !<-visibleCh {
+		return
+	}
 	slog.Debug("randKey", "name", name)
 	switch c := controls[name].(type) {
 	case *disp7.DigitArray:
@@ -201,8 +212,49 @@ func randKey(name string) {
 	}
 }
 func randTap(name string) {
+	visibleCh := make(chan bool, 1)
+	fyne.Do(func() {
+		if c, ok := controls[name]; ok && c != nil {
+			visibleCh <- c.Visible()
+		} else {
+			visibleCh <- false
+		}
+	})
+	if !<-visibleCh {
+		return
+	}
 	slog.Debug("randTap", "name", name)
 	switch c := controls[name].(type) {
+	case *container.AppTabs:
+		fyne.Do(func() {
+			var targetText string
+			switch name {
+			case ftFuncId:
+				targetText = "f(t)"
+			case fvFuncId:
+				targetText = "f(v)"
+			case dftFuncId:
+				targetText = "FFT"
+			case ffFuncId:
+				targetText = "f(f)"
+			case rlcFuncId:
+				targetText = "RLC"
+			case filterFuncId:
+				targetText = "filter"
+			case genFuncId:
+				targetText = "gen"
+			case extgenFuncId:
+				targetText = "extgen"
+			}
+			if targetText != "" {
+				for idx, item := range c.Items {
+					if item.Text == targetText {
+						c.SelectIndex(idx)
+						break
+					}
+				}
+			}
+		})
 	case *selectscroll.SelectScroll:
 		n := rand.Intn(len(c.Options))
 		wait()
@@ -224,6 +276,17 @@ func randTap(name string) {
 	}
 }
 func randScroll(name string, n int) {
+	visibleCh := make(chan bool, 1)
+	fyne.Do(func() {
+		if c, ok := controls[name]; ok && c != nil {
+			visibleCh <- c.Visible()
+		} else {
+			visibleCh <- false
+		}
+	})
+	if !<-visibleCh {
+		return
+	}
 	slog.Debug("randScroll", "name", name)
 	delta := float32(n)
 	if n < 0 {
@@ -300,6 +363,17 @@ func randScroll(name string, n int) {
 	}
 }
 func randDrag(name string, delta float32) {
+	visibleCh := make(chan bool, 1)
+	fyne.Do(func() {
+		if c, ok := controls[name]; ok && c != nil {
+			visibleCh <- c.Visible()
+		} else {
+			visibleCh <- false
+		}
+	})
+	if !<-visibleCh {
+		return
+	}
 	slog.Debug("randDrag", "name", name)
 	switch c := controls[name].(type) {
 	case *screenRaster:
