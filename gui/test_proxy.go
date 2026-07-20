@@ -164,14 +164,7 @@ var keyNames = []fyne.KeyName{
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
 func randKey(name string) {
-	fyne.Do(func() {
-		if c, ok := controls[name]; ok && c != nil {
-			visibleCh <- c.Visible()
-		} else {
-			visibleCh <- false
-		}
-	})
-	if !<-visibleCh {
+	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randKey", "name", name)
@@ -213,14 +206,7 @@ func randKey(name string) {
 	}
 }
 func randTap(name string) {
-	fyne.Do(func() {
-		if c, ok := controls[name]; ok && c != nil {
-			visibleCh <- c.Visible()
-		} else {
-			visibleCh <- false
-		}
-	})
-	if !<-visibleCh {
+	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randTap", "name", name)
@@ -276,14 +262,7 @@ func randTap(name string) {
 	}
 }
 func randScroll(name string, n int) {
-	fyne.Do(func() {
-		if c, ok := controls[name]; ok && c != nil {
-			visibleCh <- c.Visible()
-		} else {
-			visibleCh <- false
-		}
-	})
-	if !<-visibleCh {
+	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randScroll", "name", name)
@@ -362,14 +341,7 @@ func randScroll(name string, n int) {
 	}
 }
 func randDrag(name string, delta float32) {
-	fyne.Do(func() {
-		if c, ok := controls[name]; ok && c != nil {
-			visibleCh <- c.Visible()
-		} else {
-			visibleCh <- false
-		}
-	})
-	if !<-visibleCh {
+	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randDrag", "name", name)
@@ -658,11 +630,9 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			targetTab = 0
 		}
 		var currentTab int
-		fyne.Do(func() {
-			if tabs, ok := controls[ftFuncId].(*container.AppTabs); ok {
-				currentTab = tabs.SelectedIndex()
-			}
-		})
+		if tabs, ok := controls[ftFuncId].(*container.AppTabs); ok {
+			currentTab = tabs.SelectedIndex()
+		}
 
 		isAlwaysVisible := false
 		switch a[control] {
