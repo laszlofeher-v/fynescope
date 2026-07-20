@@ -142,7 +142,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 					scp.Settings.Ff.ReferenceChannel = idx
 					for j, rc := range refChecks {
 						if j != idx {
-							rc.SetChecked(false)
+							fyne.Do(func() { rc.SetChecked(false) })
 						}
 					}
 

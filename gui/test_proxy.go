@@ -506,7 +506,7 @@ func drag(name string, delta float32) {
 	}
 }
 
-func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
+func (scp *ScpDesc) Test() {
 	log.Println("Test started")
 	tap(ftFuncId)
 	tap(genFuncId)
@@ -543,7 +543,7 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		tap(chEnableId + "A")
 		tap(genCheckId)
 		tap(runblockButtonId)
-		tap(themeChangeActionId)
+		// tap(themeChangeActionId)
 		wait()
 		wait()
 		wait()
@@ -563,13 +563,13 @@ func (scp *ScpDesc) Test( /*w *sync.WaitGroup*/ ) {
 		scp.triggerModeSelect.SetSelected("Auto")
 	})
 	tap(ffFuncId)
-	if scp.running {
-		tap(runblockButtonId) // Stop before switching to ensure sweep starts cleanly
+	wait()
+	for !scp.running {
+		wait()
+		tap(runblockButtonId) // Start the sweep
 	}
-	tap(runblockButtonId) // Start the sweep
-
 	// Wait for a few frequency steps to complete
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 200 && len(scp.bodeBuffers[0]) == 0; i++ {
 		wait()
 	}
 
