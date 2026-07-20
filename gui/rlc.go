@@ -66,7 +66,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			chSettings.RlcFilter.GeneratorSource = genericps.ChannelId(chIdx)
 		}
 		genSourceSelect.SetSelected("Gen " + string(rune('A'+int(chSettings.RlcFilter.GeneratorSource))))
-		addToTest(genSourceSelect, "rlcGenSource"+chStr)
+		addToTest(genSourceSelect, "rlcGenSource"+chStr, rlcTabIndex)
 
 		filterTypes := []string{settings.RlcFilterTypeDisabled, "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
 		typeSelect := selectscroll.NewSelectScroll(filterTypes, func(s string, exc selectscroll.Exception) {
@@ -120,8 +120,8 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			// Keep entry width manageable
 			entryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), entry)
 
-			addToTest(entry, valId)
-			addToTest(unitSelect, unitId)
+			addToTest(entry, valId, rlcTabIndex)
+			addToTest(unitSelect, unitId, rlcTabIndex)
 			return container.NewHBox(lbl, entryContainer, unitSelect)
 		}
 
@@ -173,7 +173,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			cBox,
 		)
 
-		addToTest(typeSelect, rlcTypeId+chStr)
+		addToTest(typeSelect, rlcTypeId+chStr, rlcTabIndex)
 
 		notifySim() // initialize sim with current settings on startup
 		vbox.Add(controls)

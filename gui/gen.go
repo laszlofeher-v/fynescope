@@ -174,11 +174,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			}
 		}
 		show := widget.NewCheck("Digital", showChanged)
-		addToTest(show, genShowId)
+		addToTest(show, genShowId, genTabIndex)
 		check := widget.NewCheck("On", checked)
 		check.Checked = scp.Settings.GenPanel.On
 
-		addToTest(check, genCheckId)
+		addToTest(check, genCheckId, genTabIndex)
 		dwellTimeChanged := func(v float64) {
 			scp.Settings.GenPanel.Dwelltime = v / dwellTimeScale
 			scp.applyInternalGenSettings(check.Checked)
@@ -301,11 +301,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			})
 		}
 		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
-		addToTest(freqSetAnalog, genFreqSetId)
+		addToTest(freqSetAnalog, genFreqSetId, genTabIndex)
 		freqSetAnalog.OnChanged = freqChanged
 		ampSetAnalog = sliderscroll.NewSliderScroll(0, maxV)
 		ampSetAnalog.SilentSetValue(float64(scp.Settings.GenPanel.Amplitude))
-		addToTest(ampSetAnalog, genAmpdSetId)
+		addToTest(ampSetAnalog, genAmpdSetId, genTabIndex)
 		ampSetAnalog.OnChanged = ampChanged
 		disp7Width := fractionWidth
 		f := int(math.Round(genericps.SineMaxFrequency))
@@ -330,7 +330,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		}
 		frequency.OnChanged = freqChanged
 		frequency.SilentSetValue(int(scp.Settings.GenPanel.Frequency) * pow10tab[fractionWidth])
-		addToTest(frequency, genFreqId)
+		addToTest(frequency, genFreqId, genTabIndex)
 
 		dwellTime, err = disp7.NewCustomDisp7Array(dwellTimeDigits, dwellTimeFraction,
 			int(genericps.MaxDwellTime)*1000, minDwellTimeNs,
@@ -344,7 +344,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		}
 		dwellTime.OnChanged = dwellTimeChanged
 		dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * dwellTimeScale))
-		addToTest(dwellTime, genDwellTimeId)
+		addToTest(dwellTime, genDwellTimeId, genTabIndex)
 
 		startFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
 			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
@@ -359,7 +359,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		}
 		startFrqDisp.OnChanged = startFreqChanged
 		startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency) * pow10tab[fractionWidth])
-		addToTest(startFrqDisp, genMinFrqId)
+		addToTest(startFrqDisp, genMinFrqId, genTabIndex)
 		stopFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
 			int(genericps.SineMaxFrequency)*100, minAllowedFreq,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -370,7 +370,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		if err != nil {
 			return
 		}
-		addToTest(stopFrqDisp, genMaxFrqId)
+		addToTest(stopFrqDisp, genMaxFrqId, genTabIndex)
 		stopFrqDisp.OnChanged = stopFreqChanged
 		stopFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StopFrequency) * pow10tab[fractionWidth])
 		stepFreq, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
@@ -383,7 +383,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		if err != nil {
 			return
 		}
-		addToTest(stepFreq, genStepFreqId)
+		addToTest(stepFreq, genStepFreqId, genTabIndex)
 		stepFreq.OnChanged = stepFreqChanged
 		stepFreq.SilentSetValue(int(scp.Settings.GenPanel.Increment) * pow10tab[fractionWidth])
 		amp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
@@ -396,7 +396,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			return
 		}
 		amp.SilentSetValue(int(scp.Settings.GenPanel.Amplitude))
-		addToTest(amp, genAmpId)
+		addToTest(amp, genAmpId, genTabIndex)
 		amp.OnChanged = ampChanged
 		offset, err = disp7.NewCustomDisp7Array(7, 6,
 			maxV, -maxV,
@@ -408,7 +408,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		if err != nil {
 			return
 		}
-		addToTest(offset, genOffsetId)
+		addToTest(offset, genOffsetId, genTabIndex)
 		offset.OnChanged = offsetChanged
 		setOffsetMinMax()
 		offset.SilentSetValue(int(scp.Settings.GenPanel.OffsetVoltage))
@@ -431,7 +431,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 				container.New(layout.NewVBoxLayout(), waveType))
 		}
 
-		addToTest(sweepMenu, genSweepId)
+		addToTest(sweepMenu, genSweepId, genTabIndex)
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
 			widget.NewLabel("Sweep "), sweepMenu)
 

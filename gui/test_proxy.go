@@ -139,18 +139,21 @@ type (
 	}
 )
 
-var (
-	controls map[string]fyne.CanvasObject
-)
-var visibleCh chan bool
-
-func init() {
-	controls = make(map[string]fyne.CanvasObject)
-	visibleCh = make(chan bool, 1)
+type TestControl struct {
+	Obj fyne.CanvasObject
+	Tab int
 }
 
-func addToTest(obj fyne.CanvasObject, name string) {
-	controls[name] = obj
+var (
+	controls map[string]TestControl
+)
+
+func init() {
+	controls = make(map[string]TestControl)
+}
+
+func addToTest(obj fyne.CanvasObject, name string, tabID int) {
+	controls[name] = TestControl{Obj: obj, Tab: tabID}
 }
 func wait() {
 	time.Sleep(sleepTime)
@@ -164,11 +167,13 @@ var keyNames = []fyne.KeyName{
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
 func randKey(name string) {
-	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randKey", "name", name)
-	switch c := controls[name].(type) {
+	switch c := c.(type) {
 	case *disp7.DigitArray:
 		wait()
 		key := keyNames[rand.Intn(len(keyNames))]
@@ -206,11 +211,13 @@ func randKey(name string) {
 	}
 }
 func randTap(name string) {
-	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randTap", "name", name)
-	switch c := controls[name].(type) {
+	switch c := c.(type) {
 	case *container.AppTabs:
 		fyne.Do(func() {
 			var targetText string
@@ -253,7 +260,7 @@ func randTap(name string) {
 	case fyne.Tappable:
 		wait()
 		fyne.Do(func() {
-			if obj, ok := controls[name]; ok && !obj.Visible() {
+			if obj, ok := controls[name]; ok && !obj.Obj.Visible() {
 				return
 			}
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
@@ -262,7 +269,9 @@ func randTap(name string) {
 	}
 }
 func randScroll(name string, n int) {
-	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randScroll", "name", name)
@@ -270,7 +279,7 @@ func randScroll(name string, n int) {
 	if n < 0 {
 		n = -n
 	}
-	switch c := controls[name].(type) {
+	switch c := c.(type) {
 	case *screenRaster:
 		if n > 2 {
 			n = 2
@@ -341,11 +350,13 @@ func randScroll(name string, n int) {
 	}
 }
 func randDrag(name string, delta float32) {
-	if c, ok := controls[name]; !ok || c == nil || !c.Visible() {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil || !c.Visible() {
 		return
 	}
 	slog.Debug("randDrag", "name", name)
-	switch c := controls[name].(type) {
+	switch c := c.(type) {
 	case *screenRaster:
 		wait()
 		fyne.Do(func() {
@@ -381,7 +392,7 @@ func randDrag(name string, delta float32) {
 	}
 }
 func tap(name string) {
-	switch c := controls[name].(type) {
+	switch c := controls[name].Obj.(type) {
 	case *container.AppTabs:
 		fyne.Do(func() {
 			var targetText string
@@ -426,7 +437,7 @@ func scroll(name string, n int) {
 	if n < 0 {
 		n = -n
 	}
-	switch c := controls[name].(type) {
+	switch c := controls[name].Obj.(type) {
 	case *screenRaster:
 		for ; n > 0; n-- {
 			wait()
@@ -479,7 +490,7 @@ func scroll(name string, n int) {
 	}
 }
 func drag(name string, delta float32) {
-	switch c := controls[name].(type) {
+	switch c := controls[name].Obj.(type) {
 	case *screenRaster:
 		wait()
 		ap := c.Position() // The absolute position of the event
@@ -607,59 +618,40 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 		i++
 	}
 	op := 0
-	control := 0
 	ready := make(chan struct{})
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
 		wait()
-		control = rand.Intn(len(controls))
-		var targetTab int
-		if len(a[control]) >= 6 && (a[control][0:6] == "extGen" || a[control][0:6] == "extgen") {
-			targetTab = 7
-		} else if len(a[control]) >= 6 && a[control][0:6] == "filter" {
-			targetTab = 5
-		} else if len(a[control]) >= 3 && a[control][0:3] == "gen" {
-			targetTab = 6
-		} else if len(a[control]) >= 3 && a[control][0:3] == "rlc" {
-			targetTab = 4
-		} else if len(a[control]) >= 2 && a[control][0:2] == "ff" {
-			targetTab = 3
-		} else if len(a[control]) >= 3 && a[control][0:3] == "dft" {
-			targetTab = 2
-		} else if len(a[control]) >= 2 && a[control][0:2] == "fv" {
-			targetTab = 1
-		} else {
-			targetTab = 0
-		}
 		var currentTab int
-		if tabs, ok := controls[ftFuncId].(*container.AppTabs); ok {
+		if tabs, ok := controls[ftFuncId].Obj.(*container.AppTabs); ok {
 			currentTab = tabs.SelectedIndex()
 		}
 
-		isAlwaysVisible := false
-		switch a[control] {
-		case ftFuncId, fvFuncId, dftFuncId, ffFuncId, rlcFuncId, genFuncId, filterFuncId, extgenFuncId,
-			runblockButtonId, themeChangeActionId, changeSideId:
-			isAlwaysVisible = true
+		validKeys := make([]string, 0, 32)
+		for k, ctrl := range controls {
+			if ctrl.Tab == -1 || ctrl.Tab == currentTab {
+				validKeys = append(validKeys, k)
+			}
 		}
-
-		if currentTab != targetTab && !isAlwaysVisible {
+		if len(validKeys) == 0 {
 			continue
 		}
+		selectedKey := validKeys[rand.Intn(len(validKeys))]
+
 		op = rand.Intn(4)
 		go func() {
 			n := 0
 			switch op {
 			case 0:
 				n := rand.Intn(32) - 16
-				randDrag(a[control], float32(n))
+				randDrag(selectedKey, float32(n))
 			case 1:
 				n = rand.Intn(10) - 5
-				randScroll(a[control], n)
+				randScroll(selectedKey, n)
 			case 2:
-				randTap(a[control])
+				randTap(selectedKey)
 			case 3:
-				randKey(a[control])
+				randKey(selectedKey)
 			default:
 				panic(8)
 			}
@@ -668,7 +660,7 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 		select {
 		case <-ready:
 		case <-time.After(timeout):
-			log.Println("Timed out ", a[control], op)
+			log.Println("Timed out ", selectedKey, op)
 			buf := make([]byte, 1<<20)
 			n := runtime.Stack(buf, true)
 			log.Println(string(buf[:n]))

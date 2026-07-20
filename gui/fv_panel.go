@@ -37,7 +37,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		})
 		enabledCheck.SetChecked(scp.Settings.Channels[chIndex].Enabled)
 		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, enabledCheck)
-		addToTest(enabledCheck, fvEnableId+chName)
+		addToTest(enabledCheck, fvEnableId+chName, fvTabIndex)
 
 		// X-Axis Check
 		xCheck := widget.NewCheck("X-Axis", nil)
@@ -45,7 +45,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 			xCheck.SetChecked(true)
 		}
 		xChecks = append(xChecks, xCheck)
-		addToTest(xCheck, fvXCheckId+chName)
+		addToTest(xCheck, fvXCheckId+chName, fvTabIndex)
 
 		// Range Selector
 		rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
@@ -57,7 +57,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 			scp.changeChannelRange(chIndex, option)
 		}, "+500m")
 		scp.channelViewers[chIndex].vRangeSelects = append(scp.channelViewers[chIndex].vRangeSelects, vRange)
-		addToTest(vRange, fvVRangeId+chName)
+		addToTest(vRange, fvVRangeId+chName, fvTabIndex)
 
 		vr := scp.Settings.Channels[chIndex].VRange
 		if s, ok := rangeEnumToString[vr]; ok {
@@ -70,7 +70,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		})
 		x10Check.SetChecked(scp.Settings.Channels[chIndex].X10)
 		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, x10Check)
-		addToTest(x10Check, fvX10Id+chName)
+		addToTest(x10Check, fvX10Id+chName, fvTabIndex)
 
 		// Arrange settings to minimize width (f(t) style)
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, xCheck)
