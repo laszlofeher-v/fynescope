@@ -286,6 +286,8 @@ go test -v -tags=noscope -tags=testsw  -run Test0 -timeout 105m
 time go test -tags=noscope -tags=testsw -v -timeout 99999s
 ```
 
+During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test (or in the event of a timeout panic), the final statistics are safely written to a timestamped log file (e.g., `fuzzer_YYYYMMDDHHMMSS.log`) in the current working directory.
+
 ### Test coverage by package
 
 | Package | What is tested |

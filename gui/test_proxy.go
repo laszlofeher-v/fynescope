@@ -3,16 +3,22 @@
 package gui
 
 import (
+	"fmt"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
 	"fynescope/sliderscroll"
+	"io"
 	"log"
 	"log/slog"
 	"math/rand"
+	"os"
 	"runtime"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
 
 	"fyne.io/fyne/v2"
 )
@@ -609,7 +615,64 @@ func (scp *ScpDesc) Test() {
 	}
 }
 
+type errorCountingWriter struct {
+	target io.Writer
+	count  *uint64
+}
+
+func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
+	s := strings.ToLower(string(p))
+	if strings.Contains(s, "level=error") {
+		atomic.AddUint64(w.count, 1)
+	}
+	return w.target.Write(p)
+}
+
 func (scp *ScpDesc) Random(duration time.Duration) {
+	var errorCount uint64
+	var eventCount uint64
+	startTime := time.Now()
+
+	origLogWriter := log.Writer()
+	customWriter := &errorCountingWriter{target: origLogWriter, count: &errorCount}
+	log.SetOutput(customWriter)
+
+	// Also configure slog if it was using the default handler
+	origSlogHandler := slog.Default().Handler()
+	slog.SetDefault(slog.New(slog.NewTextHandler(customWriter, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	defer func() {
+		log.SetOutput(origLogWriter)
+		slog.SetDefault(slog.New(origSlogHandler))
+	}()
+
+	statusWin := scp.App.NewWindow("Fuzzer Status")
+	uptimeLabel := widget.NewLabel("Uptime: 0s")
+	remainingLabel := widget.NewLabel(fmt.Sprintf("Remaining: %v", duration))
+	eventsLabel := widget.NewLabel("Events: 0")
+	errorsLabel := widget.NewLabel("Errors: 0")
+
+	statusWin.SetContent(container.NewVBox(
+		uptimeLabel,
+		remainingLabel,
+		eventsLabel,
+		errorsLabel,
+	))
+	statusWin.Show()
+
+	defer func() {
+		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("20060102150405"))
+		f, err := os.Create(fileName)
+		if err == nil {
+			uptime := time.Since(startTime)
+			fmt.Fprintf(f, "Uptime: %v\n", uptime)
+			fmt.Fprintf(f, "Remaining: %v\n", duration-uptime)
+			fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
+			fmt.Fprintf(f, "Errors: %d\n", atomic.LoadUint64(&errorCount))
+			f.Close()
+		}
+	}()
+
 	arrayLen := len(controls)
 	a := make([]string, arrayLen)
 	i := 0
@@ -659,6 +722,22 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 		}()
 		select {
 		case <-ready:
+			atomic.AddUint64(&eventCount, 1)
+			evs := atomic.LoadUint64(&eventCount)
+			if evs%10 == 0 {
+				uptime := time.Since(startTime)
+				remaining := deadline.Sub(time.Now())
+				if remaining < 0 {
+					remaining = 0
+				}
+				errs := atomic.LoadUint64(&errorCount)
+				fyne.Do(func() {
+					uptimeLabel.SetText(fmt.Sprintf("Uptime: %v", uptime.Round(time.Second)))
+					remainingLabel.SetText(fmt.Sprintf("Remaining: %v", remaining.Round(time.Second)))
+					eventsLabel.SetText(fmt.Sprintf("Events: %d", evs))
+					errorsLabel.SetText(fmt.Sprintf("Errors: %d", errs))
+				})
+			}
 		case <-time.After(timeout):
 			log.Println("Timed out ", selectedKey, op)
 			buf := make([]byte, 1<<20)
