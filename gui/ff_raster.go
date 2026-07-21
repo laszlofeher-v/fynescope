@@ -1059,7 +1059,8 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 		} else {
 			ff.frequencyOffsetFraction += dy
 		}
-		ff.scp.ResetFfSweep()
+		ff.scp.ffFullRefresh = true
+		ff.scp.refreshRasters()
 		return
 	}
 	// Vertical shift

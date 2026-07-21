@@ -391,8 +391,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				scp.psControl.SetTriggerCh <- &t
 				<-t.Done
 			}(triggerCopy)
-		}
-		scp.ResetFfSweep()
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
 		scp.clearAllFtPersistentLayers()
 		scp.clearAllDftPersistentLayers()
 		scp.SaveSettings()
@@ -417,7 +417,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	}
 	inverted := func(c bool) {
 		scp.Settings.Channels[chIndex].Inverted = c
-		scp.ResetFfSweep()
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
 		scp.clearAllFtPersistentLayers()
 		scp.clearAllDftPersistentLayers()
 		scp.SaveSettings()
@@ -795,7 +796,8 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 	scp.channelViewers[chIndex].offset.SetMinMax(int(min*1000),
 		int(max*1000))
 	slog.Debug("AnalogueOffset", "max", max, "min", min, "err", err)
-	scp.ResetFfSweep()
+	scp.ffFullRefresh = true
+	scp.refreshRasters()
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
 
@@ -820,8 +822,12 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	channelViewer := &scp.channelViewers[chIndex]
 	channel := &scp.Settings.Channels[chIndex]
 
-	scp.Settings.Channels[chIndex].X10 = c
-	scp.clearAllFtPersistentLayers()
+	if scp.Settings.Channels[chIndex].X10 {
+		scp.Settings.Channels[chIndex].X10 = false
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
+		scp.clearAllFtPersistentLayers()
+	}
 	scp.clearAllDftPersistentLayers()
 
 	rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
@@ -879,8 +885,8 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 				scp.psControl.SetTriggerCh <- &t
 				<-t.Done
 			}(triggerCopy)
-		}
-		scp.ResetFfSweep()
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
 		scp.SaveSettings()
 	}
 }
@@ -922,7 +928,8 @@ func (scp *ScpDesc) EnableChannel(chIndex genericps.ChannelId, c bool) {
 		}
 	}
 
-	scp.ResetFfSweep()
+	scp.ffFullRefresh = true
+	scp.refreshRasters()
 
 	// Update device
 	channel.ID = chIndex
