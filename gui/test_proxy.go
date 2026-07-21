@@ -719,12 +719,11 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			currentTab = tabs.SelectedIndex()
 		}
 
-		// validKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
-		// validKeys = append(validKeys, tabValidKeys[-1]...)
-		// if currentTab != -1 {
-		// 	validKeys = append(validKeys, tabValidKeys[currentTab]...)
-		// }
-		validKeys := tabValidKeys[currentTab]
+		validKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
+		validKeys = append(validKeys, tabValidKeys[-1]...)
+		if currentTab != -1 {
+			validKeys = append(validKeys, tabValidKeys[currentTab]...)
+		}
 		controlsMtx.RUnlock()
 		if len(validKeys) == 0 {
 			continue
