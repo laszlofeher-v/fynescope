@@ -1,13 +1,13 @@
 package gui
 
 import (
+	"fynescope/control/scpi"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
+	"fynescope/settings"
 	"log/slog"
 	"math"
-
-	"fynescope/settings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -295,18 +295,51 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		}()
 	}
 
-	if scp.Settings.Dft.DisplayMode == "" {
-		scp.Settings.Dft.DisplayMode = "dB"
+	var arbDbRefContainer *fyne.Container
+	arbDbRefDisp, _ := disp7.NewCustomDisp7Array(5, 3, 20000, 1, disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
+		scp.theme.Color(ColorNameGeneratorDisp, 0), disp7.ReadWrite, disp7.DefaultDigitWidth, disp7.DeafultDigitHeight,
+		disp7.DefaultSkew, disp7.DefaultVCursorSpace, "0dB Ref: ", " V")
+
+	arbDbRefDisp.SetFloatValue(scp.Settings.Ff.ArbitraryDbRefV, 3)
+	arbDbRefDisp.OnChanged = func(val float64) {
+		scp.Settings.Ff.ArbitraryDbRefV = val / math.Pow(10, float64(arbDbRefDisp.DpPos()))
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
+		scp.SaveSettings()
 	}
-	dispModeSelect := selectscroll.NewSelectScroll([]string{settings.ModeVoltage, settings.ModeDB}, func(opt string, ex selectscroll.Exception) {
+
+	arbDbRefContainer = container.NewVBox(arbDbRefDisp)
+	if scp.Settings.Dft.DisplayMode != settings.ModeArbitraryDB {
+		arbDbRefContainer.Hide()
+	}
+	addToTest(arbDbRefDisp, ffFuncId+"ArbRef", ffTabIndex)
+
+	if scp.Settings.Dft.DisplayMode == "" {
+		scp.Settings.Dft.DisplayMode = settings.ModeDBFS
+	}
+	dispModeSelect := selectscroll.NewSelectScroll([]string{settings.ModeDBFS, settings.ModeVoltage, settings.ModeDBV, settings.ModeDBU, settings.ModeDBM, settings.ModeArbitraryDB}, func(opt string, ex selectscroll.Exception) {
 		scp.Settings.Dft.DisplayMode = opt
+		if opt == settings.ModeArbitraryDB {
+			arbDbRefContainer.Show()
+		} else {
+			arbDbRefContainer.Hide()
+		}
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
 		scp.SaveSettings()
 	}, settings.ModeVoltage)
 	dispModeSelect.SilentSetSelected(scp.Settings.Dft.DisplayMode)
 
-	dispModeControls := container.NewHBox(widget.NewLabel(" Mode:"), dispModeSelect)
+	logXCheck := widget.NewCheck("Log X", func(b bool) {
+		scp.Settings.Ff.XAxisLog = b
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
+		scp.SaveSettings()
+	})
+	logXCheck.Checked = scp.Settings.Ff.XAxisLog
+	addToTest(logXCheck, ffFuncId+"LogX", ffTabIndex)
+
+	dispModeControls := container.NewHBox(widget.NewLabel(" Mode:"), dispModeSelect, logXCheck)
 
 	// Generator controls container
 	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -345,6 +378,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 	genVBox := container.NewVBox(
 		layout.NewSpacer(),
+		arbDbRefContainer,
 		genHeader,
 		scp.useExtGenCheck,
 	)
@@ -404,4 +438,133 @@ func (scp *ScpDesc) updateFfWidgetLimits() {
 	scp.Settings.Ff.MinFreq = float64(scp.ffMinFreqDisp.Value) / float64(scale)
 	scp.Settings.Ff.MaxFreq = float64(scp.ffMaxFreqDisp.Value) / float64(scale)
 
+}
+func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
+	checked := func(c bool) {
+		scp.Settings.FfGen.On = c
+		scp.applyFfGenSettings(c)
+		scp.SaveSettings()
+	}
+	check := widget.NewCheck("On", checked)
+	check.Checked = scp.Settings.FfGen.On
+
+	size := float32(0.8)
+	refCol := scp.Settings.Channels[scp.Settings.Ff.ReferenceChannel].Col[scp.Settings.ChannelColorIndex]
+	maxV := 2000000
+
+	scp.ffAmpDisp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
+		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
+		refCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Amp  :", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.ffAmpDisp.SetValue(int(scp.Settings.FfGen.Amplitude))
+	scp.ffAmpDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.FfGen.Amplitude = uint32(v)
+			scp.SaveSettings()
+			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+			} else if scp.running {
+				scp.applyFfGenSettings(check.Checked)
+			}
+		}()
+	}
+
+	scp.ffOffsetDisp, err = disp7.NewCustomDisp7Array(7, 6,
+		maxV, -maxV,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
+		refCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Offset   :", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.ffOffsetDisp.SetValue(int(scp.Settings.FfGen.OffsetVoltage))
+	scp.ffOffsetDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.FfGen.OffsetVoltage = int32(v)
+			scp.SaveSettings()
+			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+			} else if scp.running {
+				scp.applyFfGenSettings(check.Checked)
+			}
+		}()
+	}
+
+	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Sweep: Up"))
+	box = container.NewVBox(top, scp.ffAmpDisp, scp.ffOffsetDisp)
+	return box, nil
+}
+
+func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
+	checked := func(c bool) {
+		scp.Settings.FfGen.On = c
+		scp.applyFfSimGenSettings(c)
+		scp.SaveSettings()
+	}
+	check := widget.NewCheck("On", checked)
+	check.Checked = scp.Settings.FfGen.On
+
+	size := float32(0.8)
+	chCol := scp.Settings.Channels[0].Col[scp.Settings.ChannelColorIndex]
+	maxV := 2000000
+
+	scp.ffAmpDisp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
+		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
+		chCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Amplitude:", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.ffAmpDisp.SetValue(int(scp.Settings.FfGen.Amplitude))
+	scp.ffAmpDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.FfGen.Amplitude = uint32(v)
+			scp.SaveSettings()
+			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+			} else {
+				scp.applyFfSimGenSettings(check.Checked)
+			}
+		}()
+	}
+
+	scp.ffOffsetDisp, err = disp7.NewCustomDisp7Array(7, 6,
+		maxV, -maxV,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
+		chCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Offset   :", " V")
+	if err != nil {
+		return nil, err
+	}
+	scp.ffOffsetDisp.SetValue(int(scp.Settings.FfGen.OffsetVoltage))
+	scp.ffOffsetDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.FfGen.OffsetVoltage = int32(v)
+			scp.SaveSettings()
+			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+			} else {
+				scp.applyFfSimGenSettings(check.Checked)
+			}
+		}()
+	}
+
+	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Channel: Ch A"))
+	box = container.NewVBox(
+		top,
+		scp.ffAmpDisp,
+		scp.ffOffsetDisp,
+	)
+	return box, nil
 }
