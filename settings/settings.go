@@ -106,6 +106,7 @@ type (
 		TriggerTimeOffset float64           `yaml:"triggertimeoffset"` // trigger distance in sec
 		SampleRate        string            `yaml:"samplerate"`
 		SampleRateUnit    string            `yaml:"samplerateunits"`
+		HiRes             bool              `yaml:"hires"`
 	}
 	TriggerSettings struct {
 		Mode            string `yaml:"triggermode"`
@@ -213,7 +214,7 @@ func NewDefaultSettings() *PsSettings {
 			Function: 0},
 		ScreenSize: ScreenSize1920x1080,
 		Time: TimeSettings{Unit: defaultTimeUnit, TriggerTimeOffset: 0, TimeDiv: defaultTime,
-			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit},
+			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit, HiRes: false},
 		Trigger: TriggerSettings{Mode: TriggerModeAuto, Type: TriggerTypeSimple, CalculationMode: 0, ComplexEnabled: false},
 		Channels: []ChSettings{
 			{ID: genericps.ChA, Col: [2]color.NRGBA{{100, 200, 255, 255},
