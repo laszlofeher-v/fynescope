@@ -16,8 +16,8 @@ import (
 	"fynescope/selectscroll"
 	"strconv"
 
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -1241,7 +1241,26 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.ipmSelect = selectscroll.NewSelectScroll(interpolationModeOptions, scp.onInterpolationModeChange, linear)
 	scp.ipmSelect.SetSelected(interpolationModeOptions[scp.Settings.Time.Interpolation])
 	addToTest(scp.ipmSelect, ipmId, -1)
-	return container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
+
+	var hbox *fyne.Container
+	if scp.HighResUIEnabled {
+		scp.hiResCheck = widget.NewCheck("HiRes", scp.onHiResChange)
+		scp.hiResCheck.SetChecked(scp.Settings.Time.HiRes)
+		addToTest(scp.hiResCheck, "HiResCheck", -1)
+		hbox = container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect, scp.hiResCheck)
+	} else {
+		scp.Settings.Time.HiRes = false
+		scp.psControl.SetHiRes(false)
+		hbox = container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
+	}
+
+	return hbox
+}
+
+func (scp *ScpDesc) onHiResChange(checked bool) {
+	scp.Settings.Time.HiRes = checked
+	scp.psControl.SetHiRes(checked)
+	scp.SaveSettings()
 }
 
 func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {

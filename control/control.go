@@ -190,6 +190,7 @@ type (
 		Info               string
 		MaxSamplingRate    uint32
 		StreamEnabled      atomic.Bool
+		hiResEnabled       atomic.Bool
 	}
 )
 
@@ -342,6 +343,13 @@ func (psControl *PscDesc) SetMaxScreenTime(t float64) {
 func (psControl *PscDesc) SuggestSampleCount(sc int32) {
 	if psControl.SampleCountRequired != sc {
 		psControl.SampleCountRequired = sc
+		psControl.requestRestart()
+	}
+}
+
+func (psControl *PscDesc) SetHiRes(enabled bool) {
+	if psControl.hiResEnabled.Load() != enabled {
+		psControl.hiResEnabled.Store(enabled)
 		psControl.requestRestart()
 	}
 }
