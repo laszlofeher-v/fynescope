@@ -345,7 +345,10 @@ func (ff *ffViewer) draw() {
 					}
 				}
 			} else {
-				unitName = "dB"
+				unitName = ff.scp.Settings.Dft.DisplayMode
+				if unitName == settings.ModeArbitraryDB {
+					unitName = "dB"
+				}
 				lx_unit := 0
 				left_u, _, right_u, _ := ff.scp.boundString(unitName)
 				if yCount%2 == 0 {
@@ -465,6 +468,30 @@ func drawDashedLine(img draw.Image, x0, y0, x1, y1 float32, c color.Color) {
 	}
 }
 
+func calcFfDb(val float64, mode string, vRange genericps.RangeEnum, arbitraryDbRefV float64) float64 {
+	if mode == settings.ModeDBFS {
+		return 20 * math.Log10(val)
+	}
+	vPeak := val * float64(genericps.RangeValuesMv[vRange]) / 1000.0
+	vRms := vPeak / math.Sqrt(2)
+	switch mode {
+	case settings.ModeDBV:
+		return 20 * math.Log10(vRms/1.0)
+	case settings.ModeDBU:
+		return 20 * math.Log10(vRms/0.7746)
+	case settings.ModeDBM:
+		return 20 * math.Log10(vRms/0.2236)
+	case settings.ModeArbitraryDB:
+		ref := arbitraryDbRefV
+		if ref <= 0 {
+			ref = 1e-6
+		}
+		return 20 * math.Log10(vPeak/ref)
+	default:
+		return 20 * math.Log10(val)
+	}
+}
+
 // drawChannels plots the amplitude (always) and phase (if enabled) frequency response curves for all enabled scope channels.
 // Amplitude curves are drawn as solid lines (scaled as either linear peak voltage or logarithmic decibels).
 // Phase curves are drawn as dashed, dimmed lines mapped on a fixed Y-scale from -180 to 180 degrees.
@@ -540,7 +567,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 					if val < 1e-10 {
 						db = dbFloor
 					} else {
-						db = 20 * math.Log10(val)
+						db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, ch.VRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 					}
 					if db < dbFloor {
 						db = dbFloor
@@ -827,7 +854,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if val < 1e-10 {
 					db = -80.0
 				} else {
-					db = 20 * math.Log10(val)
+					db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, ch.VRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 				}
 				if db < -80.0 {
 					db = -80.0
@@ -835,8 +862,12 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if db > 0 {
 					db = 0
 				}
-				ampStr = fmt.Sprintf("%.1fdB", db)
-				ampCurStr = fmt.Sprintf("%.1fdB", ff.inspectorDispAmpCur[chIdx])
+				unitStr := ff.scp.Settings.Dft.DisplayMode
+				if unitStr == settings.ModeArbitraryDB {
+					unitStr = "dB"
+				}
+				ampStr = fmt.Sprintf("%.1f%s", db, unitStr)
+				ampCurStr = fmt.Sprintf("%.1f%s", ff.inspectorDispAmpCur[chIdx], unitStr)
 			}
 		}
 
@@ -868,8 +899,12 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 					dAmpCurStr = formatVoltageFloat64(mvCur, ch.VRange)
 				} else {
 					// for dB, the delta is technically a ratio if we subtract dBs, which is fine
-					dAmpStr = fmt.Sprintf("%.1fdB", dvAmp)
-					dAmpCurStr = fmt.Sprintf("%.1fdB", dvAmpCur)
+					unitStr := ff.scp.Settings.Dft.DisplayMode
+					if unitStr == settings.ModeArbitraryDB {
+						unitStr = "dB"
+					}
+					dAmpStr = fmt.Sprintf("%.1f%s", dvAmp, unitStr)
+					dAmpCurStr = fmt.Sprintf("%.1f%s", dvAmpCur, unitStr)
 				}
 			}
 			if ch.FfPhaseEnabled {

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fynescope/genericps"
+	"fynescope/settings"
 	"image"
 	"image/draw"
 	"math"
@@ -159,8 +160,11 @@ func (cl *dftChannelLabelViewer) draw() {
 		maxY := float64(yBounds.Max.Y)
 		minY := float64(yBounds.Min.Y)
 
-		if cl.scp.Settings.Dft.DisplayMode == "dB" {
-			unitName := "dB"
+		if cl.scp.Settings.Dft.DisplayMode != settings.ModeVoltage {
+			unitName := cl.scp.Settings.Dft.DisplayMode
+			if unitName == settings.ModeArbitraryDB {
+				unitName = "dB"
+			}
 			left, _, right, _ := cl.scp.boundString(unitName)
 			dy := float32(yBounds.Dy()-1.0) / 10.0
 			xoffset := left - right
