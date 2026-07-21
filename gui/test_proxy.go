@@ -189,26 +189,17 @@ func randKey(name string) bool {
 		wait()
 		key := keyNames[rand.Intn(len(keyNames))]
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.Window.Canvas().Focus(c)
 			c.KeyDown(&fyne.KeyEvent{Name: key})
 		})
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.KeyUp(&fyne.KeyEvent{Name: key})
 			c.Window.Canvas().Unfocus()
 		})
 	case *digitEntry:
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -265,17 +256,11 @@ func randTap(name string) bool {
 		n := rand.Intn(len(c.Options))
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.SetSelectedIndex(n)
 		})
 	case fyne.Tappable:
 		wait()
 		fyne.Do(func() {
-			if obj, ok := controls[name]; ok && !obj.Obj.Visible() {
-				return
-			}
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
@@ -302,7 +287,7 @@ func randScroll(name string, n int) bool {
 		for ; n > 0; n-- {
 			wait()
 			fyne.Do(func() {
-				if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
+				if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 					return
 				}
 				ap := c.Position() // The absolute position of the event
@@ -321,9 +306,6 @@ func randScroll(name string, n int) bool {
 		wait()
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
@@ -334,9 +316,6 @@ func randScroll(name string, n int) bool {
 			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
 			fyne.Do(func() {
-				if !c.Visible() {
-					return
-				}
 				c.Scrolled(e)
 			})
 		}
@@ -347,7 +326,7 @@ func randScroll(name string, n int) bool {
 		for ; n > 0; n-- {
 			wait()
 			fyne.Do(func() {
-				if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
+				if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 					return
 				}
 				ap := c.Position() // The absolute position of the event
@@ -377,7 +356,7 @@ func randDrag(name string, delta float32) bool {
 	case *screenRaster:
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() || int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
+			if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
 				return
 			}
 			ap := c.Position() // The absolute position of the event
@@ -392,17 +371,11 @@ func randDrag(name string, delta float32) bool {
 	case *sliderscroll.SliderScroll:
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *disp7.DigitArray:
 		wait()
 		fyne.Do(func() {
-			if !c.Visible() {
-				return
-			}
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
