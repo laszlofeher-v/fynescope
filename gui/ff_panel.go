@@ -84,7 +84,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		// Phase Checkbox
 		phaseCheck := widget.NewCheck("Phase", func(b bool) {
 			scp.Settings.Channels[chIndex].FfPhaseEnabled = b
-			scp.ResetFfSweep()
+			scp.ffFullRefresh = true
+			scp.refreshRasters()
 		})
 		phaseCheck.SetChecked(scp.Settings.Channels[chIndex].FfPhaseEnabled)
 
@@ -157,7 +158,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 						}
 					})
 
-					scp.ResetFfSweep()
+					scp.ffFullRefresh = true
+					scp.refreshRasters()
 				}
 			}()
 		}
@@ -258,7 +260,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	scp.ffDeltaTDisp.OnChanged = func(v float64) {
 		go func() {
 			scp.Settings.Ff.DeltaT = v / 1000.0
-			scp.ResetFfSweep()
+			scp.ffFullRefresh = true
+			scp.refreshRasters()
 			syncGenStartStopAndStep()
 		}()
 	}
@@ -272,7 +275,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 					scp.ffMaxFreqDisp.SetFloatValue(scp.Settings.Ff.MaxFreq, 2)
 				}
 			}
-			scp.ResetFfSweep()
+			scp.ffFullRefresh = true
+			scp.refreshRasters()
 			syncGenStartStopAndStep()
 		}()
 	}
@@ -285,7 +289,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 					scp.ffMinFreqDisp.SetFloatValue(scp.Settings.Ff.MinFreq, 2)
 				}
 			}
-			scp.ResetFfSweep()
+			scp.ffFullRefresh = true
+			scp.refreshRasters()
 			syncGenStartStopAndStep()
 		}()
 	}
@@ -295,7 +300,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	}
 	dispModeSelect := selectscroll.NewSelectScroll([]string{settings.ModeVoltage, settings.ModeDB}, func(opt string, ex selectscroll.Exception) {
 		scp.Settings.Dft.DisplayMode = opt
-		scp.ResetFfSweep()
+		scp.ffFullRefresh = true
+		scp.refreshRasters()
 		scp.SaveSettings()
 	}, settings.ModeVoltage)
 	dispModeSelect.SilentSetSelected(scp.Settings.Dft.DisplayMode)
