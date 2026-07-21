@@ -150,17 +150,25 @@ type TestControl struct {
 
 var (
 	controls       map[string]TestControl
+	tabValidKeys   map[int][]string
+	controlsMtx    sync.RWMutex
 	FuzzerCommitID string
 )
 
 func init() {
 	controls = make(map[string]TestControl)
+	tabValidKeys = make(map[int][]string)
 }
 
 // addToTest registers a Fyne canvas object to the global controls map,
 // making it available for programmatic interactions by the fuzzer.
 func addToTest(obj fyne.CanvasObject, name string, tabID int) {
+	controlsMtx.Lock()
+	if _, exists := controls[name]; !exists {
+		tabValidKeys[tabID] = append(tabValidKeys[tabID], name)
+	}
 	controls[name] = TestControl{Obj: obj, Tab: tabID}
+	controlsMtx.Unlock()
 }
 
 // wait pauses execution for a short predefined duration to allow GUI operations,
@@ -179,7 +187,9 @@ var keyNames = []fyne.KeyName{
 // randKey simulates a random keyboard interaction on the target widget.
 // It returns true if an event was successfully dispatched to a visible control.
 func randKey(name string) bool {
+	controlsMtx.RLock()
 	ctrl, ok := controls[name]
+	controlsMtx.RUnlock()
 	c := ctrl.Obj
 	if !ok || c == nil || !c.Visible() {
 		return false
@@ -216,7 +226,9 @@ func randKey(name string) bool {
 	return true
 }
 func internalTap(name string, isFuzzer bool) bool {
+	controlsMtx.RLock()
 	ctrl, ok := controls[name]
+	controlsMtx.RUnlock()
 	c := ctrl.Obj
 	if !ok || c == nil {
 		if !isFuzzer {
@@ -295,7 +307,9 @@ func randTap(name string) bool {
 	return internalTap(name, true)
 }
 func internalScroll(name string, n int, isFuzzer bool) bool {
+	controlsMtx.RLock()
 	ctrl, ok := controls[name]
+	controlsMtx.RUnlock()
 	c := ctrl.Obj
 	if !ok || c == nil {
 		return false
@@ -392,7 +406,9 @@ func randScroll(name string, n int) bool {
 	return internalScroll(name, n, true)
 }
 func internalDrag(name string, delta float32, isFuzzer bool) bool {
+	controlsMtx.RLock()
 	ctrl, ok := controls[name]
+	controlsMtx.RUnlock()
 	c := ctrl.Obj
 	if !ok || c == nil {
 		return false
@@ -442,16 +458,19 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 func randDrag(name string, delta float32) bool {
 	return internalDrag(name, delta, true)
 }
+
 // tap performs a deterministic tap on the specified control without randomness.
 // This is used for hardcoded GUI operations in standard testing.
 func tap(name string) {
 	internalTap(name, false)
 }
+
 // scroll performs a deterministic scroll on the specified control without randomness.
 // It scrolls 'n' times by the predefined delta.
 func scroll(name string, n int) {
 	internalScroll(name, n, false)
 }
+
 // drag performs a deterministic drag on the specified control.
 func drag(name string, delta float32) {
 	internalDrag(name, delta, false)
@@ -688,29 +707,25 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
-	arrayLen := len(controls)
-	a := make([]string, arrayLen)
-	i := 0
-	for k := range controls {
-		a[i] = k
-		i++
-	}
+	// Remove unused keys array 'a'
 	op := 0
 	ready := make(chan bool)
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
 		wait()
 		var currentTab int
+		controlsMtx.RLock()
 		if tabs, ok := controls[ftFuncId].Obj.(*container.AppTabs); ok {
 			currentTab = tabs.SelectedIndex()
 		}
 
-		validKeys := make([]string, 0, 32)
-		for k, ctrl := range controls {
-			if ctrl.Tab == -1 || ctrl.Tab == currentTab {
-				validKeys = append(validKeys, k)
-			}
-		}
+		// validKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
+		// validKeys = append(validKeys, tabValidKeys[-1]...)
+		// if currentTab != -1 {
+		// 	validKeys = append(validKeys, tabValidKeys[currentTab]...)
+		// }
+		validKeys := tabValidKeys[currentTab]
+		controlsMtx.RUnlock()
 		if len(validKeys) == 0 {
 			continue
 		}
