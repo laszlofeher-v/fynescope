@@ -143,6 +143,8 @@ type (
 		Bins           int     `yaml:"bins"`
 		SampleRate     string  `yaml:"samplerate"`
 		SampleRateUnit string  `yaml:"samplerateunits"`
+		ArbitraryDbRefV float64 `yaml:"arbitrary_db_ref_v"`
+		XAxisLog       bool    `yaml:"x_axis_log"`
 	}
 	FfSettings struct {
 		ReferenceChannel  int     `yaml:"referencechannel"`
@@ -156,6 +158,8 @@ type (
 		ExternalGenUsbPid string  `yaml:"externalgenusbpid"`
 		DeltaT            float64 `yaml:"deltat"`
 		Amplitude         uint32  `yaml:"amplitude"`
+		ArbitraryDbRefV   float64 `yaml:"arbitrary_db_ref_v"`
+		XAxisLog          bool    `yaml:"x_axis_log"`
 	}
 	PsSettings struct {
 		Theme             ThemeType             `yaml:"theme"`
@@ -273,8 +277,8 @@ func NewDefaultSettings() *PsSettings {
 				TriggerTimeOffset: 0, NoiseAmplitude: 0, PhaseNoiseDegree: 0, Phase: 0},
 		},
 
-		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDB, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s"},
-		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDB, PtsDec: 100, DeltaT: 0.1, Amplitude: defaultAmplitude},
+		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
+		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Theme:         DarkTheme,
 		StreamEnabled: &streamDefault,
 	}

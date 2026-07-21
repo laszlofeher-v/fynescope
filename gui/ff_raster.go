@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"fynescope/genericps"
+	"fynescope/settings"
 	"image"
 	"image/color"
 	"image/draw"
@@ -13,18 +14,12 @@ import (
 	"strconv"
 	"time"
 
-	"gonum.org/v1/gonum/dsp/fourier"
-
-	"fynescope/control/scpi"
-	"fynescope/disp7"
-	"fynescope/settings"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"gonum.org/v1/gonum/dsp/fourier"
 )
 
 // bodePoint represents a single measured data point in a frequency response (Bode) sweep.
@@ -197,49 +192,89 @@ func (ff *ffViewer) draw() {
 	}
 
 	if fullRefresh {
-		// Draw vertical logarithmic grid (frequency)
-		logMin := math.Log10(math.Max(minFreq, 1e-6))
-		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
-		logRange := logMax - logMin
-
-		getX := func(f float64) float64 {
-			if f <= 0 {
-				f = 1e-6
+		if ff.scp.Settings.Ff.XAxisLog {
+			// Draw vertical logarithmic grid (frequency)
+			logMin := math.Log10(math.Max(minFreq, 1e-6))
+			logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
+			logRange := logMax - logMin
+	
+			getX := func(f float64) float64 {
+				if f <= 0 {
+					f = 1e-6
+				}
+				return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
 			}
-			return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
-		}
-
-		startDecade := int(math.Floor(logMin))
-		endDecade := int(math.Ceil(logMax))
-
-		for dec := startDecade; dec <= endDecade; dec++ {
-			base := math.Pow(10, float64(dec))
-			for j := 1; j < 10; j++ {
-				f := base * float64(j)
-				xf := getX(f)
+	
+			startDecade := int(math.Floor(logMin))
+			endDecade := int(math.Ceil(logMax))
+	
+			for dec := startDecade; dec <= endDecade; dec++ {
+				base := math.Pow(10, float64(dec))
+				for j := 1; j < 10; j++ {
+					f := base * float64(j)
+					xf := getX(f)
+					if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
+						col := gridCol
+						if channelIndex >= 0 {
+							col = color.NRGBA{50, 50, 50, 255}
+						}
+	
+						if j == 1 {
+							ixf := int(math.Round(xf))
+							for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+								ff.scp.ffScopeFullScreen.Set(ixf, y, col)
+							}
+	
+							vstr := fmt.Sprintf("%gHz", f)
+							if f >= 1000000 {
+								vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
+							} else if f >= 1000 {
+								vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
+							}
+							left, _, right, _ := ff.scp.boundString(vstr)
+							ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
+						} else {
+							drawVDiv(xf, col)
+						}
+					}
+				}
+			}
+		} else {
+			// Draw vertical linear grid (frequency)
+			span := maxFreq - minFreq
+			if span <= 0 {
+				span = 1e6
+			}
+			step := niceStep(span / 10.0)
+			firstFreq := math.Floor(minFreq/step) * step
+	
+			for i := 0; i < 20; i++ {
+				f := firstFreq + float64(i)*step
+				if f < minFreq-step || f > maxFreq+step {
+					continue
+				}
+				fraction := (f - minFreq) / span
+				xf := float64(bounds.Min.X) + fraction*w
+	
 				if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
 					col := gridCol
 					if channelIndex >= 0 {
 						col = color.NRGBA{50, 50, 50, 255}
 					}
-
-					if j == 1 {
-						ixf := int(math.Round(xf))
-						for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-							ff.scp.ffScopeFullScreen.Set(ixf, y, col)
-						}
-
-						vstr := fmt.Sprintf("%gHz", f)
-						if f >= 1000000 {
-							vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
-						} else if f >= 1000 {
-							vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
-						}
-						left, _, right, _ := ff.scp.boundString(vstr)
-						ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
-					} else {
-						drawVDiv(xf, col)
+	
+					ixf := int(math.Round(xf))
+					for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+						ff.scp.ffScopeFullScreen.Set(ixf, y, col)
 					}
+	
+					vstr := fmt.Sprintf("%gHz", f)
+					if f >= 1000000 {
+						vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
+					} else if f >= 1000 {
+						vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
+					}
+					left, _, right, _ := ff.scp.boundString(vstr)
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
 				}
 			}
 		}
@@ -437,15 +472,26 @@ func drawDashedLine(img draw.Image, x0, y0, x1, y1 float32, c color.Color) {
 func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 	bounds := ff.scp.ffScopeSignalScreen.Bounds()
 
-	logMin := math.Log10(math.Max(minFreq, 1e-6))
-	logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
-	logRange := logMax - logMin
-
-	getX := func(f float64) float64 {
-		if f <= 0 {
-			f = 1e-6
+	var getX func(f float64) float64
+	if ff.scp.Settings.Ff.XAxisLog {
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+	
+		getX = func(f float64) float64 {
+			if f <= 0 {
+				f = 1e-6
+			}
+			return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
 		}
-		return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
+	} else {
+		span := freqRange
+		if span <= 0 {
+			span = 1e6
+		}
+		getX = func(f float64) float64 {
+			return float64(bounds.Min.X) + ((f-minFreq)/span)*w
+		}
 	}
 
 	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
@@ -574,13 +620,16 @@ func (ff *ffViewer) calcValuesAt(mx float32, my float32, w float64, h float64, b
 		freqRange = 1000
 	}
 
-	logMin := math.Log10(math.Max(minFreq, 1e-6))
-	logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
-	logRange := logMax - logMin
-
 	fractionAtCursor := (float64(mx) - float64(bounds.Min.X)) / w
-	logF := logMin + fractionAtCursor*logRange
-	freqAtCursor = math.Pow(10, logF)
+	if ff.scp.Settings.Ff.XAxisLog {
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+		logF := logMin + fractionAtCursor*logRange
+		freqAtCursor = math.Pow(10, logF)
+	} else {
+		freqAtCursor = minFreq + fractionAtCursor*freqRange
+	}
 
 	n := len(ff.scp.channelViewers)
 	instAmp = make([]float64, n)
@@ -690,7 +739,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		text string
 		col  color.Color
 	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
-	
+
 	if ff.refActive {
 		df := freqAtCursor - refFreq
 		info = append(info, struct {
@@ -804,14 +853,14 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		} else {
 			line = fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, phaseStr, phaseCurStr)
 		}
-		
+
 		if ff.refActive {
 			var dAmpStr, dAmpCurStr, dPhaseStr, dPhaseCurStr string
-			
+
 			if ch.Enabled {
 				dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
 				dvAmpCur := ff.inspectorDispAmpCur[chIdx] - refInstAmpCur[chIdx]
-				
+
 				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
 					mv := dvAmp * float64(genericps.RangeValuesMv[ch.VRange])
 					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[ch.VRange])
@@ -827,7 +876,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				dPhaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx]-refInstPhase[chIdx])
 				dPhaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx]-refInstPhaseCur[chIdx])
 			}
-			
+
 			if ch.Enabled && ch.FfPhaseEnabled {
 				line += fmt.Sprintf(" Δ: %s/%s (ΔCur: %s/%s)", dAmpStr, dPhaseStr, dAmpCurStr, dPhaseCurStr)
 			} else if ch.Enabled {
@@ -1038,13 +1087,24 @@ func (ff *ffViewer) snapYToFfN(y float64) int {
 // Otherwise, it updates vertical offset positions for the specified scope channel.
 func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 	if chIndex == -1 {
-		logMin := math.Log10(math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6))
-		logMax := math.Log10(math.Max(ff.scp.Settings.Ff.MaxFreq, math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6)*1.001))
-		diff := logMax - logMin
-		shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
-
-		ff.scp.Settings.Ff.MinFreq = math.Pow(10, logMin+shift)
-		ff.scp.Settings.Ff.MaxFreq = math.Pow(10, logMax+shift)
+		if ff.scp.Settings.Ff.XAxisLog {
+			logMin := math.Log10(math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6))
+			logMax := math.Log10(math.Max(ff.scp.Settings.Ff.MaxFreq, math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6)*1.001))
+			diff := logMax - logMin
+			shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
+	
+			ff.scp.Settings.Ff.MinFreq = math.Pow(10, logMin+shift)
+			ff.scp.Settings.Ff.MaxFreq = math.Pow(10, logMax+shift)
+		} else {
+			diff := ff.scp.Settings.Ff.MaxFreq - ff.scp.Settings.Ff.MinFreq
+			if diff <= 0 {
+				diff = 1000
+			}
+			shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
+			
+			ff.scp.Settings.Ff.MinFreq += shift
+			ff.scp.Settings.Ff.MaxFreq += shift
+		}
 
 		if ff.scp.ffMinFreqDisp != nil {
 			ff.scp.ffMinFreqDisp.SetFloatValue(ff.scp.Settings.Ff.MinFreq, 2)
@@ -1059,8 +1119,7 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 		} else {
 			ff.frequencyOffsetFraction += dy
 		}
-		ff.scp.ffFullRefresh = true
-		ff.scp.refreshRasters()
+		ff.scp.ResetFfSweep()
 		return
 	}
 	// Vertical shift
@@ -1303,6 +1362,35 @@ func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64
 	return freqs
 }
 
+func generateLinearFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64 {
+	if minFreq <= 0 {
+		minFreq = 1.0
+	}
+	if maxFreq <= minFreq {
+		return []float64{minFreq}
+	}
+	if pointsPerDecade < 5 {
+		pointsPerDecade = 5
+	}
+	if pointsPerDecade > 500 {
+		pointsPerDecade = 500
+	}
+
+	logMin := math.Log10(minFreq)
+	logMax := math.Log10(maxFreq)
+	decades := logMax - logMin
+	totalPoints := int(math.Ceil(decades * pointsPerDecade))
+	if totalPoints < 2 {
+		totalPoints = 2
+	}
+
+	freqs := make([]float64, totalPoints+1)
+	for i := 0; i <= totalPoints; i++ {
+		freqs[i] = minFreq + (maxFreq-minFreq)*float64(i)/float64(totalPoints)
+	}
+	return freqs
+}
+
 // startFfSweep launches the application-controlled Bode frequency sweep.
 // It generates logarithmically spaced frequency points and steps through them,
 // setting the generator to a fixed frequency at each step and waiting for
@@ -1321,11 +1409,20 @@ func (scp *ScpDesc) startFfSweep() {
 		pointsPerDecade = 50
 	}
 
-	freqs := generateLogFrequencies(
-		scp.Settings.Ff.MinFreq,
-		scp.Settings.Ff.MaxFreq,
-		pointsPerDecade,
-	)
+	var freqs []float64
+	if scp.Settings.Ff.XAxisLog {
+		freqs = generateLogFrequencies(
+			scp.Settings.Ff.MinFreq,
+			scp.Settings.Ff.MaxFreq,
+			pointsPerDecade,
+		)
+	} else {
+		freqs = generateLinearFrequencies(
+			scp.Settings.Ff.MinFreq,
+			scp.Settings.Ff.MaxFreq,
+			pointsPerDecade,
+		)
+	}
 
 	dwellTime := scp.Settings.Ff.DeltaT
 	if dwellTime < 0.01 {
@@ -1837,134 +1934,4 @@ func smoothPhaseInto(pts []bodePoint, windowSize int, out []float64) []float64 {
 		}
 	}
 	return out
-}
-
-func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
-	checked := func(c bool) {
-		scp.Settings.FfGen.On = c
-		scp.applyFfGenSettings(c)
-		scp.SaveSettings()
-	}
-	check := widget.NewCheck("On", checked)
-	check.Checked = scp.Settings.FfGen.On
-
-	size := float32(0.8)
-	refCol := scp.Settings.Channels[scp.Settings.Ff.ReferenceChannel].Col[scp.Settings.ChannelColorIndex]
-	maxV := 2000000
-
-	scp.ffAmpDisp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
-		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
-		refCol,
-		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1,
-		disp7.DefaultVCursorSpace, "Amp  :", " V")
-	if err != nil {
-		return nil, err
-	}
-	scp.ffAmpDisp.SetValue(int(scp.Settings.FfGen.Amplitude))
-	scp.ffAmpDisp.OnChanged = func(v float64) {
-		go func() {
-			scp.Settings.FfGen.Amplitude = uint32(v)
-			scp.SaveSettings()
-			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
-			} else if scp.running {
-				scp.applyFfGenSettings(check.Checked)
-			}
-		}()
-	}
-
-	scp.ffOffsetDisp, err = disp7.NewCustomDisp7Array(7, 6,
-		maxV, -maxV,
-		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
-		refCol,
-		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1,
-		disp7.DefaultVCursorSpace, "Offset   :", " V")
-	if err != nil {
-		return nil, err
-	}
-	scp.ffOffsetDisp.SetValue(int(scp.Settings.FfGen.OffsetVoltage))
-	scp.ffOffsetDisp.OnChanged = func(v float64) {
-		go func() {
-			scp.Settings.FfGen.OffsetVoltage = int32(v)
-			scp.SaveSettings()
-			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
-			} else if scp.running {
-				scp.applyFfGenSettings(check.Checked)
-			}
-		}()
-	}
-
-	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Sweep: Up"))
-	box = container.NewVBox(top, scp.ffAmpDisp, scp.ffOffsetDisp)
-	return box, nil
-}
-
-func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
-	checked := func(c bool) {
-		scp.Settings.FfGen.On = c
-		scp.applyFfSimGenSettings(c)
-		scp.SaveSettings()
-	}
-	check := widget.NewCheck("On", checked)
-	check.Checked = scp.Settings.FfGen.On
-
-	size := float32(0.8)
-	chCol := scp.Settings.Channels[0].Col[scp.Settings.ChannelColorIndex]
-	maxV := 2000000
-
-	scp.ffAmpDisp, err = disp7.NewCustomDisp7Array(7, 6, maxV, 0,
-		disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
-		chCol,
-		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1,
-		disp7.DefaultVCursorSpace, "Amplitude:", " V")
-	if err != nil {
-		return nil, err
-	}
-	scp.ffAmpDisp.SetValue(int(scp.Settings.FfGen.Amplitude))
-	scp.ffAmpDisp.OnChanged = func(v float64) {
-		go func() {
-			scp.Settings.FfGen.Amplitude = uint32(v)
-			scp.SaveSettings()
-			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
-			} else {
-				scp.applyFfSimGenSettings(check.Checked)
-			}
-		}()
-	}
-
-	scp.ffOffsetDisp, err = disp7.NewCustomDisp7Array(7, 6,
-		maxV, -maxV,
-		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
-		chCol,
-		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1,
-		disp7.DefaultVCursorSpace, "Offset   :", " V")
-	if err != nil {
-		return nil, err
-	}
-	scp.ffOffsetDisp.SetValue(int(scp.Settings.FfGen.OffsetVoltage))
-	scp.ffOffsetDisp.OnChanged = func(v float64) {
-		go func() {
-			scp.Settings.FfGen.OffsetVoltage = int32(v)
-			scp.SaveSettings()
-			if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
-			} else {
-				scp.applyFfSimGenSettings(check.Checked)
-			}
-		}()
-	}
-
-	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Channel: Ch A"))
-	box = container.NewVBox(
-		top,
-		scp.ffAmpDisp,
-		scp.ffOffsetDisp,
-	)
-	return box, nil
 }

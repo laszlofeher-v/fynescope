@@ -212,7 +212,7 @@ type (
 		triggerPoint               drawer
 		etsBuffer                  []int64
 		triggerSources             []string
-		dftDivsX                   [numberOfDivs + 1]float32
+		dftDivsX                   []float32
 		dftDivsY                   [numberOfDivs + 1]float32
 		ftDivsX                    [numberOfDivs + 1]float32
 		ftDivsY                    [numberOfDivs + 1]float32
@@ -222,8 +222,8 @@ type (
 		dftDataCollectionTimeLabel *widget.Label
 		dftSampleRateSelect        *selectscroll.SelectScroll
 		dftSampleUnitSelect        *selectscroll.SelectScroll
-		dftMaxFreqValSelect        *selectscroll.SelectScroll
-		dftMaxFreqUnitSelect       *selectscroll.SelectScroll
+		dftMinFreqDisp             *disp7.DigitArray
+		dftMaxFreqDisp             *disp7.DigitArray
 		SettingFileName            string
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool

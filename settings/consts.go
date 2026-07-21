@@ -5,8 +5,13 @@ const (
 	UnitKHz = "kHz"
 	UnitMHz = "MHz"
 
-	ModeVoltage = "Voltage"
-	ModeDB      = "dB"
+	ModeVoltage     = "Voltage"
+	ModeDB          = "dB"
+	ModeDBFS        = "dBFS"
+	ModeDBV         = "dBV"
+	ModeDBU         = "dBu"
+	ModeDBM         = "dBm"
+	ModeArbitraryDB = "Arbitrary dB"
 
 	WindowBartlettHann    = "BartlettHann"
 	WindowBlackman        = "Blackman"

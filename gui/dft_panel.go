@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
 	"fynescope/settings"
@@ -109,9 +110,35 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	}, settings.WindowRectangular)
 	windowSelector.SilentSetSelected(scp.Settings.Dft.Window)
 	addToTest(windowSelector, dftWindowId, dftTabIndex)
+	var arbDbRefContainer *fyne.Container
+	arbDbRefDisp, _ := disp7.NewCustomDisp7Array(5, 3, 20000, 1, disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
+		scp.theme.Color(ColorNameGeneratorDisp, 0), disp7.ReadWrite, disp7.DefaultDigitWidth, disp7.DeafultDigitHeight,
+		disp7.DefaultSkew, disp7.DefaultVCursorSpace, "0dB Ref :", " V")
+
+	arbDbRefDisp.SetFloatValue(scp.Settings.Dft.ArbitraryDbRefV, 3)
+	arbDbRefDisp.OnChanged = func(val float64) {
+		scp.Settings.Dft.ArbitraryDbRefV = val / math.Pow(10, float64(arbDbRefDisp.DpPos()))
+		scp.clearAllDftPersistentLayers()
+		if scp.dftRaster != nil {
+			scp.dftRaster.Refresh()
+		}
+		scp.SaveSettings()
+	}
+
+	arbDbRefContainer = container.NewVBox(arbDbRefDisp)
+	if scp.Settings.Dft.DisplayMode != settings.ModeArbitraryDB {
+		arbDbRefContainer.Hide()
+	}
+	addToTest(arbDbRefDisp, dftBinId+"ArbRef", dftTabIndex)
+
 	// Display mode selector row
-	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDB, settings.ModeVoltage}, func(selected string, _ selectscroll.Exception) {
+	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDBFS, settings.ModeVoltage, settings.ModeDBV, settings.ModeDBU, settings.ModeDBM, settings.ModeArbitraryDB}, func(selected string, _ selectscroll.Exception) {
 		scp.Settings.Dft.DisplayMode = selected
+		if selected == settings.ModeArbitraryDB {
+			arbDbRefContainer.Show()
+		} else {
+			arbDbRefContainer.Hide()
+		}
 		scp.clearAllDftPersistentLayers()
 		for i := range scp.channelViewers {
 			scp.channelViewers[i].dftLabel.enableRefresh()
@@ -124,65 +151,77 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayMode)
 	addToTest(modeSelector, dftModeId, dftTabIndex)
 
-	// Freq Range Selector
-	valLabels := []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
-	unitLabels := []string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}
-	unitVals := map[string]float64{settings.UnitHz: 1, settings.UnitKHz: 1e3, settings.UnitMHz: 1e6}
-
-	updateMaxFreq := func() {
-		v, _ := strconv.ParseFloat(scp.dftMaxFreqValSelect.Selected, 64)
-		u := unitVals[scp.dftMaxFreqUnitSelect.Selected]
-		scp.Settings.Dft.MaxFreq = v * u
-		scp.setDftHDivsX()
-		scp.clearAllDftPersistentLayers()
-		if scp.dftBottomLabelViewer != nil {
-			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
-		}
-		if scp.dftRaster != nil {
-			fyne.Do(func() { scp.dftRaster.Refresh() })
-		}
-		scp.SaveSettings()
+	maxPossibleFreq := 500000000.0
+	numOfFractionDigits := 2
+	numOfDigits := numOfFractionDigits
+	f := int(math.Round(maxPossibleFreq))
+	for f > 0 {
+		f /= 10
+		numOfDigits++
 	}
+	size := float32(0.8)
+	refCol := scp.theme.Color(ColorNameGeneratorDisp, 0)
 
-	scp.dftMaxFreqValSelect = selectscroll.NewSelectScroll(valLabels, func(selected string, ex selectscroll.Exception) {
-		if ex == selectscroll.Over {
-			scp.dftMaxFreqUnitUp()
-			return
-		}
-		if ex == selectscroll.Under {
-			scp.dftMaxFreqUnitDown()
-			return
-		}
-		updateMaxFreq()
-	}, "500")
-	addToTest(scp.dftMaxFreqValSelect, dftMaxFreqValId, dftTabIndex)
+	scp.dftMinFreqDisp, _ = disp7.NewCustomDisp7Array(numOfDigits, numOfFractionDigits,
+		int(maxPossibleFreq)*pow10tab[numOfFractionDigits],
+		0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
+		refCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Min:", " Hz")
 
-	scp.dftMaxFreqUnitSelect = selectscroll.NewSelectScroll(unitLabels, func(selected string, _ selectscroll.Exception) {
-		updateMaxFreq()
-	}, "MHz")
-	addToTest(scp.dftMaxFreqUnitSelect, dftMaxFreqUnitId, dftTabIndex)
+	scp.dftMaxFreqDisp, _ = disp7.NewCustomDisp7Array(numOfDigits, numOfFractionDigits,
+		int(maxPossibleFreq)*pow10tab[numOfFractionDigits],
+		0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
+		refCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Max:", " Hz")
 
-	// Initialize selectors from current MaxFreq
-	currentMaxFreq := scp.Settings.Dft.MaxFreq
-	bestVal := "1"
-	bestUnit := "MHz"
-	if currentMaxFreq > 0 {
-		// Find best match
-		for _, u := range unitLabels {
-			uv := unitVals[u]
-			for _, v := range valLabels {
-				vv, _ := strconv.ParseFloat(v, 64)
-				if math.Abs(vv*uv-currentMaxFreq) < 1e-6 {
-					bestVal = v
-					bestUnit = u
-					goto found
+	scp.dftMinFreqDisp.SetFloatValue(scp.Settings.Dft.MinFreq, 2)
+	scp.dftMaxFreqDisp.SetFloatValue(scp.Settings.Dft.MaxFreq, 2)
+
+	scp.dftMinFreqDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.Dft.MinFreq = v / 100.0
+			if scp.Settings.Dft.MinFreq > scp.Settings.Dft.MaxFreq {
+				scp.Settings.Dft.MaxFreq = scp.Settings.Dft.MinFreq
+				if scp.dftMaxFreqDisp != nil {
+					scp.dftMaxFreqDisp.SetFloatValue(scp.Settings.Dft.MaxFreq, 2)
 				}
 			}
-		}
-	found:
+			scp.setDftHDivsX()
+			if scp.dftBottomLabelViewer != nil {
+				scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
+			}
+			scp.clearAllDftPersistentLayers()
+			scp.refreshRasters()
+			scp.SaveSettings()
+		}()
 	}
-	scp.dftMaxFreqValSelect.SilentSetSelected(bestVal)
-	scp.dftMaxFreqUnitSelect.SilentSetSelected(bestUnit)
+
+	scp.dftMaxFreqDisp.OnChanged = func(v float64) {
+		go func() {
+			scp.Settings.Dft.MaxFreq = v / 100.0
+			if scp.Settings.Dft.MaxFreq < scp.Settings.Dft.MinFreq {
+				scp.Settings.Dft.MinFreq = scp.Settings.Dft.MaxFreq
+				if scp.dftMinFreqDisp != nil {
+					scp.dftMinFreqDisp.SetFloatValue(scp.Settings.Dft.MinFreq, 2)
+				}
+			}
+			scp.setDftHDivsX()
+			if scp.dftBottomLabelViewer != nil {
+				scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
+			}
+			scp.clearAllDftPersistentLayers()
+			scp.refreshRasters()
+			scp.SaveSettings()
+		}()
+	}
+	addToTest(scp.dftMaxFreqDisp, dftMaxFreqValId, dftTabIndex)
+	addToTest(scp.dftMinFreqDisp, dftModeId+"MinFreq", dftTabIndex)
 
 	// Bins Selector
 	binLabels := []string{"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072", "262144", "524288", "1048576"}
@@ -241,11 +280,23 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 
 	windowCol := container.NewVBox()
 	windowCol.Add(widget.NewLabel("Window:"))
+
 	windowCol.Add(windowSelector)
 	windowCol.Add(widget.NewLabel("Mode:"))
 	windowCol.Add(modeSelector)
-	windowCol.Add(widget.NewLabel("Range:"))
-	windowCol.Add(container.NewHBox(scp.dftMaxFreqValSelect, scp.dftMaxFreqUnitSelect))
+	windowCol.Add(arbDbRefContainer)
+	windowCol.Add(scp.dftMinFreqDisp)
+	logXCheck := widget.NewCheck("Log X", func(b bool) {
+		scp.Settings.Dft.XAxisLog = b
+		scp.clearAllDftPersistentLayers()
+		scp.refreshRasters()
+		scp.SaveSettings()
+	})
+	logXCheck.Checked = scp.Settings.Dft.XAxisLog
+	addToTest(logXCheck, dftModeId+"LogX", dftTabIndex)
+
+	windowCol.Add(scp.dftMaxFreqDisp)
+	windowCol.Add(logXCheck)
 	windowCol.Add(widget.NewLabel("Sample Rate:"))
 	windowCol.Add(container.NewHBox(scp.dftSampleRateSelect, scp.dftSampleUnitSelect))
 	windowCol.Add(widget.NewLabel("Bins:"))

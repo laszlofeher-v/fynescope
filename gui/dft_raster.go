@@ -113,26 +113,45 @@ func (tl *frqLabelViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyM
 }
 
 func (frql *frqLabelViewer) setDispFreqOffset(dx float32) {
-	span := frql.scp.Settings.Dft.MaxFreq
+	span := frql.scp.Settings.Dft.MaxFreq - frql.scp.Settings.Dft.MinFreq
+	if span < 0 {
+		span = 0
+	}
 	w := float32(frql.scp.dftScopeSignalScreen.Bounds().Dx()) - 1
 	if w > 0 {
 		freqDelta := (float64(-dx) / float64(w)) * span
 		newMin := frql.scp.Settings.Dft.MinFreq + freqDelta
+		newMax := frql.scp.Settings.Dft.MaxFreq + freqDelta
 		fs := 1.0 / float64(frql.scp.psControl.SamplingTimeInterval)
+		maxFreqAvailable := fs / 2
+
+		if newMin < 0 {
+			newMin = 0
+			newMax = span
+		}
+		if newMax > maxFreqAvailable {
+			newMax = maxFreqAvailable
+			newMin = newMax - span
+		}
 		if newMin < 0 {
 			newMin = 0
 		}
-		if newMin > fs/2-span {
-			newMin = fs/2 - span
-		}
-		if newMin < 0 {
-			newMin = 0
-		}
+
 		frql.scp.Settings.Dft.MinFreq = newMin
+		frql.scp.Settings.Dft.MaxFreq = newMax
+
+		if frql.scp.dftMinFreqDisp != nil {
+			frql.scp.dftMinFreqDisp.SilentSetFloatValue(newMin, 2)
+		}
+		if frql.scp.dftMaxFreqDisp != nil {
+			frql.scp.dftMaxFreqDisp.SilentSetFloatValue(newMax, 2)
+		}
+
 		frql.scp.setDftHDivsX()
 		frql.scp.clearAllDftPersistentLayers()
 		frql.enableRefresh()
 		frql.scp.refreshRasters()
+		frql.scp.SaveSettings()
 	}
 }
 
@@ -195,42 +214,91 @@ func (frql *frqLabelViewer) draw() {
 	labelBounds := bounds
 	labelBounds.Min.Y = bounds.Max.Y
 	labelBounds.Max.Y += int(math.Ceil(float64(lblHeight))) + 8
+	labelBounds.Min.X -= int(math.Ceil(float64(maxLblWidth)))
 	labelBounds.Max.X += int(math.Ceil(float64(maxLblWidth)))
 	draw.Draw(frql.scp.dftScopeFullScreen, labelBounds,
 		&image.Uniform{frql.scp.theme.Color(ColorNameSignalBackground, 0)},
 		image.ZP, draw.Src)
 
 	minFreq := frql.scp.Settings.Dft.MinFreq
-	maxFreqPlot := frql.scp.Settings.Dft.MaxFreq
-
-	if numDivs <= 0 {
-		numDivs = 1
+	maxFreqPlot := frql.scp.Settings.Dft.MaxFreq - minFreq
+	if maxFreqPlot <= 0 {
+		maxFreqPlot = 1e6
 	}
-	step := niceStep(maxFreqPlot / float64(numDivs))
-	firstFreq := math.Floor(minFreq/step) * step
 
-	for i := 0; i < 20; i++ { // Draw up to 20 potential labels
-		freq := firstFreq + float64(i)*step
-		if freq < 0 {
-			continue
+	if !frql.scp.Settings.Dft.XAxisLog {
+		if numDivs <= 0 {
+			numDivs = 1
+		}
+		step := niceStep(maxFreqPlot / float64(numDivs))
+		firstFreq := math.Floor(minFreq/step) * step
+
+		for i := 0; i < 20; i++ { // Draw up to 20 potential labels
+			freq := firstFreq + float64(i)*step
+			if freq < 0 {
+				continue
+			}
+
+			fraction := (freq - minFreq) / maxFreqPlot
+			x := float32(bounds.Min.X) + float32(fraction)*w
+
+			if x < float32(bounds.Min.X)-maxLblWidth/2 {
+				continue
+			}
+			if x > float32(bounds.Max.X)+maxLblWidth/2 {
+				break
+			}
+
+			label := formatFreq(freq)
+			lblL, _, lblR, _ := frql.scp.boundString(label)
+			lblW := lblR - lblL
+
+			frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
+				bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+		}
+	} else {
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		maxFreq := minFreq + maxFreqPlot
+		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+
+		getX := func(f float64) float32 {
+			if f <= 0 {
+				f = 1e-6
+			}
+			return float32(float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*float64(w))
 		}
 
-		fraction := (freq - minFreq) / maxFreqPlot
-		x := float32(bounds.Min.X) + float32(fraction)*w
+		startDecade := int(math.Floor(logMin))
+		endDecade := int(math.Ceil(logMax))
 
-		if x < float32(bounds.Min.X)-maxLblWidth/2 {
-			continue
+		for dec := startDecade; dec <= endDecade; dec++ {
+			base := math.Pow(10, float64(dec))
+			for j := 1; j < 10; j++ {
+				freq := base * float64(j)
+				if freq < minFreq-1e-6 || freq > minFreq+maxFreqPlot+1e-6 {
+					continue
+				}
+
+				x := getX(freq)
+
+				if x < float32(bounds.Min.X)-maxLblWidth/2 {
+					continue
+				}
+				if x > float32(bounds.Max.X)+maxLblWidth/2 {
+					break
+				}
+
+				if j == 1 {
+					label := formatFreq(freq)
+					lblL, _, lblR, _ := frql.scp.boundString(label)
+					lblW := lblR - lblL
+
+					frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
+						bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+				}
+			}
 		}
-		if x > float32(bounds.Max.X)+maxLblWidth/2 {
-			break
-		}
-
-		label := formatFreq(freq)
-		lblL, _, lblR, _ := frql.scp.boundString(label)
-		lblW := lblR - lblL
-
-		frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
-			bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
 	}
 	frql.disableRefresh()
 }
@@ -447,7 +515,31 @@ func (dv *dftViewer) draw() {
 				if mag < 1e-10 { // Avoid log(0)
 					magnitudes[i] = dbFloor
 				} else {
-					db := 20 * math.Log10(val)
+					var db float64
+					if dv.scp.Settings.Dft.DisplayMode == settings.ModeDBFS {
+						db = 20 * math.Log10(val)
+					} else {
+						vPeak := val * float64(genericps.RangeValuesMv[channel.VRange]) / 1000.0
+						vRms := vPeak / math.Sqrt(2)
+
+						switch dv.scp.Settings.Dft.DisplayMode {
+						case settings.ModeDBV:
+							db = 20 * math.Log10(vRms/1.0)
+						case settings.ModeDBU:
+							db = 20 * math.Log10(vRms/0.7746)
+						case settings.ModeDBM:
+							db = 20 * math.Log10(vRms/0.2236)
+						case settings.ModeArbitraryDB:
+							ref := dv.scp.Settings.Dft.ArbitraryDbRefV
+							if ref <= 0 {
+								ref = 1e-6
+							}
+							db = 20 * math.Log10(vPeak/ref)
+						default:
+							db = 20 * math.Log10(val)
+						}
+					}
+
 					if db < dbFloor {
 						db = dbFloor
 					}
@@ -464,7 +556,7 @@ func (dv *dftViewer) draw() {
 		minFreq := dv.scp.Settings.Dft.MinFreq
 		fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
 		maxFreqAvailable := fs / 2
-		maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+		maxFreqPlot := dv.scp.Settings.Dft.MaxFreq - minFreq
 		if maxFreqPlot <= 0 {
 			maxFreqPlot = 1e6 // Default to 1MHz if 0
 		}
@@ -507,13 +599,30 @@ func (dv *dftViewer) draw() {
 		}
 
 		prevY := startY
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		maxFreq := minFreq + maxFreqPlot
+		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+
+		getX := func(f float64) float32 {
+			if f <= 0 {
+				f = 1e-6
+			}
+			return float32(float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*float64(w))
+		}
+
 		for i := minBinIdx; i < maxBinIdxPlot; i++ {
 			if i >= len(magnitudes) {
 				break
 			}
 			binFreq := float64(i) * (maxFreqAvailable / float64(m/2))
-			fraction := (binFreq - minFreq) / maxFreqPlot
-			x := float32(bounds.Min.X) + float32(fraction)*w
+			var x float32
+			if dv.scp.Settings.Dft.XAxisLog {
+				x = getX(binFreq)
+			} else {
+				fraction := (binFreq - minFreq) / maxFreqPlot
+				x = float32(bounds.Min.X) + float32(fraction)*w
+			}
 
 			var y float32
 
@@ -546,7 +655,7 @@ func (dv *dftViewer) draw() {
 
 func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (freqAtCursor float64, instV, instVCur []float64) {
 	minFreq := dv.scp.Settings.Dft.MinFreq
-	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
+	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq - minFreq
 	fs := dv.fsCache
 	maxFreqAvailable := fs / 2
 	if maxFreqPlot <= 0 {
@@ -557,7 +666,17 @@ func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rec
 	}
 
 	fractionAtCursor := (float64(mx) - float64(bounds.Min.X)) / w
-	freqAtCursor = minFreq + fractionAtCursor*maxFreqPlot
+	if dv.scp.Settings.Dft.XAxisLog {
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		maxFreq := minFreq + maxFreqPlot
+		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+		
+		logF := logMin + fractionAtCursor*logRange
+		freqAtCursor = math.Pow(10, logF)
+	} else {
+		freqAtCursor = minFreq + fractionAtCursor*maxFreqPlot
+	}
 
 	n := len(dv.scp.channelViewers)
 	instV = make([]float64, n)
@@ -622,7 +741,7 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	freqAtCursor, instVLocal, instVCurLocal := dv.calcValuesAt(dv.mouseX, dv.mouseY, w, h, bounds)
-	
+
 	var refFreq float64
 	var refInstV, refInstVCur []float64
 	if dv.refActive {
@@ -637,7 +756,7 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		text string
 		col  color.Color
 	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
-	
+
 	if dv.refActive {
 		df := freqAtCursor - refFreq
 		info = append(info, struct {
@@ -707,15 +826,19 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				valStr = formatVoltageFloat64(mv, channel.VRange)
 				curStr = formatVoltageFloat64(mvCur, channel.VRange)
 			} else {
-				valStr = fmt.Sprintf("%.1fdB", v)
-				curStr = fmt.Sprintf("%.1fdB", v_cursor)
+				unitStr := dv.scp.Settings.Dft.DisplayMode
+				if unitStr == settings.ModeArbitraryDB {
+					unitStr = "dB"
+				}
+				valStr = fmt.Sprintf("%.1f%s", v, unitStr)
+				curStr = fmt.Sprintf("%.1f%s", v_cursor, unitStr)
 			}
-			
+
 			text := fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, valStr, curStr)
 			if dv.refActive {
 				dvV := v - refInstV[chIdx]
 				dvCurV := v_cursor - refInstVCur[chIdx]
-				
+
 				var dvValStr, dvCurStr string
 				if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
 					mv := dvV * float64(genericps.RangeValuesMv[channel.VRange])
@@ -723,8 +846,12 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 					dvValStr = formatVoltageFloat64(mv, channel.VRange)
 					dvCurStr = formatVoltageFloat64(mvCur, channel.VRange)
 				} else {
-					dvValStr = fmt.Sprintf("%.1fdB", dvV)
-					dvCurStr = fmt.Sprintf("%.1fdB", dvCurV)
+					unitStr := dv.scp.Settings.Dft.DisplayMode
+					if unitStr == settings.ModeArbitraryDB {
+						unitStr = "dB"
+					}
+					dvValStr = fmt.Sprintf("%.1f%s", dvV, unitStr)
+					dvCurStr = fmt.Sprintf("%.1f%s", dvCurV, unitStr)
 				}
 				text += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", dvValStr, dvCurStr)
 			}
@@ -865,27 +992,6 @@ func (scp *ScpDesc) dftSampleUnitDown() {
 	}
 }
 
-func (scp *ScpDesc) dftMaxFreqUnitUp() {
-	if scp.dftMaxFreqUnitSelect == nil || scp.dftMaxFreqValSelect == nil {
-		return
-	}
-	index := scp.dftMaxFreqUnitSelect.SelectedIndex()
-	if index < len(scp.dftMaxFreqUnitSelect.Options)-1 {
-		scp.dftMaxFreqValSelect.SilentSetSelectedIndex(0) // Set to "1"
-		scp.dftMaxFreqUnitSelect.SetSelectedIndex(index + 1)
-	}
-}
-
-func (scp *ScpDesc) dftMaxFreqUnitDown() {
-	if scp.dftMaxFreqUnitSelect == nil || scp.dftMaxFreqValSelect == nil {
-		return
-	}
-	index := scp.dftMaxFreqUnitSelect.SelectedIndex()
-	if index > 0 {
-		scp.dftMaxFreqValSelect.SilentSetSelectedIndex(len(scp.dftMaxFreqValSelect.Options) - 1) // Set to "500"
-		scp.dftMaxFreqUnitSelect.SetSelectedIndex(index - 1)
-	}
-}
 
 func applyWindow(samples []float64, windowType string) {
 	n := len(samples)
@@ -964,17 +1070,65 @@ func (scp *ScpDesc) setDftHDivsX() {
 	if w < 1 {
 		return
 	}
-	span := scp.Settings.Dft.MaxFreq
 	minFreq := scp.Settings.Dft.MinFreq
+	span := scp.Settings.Dft.MaxFreq - minFreq
+	if span <= 0 {
+		span = 1e6
+	}
 
-	// Calculate nice step for approximately 10 divisions
-	step := niceStep(span / 10.0)
-	firstFreq := math.Floor(minFreq/step) * step
+	if !scp.Settings.Dft.XAxisLog {
+		// Calculate nice step for approximately 10 divisions
+		step := niceStep(span / 10.0)
+		firstFreq := math.Floor(minFreq/step) * step
 
-	for i := range scp.dftDivsX {
-		freq := firstFreq + float64(i)*step
-		x := float32(bounds.Min.X) + float32((freq-minFreq)/span*w)
-		scp.dftDivsX[i] = x
+		if len(scp.dftDivsX) < 11 {
+			scp.dftDivsX = make([]float32, 11)
+		}
+		scp.dftDivsX = scp.dftDivsX[:11]
+		for i := range scp.dftDivsX {
+			freq := firstFreq + float64(i)*step
+			x := float32(bounds.Min.X) + float32((freq-minFreq)/span*w)
+			scp.dftDivsX[i] = x
+		}
+	} else {
+		logMin := math.Log10(math.Max(minFreq, 1e-6))
+		maxFreq := minFreq + span
+		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
+		logRange := logMax - logMin
+
+		getX := func(f float64) float32 {
+			if f <= 0 {
+				f = 1e-6
+			}
+			return float32(float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*float64(w))
+		}
+
+		startDecade := int(math.Floor(logMin))
+		endDecade := int(math.Ceil(logMax))
+
+		idx := 0
+		for dec := startDecade; dec <= endDecade; dec++ {
+			base := math.Pow(10, float64(dec))
+			for j := 1; j < 10; j++ {
+				freq := base * float64(j)
+				if freq < minFreq-1e-6 || freq > minFreq+span+1e-6 {
+					continue
+				}
+
+				x := getX(freq)
+				if idx >= cap(scp.dftDivsX) {
+					newSlice := make([]float32, cap(scp.dftDivsX)*2+10)
+					copy(newSlice, scp.dftDivsX)
+					scp.dftDivsX = newSlice
+				}
+				if idx >= len(scp.dftDivsX) {
+					scp.dftDivsX = scp.dftDivsX[:idx+1]
+				}
+				scp.dftDivsX[idx] = x
+				idx++
+			}
+		}
+		scp.dftDivsX = scp.dftDivsX[:idx]
 	}
 }
 
@@ -994,6 +1148,9 @@ func (scp *ScpDesc) drawDftDivisions() {
 			}
 		}
 		for _, v := range scp.dftDivsX {
+			if v < 0 {
+				continue
+			}
 			counter := 0
 			for y := float64(bounds.Min.Y); y < float64(bounds.Max.Y); y = y + 1.0 {
 				if counter%10 < 4 {
