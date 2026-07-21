@@ -391,6 +391,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 				scp.psControl.SetTriggerCh <- &t
 				<-t.Done
 			}(triggerCopy)
+		}
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
 		scp.clearAllFtPersistentLayers()
@@ -885,6 +886,7 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 				scp.psControl.SetTriggerCh <- &t
 				<-t.Done
 			}(triggerCopy)
+		}
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
 		scp.SaveSettings()
@@ -892,7 +894,7 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 }
 
 func (scp *ScpDesc) EnableChannel(chIndex genericps.ChannelId, c bool) {
-	/*defer*/ setFlag(scp.repartition)
+	setFlag(scp.repartition)
 	channel := &scp.Settings.Channels[chIndex]
 	channelViewer := &scp.channelViewers[chIndex]
 

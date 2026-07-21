@@ -602,7 +602,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 
 	// Also configure slog if it was using the default handler
 	origSlogHandler := slog.Default().Handler()
-	slog.SetDefault(slog.New(slog.NewTextHandler(customWriter, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	slog.SetDefault(slog.New(slog.NewTextHandler(customWriter, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
 
 	defer func() {
 		log.SetOutput(origLogWriter)
