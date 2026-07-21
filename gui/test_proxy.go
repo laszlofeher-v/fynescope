@@ -27,17 +27,9 @@ import (
 	"fyne.io/fyne/v2"
 )
 
-/*
-save gui objects in control map[string]*object
-controlSave(widget *Widget, name string)
-
-in another file
-go:build !test
-dummy function
-
-test refers :
-test.Tap(control[enableCha])
-*/
+const (
+	maxLoggedErrors = 100
+)
 const (
 	ftFuncId                       = "ftFunc"
 	fvFuncId                       = "fvFunc"
@@ -149,6 +141,8 @@ type (
 	}
 )
 
+// TestControl holds a reference to a UI widget and its parent tab.
+// This is used by the fuzzer to interact with components regardless of their layout hierarchy.
 type TestControl struct {
 	Obj fyne.CanvasObject
 	Tab int
@@ -163,9 +157,14 @@ func init() {
 	controls = make(map[string]TestControl)
 }
 
+// addToTest registers a Fyne canvas object to the global controls map,
+// making it available for programmatic interactions by the fuzzer.
 func addToTest(obj fyne.CanvasObject, name string, tabID int) {
 	controls[name] = TestControl{Obj: obj, Tab: tabID}
 }
+
+// wait pauses execution for a short predefined duration to allow GUI operations,
+// animations, and state changes to settle before the next automated interaction.
 func wait() {
 	time.Sleep(sleepTime)
 }
@@ -177,6 +176,8 @@ var keyNames = []fyne.KeyName{
 	fyne.Key3, fyne.Key4, fyne.Key5,
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
+// randKey simulates a random keyboard interaction on the target widget.
+// It returns true if an event was successfully dispatched to a visible control.
 func randKey(name string) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
@@ -214,13 +215,22 @@ func randKey(name string) bool {
 	}
 	return true
 }
-func randTap(name string) bool {
+func internalTap(name string, isFuzzer bool) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
-	if !ok || c == nil || !c.Visible() {
+	if !ok || c == nil {
+		if !isFuzzer {
+			log.Printf("%s cannot use type <nil>\n", name)
+		}
 		return false
 	}
-	slog.Debug("randTap", "name", name)
+	if isFuzzer {
+		if !c.Visible() {
+			return false
+		}
+		slog.Debug("randTap", "name", name)
+	}
+
 	switch c := c.(type) {
 	case *container.AppTabs:
 		fyne.Do(func() {
@@ -253,262 +263,202 @@ func randTap(name string) bool {
 			}
 		})
 	case *selectscroll.SelectScroll:
-		n := rand.Intn(len(c.Options))
-		wait()
-		fyne.Do(func() {
-			c.SetSelectedIndex(n)
-		})
+		if isFuzzer {
+			n := rand.Intn(len(c.Options))
+			wait()
+			fyne.Do(func() {
+				c.SetSelectedIndex(n)
+			})
+		} else {
+			if !isFuzzer {
+				log.Printf("%s cannot use type %T\n", name, c)
+			}
+			return false
+		}
 	case fyne.Tappable:
 		wait()
 		fyne.Do(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
+		if !isFuzzer {
+			log.Printf("%s cannot use type %T\n", name, c)
+		}
 		return false
 	}
 	return true
-}
-func randScroll(name string, n int) bool {
-	ctrl, ok := controls[name]
-	c := ctrl.Obj
-	if !ok || c == nil || !c.Visible() {
-		return false
-	}
-	slog.Debug("randScroll", "name", name)
-	delta := float32(n)
-	if n < 0 {
-		n = -n
-	}
-	switch c := c.(type) {
-	case *screenRaster:
-		if n > 2 {
-			n = 2
-		} // Limit iterations to avoid watchdog timeouts
-		for ; n > 0; n-- {
-			wait()
-			fyne.Do(func() {
-				if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
-					return
-				}
-				ap := c.Position() // The absolute position of the event
-				x := rand.Intn(int(c.Size().Width))
-				y := rand.Intn(int(c.Size().Height))
-				p := fyne.Position{X: float32(x), Y: float32(y)} // The relative position of the event
-				e := &fyne.ScrollEvent{}
-				e.Scrolled.DY = delta
-				e.Scrolled.DY = delta
-				e.AbsolutePosition = ap
-				e.Position = p
-				c.Scrolled(e)
-			})
-		}
-	case *sliderscroll.SliderScroll:
-		wait()
-		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		fyne.Do(func() {
-			c.Scrolled(e)
-		})
-	case *selectscroll.SelectScroll:
-		if n > 2 {
-			n = 2
-		} // Limit iterations to avoid timeouts on heavy OnChanged callbacks
-		for ; n > 0; n-- {
-			wait()
-			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			fyne.Do(func() {
-				c.Scrolled(e)
-			})
-		}
-	case *disp7.DigitArray:
-		if n > 2 {
-			n = 2
-		} // Limit iterations to avoid timeouts
-		for ; n > 0; n-- {
-			wait()
-			fyne.Do(func() {
-				if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
-					return
-				}
-				ap := c.Position() // The absolute position of the event
-				digit := rand.Intn(int(c.Size().Width))
-				p := fyne.Position{X: float32(digit), Y: 1} // The relative position of the event
-				e := &fyne.ScrollEvent{}
-				e.Scrolled.DY = delta
-				e.Scrolled.DY = delta
-				e.AbsolutePosition = ap
-				e.Position = p
-				c.Scrolled(e)
-			})
-		}
-	default:
-		return false
-	}
-	return true
-}
-func randDrag(name string, delta float32) bool {
-	ctrl, ok := controls[name]
-	c := ctrl.Obj
-	if !ok || c == nil || !c.Visible() {
-		return false
-	}
-	slog.Debug("randDrag", "name", name)
-	switch c := c.(type) {
-	case *screenRaster:
-		wait()
-		fyne.Do(func() {
-			if int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0 {
-				return
-			}
-			ap := c.Position() // The absolute position of the event
-			x := rand.Intn(int(c.Size().Width))
-			y := rand.Intn(int(c.Size().Height))
-			p := fyne.Position{X: float32(x), Y: float32(y)} // The relative position of the event
-			e := fyne.PointEvent{}
-			e.AbsolutePosition = ap
-			e.Position = p
-			c.Dragged(&fyne.DragEvent{PointEvent: e, Dragged: fyne.NewDelta(delta, delta)})
-		})
-	case *sliderscroll.SliderScroll:
-		wait()
-		fyne.Do(func() {
-			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
-		})
-	case *disp7.DigitArray:
-		wait()
-		fyne.Do(func() {
-			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
-		})
-	default:
-		return false
-	}
-	return true
-}
-func tap(name string) {
-	switch c := controls[name].Obj.(type) {
-	case *container.AppTabs:
-		fyne.Do(func() {
-			var targetText string
-			switch name {
-			case ftFuncId:
-				targetText = "f(t)"
-			case fvFuncId:
-				targetText = "f(v)"
-			case dftFuncId:
-				targetText = "FFT"
-			case ffFuncId:
-				targetText = "f(f)"
-			case rlcFuncId:
-				targetText = "RLC"
-			case filterFuncId:
-				targetText = "filter"
-			case genFuncId:
-				targetText = "gen"
-			case extgenFuncId:
-				targetText = "extgen"
-			}
-			if targetText != "" {
-				for idx, item := range c.Items {
-					if item.Text == targetText {
-						c.SelectIndex(idx)
-						break
-					}
-				}
-			}
-		})
-	case fyne.Tappable:
-		wait()
-		fyne.Do(func() {
-			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
-		})
-	default:
-		log.Printf("%s cannot use type %T\n", name, c)
-	}
-}
-func scroll(name string, n int) {
-	delta := float32(n)
-	if n < 0 {
-		n = -n
-	}
-	switch c := controls[name].Obj.(type) {
-	case *screenRaster:
-		for ; n > 0; n-- {
-			wait()
-			ap := c.Position() // The absolute position of the event
-			x := 0
-			y := 0
-			p := fyne.Position{X: float32(x), Y: float32(y)} // The relative position of the event
-			e := &fyne.ScrollEvent{}
-			e.Scrolled.DY = delta
-			e.Scrolled.DY = delta
-			e.AbsolutePosition = ap
-			e.Position = p
-			fyne.Do(func() {
-				c.Scrolled(e)
-			})
-		}
-	case *sliderscroll.SliderScroll:
-		wait()
-		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		fyne.Do(func() {
-			c.Scrolled(e)
-		})
-	case *selectscroll.SelectScroll:
-		for ; n > 0; n-- {
-			wait()
-			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			fyne.Do(func() {
-				c.Scrolled(e)
-			})
-		}
-	case *disp7.DigitArray:
-		for ; n > 0; n-- {
-			wait()
-			ap := c.Position() // The absolute position of the event
-			if int(c.Size().Width) <= 0 {
-				return
-			}
-			digit := rand.Intn(int(c.Size().Width))
-			p := fyne.Position{X: float32(digit), Y: 1} // The relative position of the event
-			e := &fyne.ScrollEvent{}
-			e.Scrolled.DY = delta
-			e.Scrolled.DY = delta
-			e.AbsolutePosition = ap
-			e.Position = p
-			fyne.Do(func() {
-				c.Scrolled(e)
-			})
-		}
-	default:
-	}
-}
-func drag(name string, delta float32) {
-	switch c := controls[name].Obj.(type) {
-	case *screenRaster:
-		wait()
-		ap := c.Position() // The absolute position of the event
-		x := 0
-		y := 0
-		p := fyne.Position{X: float32(x), Y: float32(y)} // The relative position of the event
-		e := fyne.PointEvent{}
-		e.AbsolutePosition = ap
-		e.Position = p
-		fyne.Do(func() {
-			c.Dragged(&fyne.DragEvent{PointEvent: e, Dragged: fyne.NewDelta(delta, delta)})
-		})
-	case *sliderscroll.SliderScroll:
-		wait()
-		fyne.Do(func() {
-			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
-		})
-	case *disp7.DigitArray:
-		wait()
-		fyne.Do(func() {
-			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
-		})
-	default:
-	}
 }
 
+// randTap simulates a random tap (click) event on the target widget.
+// It returns true if the widget was successfully tapped.
+func randTap(name string) bool {
+	return internalTap(name, true)
+}
+func internalScroll(name string, n int, isFuzzer bool) bool {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil {
+		return false
+	}
+	if isFuzzer {
+		if !c.Visible() {
+			return false
+		}
+		slog.Debug("randScroll", "name", name)
+	}
+
+	delta := float32(n)
+	if n < 0 {
+		n = -n
+	}
+
+	switch c := c.(type) {
+	case *screenRaster:
+		if isFuzzer && n > 2 {
+			n = 2
+		}
+		for ; n > 0; n-- {
+			wait()
+			fyne.Do(func() {
+				if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
+					return
+				}
+				ap := c.Position()
+				var x, y int
+				if isFuzzer {
+					x = rand.Intn(int(c.Size().Width))
+					y = rand.Intn(int(c.Size().Height))
+				}
+				p := fyne.Position{X: float32(x), Y: float32(y)}
+				e := &fyne.ScrollEvent{
+					Scrolled: fyne.Delta{DX: 0, DY: delta},
+					PointEvent: fyne.PointEvent{
+						AbsolutePosition: ap,
+						Position:         p,
+					},
+				}
+				c.Scrolled(e)
+			})
+		}
+	case *sliderscroll.SliderScroll:
+		wait()
+		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
+		fyne.Do(func() {
+			c.Scrolled(e)
+		})
+	case *selectscroll.SelectScroll:
+		if isFuzzer && n > 2 {
+			n = 2
+		}
+		for ; n > 0; n-- {
+			wait()
+			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
+			fyne.Do(func() {
+				c.Scrolled(e)
+			})
+		}
+	case *disp7.DigitArray:
+		if isFuzzer && n > 2 {
+			n = 2
+		}
+		for ; n > 0; n-- {
+			wait()
+			fyne.Do(func() {
+				if int(c.Size().Width) <= 0 {
+					return
+				}
+				ap := c.Position()
+				digit := rand.Intn(int(c.Size().Width))
+				p := fyne.Position{X: float32(digit), Y: 1}
+				e := &fyne.ScrollEvent{
+					Scrolled: fyne.Delta{DX: 0, DY: delta},
+					PointEvent: fyne.PointEvent{
+						AbsolutePosition: ap,
+						Position:         p,
+					},
+				}
+				c.Scrolled(e)
+			})
+		}
+	default:
+		return false
+	}
+	return true
+}
+
+// randScroll simulates a random scrolling event on the target widget.
+// It scrolls 'n' times by the defined delta. Returns true if executed.
+func randScroll(name string, n int) bool {
+	return internalScroll(name, n, true)
+}
+func internalDrag(name string, delta float32, isFuzzer bool) bool {
+	ctrl, ok := controls[name]
+	c := ctrl.Obj
+	if !ok || c == nil {
+		return false
+	}
+	if isFuzzer {
+		if !c.Visible() {
+			return false
+		}
+		slog.Debug("randDrag", "name", name)
+	}
+
+	switch c := c.(type) {
+	case *screenRaster:
+		wait()
+		fyne.Do(func() {
+			if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
+				return
+			}
+			ap := c.Position()
+			var x, y int
+			if isFuzzer {
+				x = rand.Intn(int(c.Size().Width))
+				y = rand.Intn(int(c.Size().Height))
+			}
+			p := fyne.Position{X: float32(x), Y: float32(y)}
+			e := fyne.PointEvent{AbsolutePosition: ap, Position: p}
+			c.Dragged(&fyne.DragEvent{PointEvent: e, Dragged: fyne.NewDelta(delta, delta)})
+		})
+	case *sliderscroll.SliderScroll:
+		wait()
+		fyne.Do(func() {
+			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
+		})
+	case *disp7.DigitArray:
+		wait()
+		fyne.Do(func() {
+			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
+		})
+	default:
+		return false
+	}
+	return true
+}
+
+// randDrag simulates a random dragging event on the target widget
+// with the specified float delta value. Returns true if executed.
+func randDrag(name string, delta float32) bool {
+	return internalDrag(name, delta, true)
+}
+// tap performs a deterministic tap on the specified control without randomness.
+// This is used for hardcoded GUI operations in standard testing.
+func tap(name string) {
+	internalTap(name, false)
+}
+// scroll performs a deterministic scroll on the specified control without randomness.
+// It scrolls 'n' times by the predefined delta.
+func scroll(name string, n int) {
+	internalScroll(name, n, false)
+}
+// drag performs a deterministic drag on the specified control.
+func drag(name string, delta float32) {
+	internalDrag(name, delta, false)
+}
+
+// Test runs a predefined sequence of deterministic hardcoded GUI operations.
+// It is intended to verify standard logic flow without the randomness of the fuzzer.
 func (scp *ScpDesc) Test() {
 	log.Println("Test started")
 	tap(ftFuncId)
@@ -546,7 +496,6 @@ func (scp *ScpDesc) Test() {
 		tap(chEnableId + "A")
 		tap(genCheckId)
 		tap(runblockButtonId)
-		// tap(themeChangeActionId)
 		wait()
 		wait()
 		wait()
@@ -601,6 +550,9 @@ func (scp *ScpDesc) Test() {
 	}
 }
 
+// errorCountingWriter is a custom io.Writer that proxies log outputs.
+// It specifically intercepts lines containing "level=ERROR", increments an atomic
+// error counter, and saves the first set of errors for the final report.
 type errorCountingWriter struct {
 	target      io.Writer
 	count       *uint64
@@ -614,7 +566,7 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	if strings.Contains(s, "level=error") {
 		atomic.AddUint64(w.count, 1)
 		w.errorsMutex.Lock()
-		if len(w.firstErrors) < 100 {
+		if len(w.firstErrors) < maxLoggedErrors {
 			w.firstErrors = append(w.firstErrors, str)
 		}
 		w.errorsMutex.Unlock()
@@ -622,12 +574,16 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	return w.target.Write(p)
 }
 
+// Random is the primary entry point for the Automated UI Fuzzer.
+// It rapidly injects randomized GUI events into the Fyne event loop to
+// aggressively test application stability, race conditions, and thread safety.
+// Final test statistics and encountered errors are logged to a file on completion.
 func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildDate string, webport string) {
 	commitID := FuzzerCommitID
 	if commitID == "" {
 		commitID = os.Getenv("FUZZER_COMMIT_ID")
 	}
-	
+
 	if commitID == "" {
 		fmt.Println("Error: Fuzzer requires a specified commit id.")
 		fmt.Println("Please run with the required command, for example:")
@@ -675,19 +631,19 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		f, err := os.Create(fileName)
 		if err == nil {
 			uptime := time.Since(startTime)
-			
+
 			logBuildDate := buildDate
 			if logBuildDate == "" {
 				logBuildDate = startTime.Format("2006-01-02")
 			}
-			
+
 			fmt.Fprintf(f, "Commit ID: %s\n", commitID)
 			fmt.Fprintf(f, "Version: %s\n", programVersion)
 			fmt.Fprintf(f, "Build Date: %s\n", logBuildDate)
 			if webport != "" {
 				fmt.Fprintf(f, "Webport: %s\n", webport)
 			}
-			
+
 			tags := "none"
 			if info, ok := debug.ReadBuildInfo(); ok {
 				for _, s := range info.Settings {
@@ -698,7 +654,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				}
 			}
 			fmt.Fprintf(f, "Build Tags: %s\n", tags)
-			
+
 			remaining := duration - uptime
 			if remaining < 0 {
 				remaining = 0
@@ -707,7 +663,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			fmt.Fprintf(f, "Remaining: %v\n", remaining.Round(time.Second))
 			fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
 			fmt.Fprintf(f, "Errors: %d\n", atomic.LoadUint64(&errorCount))
-			
+
 			customWriter.errorsMutex.Lock()
 			if len(customWriter.firstErrors) > 0 {
 				fmt.Fprintf(f, "\n--- First %d Errors ---\n", len(customWriter.firstErrors))
@@ -718,12 +674,12 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 					}
 				}
 				totalErrors := atomic.LoadUint64(&errorCount)
-				if totalErrors > 100 {
-					fmt.Fprintf(f, "\n... and %d more uncollected errors.\n", totalErrors-100)
+				if totalErrors > maxLoggedErrors {
+					fmt.Fprintf(f, "\n... and %d more uncollected errors.\n", totalErrors-maxLoggedErrors)
 				}
 			}
 			customWriter.errorsMutex.Unlock()
-			
+
 			f.Close()
 		}
 	}()
