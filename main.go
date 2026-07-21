@@ -34,7 +34,7 @@ var (
 	settingFileName = "scopesettings.yaml"
 	GitUUID         = ""
 	Version         = "0.0.1"
-	BuildDate       = "04-06-2026"
+	BuildDate       = ""
 )
 
 //go:embed LICENSE

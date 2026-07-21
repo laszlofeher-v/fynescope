@@ -276,17 +276,39 @@ go test -tags=noscope ./...
 
 The top-level `fynescope` package tests include an automated UI "random test" (fuzzer) to ensure application stability. When running the test suite, the application programmatically simulates rapid, randomized user interactions—such as mouse clicks, dragging, scrolling, and keyboard inputs—across various tabs and controls for a set duration. This helps catch race conditions, unexpected panics, and GUI hangs that might occur during erratic usage.
 
-To run the automated UI test suite specifically (e.g., `Test0`) with the software simulator, verbose output, and an extended timeout:
+To run the automated UI test suite specifically (e.g., `Test0`) with the software simulator, verbose output, and an extended timeout, you **must** provide the `FUZZER_COMMIT_ID` environment variable (the fuzzer will refuse to run without it):
 
 ```bash
-go test -v -tags=noscope,testsw -run Test0 -timeout 105m
-go test -tags=noscope -timeout 99999s
-go test -tags=noscope -tags=testsw -v
-go test -v -tags=noscope -tags=testsw  -run Test0 -timeout 105m
-time go test -tags=noscope -tags=testsw -v -timeout 99999s
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -v -tags=noscope,testsw -run Test0 -timeout 105m
 ```
 
-During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test (or in the event of a timeout panic), the final statistics are safely written to a timestamped log file (e.g., `fuzzer_YYYYMMDDHHMMSS.log`) in the current working directory.
+**Other Examples:**
+
+To run all simulator tests with a very long timeout:
+
+```bash
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope -timeout 99999s
+```
+
+To run simulator and software tests with verbose output:
+
+```bash
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v
+```
+
+To run simulator and software tests with verbose output, an extended timeout, and time the execution:
+
+```bash
+time FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v -timeout 99999s
+```
+
+To run the fuzzer along with the read-only web server on port 8081:
+
+```bash
+FUZZER_WEBPORT=8081 FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags="noscope,testsw,web" -v -run Test0 -timeout 105m
+```
+
+During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test, the final statistics (including Commit ID, Version, and Build Date) are safely written to a timestamped log file (e.g., `fuzzer_YYMMDDHHMM.log`) in the current working directory. If the test is interrupted (e.g., by SIGINT/Ctrl+C, or a timeout panic), it will still gracefully output the log using a different filename pattern: `fuzzer_interrupted_YYMMDDHHMM.log`.
 
 ### Test coverage by package
 

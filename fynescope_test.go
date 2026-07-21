@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"fynescope/genericps"
 	"fynescope/gui"
 	"fynescope/settings"
@@ -9,6 +10,7 @@ import (
 	"image"
 	"log"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -49,15 +51,24 @@ func TestMain(m *testing.M) {
 	}
 
 	var exitCode int
+	done := make(chan struct{})
 	go func() {
 		time.Sleep(2 * time.Second)
 		exitCode = m.Run()
 		fyne.Do(func() {
 			scp.App.Quit()
 		})
+		close(done)
 	}()
 
 	scp.App.Run()
+
+	// Wait for the test goroutine to finish its defers (up to 2 seconds)
+	// This ensures that if the app is closed via Ctrl+C, the fuzzer has time to write its log file.
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+	}
 
 	if err := con.CloseUnit(); err != nil {
 		log.Printf("CloseUnit error: %v", err)
@@ -99,7 +110,22 @@ func Test0(t *testing.T) {
 		}
 	}
 	log.Printf("timeout: %v", timeout)
-	scp.Random(timeout)
+
+	portStr := os.Getenv("FUZZER_WEBPORT")
+	webportStr := ""
+	if portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil && p > 0 {
+			web.StartServerNoVoice(p, "", "", func() image.Image {
+				if scp.Window == nil || scp.Window.Canvas() == nil {
+					return nil
+				}
+				return scp.Window.Canvas().Capture()
+			})
+			webportStr = fmt.Sprintf("%d", p)
+		}
+	}
+
+	scp.Random(timeout, Version, BuildDate, webportStr)
 }
 
 // Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout flag.
@@ -123,11 +149,19 @@ func Test1(t *testing.T) {
 	}
 	log.Printf("timeout: %v", timeout)
 
-	web.StartServerNoVoice(8080, "", "", func() image.Image {
+	port := 8080
+	if portStr := os.Getenv("FUZZER_WEBPORT"); portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			port = p
+		}
+	}
+	webportStr := fmt.Sprintf("%d", port)
+
+	web.StartServerNoVoice(port, "", "", func() image.Image {
 		if scp.Window == nil || scp.Window.Canvas() == nil {
 			return nil
 		}
 		return scp.Window.Canvas().Capture()
 	})
-	scp.Random(timeout)
+	scp.Random(timeout, Version, BuildDate, webportStr)
 }
