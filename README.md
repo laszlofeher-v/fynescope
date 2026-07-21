@@ -12,8 +12,8 @@
 Once the application is running, you can navigate between different visualization and control modes using the main tabs:
 
 - **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon on the top toolbar opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
-- **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
-- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. *Note: Sweeping at very low frequencies is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
+- **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis with both logarithmic and linear X-axis display options. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
+- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots with both logarithmic and linear X-axis options. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. *Note: Sweeping at very low frequencies is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
 <p align="center">
   <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
 </p>
@@ -351,7 +351,6 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 **FFT / Spectrum Analyzer**
 
 - **No FFT display modes**: Only instantaneous FFT is shown. PicoScope 7 also offers average and peak-hold accumulation modes.
-- **No frequency axis control**: The FFT span always covers the full sample bandwidth. PicoScope 7 lets you set explicit start/stop frequencies.
 - **No spectrum measurements**: Frequency-domain automatic measurements (THD, THD+N, SNR, SINAD, IMD) are not available.
 - **No spectrum masks**: Pass/fail mask limit testing in the frequency domain is not supported.
 - **No spectrum buffer**: PicoScope 7 can store and replay thousands of spectrum snapshots; `fynescope` shows only the current frame.
