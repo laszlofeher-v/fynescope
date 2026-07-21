@@ -668,9 +668,9 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	statusWin.Show()
 
 	defer func() {
-		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("0601021504"))
+		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("200601021504"))
 		if !completed {
-			fileName = fmt.Sprintf("fuzzer_interrupted_%s.log", startTime.Format("0601021504"))
+			fileName = fmt.Sprintf("fuzzer_interrupted_%s.log", startTime.Format("200601021504"))
 		}
 		f, err := os.Create(fileName)
 		if err == nil {
