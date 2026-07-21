@@ -284,29 +284,25 @@ FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -v -tags=noscope,testsw -run Test
 
 **Other Examples:**
 
-To run all simulator tests with a very long timeout:
+To run the fuzzer test specifically with a very long timeout:
 
 ```bash
-FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope -timeout 99999s
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope -run Test0 -timeout 99999s
 ```
 
-To run simulator and software tests with verbose output:
+To run the fuzzer test and time the execution:
 
 ```bash
-FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v
+time FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v -run Test0 -timeout 99999s
 ```
 
-To run simulator and software tests with verbose output, an extended timeout, and time the execution:
+To run **only** the fast, deterministic (hardcoded) GUI operations with software rendering:
 
 ```bash
-time FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v -timeout 99999s
+go test -tags=noscope,testsw -v
 ```
 
-To run the fuzzer along with the read-only web server on port 8081:
-
-```bash
-FUZZER_WEBPORT=8081 FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags="noscope,testsw,web" -v -run Test0 -timeout 105m
-```
+> **Note:** `Test0` and `Test1` are the specific fuzzer tests and require an extended timeout (e.g. `-timeout 105m`) to run. Omitting the timeout causes Go to use the default 10-minute timeout, which safely skips the fuzzer and runs only the deterministic tests.
 
 During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test, the final statistics (including Commit ID, Version, and Build Date) are safely written to a timestamped log file (e.g., `fuzzer_YYMMDDHHMM.log`) in the current working directory. If the test is interrupted (e.g., by SIGINT/Ctrl+C, or a timeout panic), it will still gracefully output the log using a different filename pattern: `fuzzer_interrupted_YYMMDDHHMM.log`.
 

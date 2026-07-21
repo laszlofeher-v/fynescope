@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -176,11 +177,11 @@ var keyNames = []fyne.KeyName{
 	fyne.Key3, fyne.Key4, fyne.Key5,
 	fyne.Key6, fyne.Key7, fyne.Key8, fyne.Key9}
 
-func randKey(name string) {
+func randKey(name string) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
 	if !ok || c == nil || !c.Visible() {
-		return
+		return false
 	}
 	slog.Debug("randKey", "name", name)
 	switch c := c.(type) {
@@ -218,13 +219,15 @@ func randKey(name string) {
 		})
 		wait()
 	default:
+		return false
 	}
+	return true
 }
-func randTap(name string) {
+func randTap(name string) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
 	if !ok || c == nil || !c.Visible() {
-		return
+		return false
 	}
 	slog.Debug("randTap", "name", name)
 	switch c := c.(type) {
@@ -276,13 +279,15 @@ func randTap(name string) {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
+		return false
 	}
+	return true
 }
-func randScroll(name string, n int) {
+func randScroll(name string, n int) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
 	if !ok || c == nil || !c.Visible() {
-		return
+		return false
 	}
 	slog.Debug("randScroll", "name", name)
 	delta := float32(n)
@@ -357,13 +362,15 @@ func randScroll(name string, n int) {
 			})
 		}
 	default:
+		return false
 	}
+	return true
 }
-func randDrag(name string, delta float32) {
+func randDrag(name string, delta float32) bool {
 	ctrl, ok := controls[name]
 	c := ctrl.Obj
 	if !ok || c == nil || !c.Visible() {
-		return
+		return false
 	}
 	slog.Debug("randDrag", "name", name)
 	switch c := c.(type) {
@@ -399,7 +406,9 @@ func randDrag(name string, delta float32) {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
+		return false
 	}
+	return true
 }
 func tap(name string) {
 	switch c := controls[name].Obj.(type) {
@@ -620,14 +629,22 @@ func (scp *ScpDesc) Test() {
 }
 
 type errorCountingWriter struct {
-	target io.Writer
-	count  *uint64
+	target      io.Writer
+	count       *uint64
+	errorsMutex sync.Mutex
+	firstErrors []string
 }
 
 func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
-	s := strings.ToLower(string(p))
+	str := string(p)
+	s := strings.ToLower(str)
 	if strings.Contains(s, "level=error") {
 		atomic.AddUint64(w.count, 1)
+		w.errorsMutex.Lock()
+		if len(w.firstErrors) < 100 {
+			w.firstErrors = append(w.firstErrors, str)
+		}
+		w.errorsMutex.Unlock()
 	}
 	return w.target.Write(p)
 }
@@ -685,9 +702,15 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		f, err := os.Create(fileName)
 		if err == nil {
 			uptime := time.Since(startTime)
+			
+			logBuildDate := buildDate
+			if logBuildDate == "" {
+				logBuildDate = startTime.Format("2006-01-02")
+			}
+			
 			fmt.Fprintf(f, "Commit ID: %s\n", commitID)
 			fmt.Fprintf(f, "Version: %s\n", programVersion)
-			fmt.Fprintf(f, "Build Date: %s\n", buildDate)
+			fmt.Fprintf(f, "Build Date: %s\n", logBuildDate)
 			if webport != "" {
 				fmt.Fprintf(f, "Webport: %s\n", webport)
 			}
@@ -703,10 +726,31 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			}
 			fmt.Fprintf(f, "Build Tags: %s\n", tags)
 			
-			fmt.Fprintf(f, "Uptime: %v\n", uptime)
-			fmt.Fprintf(f, "Remaining: %v\n", duration-uptime)
+			remaining := duration - uptime
+			if remaining < 0 {
+				remaining = 0
+			}
+			fmt.Fprintf(f, "Uptime: %v\n", uptime.Round(time.Second))
+			fmt.Fprintf(f, "Remaining: %v\n", remaining.Round(time.Second))
 			fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
 			fmt.Fprintf(f, "Errors: %d\n", atomic.LoadUint64(&errorCount))
+			
+			customWriter.errorsMutex.Lock()
+			if len(customWriter.firstErrors) > 0 {
+				fmt.Fprintf(f, "\n--- First %d Errors ---\n", len(customWriter.firstErrors))
+				for _, errStr := range customWriter.firstErrors {
+					fmt.Fprint(f, errStr)
+					if !strings.HasSuffix(errStr, "\n") {
+						fmt.Fprintln(f)
+					}
+				}
+				totalErrors := atomic.LoadUint64(&errorCount)
+				if totalErrors > 100 {
+					fmt.Fprintf(f, "\n... and %d more uncollected errors.\n", totalErrors-100)
+				}
+			}
+			customWriter.errorsMutex.Unlock()
+			
 			f.Close()
 		}
 	}()
@@ -723,7 +767,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		i++
 	}
 	op := 0
-	ready := make(chan struct{})
+	ready := make(chan bool)
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
 		wait()
@@ -746,28 +790,31 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		op = rand.Intn(4)
 		go func() {
 			n := 0
+			executed := false
 			switch op {
 			case 0:
 				n := rand.Intn(32) - 16
-				randDrag(selectedKey, float32(n))
+				executed = randDrag(selectedKey, float32(n))
 			case 1:
 				n = rand.Intn(10) - 5
-				randScroll(selectedKey, n)
+				executed = randScroll(selectedKey, n)
 			case 2:
-				randTap(selectedKey)
+				executed = randTap(selectedKey)
 			case 3:
-				randKey(selectedKey)
+				executed = randKey(selectedKey)
 			default:
 				panic(8)
 			}
-			ready <- struct{}{}
+			ready <- executed
 		}()
 		select {
 		case <-sigChan:
 			log.Println("Interrupted by signal")
 			return
-		case <-ready:
-			atomic.AddUint64(&eventCount, 1)
+		case executed := <-ready:
+			if executed {
+				atomic.AddUint64(&eventCount, 1)
+			}
 			evs := atomic.LoadUint64(&eventCount)
 			if evs%10 == 0 {
 				uptime := time.Since(startTime)
