@@ -12,9 +12,12 @@ import (
 	"log/slog"
 	"math/rand"
 	"os"
+	"os/signal"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"fyne.io/fyne/v2/container"
@@ -151,7 +154,8 @@ type TestControl struct {
 }
 
 var (
-	controls map[string]TestControl
+	controls       map[string]TestControl
+	FuzzerCommitID string
 )
 
 func init() {
@@ -628,10 +632,23 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	return w.target.Write(p)
 }
 
-func (scp *ScpDesc) Random(duration time.Duration) {
+func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildDate string, webport string) {
+	commitID := FuzzerCommitID
+	if commitID == "" {
+		commitID = os.Getenv("FUZZER_COMMIT_ID")
+	}
+	
+	if commitID == "" {
+		fmt.Println("Error: Fuzzer requires a specified commit id.")
+		fmt.Println("Please run with the required command, for example:")
+		fmt.Println("FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=\"noscope,testsw\" -v -run Test0 -timeout 105m")
+		os.Exit(1)
+	}
+
 	var errorCount uint64
 	var eventCount uint64
 	startTime := time.Now()
+	completed := false
 
 	origLogWriter := log.Writer()
 	customWriter := &errorCountingWriter{target: origLogWriter, count: &errorCount}
@@ -661,10 +678,31 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 	statusWin.Show()
 
 	defer func() {
-		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("20060102150405"))
+		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("0601021504"))
+		if !completed {
+			fileName = fmt.Sprintf("fuzzer_interrupted_%s.log", startTime.Format("0601021504"))
+		}
 		f, err := os.Create(fileName)
 		if err == nil {
 			uptime := time.Since(startTime)
+			fmt.Fprintf(f, "Commit ID: %s\n", commitID)
+			fmt.Fprintf(f, "Version: %s\n", programVersion)
+			fmt.Fprintf(f, "Build Date: %s\n", buildDate)
+			if webport != "" {
+				fmt.Fprintf(f, "Webport: %s\n", webport)
+			}
+			
+			tags := "none"
+			if info, ok := debug.ReadBuildInfo(); ok {
+				for _, s := range info.Settings {
+					if s.Key == "-tags" {
+						tags = s.Value
+						break
+					}
+				}
+			}
+			fmt.Fprintf(f, "Build Tags: %s\n", tags)
+			
 			fmt.Fprintf(f, "Uptime: %v\n", uptime)
 			fmt.Fprintf(f, "Remaining: %v\n", duration-uptime)
 			fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
@@ -672,6 +710,10 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			f.Close()
 		}
 	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigChan)
 
 	arrayLen := len(controls)
 	a := make([]string, arrayLen)
@@ -721,6 +763,9 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			ready <- struct{}{}
 		}()
 		select {
+		case <-sigChan:
+			log.Println("Interrupted by signal")
+			return
 		case <-ready:
 			atomic.AddUint64(&eventCount, 1)
 			evs := atomic.LoadUint64(&eventCount)
@@ -746,4 +791,5 @@ func (scp *ScpDesc) Random(duration time.Duration) {
 			panic(7)
 		}
 	}
+	completed = true
 }
