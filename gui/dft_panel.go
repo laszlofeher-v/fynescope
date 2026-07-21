@@ -143,6 +143,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		for i := range scp.channelViewers {
 			scp.channelViewers[i].dftLabel.enableRefresh()
 		}
+		scp.refreshRasters()
 		if scp.dftRaster != nil {
 			scp.dftRaster.Refresh()
 		}
