@@ -26,3 +26,6 @@ icon2.png
 WIKI.md
 *.out
 .vscode/settings.json
+raster_*.png
+window_*.png
+
