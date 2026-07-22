@@ -23,7 +23,9 @@ import (
 	"fynescope/settings"
 	"image"
 	"image/color"
+	"image/color/palette"
 	"image/draw"
+	"image/gif"
 	"image/png"
 	"log/slog"
 	"math"
@@ -36,7 +38,9 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"gonum.org/v1/gonum/dsp/fourier"
@@ -250,6 +254,14 @@ type (
 		timeZoomTimeDiv            int
 		timeZoomTimeUnit           int
 		tzRepartition              chan struct{}
+		activeRasterContainer      *fyne.Container
+		mouseX, mouseY             float32
+		lastSaveDir                fyne.ListableURI
+		gifRecording               bool
+		gifFrames                  *gif.GIF
+		gifTicker                  *time.Ticker
+		gifStopChan                chan struct{}
+		recordGifButton            *widget.Button
 	}
 )
 
@@ -292,12 +304,79 @@ func (scp *ScpDesc) SaveSettings() {
 	}()
 }
 
+func (scp *ScpDesc) UpdateMousePos(localX, localY float32) {
+	if scp.activeRasterContainer != nil {
+		scp.mouseX = localX + scp.activeRasterContainer.Position().X
+		scp.mouseY = localY + scp.activeRasterContainer.Position().Y
+	}
+}
+
+func (scp *ScpDesc) ResetMousePos() {
+	scp.mouseX = -1
+	scp.mouseY = -1
+}
+
+func (scp *ScpDesc) getLastSaveDir() fyne.ListableURI {
+	if scp.lastSaveDir == nil {
+		cwd, err := os.Getwd()
+		if err == nil {
+			if luri, err := storage.ListerForURI(storage.NewFileURI(cwd)); err == nil {
+				scp.lastSaveDir = luri
+			}
+		}
+	}
+	return scp.lastSaveDir
+}
+
+func (scp *ScpDesc) updateLastSaveDir(uri fyne.URI) {
+	if parent, err := storage.Parent(uri); err == nil {
+		if lister, err := storage.ListerForURI(parent); err == nil {
+			scp.lastSaveDir = lister
+		}
+	}
+}
+
 func compositeOverBackground(img image.Image, bg color.Color) image.Image {
 	bounds := img.Bounds()
 	opaqueImg := image.NewRGBA(bounds)
 	draw.Draw(opaqueImg, bounds, &image.Uniform{bg}, image.ZP, draw.Src)
 	draw.Draw(opaqueImg, bounds, img, bounds.Min, draw.Over)
 	return opaqueImg
+}
+
+func drawFakeCursor(img draw.Image, cx, cy int) {
+	if cx < 0 || cy < 0 {
+		return
+	}
+	cOut := color.RGBA{0, 0, 0, 255}
+	cIn := color.RGBA{255, 255, 255, 255}
+	pattern := []string{
+		"1",
+		"11",
+		"121",
+		"1221",
+		"12221",
+		"122221",
+		"1222221",
+		"12222221",
+		"122222221",
+		"122211111",
+		"12121",
+		"11 121",
+		"1  121",
+		"    121",
+		"    111",
+	}
+	for y, row := range pattern {
+		for x, char := range row {
+			px, py := cx+x, cy+y
+			if char == '1' {
+				img.Set(px, py, cOut)
+			} else if char == '2' {
+				img.Set(px, py, cIn)
+			}
+		}
+	}
 }
 
 func (scp *ScpDesc) saveRasterToPng() {
@@ -317,14 +396,123 @@ func (scp *ScpDesc) saveRasterToPng() {
 	if img != nil {
 		bg := scp.theme.Color(ColorNameSignalBackground, 0)
 		opaqueImg := compositeOverBackground(img, bg)
-		filename := time.Now().Format("raster_20060102_150405.png")
-		f, err := os.Create(filename)
-		if err == nil {
-			defer f.Close()
-			png.Encode(f, opaqueImg)
-		} else {
-			slog.Error("failed to create png file", "err", err)
+		fd := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+			if err != nil {
+				slog.Error("file save error", "err", err)
+				return
+			}
+			if uc == nil {
+				return
+			}
+			defer uc.Close()
+			scp.updateLastSaveDir(uc.URI())
+			png.Encode(uc, opaqueImg)
+		}, scp.Window)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".png"}))
+		fd.SetFileName(time.Now().Format("raster_20060102_150405.png"))
+		if dir := scp.getLastSaveDir(); dir != nil {
+			fd.SetLocation(dir)
 		}
+		fd.Show()
+	}
+}
+
+func (scp *ScpDesc) toggleGifRecording() {
+	if scp.gifRecording {
+		scp.gifRecording = false
+		scp.gifTicker.Stop()
+		close(scp.gifStopChan)
+
+		scp.recordGifButton.SetIcon(theme.MediaRecordIcon())
+	} else {
+		scp.gifRecording = true
+		scp.gifFrames = &gif.GIF{}
+		scp.gifTicker = time.NewTicker(100 * time.Millisecond)
+		scp.gifStopChan = make(chan struct{})
+
+		scp.recordGifButton.SetIcon(theme.MediaStopIcon())
+
+		type rawGifFrame struct {
+			img    image.Image
+			mx, my float32
+		}
+		frameChan := make(chan rawGifFrame, 100)
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		// Processing goroutine
+		go func() {
+			defer wg.Done()
+			for raw := range frameChan {
+				bg := scp.theme.Color(theme.ColorNameMenuBackground, 0)
+				opaqueImg := compositeOverBackground(raw.img, bg)
+
+				if raw.mx >= 0 && raw.my >= 0 {
+					scale := float32(1.0)
+					if scp.Window != nil && scp.Window.Canvas() != nil {
+						scale = scp.Window.Canvas().Scale()
+					}
+					if rgba, ok := opaqueImg.(*image.RGBA); ok {
+						drawFakeCursor(rgba, int(raw.mx*scale), int(raw.my*scale))
+					}
+				}
+
+				bounds := opaqueImg.Bounds()
+				palettedImg := image.NewPaletted(bounds, palette.Plan9)
+				draw.FloydSteinberg.Draw(palettedImg, bounds, opaqueImg, image.ZP)
+
+				scp.gifFrames.Image = append(scp.gifFrames.Image, palettedImg)
+				scp.gifFrames.Delay = append(scp.gifFrames.Delay, 10)
+			}
+		}()
+
+		// Capture goroutine
+		go func() {
+			for {
+				select {
+				case <-scp.gifTicker.C:
+					var img image.Image
+					var mx, my float32
+					waitChan := make(chan struct{})
+					fyne.Do(func() {
+						img = scp.Window.Canvas().Capture()
+						mx, my = scp.mouseX, scp.mouseY
+						close(waitChan)
+					})
+					<-waitChan
+					if img != nil {
+						select {
+						case frameChan <- rawGifFrame{img: img, mx: mx, my: my}:
+						default:
+							slog.Warn("GIF frame dropped due to buffer full")
+						}
+					}
+				case <-scp.gifStopChan:
+					close(frameChan)
+					wg.Wait()
+
+					fd := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+						if err != nil {
+							slog.Error("file save error", "err", err)
+							return
+						}
+						if uc == nil {
+							return
+						}
+						defer uc.Close()
+						scp.updateLastSaveDir(uc.URI())
+						gif.EncodeAll(uc, scp.gifFrames)
+					}, scp.Window)
+					fd.SetFilter(storage.NewExtensionFileFilter([]string{".gif"}))
+					fd.SetFileName(time.Now().Format("window_20060102_150405.gif"))
+					if dir := scp.getLastSaveDir(); dir != nil {
+						fd.SetLocation(dir)
+					}
+					fd.Show()
+					return
+				}
+			}
+		}()
 	}
 }
 
@@ -333,14 +521,35 @@ func (scp *ScpDesc) saveWindowToPng() {
 	if img != nil {
 		bg := scp.theme.Color(theme.ColorNameMenuBackground, 0) // Or ColorNameSignalBackground
 		opaqueImg := compositeOverBackground(img, bg)
-		filename := time.Now().Format("window_20060102_150405.png")
-		f, err := os.Create(filename)
-		if err == nil {
-			defer f.Close()
-			png.Encode(f, opaqueImg)
-		} else {
-			slog.Error("failed to create png file", "err", err)
+		
+		if scp.mouseX >= 0 && scp.mouseY >= 0 {
+			scale := float32(1.0)
+			if scp.Window != nil && scp.Window.Canvas() != nil {
+				scale = scp.Window.Canvas().Scale()
+			}
+			if rgba, ok := opaqueImg.(*image.RGBA); ok {
+				drawFakeCursor(rgba, int(scp.mouseX*scale), int(scp.mouseY*scale))
+			}
 		}
+
+		fd := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+			if err != nil {
+				slog.Error("file save error", "err", err)
+				return
+			}
+			if uc == nil {
+				return
+			}
+			defer uc.Close()
+			scp.updateLastSaveDir(uc.URI())
+			png.Encode(uc, opaqueImg)
+		}, scp.Window)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".png"}))
+		fd.SetFileName(time.Now().Format("window_20060102_150405.png"))
+		if dir := scp.getLastSaveDir(); dir != nil {
+			fd.SetLocation(dir)
+		}
+		fd.Show()
 	}
 }
 
@@ -471,7 +680,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.controlTab.Remove(scp.extgenTab)
 	}
 
-	activeRasterContainer := container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
+	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
 		newTab := scp.controlTab.SelectedIndex()
@@ -537,7 +746,7 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 
 		scp.updateAcquisitionParameters()
-		activeRasterContainer.Refresh()
+		scp.activeRasterContainer.Refresh()
 
 		if scp.running {
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
@@ -746,6 +955,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
+			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
@@ -755,7 +965,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.status.label)
-			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
+			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.activeRasterContainer)
 			changeSide.SetIcon(theme.NavigateNextIcon())
 		} else {
 			scp.Settings.Window.LeftControl = false
@@ -765,6 +975,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
+			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
@@ -772,7 +983,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
 			scp.toolbar.Add(logout)
-			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, activeRasterContainer)
+			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.activeRasterContainer)
 			changeSide.SetIcon(theme.NavigateBackIcon())
 		}
 		scp.toolbar.Refresh()
@@ -783,6 +994,9 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	saveWindowButton = widget.NewButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
 		scp.saveWindowToPng()
+	})
+	scp.recordGifButton = widget.NewButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
+		scp.toggleGifRecording()
 	})
 	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
 	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
@@ -804,18 +1018,18 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.App.Quit()
 	})
 	if scp.Settings.Window.LeftControl {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout,
 			layout.NewSpacer(),
 			scp.status.label)
-		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
+		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.activeRasterContainer)
 	} else {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout)
-		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, activeRasterContainer)
+		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.activeRasterContainer)
 	}
 
 	scp.updateStreamButtonVisibility()

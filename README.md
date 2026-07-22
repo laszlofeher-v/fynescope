@@ -169,6 +169,14 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
 
 - **Digital Filter Warning**: A warning icon (⚠️) is displayed next to a channel's label across all visualization tabs (f(t), f(v), FFT, Bode, RLC) whenever a digital filter (lowpass, highpass, bandpass, or bandstop) is actively applied to that channel. This serves as a reminder that the displayed signal has been actively modified. Digital filters also support a **Zero Phase Delay (FiltFilt)** mode to neutralize phase-shifting and keep trigger points perfectly aligned.
 
+### Media Export
+
+Fynescope allows exporting the current visual state of the application into images or animations. Use the buttons on the top toolbar to access these features:
+
+- **Raster PNG Export ("R")**: Click the "R" button to export only the current active plot area (the raster, including grids and labels) to a PNG file.
+- **Window PNG Export ("W")**: Click the "W" button to capture the entire Fynescope application window, including the toolbar and control panels, to a PNG file.
+- **Window GIF Recording ("GIF")**: Click the "GIF" button to start recording the entire application window into an animated GIF. The recording captures the UI smoothly at 10 frames per second, complete with an overlaid mouse cursor. Click the stop icon when finished, and a save dialog will prompt you for the destination file. The save dialog will also remember your last used directory for convenience.
+
 ### Mouse Interaction
 
 - **Play icon**:
