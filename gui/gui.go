@@ -22,8 +22,12 @@ import (
 	"fynescope/selectscroll"
 	"fynescope/settings"
 	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"log/slog"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -286,6 +290,58 @@ func (scp *ScpDesc) SaveSettings() {
 			slog.Error("failed to save settings", "err", err)
 		}
 	}()
+}
+
+func compositeOverBackground(img image.Image, bg color.Color) image.Image {
+	bounds := img.Bounds()
+	opaqueImg := image.NewRGBA(bounds)
+	draw.Draw(opaqueImg, bounds, &image.Uniform{bg}, image.ZP, draw.Src)
+	draw.Draw(opaqueImg, bounds, img, bounds.Min, draw.Over)
+	return opaqueImg
+}
+
+func (scp *ScpDesc) saveRasterToPng() {
+	var img image.Image
+	switch scp.Settings.Window.Function {
+	case dftTabIndex:
+		img = scp.dftScopeFullScreen
+	case fvTabIndex:
+		img = scp.fvScopeFullScreen
+	case ffTabIndex:
+		img = scp.ffScopeFullScreen
+	case rlcTabIndex:
+		img = scp.ftScopeFullScreen
+	default:
+		img = scp.ftScopeFullScreen
+	}
+	if img != nil {
+		bg := scp.theme.Color(ColorNameSignalBackground, 0)
+		opaqueImg := compositeOverBackground(img, bg)
+		filename := time.Now().Format("raster_20060102_150405.png")
+		f, err := os.Create(filename)
+		if err == nil {
+			defer f.Close()
+			png.Encode(f, opaqueImg)
+		} else {
+			slog.Error("failed to create png file", "err", err)
+		}
+	}
+}
+
+func (scp *ScpDesc) saveWindowToPng() {
+	img := scp.Window.Canvas().Capture()
+	if img != nil {
+		bg := scp.theme.Color(theme.ColorNameMenuBackground, 0) // Or ColorNameSignalBackground
+		opaqueImg := compositeOverBackground(img, bg)
+		filename := time.Now().Format("window_20060102_150405.png")
+		f, err := os.Create(filename)
+		if err == nil {
+			defer f.Close()
+			png.Encode(f, opaqueImg)
+		} else {
+			slog.Error("failed to create png file", "err", err)
+		}
+	}
 }
 
 func (scp *ScpDesc) refreshRasters() {
@@ -682,6 +738,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.Window.SetFullScreen(false)
 	}
 	scp.initStatus()
+	var saveRasterButton, saveWindowButton *widget.Button
 	changeSideFunc := func() {
 		if changeSide.Icon == theme.NavigateBackIcon() {
 			scp.Settings.Window.LeftControl = true
@@ -689,6 +746,8 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
+			scp.toolbar.Add(saveRasterButton)
+			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -706,6 +765,8 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
+			scp.toolbar.Add(saveRasterButton)
+			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -717,6 +778,12 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Refresh()
 		scp.Window.SetContent(content)
 	}
+	saveRasterButton = widget.NewButtonWithIcon("R", theme.DocumentSaveIcon(), func() {
+		scp.saveRasterToPng()
+	})
+	saveWindowButton = widget.NewButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
+		scp.saveWindowToPng()
+	})
 	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
 	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
 	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
@@ -737,7 +804,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.App.Quit()
 	})
 	if scp.Settings.Window.LeftControl {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, fullScreen, restoreScreen, changeSide,
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout,
 			layout.NewSpacer(),
@@ -745,7 +812,7 @@ func (scp *ScpDesc) build2000Gui() {
 		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, activeRasterContainer)
 	} else {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, fullScreen, restoreScreen, changeSide,
+			scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 			themeChangeAction,
 			logout)
 		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, activeRasterContainer)
