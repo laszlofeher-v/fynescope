@@ -220,11 +220,7 @@ func (frql *frqLabelViewer) draw() {
 		&image.Uniform{frql.scp.theme.Color(ColorNameSignalBackground, 0)},
 		image.ZP, draw.Src)
 
-	minFreq := frql.scp.Settings.Dft.MinFreq
-	maxFreqPlot := frql.scp.Settings.Dft.MaxFreq - minFreq
-	if maxFreqPlot <= 0 {
-		maxFreqPlot = 1e6
-	}
+	minFreq, maxFreqPlot := frql.scp.getDftFreqRange()
 
 	if !frql.scp.Settings.Dft.XAxisLog {
 		if numDivs <= 0 {
@@ -553,22 +549,9 @@ func (dv *dftViewer) draw() {
 		yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
 		prevX := float32(bounds.Min.X)
 
-		minFreq := dv.scp.Settings.Dft.MinFreq
+		minFreq, maxFreqPlot := dv.scp.getDftFreqRange()
 		fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
 		maxFreqAvailable := fs / 2
-		maxFreqPlot := dv.scp.Settings.Dft.MaxFreq - minFreq
-		if maxFreqPlot <= 0 {
-			maxFreqPlot = 1e6 // Default to 1MHz if 0
-		}
-		if maxFreqPlot > maxFreqAvailable {
-			maxFreqPlot = maxFreqAvailable
-		}
-		if minFreq > maxFreqAvailable-maxFreqPlot {
-			minFreq = maxFreqAvailable - maxFreqPlot
-		}
-		if minFreq < 0 {
-			minFreq = 0
-		}
 
 		minBinIdx := int(math.Round((minFreq / maxFreqAvailable) * float64(m/2)))
 		if minBinIdx < 0 {
@@ -654,16 +637,8 @@ func (dv *dftViewer) draw() {
 }
 
 func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (freqAtCursor float64, instV, instVCur []float64) {
-	minFreq := dv.scp.Settings.Dft.MinFreq
-	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq - minFreq
-	fs := dv.fsCache
-	maxFreqAvailable := fs / 2
-	if maxFreqPlot <= 0 {
-		maxFreqPlot = 1e6
-	}
-	if maxFreqPlot > maxFreqAvailable {
-		maxFreqPlot = maxFreqAvailable
-	}
+	minFreq, maxFreqPlot := dv.scp.getDftFreqRange()
+	maxFreqAvailable := dv.fsCache / 2
 
 	fractionAtCursor := (float64(mx) - float64(bounds.Min.X)) / w
 	if dv.scp.Settings.Dft.XAxisLog {
@@ -1070,11 +1045,7 @@ func (scp *ScpDesc) setDftHDivsX() {
 	if w < 1 {
 		return
 	}
-	minFreq := scp.Settings.Dft.MinFreq
-	span := scp.Settings.Dft.MaxFreq - minFreq
-	if span <= 0 {
-		span = 1e6
-	}
+	minFreq, span := scp.getDftFreqRange()
 
 	if !scp.Settings.Dft.XAxisLog {
 		// Calculate nice step for approximately 10 divisions
@@ -1281,4 +1252,26 @@ func (scp *ScpDesc) dftRasterGenerator(wInt int, hInt int) image.Image {
 		scp.dftDrawers[i].draw()
 	}
 	return scp.dftScopeFullScreen
+}
+
+func (scp *ScpDesc) getDftFreqRange() (minFreq, maxFreqPlot float64) {
+	minFreq = scp.Settings.Dft.MinFreq
+	maxFreqPlot = scp.Settings.Dft.MaxFreq - minFreq
+	if maxFreqPlot <= 0 {
+		maxFreqPlot = 1e6 // Default to 1MHz if 0
+	}
+	if scp.psControl != nil && scp.psControl.SamplingTimeInterval > 0 {
+		fs := 1.0 / float64(scp.psControl.SamplingTimeInterval)
+		maxFreqAvailable := fs / 2
+		if maxFreqPlot > maxFreqAvailable {
+			maxFreqPlot = maxFreqAvailable
+		}
+		if minFreq > maxFreqAvailable-maxFreqPlot {
+			minFreq = maxFreqAvailable - maxFreqPlot
+		}
+	}
+	if minFreq < 0 {
+		minFreq = 0
+	}
+	return minFreq, maxFreqPlot
 }
