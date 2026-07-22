@@ -321,8 +321,8 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 | `control/` | Channel state machine, screen time and ETS timing, interpolation modes, stream mode transitions, built-in generator state |
 | `control/scpi/` | SCPI command builder and parser |
 | `gui/` | Modular graphical interface components (panels, drawers, tabs), time zoom logic, FIR/IIR digital filter application, frequency conversion helpers, Bode sweep raster logic |
-| `sim/` | Simulator waveform generation, digital filter simulation |
-| `genericps/` | Generic PicoScope device registry and open/close lifecycle |
+| `sim/` | Simulator waveform generation, RLC filter simulation |
+| `genericps/` | Generic PicoScope device interface and open/close lifecycle |
 | `settings/` | Settings save/load, checksum validation |
 | `disp7/` | 7-segment display widget: value setting, digit editing, keyboard/mouse/scroll interaction |
 | `checkcolorpick/` | Color-picker checkbox widget interaction and rendering |
