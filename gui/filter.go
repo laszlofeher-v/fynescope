@@ -91,10 +91,10 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 			fc := filter.LowpassFc
 			if fc < fs/2 {
 				alpha := 1.0 - math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-				y := data[0]
+				y := float64(data[0])
 				for i := 0; i < len(data); i++ {
-					y = y + float32(alpha)*(data[i]-y)
-					data[i] = y
+					y = y + alpha*(float64(data[i])-y)
+					data[i] = float32(y)
 				}
 			}
 		}
@@ -104,13 +104,17 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 			fc := filter.HighpassFc
 			if fc < fs/2 {
 				alpha := math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-				xprev := data[0]
-				y := float32(0)
+				x1 := float64(data[0])
+				y1 := float64(0)
+				b0 := (1.0 + alpha) / 2.0
+				b1 := -b0
+				a1 := -alpha
 				for i := 0; i < len(data); i++ {
-					x := data[i]
-					y = float32(alpha)*y + float32(alpha)*(x-xprev)
-					xprev = x
-					data[i] = y
+					x := float64(data[i])
+					out := b0*x + b1*x1 - a1*y1
+					x1 = x
+					y1 = out
+					data[i] = float32(out)
 				}
 			} else {
 				for i := range data {
@@ -149,16 +153,16 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 				a1 /= a0
 				a2 /= a0
 
-				x1, x2 := data[0], data[0]
-				y1, y2 := float32(0), float32(0)
+				x1, x2 := float64(data[0]), float64(data[0])
+				y1, y2 := float64(0), float64(0)
 				for i := 0; i < len(data); i++ {
-					x := data[i]
-					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
+					x := float64(data[i])
+					out := b0*x + b1*x1 + b2*x2 - a1*y1 - a2*y2
 					x2 = x1
 					x1 = x
 					y2 = y1
 					y1 = out
-					data[i] = out
+					data[i] = float32(out)
 				}
 			}
 		}
@@ -192,16 +196,16 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 				a1 /= a0
 				a2 /= a0
 
-				x1, x2 := data[0], data[0]
-				y1, y2 := data[0], data[0]
+				x1, x2 := float64(data[0]), float64(data[0])
+				y1, y2 := float64(data[0]), float64(data[0])
 				for i := 0; i < len(data); i++ {
-					x := data[i]
-					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
+					x := float64(data[i])
+					out := b0*x + b1*x1 + b2*x2 - a1*y1 - a2*y2
 					x2 = x1
 					x1 = x
 					y2 = y1
 					y1 = out
-					data[i] = out
+					data[i] = float32(out)
 				}
 			}
 		}
