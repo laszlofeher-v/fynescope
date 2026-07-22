@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 )
 
@@ -54,7 +55,7 @@ func TestMain(m *testing.M) {
 	go func() {
 		time.Sleep(2 * time.Second)
 		exitCode = m.Run()
-		scp.App.Quit()
+		fyne.Do(scp.App.Quit)
 		close(done)
 	}()
 

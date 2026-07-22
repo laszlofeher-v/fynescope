@@ -1662,7 +1662,14 @@ func (scp *ScpDesc) measurePeriod(buf []float32, samplingInterval float64) (floa
 // performs envelope tracking (peak-hold) to keep the highest values, blends new phase estimates using vector averaging,
 // and appends/sorts new sweep points into the channels' Bode buffers.
 func (scp *ScpDesc) processFfData() {
+	if !scp.running {
+		return
+	}
 	scp.ffLocker.Lock()
+	if scp.ffSweepQuit == nil {
+		scp.ffLocker.Unlock()
+		return
+	}
 	acquireTime := scp.ffSweepAcquireTime
 	scp.ffLocker.Unlock()
 
@@ -1776,6 +1783,11 @@ func (scp *ScpDesc) processFfData() {
 	// Now compute magnitudes and phases for all enabled channels at refPeakBin
 	scp.ffLocker.Lock()
 	defer scp.ffLocker.Unlock()
+
+	if scp.ffSweepQuit == nil {
+		slog.Info("processFfData early return: sweep stopped during FFT")
+		return
+	}
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		ch := scp.Settings.Channels[i]

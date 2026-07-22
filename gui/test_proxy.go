@@ -194,21 +194,19 @@ func randKey(name string) bool {
 	if !ok || c == nil || !c.Visible() {
 		return false
 	}
-	slog.Debug("randKey", "name", name)
 	switch c := c.(type) {
 	case *disp7.DigitArray:
+		slog.Debug("randKey", "name", name)
 		wait()
 		key := keyNames[rand.Intn(len(keyNames))]
 		fyne.Do(func() {
 			c.Window.Canvas().Focus(c)
 			c.KeyDown(&fyne.KeyEvent{Name: key})
-		})
-		wait()
-		fyne.Do(func() {
 			c.KeyUp(&fyne.KeyEvent{Name: key})
 			c.Window.Canvas().Unfocus()
 		})
 	case *digitEntry:
+		slog.Debug("randKey", "name", name)
 		wait()
 		fyne.Do(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
@@ -219,7 +217,6 @@ func randKey(name string) bool {
 				c.TypedRune(r)
 			}
 		})
-		wait()
 	default:
 		return false
 	}
@@ -236,15 +233,16 @@ func internalTap(name string, isFuzzer bool) bool {
 		}
 		return false
 	}
-	if isFuzzer {
-		if !c.Visible() {
-			return false
-		}
-		slog.Debug("randTap", "name", name)
+	if isFuzzer && !c.Visible() {
+		return false
 	}
 
 	switch c := c.(type) {
 	case *container.AppTabs:
+		if isFuzzer {
+			slog.Debug("randTap", "name", name)
+		}
+		wait()
 		fyne.Do(func() {
 			var targetText string
 			switch name {
@@ -276,6 +274,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		})
 	case *selectscroll.SelectScroll:
 		if isFuzzer {
+			slog.Debug("randTap", "name", name)
 			n := rand.Intn(len(c.Options))
 			wait()
 			fyne.Do(func() {
@@ -288,6 +287,9 @@ func internalTap(name string, isFuzzer bool) bool {
 			return false
 		}
 	case fyne.Tappable:
+		if isFuzzer {
+			slog.Debug("randTap", "name", name)
+		}
 		wait()
 		fyne.Do(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
@@ -314,11 +316,8 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 	if !ok || c == nil {
 		return false
 	}
-	if isFuzzer {
-		if !c.Visible() {
-			return false
-		}
-		slog.Debug("randScroll", "name", name)
+	if isFuzzer && !c.Visible() {
+		return false
 	}
 
 	delta := float32(n)
@@ -328,11 +327,14 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 
 	switch c := c.(type) {
 	case *screenRaster:
+		if isFuzzer {
+			slog.Debug("randScroll", "name", name)
+		}
 		if isFuzzer && n > 2 {
 			n = 2
 		}
+		wait()
 		for ; n > 0; n-- {
-			wait()
 			fyne.Do(func() {
 				if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
 					return
@@ -355,28 +357,37 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 			})
 		}
 	case *sliderscroll.SliderScroll:
+		if isFuzzer {
+			slog.Debug("randScroll", "name", name)
+		}
 		wait()
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
 		fyne.Do(func() {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
+		if isFuzzer {
+			slog.Debug("randScroll", "name", name)
+		}
 		if isFuzzer && n > 2 {
 			n = 2
 		}
+		wait()
 		for ; n > 0; n-- {
-			wait()
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
 			fyne.Do(func() {
 				c.Scrolled(e)
 			})
 		}
 	case *disp7.DigitArray:
+		if isFuzzer {
+			slog.Debug("randScroll", "name", name)
+		}
 		if isFuzzer && n > 2 {
 			n = 2
 		}
+		wait()
 		for ; n > 0; n-- {
-			wait()
 			fyne.Do(func() {
 				if int(c.Size().Width) <= 0 {
 					return
@@ -413,15 +424,15 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 	if !ok || c == nil {
 		return false
 	}
-	if isFuzzer {
-		if !c.Visible() {
-			return false
-		}
-		slog.Debug("randDrag", "name", name)
+	if isFuzzer && !c.Visible() {
+		return false
 	}
 
 	switch c := c.(type) {
 	case *screenRaster:
+		if isFuzzer {
+			slog.Debug("randDrag", "name", name)
+		}
 		wait()
 		fyne.Do(func() {
 			if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
@@ -438,11 +449,17 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 			c.Dragged(&fyne.DragEvent{PointEvent: e, Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *sliderscroll.SliderScroll:
+		if isFuzzer {
+			slog.Debug("randDrag", "name", name)
+		}
 		wait()
 		fyne.Do(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *disp7.DigitArray:
+		if isFuzzer {
+			slog.Debug("randDrag", "name", name)
+		}
 		wait()
 		fyne.Do(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
@@ -712,7 +729,6 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	ready := make(chan bool)
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
-		wait()
 		var currentTab int
 		controlsMtx.RLock()
 		if tabs, ok := controls[ftFuncId].Obj.(*container.AppTabs); ok {
@@ -726,6 +742,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 		controlsMtx.RUnlock()
 		if len(validKeys) == 0 {
+			time.Sleep(10 * time.Millisecond)
 			continue
 		}
 		selectedKey := validKeys[rand.Intn(len(validKeys))]
