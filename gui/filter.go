@@ -85,16 +85,16 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		return
 	}
 
-	applyFilterFwd := func(buf []float32) {
+	applyFilterFwd := func(data []float32) {
 		// 1. Lowpass (First-Order IIR)
 		if filter.LowpassEnabled {
 			fc := filter.LowpassFc
 			if fc < fs/2 {
 				alpha := 1.0 - math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-				y := buf[0]
-				for i := 0; i < len(buf); i++ {
-					y = y + float32(alpha)*(buf[i]-y)
-					buf[i] = y
+				y := data[0]
+				for i := 0; i < len(data); i++ {
+					y = y + float32(alpha)*(data[i]-y)
+					data[i] = y
 				}
 			}
 		}
@@ -104,17 +104,17 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 			fc := filter.HighpassFc
 			if fc < fs/2 {
 				alpha := math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-				xprev := buf[0]
+				xprev := data[0]
 				y := float32(0)
-				for i := 0; i < len(buf); i++ {
-					x := buf[i]
+				for i := 0; i < len(data); i++ {
+					x := data[i]
 					y = float32(alpha)*y + float32(alpha)*(x-xprev)
 					xprev = x
-					buf[i] = y
+					data[i] = y
 				}
 			} else {
-				for i := range buf {
-					buf[i] = 0
+				for i := range data {
+					data[i] = 0
 				}
 			}
 		}
@@ -123,7 +123,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		if filter.BandpassEnabled {
 			fc1 := filter.BandpassFc1
 			fc2 := filter.BandpassFc2
-			f0 := 0.5 * (fc1 + fc2)
+			f0 := math.Sqrt(fc1 * fc2)
 			bw := fc2 - fc1
 			if bw <= 0 {
 				bw = 1.0
@@ -135,9 +135,10 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 					q = 0.1
 				}
 				alpha := math.Sin(omega0) / (2.0 * q)
-				b0 := math.Sin(omega0) / 2.0
+				// Constant 0 dB peak gain bandpass
+				b0 := alpha
 				b1 := 0.0
-				b2 := -b0
+				b2 := -alpha
 				a0 := 1.0 + alpha
 				a1 := -2.0 * math.Cos(omega0)
 				a2 := 1.0 - alpha
@@ -148,16 +149,16 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 				a1 /= a0
 				a2 /= a0
 
-				x1, x2 := buf[0], buf[0]
+				x1, x2 := data[0], data[0]
 				y1, y2 := float32(0), float32(0)
-				for i := 0; i < len(buf); i++ {
-					x := buf[i]
+				for i := 0; i < len(data); i++ {
+					x := data[i]
 					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
 					x2 = x1
 					x1 = x
 					y2 = y1
 					y1 = out
-					buf[i] = out
+					data[i] = out
 				}
 			}
 		}
@@ -166,7 +167,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		if filter.BandstopEnabled {
 			fc1 := filter.BandstopFc1
 			fc2 := filter.BandstopFc2
-			f0 := 0.5 * (fc1 + fc2)
+			f0 := math.Sqrt(fc1 * fc2)
 			bw := fc2 - fc1
 			if bw <= 0 {
 				bw = 1.0
@@ -191,32 +192,59 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 				a1 /= a0
 				a2 /= a0
 
-				x1, x2 := buf[0], buf[0]
-				y1, y2 := buf[0], buf[0]
-				for i := 0; i < len(buf); i++ {
-					x := buf[i]
+				x1, x2 := data[0], data[0]
+				y1, y2 := data[0], data[0]
+				for i := 0; i < len(data); i++ {
+					x := data[i]
 					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
 					x2 = x1
 					x1 = x
 					y2 = y1
 					y1 = out
-					buf[i] = out
+					data[i] = out
 				}
 			}
 		}
 	}
 
-	applyFilterFwd(buf)
+	n := len(buf)
+	// Padlen is typically 3 * max(order), but for low cutoffs we need more.
+	// We use an odd extension of length equal to the buffer size to give it ample time to settle.
+	padlen := n
+	if padlen > 1000 {
+		padlen = 1000
+	}
+	padded := make([]float32, n+2*padlen)
 
+	// Odd extension at the start: x[-i] = 2*x[0] - x[i]
+	firstVal := buf[0]
+	for i := 0; i < padlen; i++ {
+		padded[padlen-1-i] = 2*firstVal - buf[i]
+	}
+	// Copy original data
+	copy(padded[padlen:padlen+n], buf)
+	// Odd extension at the end: x[n-1+i] = 2*x[n-1] - x[n-1-i]
+	lastVal := buf[n-1]
+	for i := 0; i < padlen; i++ {
+		padded[padlen+n+i] = 2*lastVal - buf[n-1-i]
+	}
+
+	// Apply filter forward
+	applyFilterFwd(padded)
+
+	// Apply filter backward if ZeroPhase
 	if filter.ZeroPhaseEnabled {
-		for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
-			buf[i], buf[j] = buf[j], buf[i]
+		for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
+			padded[i], padded[j] = padded[j], padded[i]
 		}
-		applyFilterFwd(buf)
-		for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
-			buf[i], buf[j] = buf[j], buf[i]
+		applyFilterFwd(padded)
+		for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
+			padded[i], padded[j] = padded[j], padded[i]
 		}
 	}
+
+	// Copy back the middle valid section
+	copy(buf, padded[padlen:padlen+n])
 }
 
 func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
