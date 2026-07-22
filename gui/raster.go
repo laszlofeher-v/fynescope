@@ -143,6 +143,9 @@ func (raster *screenRaster) MouseIn(event *desktop.MouseEvent) {
 	raster.mouseIn = true
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
+	if raster.scp != nil {
+		raster.scp.UpdateMousePos(event.Position.X, event.Position.Y)
+	}
 }
 func (raster *screenRaster) MouseMoved(event *desktop.MouseEvent) {
 	if raster.disableInput {
@@ -156,6 +159,9 @@ func (raster *screenRaster) MouseMoved(event *desktop.MouseEvent) {
 		case mouser:
 			m.mouseMoved(event.Position.X, event.Position.Y)
 		}
+	}
+	if raster.scp != nil {
+		raster.scp.UpdateMousePos(event.Position.X, event.Position.Y)
 	}
 }
 
@@ -247,6 +253,9 @@ func (raster *screenRaster) MouseOut() {
 		return
 	}
 	raster.mouseIn = false
+	if raster.scp != nil {
+		raster.scp.ResetMousePos()
+	}
 }
 
 func (raster *screenRaster) DragEnd() {
