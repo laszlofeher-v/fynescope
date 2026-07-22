@@ -85,122 +85,136 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		return
 	}
 
-	// 1. Lowpass (First-Order IIR)
-	if filter.LowpassEnabled {
-		fc := filter.LowpassFc
-		if fc < fs/2 {
-			alpha := 1.0 - math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-			y := buf[0]
-			for i := 0; i < len(buf); i++ {
-				y = y + float32(alpha)*(buf[i]-y)
-				buf[i] = y
+	applyFilterFwd := func(buf []float32) {
+		// 1. Lowpass (First-Order IIR)
+		if filter.LowpassEnabled {
+			fc := filter.LowpassFc
+			if fc < fs/2 {
+				alpha := 1.0 - math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
+				y := buf[0]
+				for i := 0; i < len(buf); i++ {
+					y = y + float32(alpha)*(buf[i]-y)
+					buf[i] = y
+				}
+			}
+		}
+
+		// 2. Highpass (First-Order IIR)
+		if filter.HighpassEnabled {
+			fc := filter.HighpassFc
+			if fc < fs/2 {
+				alpha := math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
+				xprev := buf[0]
+				y := float32(0)
+				for i := 0; i < len(buf); i++ {
+					x := buf[i]
+					y = float32(alpha)*y + float32(alpha)*(x-xprev)
+					xprev = x
+					buf[i] = y
+				}
+			} else {
+				for i := range buf {
+					buf[i] = 0
+				}
+			}
+		}
+
+		// 3. Bandpass (Second-Order IIR Biquad)
+		if filter.BandpassEnabled {
+			fc1 := filter.BandpassFc1
+			fc2 := filter.BandpassFc2
+			f0 := 0.5 * (fc1 + fc2)
+			bw := fc2 - fc1
+			if bw <= 0 {
+				bw = 1.0
+			}
+			omega0 := 2.0 * math.Pi * f0 * samplingTimeInterval
+			if omega0 < math.Pi {
+				q := f0 / bw
+				if q < 0.1 {
+					q = 0.1
+				}
+				alpha := math.Sin(omega0) / (2.0 * q)
+				b0 := math.Sin(omega0) / 2.0
+				b1 := 0.0
+				b2 := -b0
+				a0 := 1.0 + alpha
+				a1 := -2.0 * math.Cos(omega0)
+				a2 := 1.0 - alpha
+
+				b0 /= a0
+				b1 /= a0
+				b2 /= a0
+				a1 /= a0
+				a2 /= a0
+
+				x1, x2 := buf[0], buf[0]
+				y1, y2 := float32(0), float32(0)
+				for i := 0; i < len(buf); i++ {
+					x := buf[i]
+					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
+					x2 = x1
+					x1 = x
+					y2 = y1
+					y1 = out
+					buf[i] = out
+				}
+			}
+		}
+
+		// 4. Bandstop (Second-Order IIR Biquad)
+		if filter.BandstopEnabled {
+			fc1 := filter.BandstopFc1
+			fc2 := filter.BandstopFc2
+			f0 := 0.5 * (fc1 + fc2)
+			bw := fc2 - fc1
+			if bw <= 0 {
+				bw = 1.0
+			}
+			omega0 := 2.0 * math.Pi * f0 * samplingTimeInterval
+			if omega0 < math.Pi {
+				q := f0 / bw
+				if q < 0.1 {
+					q = 0.1
+				}
+				alpha := math.Sin(omega0) / (2.0 * q)
+				b0 := 1.0
+				b1 := -2.0 * math.Cos(omega0)
+				b2 := 1.0
+				a0 := 1.0 + alpha
+				a1 := -2.0 * math.Cos(omega0)
+				a2 := 1.0 - alpha
+
+				b0 /= a0
+				b1 /= a0
+				b2 /= a0
+				a1 /= a0
+				a2 /= a0
+
+				x1, x2 := buf[0], buf[0]
+				y1, y2 := buf[0], buf[0]
+				for i := 0; i < len(buf); i++ {
+					x := buf[i]
+					out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
+					x2 = x1
+					x1 = x
+					y2 = y1
+					y1 = out
+					buf[i] = out
+				}
 			}
 		}
 	}
 
-	// 2. Highpass (First-Order IIR)
-	if filter.HighpassEnabled {
-		fc := filter.HighpassFc
-		if fc < fs/2 {
-			alpha := math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
-			xprev := buf[0]
-			y := float32(0)
-			for i := 0; i < len(buf); i++ {
-				x := buf[i]
-				y = float32(alpha)*y + float32(alpha)*(x-xprev)
-				xprev = x
-				buf[i] = y
-			}
-		} else {
-			for i := range buf {
-				buf[i] = 0
-			}
+	applyFilterFwd(buf)
+
+	if filter.ZeroPhaseEnabled {
+		for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
+			buf[i], buf[j] = buf[j], buf[i]
 		}
-	}
-
-	// 3. Bandpass (Second-Order IIR Biquad)
-	if filter.BandpassEnabled {
-		fc1 := filter.BandpassFc1
-		fc2 := filter.BandpassFc2
-		f0 := 0.5 * (fc1 + fc2)
-		bw := fc2 - fc1
-		if bw <= 0 {
-			bw = 1.0
-		}
-		omega0 := 2.0 * math.Pi * f0 * samplingTimeInterval
-		if omega0 < math.Pi {
-			q := f0 / bw
-			if q < 0.1 {
-				q = 0.1
-			}
-			alpha := math.Sin(omega0) / (2.0 * q)
-			b0 := math.Sin(omega0) / 2.0
-			b1 := 0.0
-			b2 := -b0
-			a0 := 1.0 + alpha
-			a1 := -2.0 * math.Cos(omega0)
-			a2 := 1.0 - alpha
-
-			b0 /= a0
-			b1 /= a0
-			b2 /= a0
-			a1 /= a0
-			a2 /= a0
-
-			x1, x2 := buf[0], buf[0]
-			y1, y2 := float32(0), float32(0)
-			for i := 0; i < len(buf); i++ {
-				x := buf[i]
-				out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
-				x2 = x1
-				x1 = x
-				y2 = y1
-				y1 = out
-				buf[i] = out
-			}
-		}
-	}
-
-	// 4. Bandstop (Second-Order IIR Biquad)
-	if filter.BandstopEnabled {
-		fc1 := filter.BandstopFc1
-		fc2 := filter.BandstopFc2
-		f0 := 0.5 * (fc1 + fc2)
-		bw := fc2 - fc1
-		if bw <= 0 {
-			bw = 1.0
-		}
-		omega0 := 2.0 * math.Pi * f0 * samplingTimeInterval
-		if omega0 < math.Pi {
-			q := f0 / bw
-			if q < 0.1 {
-				q = 0.1
-			}
-			alpha := math.Sin(omega0) / (2.0 * q)
-			b0 := 1.0
-			b1 := -2.0 * math.Cos(omega0)
-			b2 := 1.0
-			a0 := 1.0 + alpha
-			a1 := -2.0 * math.Cos(omega0)
-			a2 := 1.0 - alpha
-
-			b0 /= a0
-			b1 /= a0
-			b2 /= a0
-			a1 /= a0
-			a2 /= a0
-
-			x1, x2 := buf[0], buf[0]
-			y1, y2 := buf[0], buf[0]
-			for i := 0; i < len(buf); i++ {
-				x := buf[i]
-				out := float32(b0)*x + float32(b1)*x1 + float32(b2)*x2 - float32(a1)*y1 - float32(a2)*y2
-				x2 = x1
-				x1 = x
-				y2 = y1
-				y1 = out
-				buf[i] = out
-			}
+		applyFilterFwd(buf)
+		for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
+			buf[i], buf[j] = buf[j], buf[i]
 		}
 	}
 }
@@ -228,6 +242,13 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		lblCh.TextStyle.Bold = true
 		lblCh.TextSize = 16
 		chBox.Add(container.NewHBox(lblCh))
+
+		zeroPhaseCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(checked bool) {
+			chSettings.DigitalFilter.ZeroPhaseEnabled = checked
+			notify()
+		})
+		zeroPhaseCheck.SetChecked(chSettings.DigitalFilter.ZeroPhaseEnabled)
+		chBox.Add(zeroPhaseCheck)
 
 		// 1. Lowpass filter
 		var lpControls *fyne.Container

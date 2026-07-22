@@ -77,16 +77,17 @@ type (
 		DigitalFilter      DigitalFilterSettings `yaml:"digitalfilter"`
 	}
 	DigitalFilterSettings struct {
-		LowpassEnabled  bool    `yaml:"lowpassenabled"`
-		LowpassFc       float64 `yaml:"lowpassfc"`
-		HighpassEnabled bool    `yaml:"highpassenabled"`
-		HighpassFc      float64 `yaml:"highpassfc"`
-		BandpassEnabled bool    `yaml:"bandpassenabled"`
-		BandpassFc1     float64 `yaml:"bandpassfc1"`
-		BandpassFc2     float64 `yaml:"bandpassfc2"`
-		BandstopEnabled bool    `yaml:"bandstopenabled"`
-		BandstopFc1     float64 `yaml:"bandstopfc1"`
-		BandstopFc2     float64 `yaml:"bandstopfc2"`
+		ZeroPhaseEnabled bool    `yaml:"zerophaseenabled"`
+		LowpassEnabled   bool    `yaml:"lowpassenabled"`
+		LowpassFc        float64 `yaml:"lowpassfc"`
+		HighpassEnabled  bool    `yaml:"highpassenabled"`
+		HighpassFc       float64 `yaml:"highpassfc"`
+		BandpassEnabled  bool    `yaml:"bandpassenabled"`
+		BandpassFc1      float64 `yaml:"bandpassfc1"`
+		BandpassFc2      float64 `yaml:"bandpassfc2"`
+		BandstopEnabled  bool    `yaml:"bandstopenabled"`
+		BandstopFc1      float64 `yaml:"bandstopfc1"`
+		BandstopFc2      float64 `yaml:"bandstopfc2"`
 	}
 	RlcFilterSettings struct {
 		GeneratorSource genericps.ChannelId `yaml:"generatorsource"`
