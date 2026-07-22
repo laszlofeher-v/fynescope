@@ -124,20 +124,22 @@ func etsBlockMode(psControl *PscDesc) state {
 			return err
 		}
 
-		psControl.SampleCountRequired = int32(math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval))
+		rawSampleCount := math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval)
 
 		const maxEtsSamples = 250000
-		if psControl.SampleCountRequired > maxEtsSamples {
-			slog.Debug("ETS sample count clamped to safe limit", "original", psControl.SampleCountRequired, "max", maxEtsSamples)
-			psControl.SampleCountRequired = maxEtsSamples
+		if rawSampleCount > maxEtsSamples {
+			slog.Debug("ETS sample count clamped to safe limit", "original", rawSampleCount, "max", maxEtsSamples)
+			rawSampleCount = maxEtsSamples
 		}
-		if psControl.SampleCountRequired > sampleCount {
-			slog.Debug("ETS sample count clamped to memory segment limit", "original", psControl.SampleCountRequired, "max", sampleCount)
-			psControl.SampleCountRequired = sampleCount
+		if rawSampleCount > float64(sampleCount) {
+			slog.Debug("ETS sample count clamped to memory segment limit", "original", rawSampleCount, "max", sampleCount)
+			rawSampleCount = float64(sampleCount)
 		}
+		
+		psControl.SampleCountRequired = int32(rawSampleCount)
 
 		if psControl.SampleCountRequired <= 0 {
-			err = fmt.Errorf("invalid sample count: %d (TimeInterval=%f, maxScreenTime=%f)",
+			err = fmt.Errorf("invalid sample count: %d (TimeInterval=%g, maxScreenTime=%g)",
 				psControl.SampleCountRequired, psControl.SamplingTimeInterval, psControl.maxScreenTime)
 			slog.Error("ETS prepare", "error", err)
 			return err
