@@ -574,7 +574,7 @@ func (scp *ScpDesc) Test() {
 		}
 	})
 	wait()
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 	fyne.Do(func() {
 		scp.ResetFfSweep()
 	})

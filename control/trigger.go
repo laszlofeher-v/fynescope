@@ -135,7 +135,7 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 				lower, upper = upper, lower
 			}
 			if lower == upper {
-				if upper < 32767 {
+				if upper < 32767 { // TODO make it device specific constant
 					upper++
 				} else {
 					lower--
