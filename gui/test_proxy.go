@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	maxLoggedErrors = 100
+	maxLoggedErrors = 256
 )
 const (
 	ftFuncId                       = "ftFunc"
@@ -68,6 +68,8 @@ const (
 	fvVRangeId                     = "fvVRange"
 	fvX10Id                        = "fvX10"
 	ffRasterId                     = "ffRaster"
+	fullScreenId                   = "fullScreen"
+	restoreScreenId                = "restoreScreen"
 	changeSideId                   = "changeSide"
 	triggerThresholdDispId         = "triggerThresholdDisp"
 	triggerHysteresisDispId        = "triggerHysteresisDisp"

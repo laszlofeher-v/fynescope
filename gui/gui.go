@@ -723,6 +723,8 @@ func (scp *ScpDesc) build2000Gui() {
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
+	addToTest(fullScreen, fullScreenId, -1)
+	addToTest(restoreScreen, restoreScreenId, -1)
 	addToTest(changeSide, changeSideId, -1)
 	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
