@@ -20,7 +20,7 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
-- **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR).
+- **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR) with Zero Phase (FiltFilt) support to eliminate phase shifting.
 
 Additionally, the application features a **Simulator Mode**, allowing you to explore the interface without physical hardware using the built-in software simulator.
 ## Getting Started
@@ -167,7 +167,7 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
 
 ### Visual Indicators
 
-- **Digital Filter Warning**: A warning icon (⚠️) is displayed next to a channel's label across all visualization tabs (f(t), f(v), FFT, Bode, RLC) whenever a digital filter (lowpass, highpass, bandpass, or bandstop) is actively applied to that channel. This serves as a reminder that the displayed signal has been actively modified.
+- **Digital Filter Warning**: A warning icon (⚠️) is displayed next to a channel's label across all visualization tabs (f(t), f(v), FFT, Bode, RLC) whenever a digital filter (lowpass, highpass, bandpass, or bandstop) is actively applied to that channel. This serves as a reminder that the displayed signal has been actively modified. Digital filters also support a **Zero Phase Delay (FiltFilt)** mode to neutralize phase-shifting and keep trigger points perfectly aligned.
 
 ### Mouse Interaction
 
@@ -346,7 +346,7 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 - **Limited measurements**: Only a small set of built-in measurements is provided. PicoScope 7 offers dozens of automated parameters (THD, SINAD, overshoot, phase, power factor, etc.).
 - **No DeepMeasure**: Cycle-by-cycle statistical analysis across millions of samples is not available.
 - **No mask testing**: Pass/fail mask limit testing for waveform validation is not supported.
-- **No math/virtual channels**: Computed channels (e.g., A+B, integrals, derivatives, filters) are not implemented.
+- **No math/virtual channels**: Computed channels (e.g., A+B, integrals, derivatives) are not implemented.
 
 **FFT / Spectrum Analyzer**
 
