@@ -823,8 +823,8 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	channelViewer := &scp.channelViewers[chIndex]
 	channel := &scp.Settings.Channels[chIndex]
 
-	if scp.Settings.Channels[chIndex].X10 {
-		scp.Settings.Channels[chIndex].X10 = false
+	if scp.Settings.Channels[chIndex].X10 != c {
+		scp.Settings.Channels[chIndex].X10 = c
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
 		scp.clearAllFtPersistentLayers()
