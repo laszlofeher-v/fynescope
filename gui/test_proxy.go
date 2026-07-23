@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"runtime/debug"
@@ -617,7 +618,7 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 // It rapidly injects randomized GUI events into the Fyne event loop to
 // aggressively test application stability, race conditions, and thread safety.
 // Final test statistics and encountered errors are logged to a file on completion.
-func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildDate string, webport string) {
+func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildDate string, webport string, settingsFileName string) {
 	commitID := FuzzerCommitID
 	if commitID == "" {
 		commitID = os.Getenv("FUZZER_COMMIT_ID")
@@ -682,6 +683,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			if webport != "" {
 				fmt.Fprintf(f, "Webport: %s\n", webport)
 			}
+			fmt.Fprintf(f, "Settings File: %s\n", settingsFileName)
 
 			tags := "none"
 			if info, ok := debug.ReadBuildInfo(); ok {
@@ -720,6 +722,14 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			customWriter.errorsMutex.Unlock()
 
 			f.Close()
+
+			tarFileName := fmt.Sprintf("fuzzer_report_%s.tar.gz", startTime.Format("200601021504"))
+			cmd := exec.Command("tar", "-czf", tarFileName, fileName, settingsFileName)
+			if err := cmd.Run(); err != nil {
+				log.Printf("Failed to create fuzzer report tarball: %v", err)
+			} else {
+				log.Printf("Created fuzzer report tarball: %s", tarFileName)
+			}
 		}
 	}()
 
