@@ -233,7 +233,7 @@ func startProfile(n int) error {
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
 //	-highres:  Enables the High-Resolution (HiRes) GUI option and feature (default false)
-func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string) {
+func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled *bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	simulator = flag.Bool("sim", false, "-sim=true")
@@ -247,6 +247,7 @@ func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount 
 	extGenFlag := registerExtGenFlag(inTestMode)
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
 	highRes = flag.Bool("highres", false, "-highres=true (enables HiRes UI option)")
+	gifEnabled = flag.Bool("gif", false, "-gif=true (enables GIF generation button)")
 
 	flag.Parse()
 
@@ -476,7 +477,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView := parseFlags()
+	profile, simulatorOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled := parseFlags()
 	setLogging(logLevel)
 
 	err = sim.SetChannelCount(*chCount, chCountExplicit)
@@ -494,6 +495,7 @@ func main() {
 	scp := &gui.ScpDesc{
 		ExtGenEnabled:    extGenEnabled,
 		HighResUIEnabled: *highRes,
+		GifEnabled:       *gifEnabled,
 	}
 	scp.App = app.New()
 
