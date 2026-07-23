@@ -729,6 +729,8 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				log.Printf("Failed to create fuzzer report tarball: %v", err)
 			} else {
 				log.Printf("Created fuzzer report tarball: %s", tarFileName)
+				os.Remove(fileName)
+				os.Remove(settingsFileName)
 			}
 		}
 	}()
