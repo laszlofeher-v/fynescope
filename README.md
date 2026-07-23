@@ -185,7 +185,7 @@ Fynescope allows exporting the current visual state of the application into imag
   - Left click in play icon starts the PicoScope hardware or the simulator.
 - **Graphs and Plots**:
   - **Scroll Wheel**: On trigger point change the hysteresis.
-  - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
+  - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`, or virtual channels) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
   - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase. Click the magnifier icon on the top toolbar to open the secondary **Time Zoom** window.
   - **Time Zoom Window**: When the Time Zoom window is active, you can move the time labels on main window to zoom into different sections of the main window.
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
@@ -260,7 +260,11 @@ The software simulator fully supports complex trigger evaluation, including AC c
 
 ## Virtual Channels
 
-Virtual channels let you create computed signals derived from the physical hardware channels using arbitrary math expressions. They are displayed on the f(t) raster alongside regular channels with their own color, vertical scale, and offset.
+Virtual channels let you create computed signals derived from the physical hardware channels using arbitrary math expressions. They are displayed on the f(t) raster alongside regular channels with their own color, vertical scale, vertical axis labels, and offset.
+
+> [!IMPORTANT]
+> **Virtual Channels cannot be used as trigger sources.** Triggering must always be configured using the physical hardware channels.
+
 
 ### Opening the Virtual Channel Manager
 
@@ -293,7 +297,7 @@ Expressions use the physical channel values as variables:
 
 | Variable | Meaning |
 |---|---|
-| `A` | Current sample value of Channel A (in mV, `float64`) |
+| `A` | Current sample value of Channel A (in Volts, `float64`) |
 | `B` | Channel B |
 | `C` | Channel C |
 | `D` | Channel D |

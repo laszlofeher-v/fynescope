@@ -218,6 +218,7 @@ type (
 		channelViewers             []channelViewerDesc
 		dftDrawers                 []drawer
 		ftDrawers                  []drawer
+	ftVChannelLabels           []ftVChannelLabelViewer
 		fvDrawers                  []drawer
 		ffDrawers                  []drawer
 		ftBottomLabelViewer        drawer
@@ -251,6 +252,7 @@ type (
 		timeZoomScopeFullScreen    rasterImage
 		timeZoomScopeSignalScreen  rasterImage
 		timeZoomDrawers            []drawer
+		tzVChannelLabels           []ftVChannelLabelViewer
 		timeZoomBoxOffset          float64
 		timeZoomBottomLabelViewer  drawer
 		timeZoomDivsX              [numberOfDivs + 1]float32

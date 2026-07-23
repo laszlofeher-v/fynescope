@@ -1157,7 +1157,7 @@ func (scp *ScpDesc) drawTzDivisions() {
 	}
 }
 func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
-	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	numberOfEnabledChannels := scp.numberOfAllEnabledChannels()
 	if numberOfEnabledChannels == 0 {
 		leftMargin = defaultLeftMargin
 		rightMargin = defaultRightMargin
@@ -1206,6 +1206,34 @@ func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 			channelViewer.hasScreenPartition = false
 		}
 	}
+	scp.ftVChannelLabels = make([]ftVChannelLabelViewer, len(scp.Settings.VirtualChannels))
+	for vChannelIndex := range scp.Settings.VirtualChannels {
+		vch := &scp.Settings.VirtualChannels[vChannelIndex]
+		if vch.Enabled {
+			scp.ftVChannelLabels[vChannelIndex] = newFtVChannelLabelViewer(scp.ftScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				vChannelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, false)
+			scp.addFtDrawer(&scp.ftVChannelLabels[vChannelIndex])
+			
+			switch {
+			case leftColumnCount > 1:
+				scp.ftVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				scp.ftVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				scp.ftVChannelLabels[vChannelIndex].leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+		}
+	}
 	return
 }
 
@@ -1230,7 +1258,7 @@ func (scp *ScpDesc) addTzDrawer(d drawer) {
 }
 
 func (scp *ScpDesc) clipTzChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
-	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	numberOfEnabledChannels := scp.numberOfAllEnabledChannels()
 	if numberOfEnabledChannels == 0 {
 		leftMargin = defaultLeftMargin
 		rightMargin = defaultRightMargin
@@ -1279,6 +1307,34 @@ func (scp *ScpDesc) clipTzChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 		} else {
 			channelViewer.hasScreenPartition = false
 			channelViewer.tzLabel = nil
+		}
+	}
+	scp.tzVChannelLabels = make([]ftVChannelLabelViewer, len(scp.Settings.VirtualChannels))
+	for vChannelIndex := range scp.Settings.VirtualChannels {
+		vch := &scp.Settings.VirtualChannels[vChannelIndex]
+		if vch.Enabled {
+			scp.tzVChannelLabels[vChannelIndex] = newFtVChannelLabelViewer(scp.timeZoomScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				vChannelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, true)
+			scp.addTzDrawer(&scp.tzVChannelLabels[vChannelIndex])
+			
+			switch {
+			case leftColumnCount > 1:
+				scp.tzVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				scp.tzVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				scp.tzVChannelLabels[vChannelIndex].leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
 		}
 	}
 	return

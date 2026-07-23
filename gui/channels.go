@@ -186,6 +186,16 @@ func (scp *ScpDesc) numberOfEnabledChannels() (n int, set uint64) {
 	return
 }
 
+func (scp *ScpDesc) numberOfAllEnabledChannels() int {
+	n, _ := scp.numberOfEnabledChannels()
+	for _, vch := range scp.Settings.VirtualChannels {
+		if vch.Enabled {
+			n++
+		}
+	}
+	return n
+}
+
 func (scp *ScpDesc) nthEnabledChannels(n int) (ch int) {
 	ch = 0
 	for i := 0; i < int(scp.channelCount); i++ {
