@@ -33,6 +33,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to open simulator: %v", err)
 	}
 
+	settingFileName = fmt.Sprintf("scopesettings_fuzzer_%d.yaml", time.Now().UnixNano())
+
 	// Ensure tests start with a clean state by removing the existing settings file
 	_ = os.Remove(settingFileName)
 	cfg, err := settings.Load(settingFileName)
@@ -123,7 +125,7 @@ func Test0(t *testing.T) {
 		}
 	}
 
-	scp.Random(timeout, Version, BuildDate, webportStr)
+	scp.Random(timeout, Version, BuildDate, webportStr, settingFileName)
 }
 
 // Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout flag.
@@ -161,5 +163,5 @@ func Test1(t *testing.T) {
 		}
 		return scp.Window.Canvas().Capture()
 	})
-	scp.Random(timeout, Version, BuildDate, webportStr)
+	scp.Random(timeout, Version, BuildDate, webportStr, settingFileName)
 }
