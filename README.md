@@ -126,6 +126,7 @@ For more options, including displaying version, build date, and license informat
 | `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
 | `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
+| `-gif` | `false` | Enable GIF generation button on the toolbar |
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
 | `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
 | `-webport` | `0` | Start a read-only web server on the specified port (requires `web` build tag, 0 to disable) |
@@ -312,7 +313,7 @@ go test -tags=noscope,testsw -v
 
 > **Note:** `Test0` and `Test1` are the specific fuzzer tests and require an extended timeout (e.g. `-timeout 105m`) to run. Omitting the timeout causes Go to use the default 10-minute timeout, which safely skips the fuzzer and runs only the deterministic tests.
 
-During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test, the final statistics (including Commit ID, Version, and Build Date) are safely written to a timestamped log file (e.g., `fuzzer_YYYYMMDDHHMM.log`) in the current working directory. If the test is interrupted (e.g., by SIGINT/Ctrl+C, or a timeout panic), it will still gracefully output the log using a different filename pattern: `fuzzer_interrupted_YYYYMMDDHHMM.log`.
+During the fuzzing process, a secondary **Fuzzer Status** window will automatically appear to track test progress. This window displays real-time statistics including the uptime, remaining time, number of simulated events, and a count of intercepted `level=ERROR` application logs. Upon completion of the test, the final statistics (including Commit ID, Version, and Build Date) are safely written to a timestamped log file (e.g., `fuzzer_YYYYMMDDHHMM.log`) and the active settings are saved to a unique `scopesettings_fuzzer_<timestamp>.yaml` file in the current working directory. If the test is interrupted (e.g., by SIGINT/Ctrl+C, or a timeout panic), it will still gracefully output the log using a different filename pattern: `fuzzer_interrupted_YYYYMMDDHHMM.log`. Finally, both the log file and the fuzzer settings file are automatically compressed into a single tarball (`fuzzer_report_YYYYMMDDHHMM.tar.gz`) for easy debugging, and the original uncompressed files are removed.
 
 ### Test coverage by package
 
