@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -453,6 +454,10 @@ func (scp *ScpDesc) toggleGifRecording() {
 			mx, my float32
 		}
 
+		// Atomic counters for progress tracking.
+		var capturedFrames atomic.Int64 // total frames sent to frameChan
+		var processedFrames atomic.Int64 // frames finished quantization
+
 		frameChan := make(chan rawGifFrame, 100)
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -480,6 +485,7 @@ func (scp *ScpDesc) toggleGifRecording() {
 
 				scp.gifFrames.Image = append(scp.gifFrames.Image, palettedImg)
 				scp.gifFrames.Delay = append(scp.gifFrames.Delay, 10)
+				processedFrames.Add(1)
 			}
 		}()
 
@@ -500,6 +506,7 @@ func (scp *ScpDesc) toggleGifRecording() {
 					if img != nil {
 						select {
 						case frameChan <- rawGifFrame{img: img, mx: mx, my: my}:
+							capturedFrames.Add(1)
 						default:
 							slog.Warn("GIF frame dropped due to buffer full")
 						}
@@ -520,8 +527,15 @@ func (scp *ScpDesc) toggleGifRecording() {
 
 						scp.updateLastSaveDir(uc.URI())
 
-						progress := widget.NewProgressBarInfinite()
-						progressDlg := dialog.NewCustom("Generating GIF", "Cancel", progress, scp.Window)
+						totalFrames := capturedFrames.Load()
+
+						progressBar := widget.NewProgressBar()
+						progressBar.Min = 0
+						progressBar.Max = 1
+						statusLabel := widget.NewLabel(fmt.Sprintf("Quantizing frames 0 / %d (0%%)", totalFrames))
+						statusLabel.Alignment = fyne.TextAlignCenter
+						progressContent := container.NewVBox(progressBar, statusLabel)
+						progressDlg := dialog.NewCustom("Generating GIF", "Cancel", progressContent, scp.Window)
 
 						cancelChan := make(chan struct{})
 						cancelled := false
@@ -534,19 +548,45 @@ func (scp *ScpDesc) toggleGifRecording() {
 						go func() {
 							defer uc.Close()
 
-							// Wait for remaining frames to process
+							// Wait for remaining frames to process, updating progress bar.
 							wgChan := make(chan struct{})
 							go func() {
 								wg.Wait()
 								close(wgChan)
 							}()
 
-							select {
-							case <-cancelChan:
-								storage.Delete(uc.URI())
-								return
-							case <-wgChan:
+							ticker := time.NewTicker(100 * time.Millisecond)
+							defer ticker.Stop()
+						quantizeLoop:
+							for {
+								select {
+								case <-cancelChan:
+									storage.Delete(uc.URI())
+									return
+								case <-wgChan:
+									break quantizeLoop
+								case <-ticker.C:
+									done := processedFrames.Load()
+									var frac float64
+									if totalFrames > 0 {
+										frac = float64(done) / float64(totalFrames)
+									}
+									// Reserve the last 10% for encoding.
+									barVal := frac * 0.9
+									pct := int(frac * 100)
+									labelText := fmt.Sprintf("Quantizing frames %d / %d (%d%%)", done, totalFrames, pct)
+									fyne.Do(func() {
+										progressBar.SetValue(barVal)
+										statusLabel.SetText(labelText)
+									})
+								}
 							}
+
+							// Phase 2: encoding
+							fyne.Do(func() {
+								progressBar.SetValue(0.9)
+								statusLabel.SetText("Encoding GIF…")
+							})
 
 							// Now write the GIF
 							cw := &cancelWriter{writer: uc, cancel: cancelChan}
@@ -558,6 +598,11 @@ func (scp *ScpDesc) toggleGifRecording() {
 							if cancelled {
 								storage.Delete(uc.URI())
 							} else {
+								fyne.Do(func() {
+									progressBar.SetValue(1.0)
+									statusLabel.SetText("Done!")
+								})
+								time.Sleep(300 * time.Millisecond)
 								progressDlg.Hide()
 							}
 						}()
