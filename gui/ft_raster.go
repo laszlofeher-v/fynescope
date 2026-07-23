@@ -602,7 +602,96 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 			}
 		}
 	}
+
+	// Draw virtual channels
+	for i, vch := range sv.scp.Settings.VirtualChannels {
+		if !vch.Enabled {
+			continue
+		}
+		bufIdx := int(sv.scp.channelCount) + i
+		if bufIdx >= len(sv.scp.displayBuffers) {
+			continue
+		}
+		displayBuffer := sv.scp.displayBuffers[bufIdx]
+		if len(displayBuffer) == 0 {
+			continue
+		}
+
+		yScale := h / float64(2.0*genericps.RangeValuesMv[vch.VRange])
+		col := vch.Col[sv.scp.Settings.ChannelColorIndex]
+		yOffset := sv.scp.offsetNToFtY(vch.DisplayVOffset)
+		offsetFloat := float64(zeroOffset) + yOffset
+
+		var leftPadding float64
+		var extra float64
+		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
+			totalSamples := len(displayBuffer)
+			displaySamples := totalSamples / control.SincWMultiplier
+			leftPadding = float64(totalSamples-displaySamples) / 2.0
+			extra = 0
+		} else {
+			leftPadding = float64(control.LeftOut)
+			extra = 1
+		}
+
+		t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
+			float64(sv.scp.controlXRoundError) +
+			float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
+		if !sv.isTimeZoom {
+			t0 -= sv.scp.timeZoomBoxOffset * unit
+		}
+		t0 -= extra * deltaT
+
+		var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+		if sv.isTimeZoom {
+			targetImg = sv.scp.timeZoomScopeSignalScreen.(draw.Image)
+		}
+
+		drawVchLinear := func() {
+			prevX := t0 + float64(bounds.Min.X)
+			s := displayBuffer[0]
+			if vch.Inverted {
+				s = -s
+			}
+			prevY := -yScale*float64(s) + offsetFloat
+			for j := 1; j < len(displayBuffer); j++ {
+				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				s := displayBuffer[j]
+				if vch.Inverted {
+					s = -s
+				}
+				y := -yScale*float64(s) + offsetFloat
+				drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
+				prevX = x
+				prevY = y
+			}
+		}
+
+		drawVchDot := func() {
+			for j := 0; j < len(displayBuffer); j++ {
+				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				s := displayBuffer[j]
+				if vch.Inverted {
+					s = -s
+				}
+				y := -yScale*float64(s) + offsetFloat
+				ix := int(x)
+				iy := int(y)
+				if ix >= bounds.Min.X && ix < bounds.Max.X && iy >= bounds.Min.Y && iy < bounds.Max.Y {
+					targetImg.Set(ix, iy, col)
+				}
+			}
+		}
+
+		switch sv.scp.Settings.Time.Interpolation {
+		case settings.Dot:
+			drawVchDot()
+		default:
+			drawVchLinear()
+		}
+	}
 }
+
 
 func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (tAtCursor float64, instV, instVCur []float32) {
 	unit := w / sv.scp.maxScreenTime
