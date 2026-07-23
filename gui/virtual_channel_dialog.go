@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"fynescope/checkcolorpick"
+	"fynescope/selectscroll"
 	"fynescope/settings"
 	"image/color"
 
@@ -26,6 +27,7 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 	})
 
 	var selectedIndex int = -1
+	var updatingForm bool
 
 	// Default color for new virtual channels
 	defaultCol := color.NRGBA{R: 0xff, G: 0x80, B: 0x00, A: 0xff}
@@ -45,13 +47,34 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 	errorLabel := widget.NewLabel("")
 	errorLabel.Hide()
 
-	vRangeSelect := widget.NewSelect(inputRanges, func(s string) {})
-	vRangeSelect.SetSelected("±1V")
+	vRangeSelect := selectscroll.NewSelectScroll(inputRanges, func(s string, _ selectscroll.Exception) {
+		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
+			return
+		}
+		scp.Settings.VirtualChannels[selectedIndex].VRange = vRanges[s]
+		scp.refreshRasters()
+	}, "±1V")
 
 	offsetEntry := widget.NewEntry()
 	offsetEntry.SetText("0.0")
+	offsetEntry.OnChanged = func(s string) {
+		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
+			return
+		}
+		var off float32
+		if _, err := fmt.Sscanf(s, "%f", &off); err == nil {
+			scp.Settings.VirtualChannels[selectedIndex].Offset = off
+			scp.refreshRasters()
+		}
+	}
 
-	invertCheck := widget.NewCheck("Invert", func(b bool) {})
+	invertCheck := widget.NewCheck("Invert", func(b bool) {
+		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
+			return
+		}
+		scp.Settings.VirtualChannels[selectedIndex].Inverted = b
+		scp.refreshRasters()
+	})
 
 	// CheckColorPick: left-click = toggle enabled, right-click = color picker
 	minSz := fyne.NewSize(checkColorPickMinSize, checkColorPickMinSize)
@@ -62,6 +85,12 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			r, g, b, a := col.RGBA()
 			currentCol = color.NRGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: uint8(a >> 8)}
 		}
+		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
+			return
+		}
+		scp.Settings.VirtualChannels[selectedIndex].Enabled = v
+		scp.Settings.VirtualChannels[selectedIndex].Col = [2]color.NRGBA{currentCol, currentCol}
+		scp.refreshRasters()
 	}, defaultCol, minSz)
 	enableWidget.Val = true
 
@@ -78,6 +107,9 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 	}
 
 	var updateForm = func(idx int) {
+		updatingForm = true
+		defer func() { updatingForm = false }()
+
 		if idx >= 0 && idx < len(scp.Settings.VirtualChannels) {
 			vch := scp.Settings.VirtualChannels[idx]
 			nameEntry.SetText(vch.Name)
@@ -109,6 +141,12 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 	})
 
 	acceptBtn := widget.NewButton("Accept", func() {
+		if nameEntry.Text == "" {
+			errorLabel.SetText("Error: channel name must not be empty")
+			errorLabel.Show()
+			return
+		}
+
 		eng, err := CompileVirtualChannel(exprEntry.Text)
 		if err != nil {
 			errorLabel.SetText(fmt.Sprintf("Error: %v", err))
@@ -138,18 +176,22 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			}
 		}
 
+		var newSelectedIndex int
 		if found >= 0 {
 			scp.Settings.VirtualChannels[found] = newVCh
 			for len(scp.virtualChannelEngines) <= found {
 				scp.virtualChannelEngines = append(scp.virtualChannelEngines, nil)
 			}
 			scp.virtualChannelEngines[found] = eng
+			newSelectedIndex = found
 		} else if selectedIndex >= 0 && selectedIndex < len(scp.Settings.VirtualChannels) {
 			scp.Settings.VirtualChannels[selectedIndex] = newVCh
 			scp.virtualChannelEngines[selectedIndex] = eng
+			newSelectedIndex = selectedIndex
 		} else {
 			scp.Settings.VirtualChannels = append(scp.Settings.VirtualChannels, newVCh)
 			scp.virtualChannelEngines = append(scp.virtualChannelEngines, eng)
+			newSelectedIndex = len(scp.Settings.VirtualChannels) - 1
 		}
 
 		// Extend buffer slices for the new virtual channel slot.
@@ -165,9 +207,9 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		}
 
 		list.Refresh()
-		selectedIndex = -1
-		list.UnselectAll()
-		clearForm()
+		list.Select(newSelectedIndex)
+		errorLabel.Hide()
+		scp.refreshRasters()
 	})
 
 	deleteBtn := widget.NewButton("Delete", func() {
