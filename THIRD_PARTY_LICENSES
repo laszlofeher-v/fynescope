@@ -8,6 +8,7 @@ This software uses the following third-party libraries:
 * golang.org/x/text (BSD 3-Clause)
 * github.com/stretchr/testify (MIT)
 * gopkg.in/yaml.v3 (MIT)
+* github.com/antonmedv/expr (MIT) — Copyright (c) 2018 Anton Medvedev
 * PicoScope 2000 Series PC Oscilloscopes API (ps2000.h)
   Copyright (c) 2005 - 2026 Pico Technology Ltd. All rights reserved.
 

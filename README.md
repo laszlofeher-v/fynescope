@@ -21,6 +21,7 @@ Once the application is running, you can navigate between different visualizatio
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
 - **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR) with Zero Phase (FiltFilt) support to eliminate phase shifting.
+- **Virtual Channels**: Computed channels derived from physical channel data using arbitrary math expressions (see [Virtual Channels](#virtual-channels) below).
 
 Additionally, the application features a **Simulator Mode**, allowing you to explore the interface without physical hardware using the built-in software simulator.
 ## Getting Started
@@ -257,6 +258,82 @@ The software simulator fully supports complex trigger evaluation, including AC c
 - **AND logic only**: OR conditions across channels are not supported in this release.
 - **Single condition block**: Only one `TriggerConditions` block is sent to the API; multiple overlapping condition blocks are not yet exposed in the UI.
 
+## Virtual Channels
+
+Virtual channels let you create computed signals derived from the physical hardware channels using arbitrary math expressions. They are displayed on the f(t) raster alongside regular channels with their own color, vertical scale, and offset.
+
+### Opening the Virtual Channel Manager
+
+Click the **`+Ch`** button on the top toolbar. A persistent **Virtual Channels** window opens. Clicking `+Ch` again while the window is already open simply brings it back into focus.
+
+### Managing Virtual Channels
+
+The left pane shows a list of all defined virtual channels.
+
+- **New**: Clears the editor form so you can define a new channel.
+- **Delete**: Removes the selected channel from the list, immediately erasing its trace from the raster.
+- Clicking an entry in the list loads its settings into the editor form for editing.
+
+### Configuring a Virtual Channel
+
+| Field | Description |
+|---|---|
+| **Name** | Identifier shown in the list. Saving with an existing name overwrites that channel. |
+| **Expression** | The math formula (see [Expression Syntax](#expression-syntax) below). |
+| **V/div** | Voltage range for the Y-axis scale, identical to the physical channel ranges. |
+| **Offset (mV)** | Vertical offset applied to the rendered trace. |
+| **Invert** | Flips the signal vertically. |
+| **Enable / Color** | A `CheckColorPick` widget. **Left-click** toggles the channel on/off. **Right-click** opens a color picker to choose the trace color. |
+
+Click **Accept** to compile and save the channel. If the expression contains a syntax error, the error is displayed in red beneath the expression field and the form stays open.
+
+### Expression Syntax
+
+Expressions use the physical channel values as variables:
+
+| Variable | Meaning |
+|---|---|
+| `A` | Current sample value of Channel A (in mV, `float64`) |
+| `B` | Channel B |
+| `C` | Channel C |
+| `D` | Channel D |
+
+The expression is evaluated **sample-by-sample** immediately after each acquisition, right after the physical channel data has been scaled and digitally filtered.
+
+**Arithmetic operators**: `+`, `-`, `*`, `/`, `**` (power), `%`
+
+**Grouping**: `(`, `)`
+
+**Built-in math functions**:
+
+| Function | Description |
+|---|---|
+| `Sin(x)`, `Cos(x)`, `Tan(x)` | Trigonometric |
+| `Asin(x)`, `Acos(x)`, `Atan(x)` | Inverse trigonometric |
+| `Sinh(x)`, `Cosh(x)`, `Tanh(x)` | Hyperbolic |
+| `Abs(x)` | Absolute value |
+| `Sqrt(x)` | Square root |
+| `Pow(x, y)` | x raised to the power y |
+| `Log(x)` | Natural logarithm |
+| `Log10(x)` | Base-10 logarithm |
+| `Exp(x)` | e raised to x |
+
+**Example expressions:**
+
+```
+A + B              // sum of two channels
+(A - B) / 2        // differential signal
+Abs(A)             // rectified signal
+Sqrt(A * A + B * B)  // RMS envelope of two channels
+A * Sin(B)         // AM-modulated signal
+```
+
+> **Note:** Virtual channel expressions may only reference physical channels (`A`–`D`). Referencing other virtual channels in an expression is not supported.
+
+### Implementation Details
+
+Expressions are compiled to byte-code at definition time using the [`github.com/antonmedv/expr`](https://github.com/antonmedv/expr) library, which means each sample evaluation is a fast byte-code dispatch with no string parsing overhead at runtime.
+
 ## Settings & Configuration
 
 `fynescope` automatically saves your application settings, such as channel configuration, trigger settings, UI window size, and other preferences. 
@@ -355,7 +432,7 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 - **Limited measurements**: Only a small set of built-in measurements is provided. PicoScope 7 offers dozens of automated parameters (THD, SINAD, overshoot, phase, power factor, etc.).
 - **No DeepMeasure**: Cycle-by-cycle statistical analysis across millions of samples is not available.
 - **No mask testing**: Pass/fail mask limit testing for waveform validation is not supported.
-- **No math/virtual channels**: Computed channels (e.g., A+B, integrals, derivatives) are not implemented.
+- **Limited virtual channels**: Virtual channels support arbitrary math expressions over physical channels. Integrals, derivatives, FFT-domain operations, and referencing other virtual channels in expressions are not yet implemented.
 
 **FFT / Spectrum Analyzer**
 

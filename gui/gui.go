@@ -171,6 +171,8 @@ type (
 		extgenTab                    *container.TabItem
 		setTab                       *container.TabItem
 		psControl                    *control.PscDesc
+		virtualChannelEngines        []*VirtualChannelEngine
+		virtualChWindow             fyne.Window
 		triggerHysteresisDisp        *disp7.DigitArray
 		triggerThresholdDisp         *disp7.DigitArray
 		boxTriggerHysteresisDisp     *fyne.Container
@@ -1062,6 +1064,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
+			scp.toolbar.Add(widget.NewButton("+Ch", scp.openVirtualChannelDialog))
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -1082,6 +1085,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
+			scp.toolbar.Add(widget.NewButton("+Ch", scp.openVirtualChannelDialog))
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -1102,6 +1106,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.recordGifButton = widget.NewButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
 		scp.toggleGifRecording()
 	})
+	vchButton := widget.NewButton("+Ch", scp.openVirtualChannelDialog)
 	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
 	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
 	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
@@ -1123,13 +1128,13 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	if scp.Settings.Window.LeftControl {
 		if scp.GifEnabled {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout,
 				layout.NewSpacer(),
 				scp.status.label)
 		} else {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout,
 				layout.NewSpacer(),
@@ -1139,12 +1144,12 @@ func (scp *ScpDesc) build2000Gui() {
 	} else {
 		if scp.GifEnabled {
 			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout)
 		} else {
 			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
+				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout)
 		}
@@ -1269,11 +1274,20 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		err = fmt.Errorf("getInfo: unknown variant info %s", scp.psControl.Info)
 		return
 	}
-	scp.displayBuffers = make([][]float32, scp.channelCount)
+	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
-	scp.ftPersistentLayers = make([]*image.RGBA, scp.channelCount)
-	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount)
+	
+	scp.virtualChannelEngines = make([]*VirtualChannelEngine, len(scp.Settings.VirtualChannels))
+	for i, vch := range scp.Settings.VirtualChannels {
+		eng, err := CompileVirtualChannel(vch.Expression)
+		if err == nil {
+			scp.virtualChannelEngines[i] = eng
+		}
+	}
+	
+	scp.ftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
+	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
 	switch scp.psControl.Info {

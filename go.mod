@@ -4,6 +4,7 @@ go 1.25.4
 
 require (
 	fyne.io/fyne/v2 v2.7.4
+	github.com/antonmedv/expr v1.15.5
 	github.com/google/gousb v1.1.3
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/image v0.34.0

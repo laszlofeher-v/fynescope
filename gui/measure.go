@@ -619,6 +619,33 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 			}
 		}
 	}
+	
+	// Evaluate Virtual Channels
+	var bufA, bufB, bufC, bufD []float32
+	if len(scp.displayBuffers) > 0 { bufA = scp.displayBuffers[0] }
+	if len(scp.displayBuffers) > 1 { bufB = scp.displayBuffers[1] }
+	if len(scp.displayBuffers) > 2 { bufC = scp.displayBuffers[2] }
+	if len(scp.displayBuffers) > 3 { bufD = scp.displayBuffers[3] }
+	
+	size := 0
+	if len(bufA) > size { size = len(bufA) }
+	if len(bufB) > size { size = len(bufB) }
+	
+	for i, vch := range scp.Settings.VirtualChannels {
+		if !vch.Enabled || i >= len(scp.virtualChannelEngines) || scp.virtualChannelEngines[i] == nil {
+			continue
+		}
+		idx := int(scp.channelCount) + i
+		if idx < len(scp.displayBuffers) {
+			dest := scp.displayBuffers[idx]
+			if len(dest) < size {
+				dest = make([]float32, size)
+				scp.displayBuffers[idx] = dest
+			}
+			scp.virtualChannelEngines[i].EvaluateBuffer(dest, bufA, bufB, bufC, bufD, size)
+		}
+	}
+
 	if scp.controlTab != nil && scp.controlTab.SelectedIndex() == ffTabIndex {
 		scp.processFfData()
 		if scp.ffRaster != nil {
