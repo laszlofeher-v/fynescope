@@ -33,7 +33,9 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to open simulator: %v", err)
 	}
 
-	settingFileName = fmt.Sprintf("scopesettings_fuzzer_%d.yaml", time.Now().UnixNano())
+	if os.Getenv("FUZZER_COMMIT_ID") != "" {
+		settingFileName = fmt.Sprintf("scopesettings_fuzzer_%d.yaml", time.Now().UnixNano())
+	}
 
 	// Ensure tests start with a clean state by removing the existing settings file
 	_ = os.Remove(settingFileName)
