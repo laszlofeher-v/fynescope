@@ -156,7 +156,7 @@ type (
 		ffAmpDisp         *disp7.DigitArray
 		ffOffsetDisp      *disp7.DigitArray
 
-		bodeBuffers                  [genericps.MaxChannel][]bodePoint
+		bodeBuffers                  [][]bodePoint
 		maxSamplingRate              uint32
 		segmentIndex                 uint32 // maxSamplingRate: sample/sec
 		controlTab                   *container.AppTabs
@@ -1277,6 +1277,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		return
 	}
 	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
+	scp.bodeBuffers = make([][]bodePoint, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
 	

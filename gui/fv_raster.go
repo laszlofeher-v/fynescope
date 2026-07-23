@@ -135,12 +135,33 @@ func (fv *fvViewer) draw() {
 	yLabelOffsetLeft := 0
 	yLabelOffsetRight := 0
 	yCount := 0
-	for i := 0; i < int(fv.scp.channelCount); i++ {
-		ch := fv.scp.Settings.Channels[i]
-		if ch.FvMode == settings.FvValue && ch.Enabled {
-			yRange := genericps.RangeValuesMv[ch.VRange]
-			col := ch.Col[fv.scp.Settings.ChannelColorIndex]
-			yOffset := fv.offsetNToFv(ch.DisplayVOffset)
+	totalChannels := int(fv.scp.channelCount) + len(fv.scp.Settings.VirtualChannels)
+	for i := 0; i < totalChannels; i++ {
+		var fvMode settings.FvMode
+		var enabled bool
+		var vRange genericps.RangeEnum
+		var col color.NRGBA
+		var displayVOffset int
+		if i < int(fv.scp.channelCount) {
+			ch := fv.scp.Settings.Channels[i]
+			fvMode = ch.FvMode
+			enabled = ch.Enabled
+			vRange = ch.VRange
+			col = ch.Col[fv.scp.Settings.ChannelColorIndex]
+			displayVOffset = ch.DisplayVOffset
+		} else {
+			vch := fv.scp.Settings.VirtualChannels[i-int(fv.scp.channelCount)]
+			fvMode = settings.FvValue
+			enabled = vch.Enabled
+			vRange = vch.VRange
+			col = vch.Col[fv.scp.Settings.ChannelColorIndex]
+			displayVOffset = vch.DisplayVOffset
+		}
+		
+		if fvMode == settings.FvValue && enabled {
+			yRange := genericps.RangeValuesMv[vRange]
+			col := col
+			yOffset := fv.offsetNToFv(displayVOffset)
 
 			var minX, maxX int
 			if yCount%2 == 0 {
@@ -156,7 +177,7 @@ func (fv *fvViewer) draw() {
 			for j := 0; j <= numberOfDivs; j++ {
 				yf := float64(bounds.Min.Y) + float64(j)*h/float64(numberOfDivs) + yOffset
 				vy := float64(yRange) - float64(j)*2.0*float64(yRange)/float64(numberOfDivs)
-				vstr := fv.formatVoltage(float32(vy), ch.VRange)
+				vstr := fv.formatVoltage(float32(vy), vRange)
 				left, top, right, bottom := fv.scp.boundString(vstr)
 
 				var lx int
@@ -187,19 +208,41 @@ func (fv *fvViewer) draw() {
 		return
 	}
 
-	for i := 0; i < int(fv.scp.channelCount); i++ {
-		ch := fv.scp.Settings.Channels[i]
-		if ch.FvMode == settings.FvValue && ch.Enabled {
+	for i := 0; i < totalChannels; i++ {
+		var fvMode settings.FvMode
+		var enabled bool
+		var vRange genericps.RangeEnum
+		var col color.NRGBA
+		var displayVOffset int
+		if i < int(fv.scp.channelCount) {
+			ch := fv.scp.Settings.Channels[i]
+			fvMode = ch.FvMode
+			enabled = ch.Enabled
+			vRange = ch.VRange
+			col = ch.Col[fv.scp.Settings.ChannelColorIndex]
+			displayVOffset = ch.DisplayVOffset
+		} else {
+			vch := fv.scp.Settings.VirtualChannels[i-int(fv.scp.channelCount)]
+			fvMode = settings.FvValue
+			enabled = vch.Enabled
+			vRange = vch.VRange
+			col = vch.Col[fv.scp.Settings.ChannelColorIndex]
+			displayVOffset = vch.DisplayVOffset
+		}
+		if fvMode == settings.FvValue && enabled {
+			if len(fv.scp.displayBuffers) <= i {
+				continue
+			}
 			yBuffer := fv.scp.displayBuffers[i]
 			if len(yBuffer) == 0 {
 				continue
 			}
 
-			yRange := genericps.RangeValuesMv[ch.VRange]
+			yRange := genericps.RangeValuesMv[vRange]
 			yScale := h / (2.0 * float64(yRange))
-			yOffset := fv.offsetNToFv(ch.DisplayVOffset)
+			yOffset := fv.offsetNToFv(displayVOffset)
 			yZero := float64(bounds.Min.Y) + h/2.0 + yOffset
-			col := ch.Col[fv.scp.Settings.ChannelColorIndex]
+			col := col
 
 			samples := len(xBuffer)
 			if len(yBuffer) < samples {
@@ -227,8 +270,9 @@ func (fv *fvViewer) draw() {
 }
 
 func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle, xCh int) (instV, instVCur []float32) {
-	instV = make([]float32, len(fv.scp.channelViewers))
-	instVCur = make([]float32, len(fv.scp.channelViewers))
+	totalChannels := int(fv.scp.channelCount) + len(fv.scp.Settings.VirtualChannels)
+	instV = make([]float32, totalChannels)
+	instVCur = make([]float32, totalChannels)
 
 	if xCh == -1 {
 		return instV, instVCur
@@ -260,20 +304,37 @@ func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rect
 	instV[xCh] = xBuffer[bestIdx]
 	instVCur[xCh] = v_cursor_x
 
-	for channelIndex := 0; channelIndex < int(fv.scp.channelCount); channelIndex++ {
+	for channelIndex := 0; channelIndex < totalChannels; channelIndex++ {
 		if channelIndex == xCh {
 			continue
 		}
-		channel := &fv.scp.Settings.Channels[channelIndex]
-		if channel.FvMode == settings.FvValue && channel.Enabled && len(fv.scp.displayBuffers) > channelIndex {
+		var fvMode settings.FvMode
+		var enabled bool
+		var vRange genericps.RangeEnum
+		var displayVOffset int
+		if channelIndex < int(fv.scp.channelCount) {
+			ch := fv.scp.Settings.Channels[channelIndex]
+			fvMode = ch.FvMode
+			enabled = ch.Enabled
+			vRange = ch.VRange
+			displayVOffset = ch.DisplayVOffset
+		} else {
+			vch := fv.scp.Settings.VirtualChannels[channelIndex-int(fv.scp.channelCount)]
+			fvMode = settings.FvValue
+			enabled = vch.Enabled
+			vRange = vch.VRange
+			displayVOffset = vch.DisplayVOffset
+		}
+		
+		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex {
 			displayBuffer := fv.scp.displayBuffers[channelIndex]
 			if len(displayBuffer) == 0 || bestIdx >= len(displayBuffer) {
 				continue
 			}
 
-			yRange := genericps.RangeValuesMv[channel.VRange]
+			yRange := genericps.RangeValuesMv[vRange]
 			yScale := h / (2.0 * float64(yRange))
-			yOffset := fv.offsetNToFv(channel.DisplayVOffset)
+			yOffset := fv.offsetNToFv(displayVOffset)
 			yZero := float64(bounds.Min.Y) + h/2.0 + yOffset
 
 			v_cursor := float32((yZero - float64(my)) / yScale)
@@ -346,11 +407,13 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		fv.inspectorLastY = fv.mouseY
 	}
 
-	if fv.inspectorSumV == nil || len(fv.inspectorSumV) != len(fv.scp.channelViewers) {
-		fv.inspectorSumV = make([]float32, len(fv.scp.channelViewers))
-		fv.inspectorSumVCur = make([]float32, len(fv.scp.channelViewers))
-		fv.inspectorDispV = make([]float32, len(fv.scp.channelViewers))
-		fv.inspectorDispVCur = make([]float32, len(fv.scp.channelViewers))
+	totalChannels := int(fv.scp.channelCount) + len(fv.scp.Settings.VirtualChannels)
+
+	if fv.inspectorSumV == nil || len(fv.inspectorSumV) != totalChannels {
+		fv.inspectorSumV = make([]float32, totalChannels)
+		fv.inspectorSumVCur = make([]float32, totalChannels)
+		fv.inspectorDispV = make([]float32, totalChannels)
+		fv.inspectorDispVCur = make([]float32, totalChannels)
 	}
 
 	if moved {
@@ -361,7 +424,7 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		fv.inspectorSamples = 0
 	}
 
-	for i := range fv.scp.channelViewers {
+	for i := 0; i < totalChannels; i++ {
 		fv.inspectorSumV[i] += instVLocal[i]
 		fv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
@@ -375,7 +438,7 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	if updateDisplay {
-		for i := range fv.scp.channelViewers {
+		for i := 0; i < totalChannels; i++ {
 			if fv.inspectorSamples > 0 {
 				fv.inspectorDispV[i] = fv.inspectorSumV[i] / float32(fv.inspectorSamples)
 				fv.inspectorDispVCur[i] = fv.inspectorSumVCur[i] / float32(fv.inspectorSamples)
@@ -398,21 +461,40 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		col  color.Color
 	}{xText, xCol})
 
-	for channelIndex := 0; channelIndex < int(fv.scp.channelCount); channelIndex++ {
+	for channelIndex := 0; channelIndex < totalChannels; channelIndex++ {
 		if channelIndex == xCh {
 			continue
 		}
-		channel := &fv.scp.Settings.Channels[channelIndex]
-		if channel.FvMode == settings.FvValue && channel.Enabled && len(fv.scp.displayBuffers) > channelIndex && len(fv.scp.displayBuffers[channelIndex]) > 0 {
+		var fvMode settings.FvMode
+		var enabled bool
+		var vRange genericps.RangeEnum
+		var col color.NRGBA
+		var chName string
+		if channelIndex < int(fv.scp.channelCount) {
+			ch := fv.scp.Settings.Channels[channelIndex]
+			fvMode = ch.FvMode
+			enabled = ch.Enabled
+			vRange = ch.VRange
+			col = ch.Col[fv.scp.Settings.ChannelColorIndex]
+			chName = fmt.Sprintf("Ch%c(Y)", 'A'+channelIndex)
+		} else {
+			vch := fv.scp.Settings.VirtualChannels[channelIndex-int(fv.scp.channelCount)]
+			fvMode = settings.FvValue
+			enabled = vch.Enabled
+			vRange = vch.VRange
+			col = vch.Col[fv.scp.Settings.ChannelColorIndex]
+			chName = fmt.Sprintf("%s(Y)", vch.Name)
+		}
+		
+		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex && len(fv.scp.displayBuffers[channelIndex]) > 0 {
 			v := fv.inspectorDispV[channelIndex]
 			v_cursor := fv.inspectorDispVCur[channelIndex]
-			col := channel.Col[fv.scp.Settings.ChannelColorIndex]
 			
-			yText := fmt.Sprintf("Ch%c(Y): %s (Cur: %s)", 'A'+channelIndex, fv.formatVoltage(v, channel.VRange), fv.formatVoltage(v_cursor, channel.VRange))
+			yText := fmt.Sprintf("%s: %s (Cur: %s)", chName, fv.formatVoltage(v, vRange), fv.formatVoltage(v_cursor, vRange))
 			if fv.refActive {
 				dvY := v - refInstV[channelIndex]
 				dvYCur := v_cursor - refInstVCur[channelIndex]
-				yText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvY, channel.VRange), fv.formatVoltage(dvYCur, channel.VRange))
+				yText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvY, vRange), fv.formatVoltage(dvYCur, vRange))
 			}
 			info = append(info, struct {
 				text string
@@ -516,12 +598,22 @@ func (fv *fvViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 	for chIdx, bounds := range fv.labelBounds {
 		if p.In(bounds) {
 			if button == desktop.MouseButtonSecondary || button == desktop.RightMouseButton {
-				channelViewer := &fv.scp.channelViewers[chIdx]
-				channelViewer.displayOffsetFraction = 0
-				channelViewer.displayOffsetInt = 0
-				fv.scp.Settings.Channels[chIdx].DisplayVOffset = 0
-				channelViewer.label.enableRefresh()
-				channelViewer.dftLabel.enableRefresh()
+				if chIdx < int(fv.scp.channelCount) {
+					channelViewer := &fv.scp.channelViewers[chIdx]
+					channelViewer.displayOffsetFraction = 0
+					channelViewer.displayOffsetInt = 0
+					fv.scp.Settings.Channels[chIdx].DisplayVOffset = 0
+					channelViewer.label.enableRefresh()
+					channelViewer.dftLabel.enableRefresh()
+				} else {
+					vchIdx := chIdx - int(fv.scp.channelCount)
+					if vchIdx < len(fv.scp.ftVChannelLabels) {
+						channelViewer := &fv.scp.ftVChannelLabels[vchIdx]
+						channelViewer.displayOffsetFraction = 0
+						fv.scp.Settings.VirtualChannels[vchIdx].DisplayVOffset = 0
+						channelViewer.enableRefresh()
+					}
+				}
 				fv.scp.refreshRasters()
 				return
 			}
@@ -615,23 +707,43 @@ func (fv *fvViewer) snapYToFvN(y float64) int {
 
 func (fv *fvViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 	h := float64(fv.img.Bounds().Dy())
-	channelViewer := &fv.scp.channelViewers[chIndex]
-	if scroll {
-		channelViewer.displayOffsetFraction = dy + fv.offsetNToFv(fv.scp.Settings.Channels[chIndex].DisplayVOffset)
-	} else {
-		channelViewer.displayOffsetFraction += dy
-	}
-	if channelViewer.displayOffsetFraction < -h {
-		channelViewer.displayOffsetFraction = -h
-	}
-	if channelViewer.displayOffsetFraction > h {
-		channelViewer.displayOffsetFraction = h
-	}
-	channelViewer.displayOffsetInt = fv.snapYToFvN(channelViewer.displayOffsetFraction)
-	fv.scp.Settings.Channels[chIndex].DisplayVOffset = channelViewer.displayOffsetInt
+	if chIndex < int(fv.scp.channelCount) {
+		channelViewer := &fv.scp.channelViewers[chIndex]
+		if scroll {
+			channelViewer.displayOffsetFraction = dy + fv.offsetNToFv(fv.scp.Settings.Channels[chIndex].DisplayVOffset)
+		} else {
+			channelViewer.displayOffsetFraction += dy
+		}
+		if channelViewer.displayOffsetFraction < -h {
+			channelViewer.displayOffsetFraction = -h
+		}
+		if channelViewer.displayOffsetFraction > h {
+			channelViewer.displayOffsetFraction = h
+		}
+		channelViewer.displayOffsetInt = fv.snapYToFvN(channelViewer.displayOffsetFraction)
+		fv.scp.Settings.Channels[chIndex].DisplayVOffset = channelViewer.displayOffsetInt
 
-	channelViewer.label.enableRefresh()
-	channelViewer.dftLabel.enableRefresh()
+		channelViewer.label.enableRefresh()
+		channelViewer.dftLabel.enableRefresh()
+	} else {
+		vchIdx := chIndex - int(fv.scp.channelCount)
+		if vchIdx < len(fv.scp.ftVChannelLabels) {
+			channelViewer := &fv.scp.ftVChannelLabels[vchIdx]
+			if scroll {
+				channelViewer.displayOffsetFraction = dy + fv.offsetNToFv(fv.scp.Settings.VirtualChannels[vchIdx].DisplayVOffset)
+			} else {
+				channelViewer.displayOffsetFraction += dy
+			}
+			if channelViewer.displayOffsetFraction < -h {
+				channelViewer.displayOffsetFraction = -h
+			}
+			if channelViewer.displayOffsetFraction > h {
+				channelViewer.displayOffsetFraction = h
+			}
+			fv.scp.Settings.VirtualChannels[vchIdx].DisplayVOffset = fv.snapYToFvN(channelViewer.displayOffsetFraction)
+			channelViewer.enableRefresh()
+		}
+	}
 	fv.scp.refreshRasters()
 }
 
@@ -660,7 +772,13 @@ func (fv *fvViewer) dragged(dx, dy, x, y float32) {
 	}
 	if fv.selectedChannel != -1 {
 		// X-axis label drag vs Y-axis label drag
-		if fv.scp.Settings.Channels[fv.selectedChannel].FvMode == settings.FvArgument {
+		var fvMode settings.FvMode
+		if fv.selectedChannel < int(fv.scp.channelCount) {
+			fvMode = fv.scp.Settings.Channels[fv.selectedChannel].FvMode
+		} else {
+			fvMode = settings.FvValue
+		}
+		if fvMode == settings.FvArgument {
 			fv.setChDispOffset(fv.selectedChannel, float64(dx), false)
 		} else {
 			fv.setChDispOffset(fv.selectedChannel, float64(dy), false)
@@ -673,7 +791,13 @@ func (fv *fvViewer) scrolled(delta, x, y float32) {
 	for chIdx, bounds := range fv.labelBounds {
 		if p.In(bounds) {
 			nY := (float64(fv.img.Bounds().Dy()) / float64(numberOfDivs)) / 10
-			if fv.scp.Settings.Channels[chIdx].FvMode == settings.FvArgument {
+			var fvMode settings.FvMode
+			if chIdx < int(fv.scp.channelCount) {
+				fvMode = fv.scp.Settings.Channels[chIdx].FvMode
+			} else {
+				fvMode = settings.FvValue
+			}
+			if fvMode == settings.FvArgument {
 				fv.setChDispOffset(chIdx, float64(delta)*nY, true)
 			} else {
 				fv.setChDispOffset(chIdx, float64(-delta)*nY, true)
@@ -700,9 +824,20 @@ func (scp *ScpDesc) fvRasterGenerator(wInt int, hInt int) image.Image {
 
 	w, h := float64(wInt), float64(hInt)
 	yCountTotal := 0
-	for i := 0; i < int(scp.channelCount); i++ {
-		ch := scp.Settings.Channels[i]
-		if ch.FvMode == settings.FvValue && ch.Enabled {
+	totalChannels := int(scp.channelCount) + len(scp.Settings.VirtualChannels)
+	for i := 0; i < totalChannels; i++ {
+		var fvMode settings.FvMode
+		var enabled bool
+		if i < int(scp.channelCount) {
+			ch := scp.Settings.Channels[i]
+			fvMode = ch.FvMode
+			enabled = ch.Enabled
+		} else {
+			vch := scp.Settings.VirtualChannels[i-int(scp.channelCount)]
+			fvMode = settings.FvValue
+			enabled = vch.Enabled
+		}
+		if fvMode == settings.FvValue && enabled {
 			yCountTotal++
 		}
 	}

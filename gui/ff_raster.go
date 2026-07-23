@@ -285,14 +285,32 @@ func (ff *ffViewer) draw() {
 	yCount := 0
 
 	if fullRefresh {
-		for i := 0; i < int(ff.scp.channelCount); i++ {
-			ch := ff.scp.Settings.Channels[i]
-			if !ch.Enabled {
+		totalChannels := int(ff.scp.channelCount) + len(ff.scp.Settings.VirtualChannels)
+		for i := 0; i < totalChannels; i++ {
+			var enabled bool
+			var col color.NRGBA
+			var vRange genericps.RangeEnum
+			var ffDisplayVOffset int
+
+			if i < int(ff.scp.channelCount) {
+				ch := ff.scp.Settings.Channels[i]
+				enabled = ch.Enabled
+				col = ch.Col[ff.scp.Settings.ChannelColorIndex]
+				vRange = ch.VRange
+				ffDisplayVOffset = ch.FfDisplayVOffset
+			} else {
+				vch := ff.scp.Settings.VirtualChannels[i-int(ff.scp.channelCount)]
+				enabled = vch.Enabled
+				col = vch.Col[ff.scp.Settings.ChannelColorIndex]
+				vRange = vch.VRange
+				ffDisplayVOffset = 0
+			}
+
+			if !enabled {
 				continue
 			}
 
-			col := ch.Col[ff.scp.Settings.ChannelColorIndex]
-			yOffset := ff.offsetNToFf(ch.FfDisplayVOffset)
+			yOffset := ff.offsetNToFf(ffDisplayVOffset)
 
 			var minX, maxX int
 			if yCount%2 == 0 {
@@ -306,7 +324,7 @@ func (ff *ffViewer) draw() {
 
 			var unitName string
 			if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-				maxV := genericps.RangeValuesMv[ch.VRange]
+				maxV := genericps.RangeValuesMv[vRange]
 				if maxV < 1000.0 {
 					unitName = "mV"
 				} else {
@@ -521,9 +539,31 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 		}
 	}
 
-	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
-		ch := ff.scp.Settings.Channels[chIdx]
-		if !ch.Enabled {
+	totalChannels := int(ff.scp.channelCount) + len(ff.scp.Settings.VirtualChannels)
+	for chIdx := 0; chIdx < totalChannels; chIdx++ {
+		var enabled bool
+		var col color.NRGBA
+		var vRange genericps.RangeEnum
+		var ffDisplayVOffset int
+		var phaseEnabled bool
+
+		if chIdx < int(ff.scp.channelCount) {
+			ch := ff.scp.Settings.Channels[chIdx]
+			enabled = ch.Enabled
+			col = ch.Col[ff.scp.Settings.ChannelColorIndex]
+			vRange = ch.VRange
+			ffDisplayVOffset = ch.FfDisplayVOffset
+			phaseEnabled = ch.FfPhaseEnabled
+		} else {
+			vch := ff.scp.Settings.VirtualChannels[chIdx-int(ff.scp.channelCount)]
+			enabled = vch.Enabled
+			col = vch.Col[ff.scp.Settings.ChannelColorIndex]
+			vRange = vch.VRange
+			ffDisplayVOffset = 0
+			phaseEnabled = false
+		}
+
+		if !enabled {
 			continue
 		}
 
@@ -536,10 +576,9 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 			continue
 		}
 
-		col := ch.Col[ff.scp.Settings.ChannelColorIndex]
-		yOffset := ff.offsetNToFf(ch.FfDisplayVOffset)
+		yOffset := ff.offsetNToFf(ffDisplayVOffset)
 
-		if ch.Enabled {
+		if enabled {
 			var prevX, prevY float32
 			first := true
 
@@ -555,19 +594,19 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 				var y float32
 
 				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-					val := pt.amp / genericps.RangeValuesMv[ch.VRange]
+					val := pt.amp / genericps.RangeValuesMv[vRange]
 					if val > 1.0 {
 						val = 1.0
 					}
 					y = float32(float64(bounds.Min.Y) + (1.0-val)*h + yOffset)
 				} else {
 					dbFloor := -80.0
-					val := pt.amp / genericps.RangeValuesMv[ch.VRange]
+					val := pt.amp / genericps.RangeValuesMv[vRange]
 					var db float64
 					if val < 1e-10 {
 						db = dbFloor
 					} else {
-						db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, ch.VRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
+						db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 					}
 					if db < dbFloor {
 						db = dbFloor
@@ -588,7 +627,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 			}
 		}
 
-		if ch.FfPhaseEnabled {
+		if phaseEnabled {
 			r, g, b, a := col.RGBA()
 			dimmedCol := color.NRGBA{
 				R: uint8(r >> 9),
@@ -658,15 +697,28 @@ func (ff *ffViewer) calcValuesAt(mx float32, my float32, w float64, h float64, b
 		freqAtCursor = minFreq + fractionAtCursor*freqRange
 	}
 
-	n := len(ff.scp.channelViewers)
+	n := int(ff.scp.channelCount) + len(ff.scp.Settings.VirtualChannels)
 	instAmp = make([]float64, n)
 	instPhase = make([]float64, n)
 	instAmpCur = make([]float64, n)
 	instPhaseCur = make([]float64, n)
 
-	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
-		ch := ff.scp.Settings.Channels[chIdx]
-		if !ch.Enabled {
+	for chIdx := 0; chIdx < n; chIdx++ {
+		var enabled bool
+		var vRange genericps.RangeEnum
+		var ffDisplayVOffset int
+		if chIdx < int(ff.scp.channelCount) {
+			ch := ff.scp.Settings.Channels[chIdx]
+			enabled = ch.Enabled
+			vRange = ch.VRange
+			ffDisplayVOffset = ch.FfDisplayVOffset
+		} else {
+			vch := ff.scp.Settings.VirtualChannels[chIdx-int(ff.scp.channelCount)]
+			enabled = vch.Enabled
+			vRange = vch.VRange
+			ffDisplayVOffset = 0
+		}
+		if !enabled {
 			continue
 		}
 
@@ -701,12 +753,12 @@ func (ff *ffViewer) calcValuesAt(mx float32, my float32, w float64, h float64, b
 			instPhase[chIdx] = smoothedPhases[bestIdx]
 		}
 
-		yOffset := ff.offsetNToFf(ch.FfDisplayVOffset)
+		yOffset := ff.offsetNToFf(ffDisplayVOffset)
 		instPhaseCur[chIdx] = 180.0 - (float64(my)-float64(bounds.Min.Y))/h*360.0
 
 		if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
 			val_cursor := (float64(bounds.Min.Y) + h + yOffset - float64(my)) / h
-			instAmpCur[chIdx] = val_cursor * float64(genericps.RangeValuesMv[ch.VRange])
+			instAmpCur[chIdx] = val_cursor * float64(genericps.RangeValuesMv[vRange])
 		} else {
 			dbFloor := -80.0
 			instAmpCur[chIdx] = (float64(my) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
@@ -782,16 +834,17 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		ff.inspectorLastY = ff.mouseY
 	}
 
-	if ff.inspectorSumAmp == nil || len(ff.inspectorSumAmp) != len(ff.scp.channelViewers) {
-		ff.inspectorSumAmp = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumPhase = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumAmpCur = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorSumPhaseCur = make([]float64, len(ff.scp.channelViewers))
+	totalChannels := int(ff.scp.channelCount) + len(ff.scp.Settings.VirtualChannels)
+	if ff.inspectorSumAmp == nil || len(ff.inspectorSumAmp) != totalChannels {
+		ff.inspectorSumAmp = make([]float64, totalChannels)
+		ff.inspectorSumPhase = make([]float64, totalChannels)
+		ff.inspectorSumAmpCur = make([]float64, totalChannels)
+		ff.inspectorSumPhaseCur = make([]float64, totalChannels)
 
-		ff.inspectorDispAmp = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispPhase = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispAmpCur = make([]float64, len(ff.scp.channelViewers))
-		ff.inspectorDispPhaseCur = make([]float64, len(ff.scp.channelViewers))
+		ff.inspectorDispAmp = make([]float64, totalChannels)
+		ff.inspectorDispPhase = make([]float64, totalChannels)
+		ff.inspectorDispAmpCur = make([]float64, totalChannels)
+		ff.inspectorDispPhaseCur = make([]float64, totalChannels)
 	}
 
 	if moved {
@@ -804,7 +857,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		ff.inspectorSamples = 0
 	}
 
-	for i := range ff.scp.channelViewers {
+	for i := 0; i < totalChannels; i++ {
 		ff.inspectorSumAmp[i] += instAmpLocal[i]
 		ff.inspectorSumPhase[i] += instPhaseLocal[i]
 		ff.inspectorSumAmpCur[i] += instAmpCurLocal[i]
@@ -820,7 +873,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	if updateDisplay {
-		for i := range ff.scp.channelViewers {
+		for i := 0; i < totalChannels; i++ {
 			if ff.inspectorSamples > 0 {
 				ff.inspectorDispAmp[i] = ff.inspectorSumAmp[i] / float64(ff.inspectorSamples)
 				ff.inspectorDispPhase[i] = ff.inspectorSumPhase[i] / float64(ff.inspectorSamples)
@@ -835,26 +888,46 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		ff.inspectorSamples = 0
 	}
 
-	for chIdx := 0; chIdx < int(ff.scp.channelCount); chIdx++ {
-		ch := ff.scp.Settings.Channels[chIdx]
-		if !ch.Enabled {
+	for chIdx := 0; chIdx < totalChannels; chIdx++ {
+		var enabled bool
+		var col color.NRGBA
+		var vRange genericps.RangeEnum
+		var phaseEnabled bool
+		var chName string
+
+		if chIdx < int(ff.scp.channelCount) {
+			ch := ff.scp.Settings.Channels[chIdx]
+			enabled = ch.Enabled
+			col = ch.Col[ff.scp.Settings.ChannelColorIndex]
+			vRange = ch.VRange
+			phaseEnabled = ch.FfPhaseEnabled
+			chName = fmt.Sprintf("Ch%c", 'A'+chIdx)
+		} else {
+			vch := ff.scp.Settings.VirtualChannels[chIdx-int(ff.scp.channelCount)]
+			enabled = vch.Enabled
+			col = vch.Col[ff.scp.Settings.ChannelColorIndex]
+			vRange = vch.VRange
+			phaseEnabled = false
+			chName = vch.Name
+		}
+
+		if !enabled {
 			continue
 		}
 
-		col := ch.Col[ff.scp.Settings.ChannelColorIndex]
 		var ampStr, ampCurStr, phaseStr, phaseCurStr string
 
-		if ch.Enabled {
+		if enabled {
 			if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-				ampStr = formatVoltageFloat64(ff.inspectorDispAmp[chIdx], ch.VRange)
-				ampCurStr = formatVoltageFloat64(ff.inspectorDispAmpCur[chIdx], ch.VRange)
+				ampStr = formatVoltageFloat64(ff.inspectorDispAmp[chIdx], vRange)
+				ampCurStr = formatVoltageFloat64(ff.inspectorDispAmpCur[chIdx], vRange)
 			} else {
-				val := ff.inspectorDispAmp[chIdx] / float64(genericps.RangeValuesMv[ch.VRange])
+				val := ff.inspectorDispAmp[chIdx] / float64(genericps.RangeValuesMv[vRange])
 				var db float64
 				if val < 1e-10 {
 					db = -80.0
 				} else {
-					db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, ch.VRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
+					db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 				}
 				if db < -80.0 {
 					db = -80.0
@@ -871,34 +944,33 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			}
 		}
 
-		if ch.FfPhaseEnabled {
+		if phaseEnabled {
 			phaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx])
 			phaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx])
 		}
 
 		var line string
-		if ch.Enabled && ch.FfPhaseEnabled {
-			line = fmt.Sprintf("Ch%c: %s/%s (Cur: %s/%s)", 'A'+chIdx, ampStr, phaseStr, ampCurStr, phaseCurStr)
-		} else if ch.Enabled {
-			line = fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, ampStr, ampCurStr)
+		if enabled && phaseEnabled {
+			line = fmt.Sprintf("%s: %s/%s (Cur: %s/%s)", chName, ampStr, phaseStr, ampCurStr, phaseCurStr)
+		} else if enabled {
+			line = fmt.Sprintf("%s: %s (Cur: %s)", chName, ampStr, ampCurStr)
 		} else {
-			line = fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, phaseStr, phaseCurStr)
+			line = fmt.Sprintf("%s: %s (Cur: %s)", chName, phaseStr, phaseCurStr)
 		}
 
 		if ff.refActive {
 			var dAmpStr, dAmpCurStr, dPhaseStr, dPhaseCurStr string
 
-			if ch.Enabled {
+			if enabled {
 				dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
 				dvAmpCur := ff.inspectorDispAmpCur[chIdx] - refInstAmpCur[chIdx]
 
 				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-					mv := dvAmp * float64(genericps.RangeValuesMv[ch.VRange])
-					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[ch.VRange])
-					dAmpStr = formatVoltageFloat64(mv, ch.VRange)
-					dAmpCurStr = formatVoltageFloat64(mvCur, ch.VRange)
+					mv := dvAmp * float64(genericps.RangeValuesMv[vRange])
+					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[vRange])
+					dAmpStr = formatVoltageFloat64(mv, vRange)
+					dAmpCurStr = formatVoltageFloat64(mvCur, vRange)
 				} else {
-					// for dB, the delta is technically a ratio if we subtract dBs, which is fine
 					unitStr := ff.scp.Settings.Dft.DisplayMode
 					if unitStr == settings.ModeArbitraryDB {
 						unitStr = "dB"
@@ -907,14 +979,14 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 					dAmpCurStr = fmt.Sprintf("%.1f%s", dvAmpCur, unitStr)
 				}
 			}
-			if ch.FfPhaseEnabled {
+			if phaseEnabled {
 				dPhaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx]-refInstPhase[chIdx])
 				dPhaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx]-refInstPhaseCur[chIdx])
 			}
 
-			if ch.Enabled && ch.FfPhaseEnabled {
+			if enabled && phaseEnabled {
 				line += fmt.Sprintf(" Δ: %s/%s (ΔCur: %s/%s)", dAmpStr, dPhaseStr, dAmpCurStr, dPhaseCurStr)
-			} else if ch.Enabled {
+			} else if enabled {
 				line += fmt.Sprintf(" Δ: %s (ΔCur: %s)", dAmpStr, dAmpCurStr)
 			} else {
 				line += fmt.Sprintf(" Δ: %s (ΔCur: %s)", dPhaseStr, dPhaseCurStr)
@@ -1789,9 +1861,15 @@ func (scp *ScpDesc) processFfData() {
 		return
 	}
 
-	for i := 0; i < int(scp.channelCount); i++ {
-		ch := scp.Settings.Channels[i]
-		if !ch.Enabled {
+	totalChannels := int(scp.channelCount) + len(scp.Settings.VirtualChannels)
+	for i := 0; i < totalChannels; i++ {
+		var enabled bool
+		if i < int(scp.channelCount) {
+			enabled = scp.Settings.Channels[i].Enabled
+		} else {
+			enabled = scp.Settings.VirtualChannels[i-int(scp.channelCount)].Enabled
+		}
+		if !enabled {
 			continue
 		}
 
