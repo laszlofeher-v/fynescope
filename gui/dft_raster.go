@@ -445,10 +445,25 @@ func (dv *dftViewer) draw() {
 
 	// Draw divisions (optional, or simplified)
 	dv.scp.drawDftDivisions()
-	for chIdx := range dv.scp.channelViewers {
-		channel := &dv.scp.Settings.Channels[chIdx]
-		if !channel.Enabled {
-			dv.magnitudesCache[chIdx] = nil
+	totalChannels := int(dv.scp.channelCount) + len(dv.scp.Settings.VirtualChannels)
+	if len(dv.magnitudesCache) < totalChannels {
+		newCache := make([][]float64, totalChannels)
+		copy(newCache, dv.magnitudesCache)
+		dv.magnitudesCache = newCache
+	}
+	
+	for chIdx := 0; chIdx < totalChannels; chIdx++ {
+		var enabled bool
+		if chIdx < int(dv.scp.channelCount) {
+			enabled = dv.scp.Settings.Channels[chIdx].Enabled
+		} else {
+			enabled = dv.scp.Settings.VirtualChannels[chIdx-int(dv.scp.channelCount)].Enabled
+		}
+		
+		if !enabled {
+			if chIdx < len(dv.magnitudesCache) {
+				dv.magnitudesCache[chIdx] = nil
+			}
 			continue
 		}
 
@@ -499,7 +514,30 @@ func (dv *dftViewer) draw() {
 		normFactor := float64(nsig) / 2.0
 		normFactor *= dv.scp.getCoherentGain(dv.scp.Settings.Dft.Window, nsig)
 
-		yScale := 1.0 / float32(genericps.RangeValuesMv[channel.VRange])
+		var vRange genericps.RangeEnum
+		var col color.NRGBA
+		var dftDisplayOffsetInt int
+		var dftPersistence bool
+		if chIdx < int(dv.scp.channelCount) {
+			ch := &dv.scp.Settings.Channels[chIdx]
+			vRange = ch.VRange
+			col = ch.Col[dv.scp.Settings.ChannelColorIndex]
+			dftDisplayOffsetInt = dv.scp.channelViewers[chIdx].dftDisplayOffsetInt
+			dftPersistence = ch.DftPersistence
+		} else {
+			vchIdx := chIdx - int(dv.scp.channelCount)
+			vch := &dv.scp.Settings.VirtualChannels[vchIdx]
+			vRange = vch.VRange
+			col = vch.Col[dv.scp.Settings.ChannelColorIndex]
+			dftPersistence = false
+			if vchIdx < len(dv.scp.ftVChannelLabels) {
+				dftDisplayOffsetInt = dv.scp.snapYToDftN(dv.scp.ftVChannelLabels[vchIdx].displayOffsetFraction)
+			} else {
+				dftDisplayOffsetInt = 0
+			}
+		}
+
+		yScale := 1.0 / float32(genericps.RangeValuesMv[vRange])
 		for i := 0; i < m/2; i++ {
 			mag := cmplx.Abs(fftResult[i]) / normFactor // Magnitude in mV (since input samples are in mV)
 			val := float64(float32(mag) * yScale)
@@ -515,7 +553,7 @@ func (dv *dftViewer) draw() {
 					if dv.scp.Settings.Dft.DisplayMode == settings.ModeDBFS {
 						db = 20 * math.Log10(val)
 					} else {
-						vPeak := val * float64(genericps.RangeValuesMv[channel.VRange]) / 1000.0
+						vPeak := val * float64(genericps.RangeValuesMv[vRange]) / 1000.0
 						vRms := vPeak / math.Sqrt(2)
 
 						switch dv.scp.Settings.Dft.DisplayMode {
@@ -545,8 +583,7 @@ func (dv *dftViewer) draw() {
 		}
 		dv.magnitudesCache[chIdx] = magnitudes
 
-		col := channel.Col[dv.scp.Settings.ChannelColorIndex]
-		yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
+		yOffset := dv.scp.offsetNToDftY(dftDisplayOffsetInt)
 		prevX := float32(bounds.Min.X)
 
 		minFreq, maxFreqPlot := dv.scp.getDftFreqRange()
@@ -559,7 +596,12 @@ func (dv *dftViewer) draw() {
 		}
 
 		var targetImg rasterImage = dv.scp.dftScopeSignalScreen
-		if channel.DftPersistence {
+		if dftPersistence {
+			if chIdx >= len(dv.scp.dftPersistentLayers) {
+				newLayers := make([]*image.RGBA, chIdx+1)
+				copy(newLayers, dv.scp.dftPersistentLayers)
+				dv.scp.dftPersistentLayers = newLayers
+			}
 			if dv.scp.dftPersistentLayers[chIdx] == nil || dv.scp.dftPersistentLayers[chIdx].Bounds() != bounds {
 				dv.scp.dftPersistentLayers[chIdx] = image.NewRGBA(bounds)
 			}
@@ -621,7 +663,7 @@ func (dv *dftViewer) draw() {
 			prevY = y
 		}
 
-		if channel.DftPersistence && dv.scp.dftPersistentLayers[chIdx] != nil {
+		if dftPersistence && dv.scp.dftPersistentLayers[chIdx] != nil {
 			img, ok := dv.scp.dftScopeSignalScreen.(draw.Image)
 			if ok {
 				draw.Draw(img, bounds, dv.scp.dftPersistentLayers[chIdx], bounds.Min, draw.Over)
@@ -653,22 +695,35 @@ func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rec
 		freqAtCursor = minFreq + fractionAtCursor*maxFreqPlot
 	}
 
-	n := len(dv.scp.channelViewers)
+	n := int(dv.scp.channelCount) + len(dv.scp.Settings.VirtualChannels)
 	instV = make([]float64, n)
 	instVCur = make([]float64, n)
 
 	binIdx := int(math.Round((freqAtCursor / maxFreqAvailable) * float64(dv.mCache/2)))
 
-	for chIdx := range dv.scp.channelViewers {
-		channel := &dv.scp.Settings.Channels[chIdx]
-		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
+	for chIdx := 0; chIdx < n; chIdx++ {
+		var enabled bool
+		var dftDisplayOffsetInt int
+		if chIdx < int(dv.scp.channelCount) {
+			enabled = dv.scp.Settings.Channels[chIdx].Enabled
+			dftDisplayOffsetInt = dv.scp.channelViewers[chIdx].dftDisplayOffsetInt
+		} else {
+			vchIdx := chIdx - int(dv.scp.channelCount)
+			enabled = dv.scp.Settings.VirtualChannels[vchIdx].Enabled
+			if vchIdx < len(dv.scp.ftVChannelLabels) {
+				dftDisplayOffsetInt = dv.scp.snapYToDftN(dv.scp.ftVChannelLabels[vchIdx].displayOffsetFraction)
+			} else {
+				dftDisplayOffsetInt = 0
+			}
+		}
+		if enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
 			magnitudes := dv.magnitudesCache[chIdx]
 			var val float64
 			if binIdx >= 0 && binIdx < len(magnitudes) {
 				val = magnitudes[binIdx]
 			}
 
-			yOffset := dv.scp.offsetNToDftY(dv.scp.channelViewers[chIdx].dftDisplayOffsetInt)
+			yOffset := dv.scp.offsetNToDftY(dftDisplayOffsetInt)
 			var v_cursor float64
 			dbFloor := -100.0
 			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
@@ -747,11 +802,12 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		dv.inspectorLastY = dv.mouseY
 	}
 
-	if dv.inspectorSumV == nil || len(dv.inspectorSumV) != len(dv.scp.channelViewers) {
-		dv.inspectorSumV = make([]float64, len(dv.scp.channelViewers))
-		dv.inspectorSumVCur = make([]float64, len(dv.scp.channelViewers))
-		dv.inspectorDispV = make([]float64, len(dv.scp.channelViewers))
-		dv.inspectorDispVCur = make([]float64, len(dv.scp.channelViewers))
+	totalChannels := int(dv.scp.channelCount) + len(dv.scp.Settings.VirtualChannels)
+	if dv.inspectorSumV == nil || len(dv.inspectorSumV) != totalChannels {
+		dv.inspectorSumV = make([]float64, totalChannels)
+		dv.inspectorSumVCur = make([]float64, totalChannels)
+		dv.inspectorDispV = make([]float64, totalChannels)
+		dv.inspectorDispVCur = make([]float64, totalChannels)
 	}
 
 	if moved {
@@ -762,7 +818,7 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		dv.inspectorSamples = 0
 	}
 
-	for i := range dv.scp.channelViewers {
+	for i := 0; i < totalChannels; i++ {
 		dv.inspectorSumV[i] += instVLocal[i]
 		dv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
@@ -776,7 +832,7 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	if updateDisplay {
-		for i := range dv.scp.channelViewers {
+		for i := 0; i < totalChannels; i++ {
 			if dv.inspectorSamples > 0 {
 				dv.inspectorDispV[i] = dv.inspectorSumV[i] / float64(dv.inspectorSamples)
 				dv.inspectorDispVCur[i] = dv.inspectorSumVCur[i] / float64(dv.inspectorSamples)
@@ -787,19 +843,34 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		dv.inspectorSamples = 0
 	}
 
-	for chIdx := range dv.scp.channelViewers {
-		channel := &dv.scp.Settings.Channels[chIdx]
-		if channel.Enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
+	for chIdx := 0; chIdx < totalChannels; chIdx++ {
+		var enabled bool
+		var col color.NRGBA
+		var vRange genericps.RangeEnum
+		var chName string
+		
+		if chIdx < int(dv.scp.channelCount) {
+			enabled = dv.scp.Settings.Channels[chIdx].Enabled
+			col = dv.scp.Settings.Channels[chIdx].Col[dv.scp.Settings.ChannelColorIndex]
+			vRange = dv.scp.Settings.Channels[chIdx].VRange
+			chName = fmt.Sprintf("Ch%c", 'A'+chIdx)
+		} else {
+			vchIdx := chIdx - int(dv.scp.channelCount)
+			enabled = dv.scp.Settings.VirtualChannels[vchIdx].Enabled
+			col = dv.scp.Settings.VirtualChannels[vchIdx].Col[dv.scp.Settings.ChannelColorIndex]
+			vRange = dv.scp.Settings.VirtualChannels[vchIdx].VRange
+			chName = dv.scp.Settings.VirtualChannels[vchIdx].Name
+		}
+		if enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
 			v := dv.inspectorDispV[chIdx]
 			v_cursor := dv.inspectorDispVCur[chIdx]
-			col := channel.Col[dv.scp.Settings.ChannelColorIndex]
 
 			var valStr, curStr string
 			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-				mv := v * float64(genericps.RangeValuesMv[channel.VRange])
-				mvCur := v_cursor * float64(genericps.RangeValuesMv[channel.VRange])
-				valStr = formatVoltageFloat64(mv, channel.VRange)
-				curStr = formatVoltageFloat64(mvCur, channel.VRange)
+				mv := v * float64(genericps.RangeValuesMv[vRange])
+				mvCur := v_cursor * float64(genericps.RangeValuesMv[vRange])
+				valStr = formatVoltageFloat64(mv, vRange)
+				curStr = formatVoltageFloat64(mvCur, vRange)
 			} else {
 				unitStr := dv.scp.Settings.Dft.DisplayMode
 				if unitStr == settings.ModeArbitraryDB {
@@ -809,17 +880,17 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				curStr = fmt.Sprintf("%.1f%s", v_cursor, unitStr)
 			}
 
-			text := fmt.Sprintf("Ch%c: %s (Cur: %s)", 'A'+chIdx, valStr, curStr)
+			text := fmt.Sprintf("%s: %s (Cur: %s)", chName, valStr, curStr)
 			if dv.refActive {
 				dvV := v - refInstV[chIdx]
 				dvCurV := v_cursor - refInstVCur[chIdx]
 
 				var dvValStr, dvCurStr string
 				if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
-					mv := dvV * float64(genericps.RangeValuesMv[channel.VRange])
-					mvCur := dvCurV * float64(genericps.RangeValuesMv[channel.VRange])
-					dvValStr = formatVoltageFloat64(mv, channel.VRange)
-					dvCurStr = formatVoltageFloat64(mvCur, channel.VRange)
+					mv := dvV * float64(genericps.RangeValuesMv[vRange])
+					mvCur := dvCurV * float64(genericps.RangeValuesMv[vRange])
+					dvValStr = formatVoltageFloat64(mv, vRange)
+					dvCurStr = formatVoltageFloat64(mvCur, vRange)
 				} else {
 					unitStr := dv.scp.Settings.Dft.DisplayMode
 					if unitStr == settings.ModeArbitraryDB {
