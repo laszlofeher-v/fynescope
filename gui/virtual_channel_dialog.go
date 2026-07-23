@@ -6,6 +6,7 @@ import (
 	"fynescope/selectscroll"
 	"fynescope/settings"
 	"image/color"
+	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -52,6 +53,12 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			return
 		}
 		scp.Settings.VirtualChannels[selectedIndex].VRange = vRanges[s]
+		if selectedIndex < len(scp.ftVChannelLabels) {
+			scp.ftVChannelLabels[selectedIndex].enableRefresh()
+		}
+		if selectedIndex < len(scp.tzVChannelLabels) {
+			scp.tzVChannelLabels[selectedIndex].enableRefresh()
+		}
 		scp.refreshRasters()
 	}, "±1V")
 
@@ -61,9 +68,14 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
 		}
-		var off float32
-		if _, err := fmt.Sscanf(s, "%f", &off); err == nil {
-			scp.Settings.VirtualChannels[selectedIndex].Offset = off
+		if off, err := strconv.ParseFloat(s, 32); err == nil {
+			scp.Settings.VirtualChannels[selectedIndex].Offset = float32(off)
+			if selectedIndex < len(scp.ftVChannelLabels) {
+				scp.ftVChannelLabels[selectedIndex].enableRefresh()
+			}
+			if selectedIndex < len(scp.tzVChannelLabels) {
+				scp.tzVChannelLabels[selectedIndex].enableRefresh()
+			}
 			scp.refreshRasters()
 		}
 	}
@@ -73,6 +85,12 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			return
 		}
 		scp.Settings.VirtualChannels[selectedIndex].Inverted = b
+		if selectedIndex < len(scp.ftVChannelLabels) {
+			scp.ftVChannelLabels[selectedIndex].enableRefresh()
+		}
+		if selectedIndex < len(scp.tzVChannelLabels) {
+			scp.tzVChannelLabels[selectedIndex].enableRefresh()
+		}
 		scp.refreshRasters()
 	})
 
@@ -88,6 +106,21 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
 		}
+		
+		// If toggling enabled state, we must repartition the screen to add/remove the label from the draw loop.
+		if scp.Settings.VirtualChannels[selectedIndex].Enabled != v {
+			setFlag(scp.repartition)
+			setFlag(scp.tzRepartition)
+		} else {
+			// Just a color change, refresh the label.
+			if selectedIndex < len(scp.ftVChannelLabels) {
+				scp.ftVChannelLabels[selectedIndex].enableRefresh()
+			}
+			if selectedIndex < len(scp.tzVChannelLabels) {
+				scp.tzVChannelLabels[selectedIndex].enableRefresh()
+			}
+		}
+
 		scp.Settings.VirtualChannels[selectedIndex].Enabled = v
 		scp.Settings.VirtualChannels[selectedIndex].Col = [2]color.NRGBA{currentCol, currentCol}
 		scp.refreshRasters()
@@ -209,6 +242,8 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		list.Refresh()
 		list.Select(newSelectedIndex)
 		errorLabel.Hide()
+		setFlag(scp.repartition)
+		setFlag(scp.tzRepartition)
 		scp.refreshRasters()
 	})
 
@@ -245,6 +280,8 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		list.UnselectAll()
 		list.Refresh()
 		clearForm()
+		setFlag(scp.repartition)
+		setFlag(scp.tzRepartition)
 		scp.refreshRasters() // immediately remove the trace from the screen
 	})
 
