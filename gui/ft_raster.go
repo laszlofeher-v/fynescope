@@ -700,7 +700,7 @@ func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.
 		tAtCursor += sv.scp.timeZoomBoxOffset
 	}
 
-	n := len(sv.scp.channelViewers)
+	n := int(sv.scp.channelCount) + len(sv.scp.Settings.VirtualChannels)
 	instV = make([]float32, n)
 	instVCur = make([]float32, n)
 
@@ -763,6 +763,58 @@ func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.
 			instVCur[channelIndex] = v_cursor
 		}
 	}
+
+	for i, vch := range sv.scp.Settings.VirtualChannels {
+		if !vch.Enabled {
+			continue
+		}
+		bufIdx := int(sv.scp.channelCount) + i
+		if bufIdx >= len(sv.scp.displayBuffers) {
+			continue
+		}
+		displayBuffer := sv.scp.displayBuffers[bufIdx]
+		if len(displayBuffer) == 0 {
+			continue
+		}
+
+		var v float32
+		var leftPadding float64
+		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
+			totalSamples := len(displayBuffer)
+			displaySamples := totalSamples / control.SincWMultiplier
+			leftPadding = float64(totalSamples-displaySamples) / 2.0
+		} else {
+			leftPadding = float64(control.LeftOut) + 1.5
+		}
+
+		deltaT_samples := sv.scp.controlSamplingTimeInterval
+		t_start_of_buffer_rel_to_trigger := -leftPadding*deltaT_samples +
+			float64(sv.scp.controlXRoundError) +
+			float64(sv.scp.controlTriggerTimeOffset)/1e15 -
+			sv.scp.Settings.Time.TriggerTimeOffset
+
+		idxFloat := (tAtCursor - t_start_of_buffer_rel_to_trigger) / deltaT_samples
+		idx := int(math.Round(idxFloat))
+		if idx >= 0 && idx < len(displayBuffer) {
+			v = displayBuffer[idx]
+			if vch.Inverted {
+				v = -v
+			}
+		}
+		zeroOffset := float64(bounds.Min.Y) + h/2.0
+		yScale := h / float64(2.0*genericps.RangeValuesMv[vch.VRange])
+		yOffset := sv.scp.offsetNToFtY(vch.DisplayVOffset)
+		offsetFloat := zeroOffset + yOffset
+		v_cursor := float32((offsetFloat - float64(my)) / yScale)
+
+		if vch.Inverted {
+			v_cursor = -v_cursor
+		}
+
+		instV[bufIdx] = v
+		instVCur[bufIdx] = v_cursor
+	}
+
 	return tAtCursor, instV, instVCur
 }
 
@@ -833,11 +885,12 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		sv.inspectorLastY = sv.mouseY
 	}
 
-	if sv.inspectorSumV == nil || len(sv.inspectorSumV) != len(sv.scp.channelViewers) {
-		sv.inspectorSumV = make([]float32, len(sv.scp.channelViewers))
-		sv.inspectorSumVCur = make([]float32, len(sv.scp.channelViewers))
-		sv.inspectorDispV = make([]float32, len(sv.scp.channelViewers))
-		sv.inspectorDispVCur = make([]float32, len(sv.scp.channelViewers))
+	numChannels := int(sv.scp.channelCount) + len(sv.scp.Settings.VirtualChannels)
+	if sv.inspectorSumV == nil || len(sv.inspectorSumV) != numChannels {
+		sv.inspectorSumV = make([]float32, numChannels)
+		sv.inspectorSumVCur = make([]float32, numChannels)
+		sv.inspectorDispV = make([]float32, numChannels)
+		sv.inspectorDispVCur = make([]float32, numChannels)
 	}
 
 	if moved {
@@ -848,7 +901,7 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		sv.inspectorSamples = 0
 	}
 
-	for i := range sv.scp.channelViewers {
+	for i := 0; i < numChannels; i++ {
 		sv.inspectorSumV[i] += instVLocal[i]
 		sv.inspectorSumVCur[i] += instVCurLocal[i]
 	}
@@ -862,7 +915,7 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	}
 
 	if updateDisplay {
-		for i := range sv.scp.channelViewers {
+		for i := 0; i < numChannels; i++ {
 			if sv.inspectorSamples > 0 {
 				sv.inspectorDispV[i] = sv.inspectorSumV[i] / float32(sv.inspectorSamples)
 				sv.inspectorDispVCur[i] = sv.inspectorSumVCur[i] / float32(sv.inspectorSamples)
@@ -889,6 +942,27 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				text string
 				col  color.Color
 			}{text, col})
+		}
+	}
+
+	for i, vch := range sv.scp.Settings.VirtualChannels {
+		if vch.Enabled {
+			bufIdx := int(sv.scp.channelCount) + i
+			if len(sv.scp.displayBuffers) > bufIdx && len(sv.scp.displayBuffers[bufIdx]) > 0 {
+				v := sv.inspectorDispV[bufIdx]
+				v_cursor := sv.inspectorDispVCur[bufIdx]
+				col := vch.Col[sv.scp.Settings.ChannelColorIndex]
+				text := fmt.Sprintf("VCh%d: %s (Cur: %s)", i+1, sv.formatVoltage(v, vch.VRange), sv.formatVoltage(v_cursor, vch.VRange))
+				if sv.refActive {
+					dv := v - refInstV[bufIdx]
+					dvCur := v_cursor - refInstVCur[bufIdx]
+					text += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", sv.formatVoltage(dv, vch.VRange), sv.formatVoltage(dvCur, vch.VRange))
+				}
+				info = append(info, struct {
+					text string
+					col  color.Color
+				}{text, col})
+			}
 		}
 	}
 

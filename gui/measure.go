@@ -28,7 +28,8 @@ type measureState struct {
 }
 
 type MeasureDesc struct {
-	average [genericps.MaxChannel]measureState
+	average    [genericps.MaxChannel]measureState
+	vchAverage measureState
 }
 
 func measureFrq(receiveBuffer []float32, mean, hTop, hBottom float32, timeInterval float64) (frq, period float64) {
@@ -643,6 +644,137 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 				scp.displayBuffers[idx] = dest
 			}
 			scp.virtualChannelEngines[i].EvaluateBuffer(dest, bufA, bufB, bufC, bufD, size)
+
+			if i == scp.vchMeasureIndex && scp.vchMinV != nil {
+				avg := &scp.Measure.vchAverage
+				avg.count++
+				var min float32 = 1e9
+				var max float32 = -1e9
+
+				for j := 0; j < size; j++ {
+					v := dest[j]
+					if v > max {
+						max = v
+					}
+					if v < min {
+						min = v
+					}
+				}
+				avg.max += max
+				avg.min += min
+
+				numberOfMeasurements := scp.numOfMeasurements()
+				if avg.count >= numberOfMeasurements {
+					nf := float32(numberOfMeasurements)
+					avg.min = avg.min / nf
+					avg.max = avg.max / nf
+					
+					min = avg.min
+					max = avg.max
+					scp.vchMinV.SilentSetFloatValue(float64(min/1000), 3)
+					scp.vchMaxV.SilentSetFloatValue(float64(max/1000), 3)
+					fyne.Do(func() {
+						scp.vchMinV.Refresh()
+						scp.vchMaxV.Refresh()
+					})
+
+					avg.max = 0
+					avg.min = 0
+					avg.count = 0
+					mean := (min + max) / 2
+					var f, period float64
+					if scp.triggerSettingMsg.Mode == control.ETS {
+						f, period = measureFrqEts(dest, scp.etsBuffer, mean, mean+0.8*(max-mean), mean-0.8*(mean-min))
+					} else {
+						f, period = measureFrq(dest, mean, mean+0.8*(max-mean), mean-0.8*(mean-min), samplingTimeInterval)
+					}
+
+					if f == 0 {
+						scp.vchFrq.SilentSetFloatValue(0, 0)
+						scp.vchPeriod.SilentSetFloatValue(0, 0)
+						fyne.Do(func() {
+							scp.vchFrq.Refresh()
+							scp.vchPeriod.Refresh()
+						})
+					} else {
+						dpos := 0
+						unit := 0
+						switch {
+						case f < maxFrqDisp/1000:
+							unit = 0
+							dpos = 3
+						case f < maxFrqDisp/100:
+							unit = 0
+							dpos = 2
+						case f < maxFrqDisp/10:
+							unit = 0
+							dpos = 1
+						case f < maxFrqDisp:
+						case f < 10*maxFrqDisp:
+							f /= 1000
+							unit = 1
+							dpos = 2
+						case f < 100*maxFrqDisp:
+							f /= 1000
+							unit = 1
+							dpos = 1
+						case f < 1000*maxFrqDisp:
+							f /= 1000000
+							unit = 2
+							dpos = 3
+						case f < 10000*maxFrqDisp:
+							f /= 1000000
+							unit = 2
+							dpos = 2
+						case f < 100000*maxFrqDisp:
+							f /= 1000000
+							unit = 2
+							dpos = 1
+						}
+						scp.vchFrq.SilentSetFloatValue(f, dpos)
+						scp.vchFrq.SetUnit(frqUnits[unit])
+						fyne.Do(scp.vchFrq.Refresh)
+
+						dpos = 0
+						unit = 0
+						period = 1e9 * period
+						switch {
+						case period < maxPeriodDisp:
+						case period < 10*maxPeriodDisp:
+							period /= 1000
+							unit = 1
+							dpos = 2
+						case period < 100*maxPeriodDisp:
+							period /= 1000
+							unit = 1
+							dpos = 1
+						case period < 1000*maxPeriodDisp:
+							period /= 1000000
+							unit = 2
+							dpos = 3
+						case period < 10000*maxPeriodDisp:
+							period /= 1000000
+							unit = 2
+							dpos = 2
+						case period < 100000*maxPeriodDisp:
+							period /= 1000000
+							unit = 2
+							dpos = 1
+						case period < 1000000*maxPeriodDisp:
+							period /= 10000000
+							unit = 3
+							dpos = 1
+						case period < 10000000*maxPeriodDisp:
+							period /= 100000000
+							unit = 3
+							dpos = 1
+						}
+						scp.vchPeriod.SilentSetFloatValue(period, dpos)
+						scp.vchPeriod.SetUnit(periodUnits[unit])
+						fyne.Do(scp.vchPeriod.Refresh)
+					}
+				}
+			}
 		}
 	}
 

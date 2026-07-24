@@ -71,10 +71,11 @@ const (
 	filterTabIndex
 	genTabIndex
 	extgenTabIndex
+	vchTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "vch"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -169,10 +170,15 @@ type (
 		rlcTab                       *container.TabItem
 		filterTab                    *container.TabItem
 		extgenTab                    *container.TabItem
+		vchTab                       *container.TabItem
 		setTab                       *container.TabItem
 		psControl                    *control.PscDesc
 		virtualChannelEngines        []*VirtualChannelEngine
-		virtualChWindow             fyne.Window
+		vchMeasureIndex              int // index of selected virtual channel in the tab (-1 = none)
+		vchMinV                      *disp7.DigitArray
+		vchMaxV                      *disp7.DigitArray
+		vchFrq                       *disp7.DigitArray
+		vchPeriod                    *disp7.DigitArray
 		triggerHysteresisDisp        *disp7.DigitArray
 		triggerThresholdDisp         *disp7.DigitArray
 		boxTriggerHysteresisDisp     *fyne.Container
@@ -191,6 +197,7 @@ type (
 		filterLayout                 *fyne.Container
 		extgenLayout                 *fyne.Container
 		extgenWindow                 fyne.Window
+		virtualChWindow              fyne.Window
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
 		ftRaster                     *screenRaster
@@ -753,6 +760,8 @@ func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 }
 
 func (scp *ScpDesc) build2000Gui() {
+	initMaps()
+	sortInputRanges()
 	var (
 		themeChangeAction *widget.Button
 		changeSide        *widget.Button
@@ -778,8 +787,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.filterTab = container.NewTabItem(tabNames[filterTabIndex], scp.filterLayout)
 	scp.extgenLayout = container.New(layout.NewVBoxLayout())
 	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.extgenLayout)
+	scp.vchMeasureIndex = -1
+	scp.vchTab = container.NewTabItem(tabNames[vchTabIndex], scp.buildVirtualChannelContent(true))
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab)
 
 	if scp.psControl != nil && scp.psControl.Con.ID != genericps.SimId {
 		scp.controlTab.Remove(scp.rlcTab)
@@ -806,7 +817,8 @@ func (scp *ScpDesc) build2000Gui() {
 		targetFunction := scp.Settings.Window.Function
 		if scp.controlTab.Selected() == scp.genTab ||
 			scp.controlTab.Selected() == scp.filterTab ||
-			scp.controlTab.Selected() == scp.extgenTab {
+			scp.controlTab.Selected() == scp.extgenTab ||
+			scp.controlTab.Selected() == scp.vchTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -1066,7 +1078,6 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
-			scp.toolbar.Add(widget.NewButton("+Ch", scp.openVirtualChannelDialog))
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -1087,7 +1098,6 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.recordGifButton)
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
-			scp.toolbar.Add(widget.NewButton("+Ch", scp.openVirtualChannelDialog))
 			scp.toolbar.Add(fullScreen)
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
@@ -1108,7 +1118,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.recordGifButton = widget.NewButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
 		scp.toggleGifRecording()
 	})
-	vchButton := widget.NewButton("+Ch", scp.openVirtualChannelDialog)
+
 	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
 	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
 	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
@@ -1130,13 +1140,13 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	if scp.Settings.Window.LeftControl {
 		if scp.GifEnabled {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
+			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout,
 				layout.NewSpacer(),
 				scp.status.label)
 		} else {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
+			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout,
 				layout.NewSpacer(),
@@ -1146,12 +1156,12 @@ func (scp *ScpDesc) build2000Gui() {
 	} else {
 		if scp.GifEnabled {
 			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
+				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout)
 		} else {
 			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, vchButton, fullScreen, restoreScreen, changeSide,
+				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
 				themeChangeAction,
 				logout)
 		}

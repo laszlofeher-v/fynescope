@@ -145,6 +145,22 @@ func sortInputRanges() {
 		"±50V":   (genericps.Range_5v),
 	}
 	inputRanges = sortMapString(vRanges)
+	if genericps.RangeValuesMv == nil {
+		genericps.RangeValuesMv = make(map[genericps.RangeEnum]float64)
+	}
+	genericps.RangeValuesMv[genericps.Range_10mv] = 10.0
+	genericps.RangeValuesMv[genericps.Range_20mv] = 20.0
+	genericps.RangeValuesMv[genericps.Range_50mv] = 50.0
+	genericps.RangeValuesMv[genericps.Range_100mv] = 100.0
+	genericps.RangeValuesMv[genericps.Range_200mv] = 200.0
+	genericps.RangeValuesMv[genericps.Range_500mv] = 500.0
+	genericps.RangeValuesMv[genericps.Range_1v] = 1000.0
+	genericps.RangeValuesMv[genericps.Range_2v] = 2000.0
+	genericps.RangeValuesMv[genericps.Range_5v] = 5000.0
+	genericps.RangeValuesMv[genericps.Range_10v] = 10000.0
+	genericps.RangeValuesMv[genericps.Range_20v] = 20000.0
+	genericps.RangeValuesMv[genericps.Range_50v] = 50000.0
+
 	rangeEnumToString = make(map[genericps.RangeEnum]string)
 	for s, enum := range vRanges {
 		rangeEnumToString[enum] = s

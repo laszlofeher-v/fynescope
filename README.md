@@ -329,7 +329,7 @@ A + B              // sum of two channels
 (A - B) / 2        // differential signal
 Abs(A)             // rectified signal
 Sqrt(A * A + B * B)  // RMS envelope of two channels
-A * Sin(B)         // AM-modulated signal
+(1+B)*A         // AM-modulated signal
 ```
 
 > **Note:** Virtual channel expressions may only reference physical channels (`A`–`D`). Referencing other virtual channels in an expression is not supported.
