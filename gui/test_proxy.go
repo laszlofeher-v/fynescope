@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"time"
 
+	"fynescope/settings"
+
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
@@ -722,6 +724,11 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			customWriter.errorsMutex.Unlock()
 
 			f.Close()
+
+			scp.settingsLocker.Lock()
+			_ = settings.Save(settingsFileName, scp.Settings)
+			scp.SettingFileName = ""
+			scp.settingsLocker.Unlock()
 
 			tarFileName := fmt.Sprintf("fuzzer_report_%s.tar.gz", startTime.Format("200601021504"))
 			cmd := exec.Command("tar", "-czf", tarFileName, fileName, settingsFileName)
