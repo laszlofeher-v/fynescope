@@ -96,7 +96,7 @@ func (scp *ScpDesc) openTimeZoomWindow() {
 	// Trigger repartition for Time Zoom
 	setFlag(scp.tzRepartition)
 
-	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false)
+	scp.timeZoomRaster = scp.newScreenRaster(scp.timeZoomGenerator, scp.timeZoomWindow, false, false, false, true)
 	scp.timeZoomRaster.disableInput = false
 
 	scp.timeZoomWindow.SetContent(scp.timeZoomRaster)

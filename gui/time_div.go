@@ -146,6 +146,33 @@ func (tl *timeLabelViewer) mousIn(x, y float32) bool {
 }
 func (tl *timeLabelViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	tl.selected = tl.mousIn(x, y)
+	if tl.isTimeZoom && button == desktop.LeftMouseButton && tl.selected {
+		bounds := tl.scp.timeZoomScopeSignalScreen.Bounds()
+		w := float64(bounds.Dx() - 1)
+		if w <= 0 {
+			w = 1
+		}
+		ratio := tl.scp.maxScreenTime / tl.scp.timeZoomMaxScreenTime
+		if ratio < 1.0 {
+			pixelOffset := w * tl.scp.timeZoomBoxOffset / tl.scp.timeZoomMaxScreenTime
+			leftEdge := float32(float64(bounds.Min.X) + pixelOffset)
+			rightEdge := float32(float64(bounds.Min.X) + pixelOffset + w*ratio)
+
+			margin := float32(10.0)
+			if !(x >= leftEdge-margin && x <= rightEdge+margin) {
+				// Center box on click
+				boxCenterPixel := (leftEdge + rightEdge) / 2
+				dt := float64(x-boxCenterPixel) * tl.scp.timeZoomMaxScreenTime / w
+				tl.scp.addTimeZoomBoxOffset(dt)
+				tl.scp.clearAllFtPersistentLayers()
+				tl.scp.clearAllDftPersistentLayers()
+				if tl.scp.ftBottomLabelViewer != nil {
+					tl.scp.ftBottomLabelViewer.enableRefresh()
+				}
+				tl.scp.refreshRasters()
+			}
+		}
+	}
 }
 func (tl *timeLabelViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	tl.selected = false
@@ -163,6 +190,9 @@ func (tl *timeLabelViewer) setDtDispXOffset(dx, x, y float32) {
 			tl.scp.setTriggerTime(tl.scp.Settings.Time.TriggerTimeOffset)
 		}
 		tl.enableRefresh()
+		if tl.scp.ftBottomLabelViewer != nil {
+			tl.scp.ftBottomLabelViewer.enableRefresh()
+		}
 		tl.scp.clearAllFtPersistentLayers()
 		tl.scp.clearAllDftPersistentLayers()
 		tl.scp.refreshRasters()

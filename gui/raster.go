@@ -87,6 +87,7 @@ type (
 		isDft  bool
 		isFv   bool
 		isFf   bool
+		isTimeZoom bool
 	}
 )
 
@@ -99,6 +100,9 @@ func (scr *screenRaster) Drawers() []drawer {
 	}
 	if scr.isFf {
 		return scr.scp.ffDrawers
+	}
+	if scr.isTimeZoom {
+		return scr.scp.timeZoomDrawers
 	}
 	return scr.scp.ftDrawers
 }
@@ -410,8 +414,8 @@ func (raster *screenRaster) Dragged(event *fyne.DragEvent) {
 	}
 }
 
-func (scp *ScpDesc) newScreenRaster(generate func(w, h int) image.Image, window fyne.Window, isDft, isFv, isFf bool) (scr *screenRaster) {
-	scr = &screenRaster{raster: canvas.NewRaster(generate), Window: window, scp: scp, isDft: isDft, isFv: isFv, isFf: isFf}
+func (scp *ScpDesc) newScreenRaster(generate func(w, h int) image.Image, window fyne.Window, isDft, isFv, isFf, isTimeZoom bool) (scr *screenRaster) {
+	scr = &screenRaster{raster: canvas.NewRaster(generate), Window: window, scp: scp, isDft: isDft, isFv: isFv, isFf: isFf, isTimeZoom: isTimeZoom}
 	scr.ExtendBaseWidget(scr)
 	return scr
 }
