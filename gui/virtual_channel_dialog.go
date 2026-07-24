@@ -286,6 +286,9 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		for len(scp.dftPersistentLayers) < needed {
 			scp.dftPersistentLayers = append(scp.dftPersistentLayers, nil)
 		}
+		for len(scp.bodeBuffers) < needed {
+			scp.bodeBuffers = append(scp.bodeBuffers, nil)
+		}
 
 		list.Refresh()
 		list.Select(newSelectedIndex)
@@ -322,6 +325,9 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		}
 		if bufIdx < len(scp.dftPersistentLayers) {
 			scp.dftPersistentLayers = append(scp.dftPersistentLayers[:bufIdx], scp.dftPersistentLayers[bufIdx+1:]...)
+		}
+		if bufIdx < len(scp.bodeBuffers) {
+			scp.bodeBuffers = append(scp.bodeBuffers[:bufIdx], scp.bodeBuffers[bufIdx+1:]...)
 		}
 
 		selectedIndex = -1
