@@ -55,14 +55,13 @@ type (
 	}
 
 	VirtualChSettings struct {
-		Name           string                `yaml:"name"`
-		Expression     string                `yaml:"expression"`
-		Inverted       bool                  `yaml:"inverted"`
-		DisplayVOffset int                   `yaml:"displayvoffset"`
-		Col            [2]color.NRGBA        `yaml:"color"`
-		VRange         genericps.RangeEnum   `yaml:"range"`
-		Enabled        bool                  `yaml:"enabled"`
-		Offset         float32               `yaml:"offset"`
+		Name           string              `yaml:"name"`
+		Expression     string              `yaml:"expression"`
+		Inverted       bool                `yaml:"inverted"`
+		DisplayVOffset int                 `yaml:"displayvoffset"`
+		Col            [2]color.NRGBA      `yaml:"color"`
+		VRange         genericps.RangeEnum `yaml:"range"`
+		Enabled        bool                `yaml:"enabled"`
 	}
 
 	ChSettings struct {
@@ -148,15 +147,15 @@ type (
 		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
 	}
 	DftSettings struct {
-		MaxFreq        float64 `yaml:"maxfreq"`
-		MinFreq        float64 `yaml:"minfreq"`
-		Window         string  `yaml:"window"`
-		DisplayMode    string  `yaml:"displaymode"`
-		Bins           int     `yaml:"bins"`
-		SampleRate     string  `yaml:"samplerate"`
-		SampleRateUnit string  `yaml:"samplerateunits"`
+		MaxFreq         float64 `yaml:"maxfreq"`
+		MinFreq         float64 `yaml:"minfreq"`
+		Window          string  `yaml:"window"`
+		DisplayMode     string  `yaml:"displaymode"`
+		Bins            int     `yaml:"bins"`
+		SampleRate      string  `yaml:"samplerate"`
+		SampleRateUnit  string  `yaml:"samplerateunits"`
 		ArbitraryDbRefV float64 `yaml:"arbitrary_db_ref_v"`
-		XAxisLog       bool    `yaml:"x_axis_log"`
+		XAxisLog        bool    `yaml:"x_axis_log"`
 	}
 	FfSettings struct {
 		ReferenceChannel  int     `yaml:"referencechannel"`

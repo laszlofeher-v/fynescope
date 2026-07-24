@@ -3,30 +3,37 @@ package gui
 import (
 	"fmt"
 	"fynescope/checkcolorpick"
+	"fynescope/disp7"
 	"fynescope/selectscroll"
 	"fynescope/settings"
 	"image/color"
-	"strconv"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
+const vchUndockLabel = "Undock"
+
+// openVirtualChannelDialog selects the Virtual Channels tab in the side panel.
+// If the tab was undocked into a floating window, focus that window instead.
 func (scp *ScpDesc) openVirtualChannelDialog() {
-	// Re-focus if already open
 	if scp.virtualChWindow != nil {
 		scp.virtualChWindow.RequestFocus()
 		return
 	}
+	if scp.controlTab == nil || scp.vchTab == nil {
+		return
+	}
+	scp.dockTab(scp.vchTab)
+}
 
-	win := scp.App.NewWindow("Virtual Channels")
-	scp.virtualChWindow = win
-	win.SetOnClosed(func() {
-		scp.virtualChWindow = nil
-	})
-
+// buildVirtualChannelContent constructs the Virtual Channels editor UI and returns
+// it as a CanvasObject suitable for embedding in a tab. Layout is a single narrow
+// column so it fits comfortably in the side panel.
+func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObject {
 	var selectedIndex int = -1
 	var updatingForm bool
 
@@ -44,7 +51,7 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 
 	nameEntry := widget.NewEntry()
 	exprEntry := widget.NewMultiLineEntry()
-	exprEntry.SetMinRowsVisible(5)
+	exprEntry.SetMinRowsVisible(3)
 	errorLabel := widget.NewLabel("")
 	errorLabel.Hide()
 
@@ -60,25 +67,42 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			scp.tzVChannelLabels[selectedIndex].enableRefresh()
 		}
 		scp.refreshRasters()
-	}, "±1V")
+	}, "±50V")
 
-	offsetEntry := widget.NewEntry()
-	offsetEntry.SetText("0.0")
-	offsetEntry.OnChanged = func(s string) {
-		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
-			return
-		}
-		if off, err := strconv.ParseFloat(s, 32); err == nil {
-			scp.Settings.VirtualChannels[selectedIndex].Offset = float32(off)
-			if selectedIndex < len(scp.ftVChannelLabels) {
-				scp.ftVChannelLabels[selectedIndex].enableRefresh()
-			}
-			if selectedIndex < len(scp.tzVChannelLabels) {
-				scp.tzVChannelLabels[selectedIndex].enableRefresh()
-			}
-			scp.refreshRasters()
-		}
+	fontScale := float32(0.7) * scp.getScreenScale()
+	var err error
+	scp.vchMaxV, err = disp7.NewCustomDisp7Array(5, 3, 99999, -99999, disp7.Signed,
+		disp7.NoTrailingZeroes, scp.Window, defaultCol,
+		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, " Max:", " V ")
+	if err != nil {
+		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch maxV)")
 	}
+
+	scp.vchMinV, err = disp7.NewCustomDisp7Array(5, 3, 99999, -99999, disp7.Signed,
+		disp7.NoTrailingZeroes, scp.Window, defaultCol,
+		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, " Min:", " V ")
+	if err != nil {
+		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch minV)")
+	}
+
+	scp.vchFrq, err = disp7.NewCustomDisp7Array(4, 2, 9999, 0, disp7.UnSigned,
+		disp7.NoTrailingZeroes, scp.Window, defaultCol,
+		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "Frq:", " MHz")
+	if err != nil {
+		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch frq)")
+	}
+
+	scp.vchPeriod, err = disp7.NewCustomDisp7Array(4, 2, 9999, 0, disp7.UnSigned,
+		disp7.NoTrailingZeroes, scp.Window, defaultCol,
+		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "  T:", " ms")
+	if err != nil {
+		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch period)")
+	}
+	scp.vchPeriod.SilentSetValue(0)
 
 	invertCheck := widget.NewCheck("Invert", func(b bool) {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
@@ -96,17 +120,21 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 
 	// CheckColorPick: left-click = toggle enabled, right-click = color picker
 	minSz := fyne.NewSize(checkColorPickMinSize, checkColorPickMinSize)
-	enableWidget := checkcolorpick.NewCheckColorPick(win, func(v bool, col color.Color) {
+	enableWidget := checkcolorpick.NewCheckColorPick(scp.Window, func(v bool, col color.Color) {
 		if nrgba, ok := col.(color.NRGBA); ok {
 			currentCol = nrgba
 		} else {
 			r, g, b, a := col.RGBA()
 			currentCol = color.NRGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: uint8(a >> 8)}
 		}
+		scp.vchMinV.SetOncolor(currentCol)
+		scp.vchMaxV.SetOncolor(currentCol)
+		scp.vchFrq.SetOncolor(currentCol)
+		scp.vchPeriod.SetOncolor(currentCol)
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
 		}
-		
+
 		// If toggling enabled state, we must repartition the screen to add/remove the label from the draw loop.
 		if scp.Settings.VirtualChannels[selectedIndex].Enabled != v {
 			setFlag(scp.repartition)
@@ -127,16 +155,34 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 	}, defaultCol, minSz)
 	enableWidget.Val = true
 
+	extraFields := container.NewVBox(
+		widget.NewLabel("V/div:"), vRangeSelect,
+		container.NewHBox(scp.vchMaxV, scp.vchFrq),
+		container.NewHBox(scp.vchMinV, scp.vchPeriod),
+		invertCheck,
+		container.NewHBox(widget.NewLabel("Enable / Color:"), enableWidget),
+	)
+	extraFields.Hide()
+
 	clearForm := func() {
 		nameEntry.SetText("")
 		exprEntry.SetText("A + B")
 		vRangeSelect.SetSelected("±1V")
-		offsetEntry.SetText("0.0")
 		invertCheck.SetChecked(false)
 		currentCol = defaultCol
 		enableWidget.Val = true
 		enableWidget.SetColor(defaultCol)
+		scp.vchMeasureIndex = -1
+		scp.vchMinV.SilentSetValue(0)
+		scp.vchMaxV.SilentSetValue(0)
+		scp.vchFrq.SilentSetValue(0)
+		scp.vchPeriod.SilentSetValue(0)
+		scp.vchMinV.SetOncolor(defaultCol)
+		scp.vchMaxV.SetOncolor(defaultCol)
+		scp.vchFrq.SetOncolor(defaultCol)
+		scp.vchPeriod.SetOncolor(defaultCol)
 		errorLabel.Hide()
+		extraFields.Hide()
 	}
 
 	var updateForm = func(idx int) {
@@ -150,12 +196,17 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			if s, ok := rangeEnumToString[vch.VRange]; ok {
 				vRangeSelect.SetSelected(s)
 			}
-			offsetEntry.SetText(fmt.Sprintf("%g", vch.Offset))
 			invertCheck.SetChecked(vch.Inverted)
 			c := vch.Col[0]
 			currentCol = c
 			enableWidget.Val = vch.Enabled
 			enableWidget.SetColor(c)
+			scp.vchMeasureIndex = idx
+			scp.vchMinV.SetOncolor(c)
+			scp.vchMaxV.SetOncolor(c)
+			scp.vchFrq.SetOncolor(c)
+			scp.vchPeriod.SetOncolor(c)
+			extraFields.Show()
 		} else {
 			clearForm()
 		}
@@ -171,6 +222,7 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		list.UnselectAll()
 		selectedIndex = -1
 		clearForm()
+		extraFields.Show()
 	})
 
 	acceptBtn := widget.NewButton("Accept", func() {
@@ -187,14 +239,10 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 			return
 		}
 
-		var off float32
-		fmt.Sscanf(offsetEntry.Text, "%f", &off)
-
 		newVCh := settings.VirtualChSettings{
 			Name:       nameEntry.Text,
 			Expression: exprEntry.Text,
 			VRange:     vRanges[vRangeSelect.Selected],
-			Offset:     off,
 			Inverted:   invertCheck.Checked,
 			Enabled:    enableWidget.Val,
 			Col:        [2]color.NRGBA{currentCol, currentCol},
@@ -285,27 +333,50 @@ func (scp *ScpDesc) openVirtualChannelDialog() {
 		scp.refreshRasters() // immediately remove the trace from the screen
 	})
 
-	listButtons := container.NewHBox(newBtn, deleteBtn)
-	leftPane := container.NewBorder(listButtons, nil, nil, nil, list)
+	// Undock button: pops the content into a floating window and removes the tab.
+	var undockBtn *widget.Button
+	if undockable {
+		undockBtn = widget.NewButtonWithIcon(vchUndockLabel, theme.ViewFullScreenIcon(), func() {
+			onWindowClose := func() {
+				scp.virtualChWindow = nil
+				scp.dockTab(scp.vchTab)
+				scp.controlTab.SelectIndex(ftTabIndex)
+				fyne.Do(scp.vchTab.Content.Refresh)
+			}
+			scp.virtualChWindow = scp.App.NewWindow("Virtual Channels")
+			winContent := scp.buildVirtualChannelContent(false)
+			scp.controlTab.Remove(scp.vchTab)
+			scp.virtualChWindow.SetContent(winContent)
+			scp.virtualChWindow.SetOnClosed(onWindowClose)
+			scp.virtualChWindow.Resize(fyne.NewSize(500, 600))
+			scp.controlTab.SelectIndex(ftTabIndex)
+			scp.virtualChWindow.Show()
+			fyne.Do(winContent.Refresh)
+		})
+	}
+
+	// Single-column layout: channel list in top pane, form fields in bottom pane.
+	// VSplit lets the user resize the divider as needed.
+	listBox := container.NewBorder(nil, nil, nil, nil, list)
 
 	formContent := container.NewVBox(
 		widget.NewLabel("Name:"), nameEntry,
-		widget.NewLabel("Expression (A, B, C, D = physical channels):"), exprEntry,
+		widget.NewLabel("Expression (A,B,C,D = physical ch.):"), exprEntry,
 		errorLabel,
-		widget.NewLabel("V/div:"), vRangeSelect,
-		widget.NewLabel("Offset (mV):"), offsetEntry,
-		invertCheck,
-		container.NewHBox(widget.NewLabel("Enable / Color:"), enableWidget),
+		extraFields,
 	)
 
-	buttons := container.NewHBox(layout.NewSpacer(), acceptBtn)
+	actionRow := container.NewHBox(newBtn, deleteBtn, layout.NewSpacer(), acceptBtn)
+	var topRow fyne.CanvasObject
+	if undockable {
+		topRow = container.NewHBox(layout.NewSpacer(), undockBtn)
+	}
 
-	rightPane := container.NewBorder(nil, buttons, nil, nil, container.NewVScroll(formContent))
+	topPane := container.NewBorder(topRow, actionRow, nil, nil, listBox)
+	bottomPane := container.NewVScroll(formContent)
 
-	split := container.NewHSplit(leftPane, rightPane)
-	split.SetOffset(0.3)
+	split := container.NewVSplit(topPane, bottomPane)
+	split.SetOffset(0.35)
 
-	win.SetContent(split)
-	win.Resize(fyne.NewSize(640, 500))
-	win.Show()
+	return split
 }
