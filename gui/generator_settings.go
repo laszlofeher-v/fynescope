@@ -131,21 +131,22 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 
 func (scp *ScpDesc) applyFfGenSettings(on bool) {
 	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-		if on {
-			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
-			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
-			scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
-			scp.extGen.SetOutput(scpi.Ch1, true)
-		} else {
-			scp.extGen.SetOutput(scpi.Ch1, false)
-		}
-
-		// Ensure internal generator is turned off
-		msg := &control.GeneratorDescMsg{}
-		msg.Operation = genericps.EsOff
-		if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
-			scp.psControl.SetGeneratorCh <- msg
-		}
+		go func() {
+			if on {
+				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+				scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
+				scp.extGen.SetOutput(scpi.Ch1, true)
+			} else {
+				scp.extGen.SetOutput(scpi.Ch1, false)
+			}
+			// Ensure internal generator is turned off
+			msg := &control.GeneratorDescMsg{}
+			msg.Operation = genericps.EsOff
+			if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
+				scp.psControl.SetGeneratorCh <- msg
+			}
+		}()
 		return
 	}
 
@@ -174,30 +175,32 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
 	if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
-		scp.psControl.SetGeneratorCh <- msg
+		msgCopy := msg
+		go func() { scp.psControl.SetGeneratorCh <- msgCopy }()
 	}
 }
 
 func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-		if on {
-			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
-			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
-			scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
-			scp.extGen.SetOutput(scpi.Ch1, true)
-		} else {
-			scp.extGen.SetOutput(scpi.Ch1, false)
-		}
-
-		// Ensure internal simulator generators are turned off
-		for i := 0; i < int(scp.channelCount); i++ {
-			msg := &control.GeneratorDescMsg{}
-			msg.Channel = genericps.ChannelId(i)
-			msg.Operation = genericps.EsOff
-			if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
-				scp.psControl.SetSimGenCh <- msg
+		go func() {
+			if on {
+				scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
+				scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
+				scp.extGen.SetWaveform(scpi.Ch1, "SINusoid")
+				scp.extGen.SetOutput(scpi.Ch1, true)
+			} else {
+				scp.extGen.SetOutput(scpi.Ch1, false)
 			}
-		}
+			// Ensure internal simulator generators are turned off
+			for i := 0; i < int(scp.channelCount); i++ {
+				msg := &control.GeneratorDescMsg{}
+				msg.Channel = genericps.ChannelId(i)
+				msg.Operation = genericps.EsOff
+				if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
+					scp.psControl.SetSimGenCh <- msg
+				}
+			}
+		}()
 		return
 	}
 
@@ -257,7 +260,10 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 			msg.TriggerType = genericps.SigGenRising
 			msg.TriggerSource = genericps.SigGenNone
 			msg.ExtInThreshold = 0
-			scp.psControl.SetSimGenCh <- msg
+			if scp.psControl.SetSimGenCh != nil {
+				msgCopy := msg
+				go func() { scp.psControl.SetSimGenCh <- msgCopy }()
+			}
 		}
 	}
 }

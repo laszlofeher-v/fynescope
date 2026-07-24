@@ -382,11 +382,16 @@ func newServerNoVoiceMux(authAdmin, authView string, getCapture func() image.Ima
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
+		var processing atomic.Bool
 		for range ticker.C {
 			if activeClients.Load() <= 0 {
 				continue
 			}
+			if !processing.CompareAndSwap(false, true) {
+				continue // Skip if previous frame is still processing
+			}
 			fyne.Do(func() {
+				defer processing.Store(false)
 				img := getCapture()
 				if img == nil {
 					return
