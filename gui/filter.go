@@ -263,11 +263,9 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		chBox := container.NewVBox()
 
 		notify := func() {
-			go func() {
-				scp.SaveSettings()
-				scp.notifyDigitalFilter(chIdx)
-				scp.refreshRasters()
-			}()
+			scp.SaveSettings()
+			scp.notifyDigitalFilter(chIdx)
+			scp.refreshRasters()
 		}
 
 		lblCh := canvas.NewText("Digital Filters for Channel "+chStr, col)
@@ -303,24 +301,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		lpEntry.SetText(strconv.FormatFloat(lpVal, 'f', -1, 64))
 
 		lpUnitSelect := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := lpEntry.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.LowpassFc = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(lpEntry.Text, 64)
+			chSettings.DigitalFilter.LowpassFc = toHz(val, s)
+			notify()
 		}, "kHz")
 		lpUnitSelect.SetSelected(lpUnit)
 
 		lpEntry.OnChanged = func(s string) {
 			unit := lpUnitSelect.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.LowpassFc = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.LowpassFc = toHz(v, unit)
+				notify()
+			}
 		}
 		lpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), lpEntry)
 		lpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), lpEntryContainer, lpUnitSelect)
@@ -351,24 +344,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		hpEntry.SetText(strconv.FormatFloat(hpVal, 'f', -1, 64))
 
 		hpUnitSelect := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := hpEntry.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.HighpassFc = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(hpEntry.Text, 64)
+			chSettings.DigitalFilter.HighpassFc = toHz(val, s)
+			notify()
 		}, "kHz")
 		hpUnitSelect.SetSelected(hpUnit)
 
 		hpEntry.OnChanged = func(s string) {
 			unit := hpUnitSelect.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.HighpassFc = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.HighpassFc = toHz(v, unit)
+				notify()
+			}
 		}
 		hpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), hpEntry)
 		hpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), hpEntryContainer, hpUnitSelect)
@@ -399,24 +387,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bpEntry1.SetText(strconv.FormatFloat(bpVal1, 'f', -1, 64))
 
 		bpUnitSelect1 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := bpEntry1.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.BandpassFc1 = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(bpEntry1.Text, 64)
+			chSettings.DigitalFilter.BandpassFc1 = toHz(val, s)
+			notify()
 		}, "kHz")
 		bpUnitSelect1.SetSelected(bpUnit1)
 
 		bpEntry1.OnChanged = func(s string) {
 			unit := bpUnitSelect1.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.BandpassFc1 = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.BandpassFc1 = toHz(v, unit)
+				notify()
+			}
 		}
 		bpEntryContainer1 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bpEntry1)
 
@@ -425,24 +408,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bpEntry2.SetText(strconv.FormatFloat(bpVal2, 'f', -1, 64))
 
 		bpUnitSelect2 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := bpEntry2.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.BandpassFc2 = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(bpEntry2.Text, 64)
+			chSettings.DigitalFilter.BandpassFc2 = toHz(val, s)
+			notify()
 		}, "kHz")
 		bpUnitSelect2.SetSelected(bpUnit2)
 
 		bpEntry2.OnChanged = func(s string) {
 			unit := bpUnitSelect2.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.BandpassFc2 = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.BandpassFc2 = toHz(v, unit)
+				notify()
+			}
 		}
 		bpEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bpEntry2)
 		bpControls = container.NewVBox(
@@ -476,24 +454,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bsEntry1.SetText(strconv.FormatFloat(bsVal1, 'f', -1, 64))
 
 		bsUnitSelect1 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := bsEntry1.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.BandstopFc1 = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(bsEntry1.Text, 64)
+			chSettings.DigitalFilter.BandstopFc1 = toHz(val, s)
+			notify()
 		}, "kHz")
 		bsUnitSelect1.SetSelected(bsUnit1)
 
 		bsEntry1.OnChanged = func(s string) {
 			unit := bsUnitSelect1.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.BandstopFc1 = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.BandstopFc1 = toHz(v, unit)
+				notify()
+			}
 		}
 		bsEntryContainer1 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bsEntry1)
 
@@ -502,24 +475,19 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bsEntry2.SetText(strconv.FormatFloat(bsVal2, 'f', -1, 64))
 
 		bsUnitSelect2 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
-			text := bsEntry2.Text
-			go func() {
-				val, _ := strconv.ParseFloat(text, 64)
-				chSettings.DigitalFilter.BandstopFc2 = toHz(val, s)
-				notify()
-			}()
+			val, _ := strconv.ParseFloat(bsEntry2.Text, 64)
+			chSettings.DigitalFilter.BandstopFc2 = toHz(val, s)
+			notify()
 		}, "kHz")
 		bsUnitSelect2.SetSelected(bsUnit2)
 
 		bsEntry2.OnChanged = func(s string) {
 			unit := bsUnitSelect2.Selected
-			go func() {
-				v, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					chSettings.DigitalFilter.BandstopFc2 = toHz(v, unit)
-					notify()
-				}
-			}()
+			v, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				chSettings.DigitalFilter.BandstopFc2 = toHz(v, unit)
+				notify()
+			}
 		}
 		bsEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bsEntry2)
 		bsControls = container.NewVBox(

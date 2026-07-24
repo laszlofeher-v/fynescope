@@ -605,10 +605,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.channelViewers[chIndex].offset.SetFloatValue(float64(channel.Offset),
 			3)
 		scp.channelViewers[chIndex].offset.OnChanged = func(v float64) {
-			go func() {
-				channel.Offset = float32(v) / 1000.0
-				setChannel()
-			}()
+			channel.Offset = float32(v) / 1000.0
+			setChannel()
 		}
 		channelOffsetBox = container.New(layout.NewHBoxLayout(),
 			scp.channelViewers[chIndex].offset)
