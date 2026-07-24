@@ -187,7 +187,7 @@ Fynescope allows exporting the current visual state of the application into imag
   - **Scroll Wheel**: On trigger point change the hysteresis.
   - **Channel Labels**: Click and drag or scroll on the channel labels (e.g., `chA`, `chB`, or virtual channels) on the edge of the graph to quickly adjust the vertical offset of the corresponding channel. Right-click on the channel label to reset the vertical offset to zero.
   - **Timebase Controls**: Use left click and drag or scroll on the timebase label to adjust the timebase. Click the magnifier icon on the top toolbar to open the secondary **Time Zoom** window.
-  - **Time Zoom Window**: When the Time Zoom window is active, you can move the time labels on main window to zoom into different sections of the main window.
+  - **Time Zoom Window**: When the Time Zoom window is active, you can move the time labels on the main window to pan the zoomed section. You can also left-click anywhere on the Time Zoom window to instantly center the main window's view on the clicked time.
   - **Channel Controls**: Use left click and drag or scroll on the channel controls to adjust the channel properties.
   - **Trigger Controls**: Use left click and drag or scroll on the trigger controls to adjust the trigger properties.
   - **Trigger Position**: Move the trigger position using the mouse left click and drag on the trigger position line.
