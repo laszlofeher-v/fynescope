@@ -96,6 +96,9 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyM
 				sv.scp.addTimeZoomBoxOffset(dt)
 				sv.scp.clearAllFtPersistentLayers()
 				sv.scp.clearAllDftPersistentLayers()
+				if sv.scp.ftBottomLabelViewer != nil {
+					sv.scp.ftBottomLabelViewer.enableRefresh()
+				}
 				sv.scp.refreshRasters()
 			}
 		}
@@ -165,6 +168,9 @@ func (sv *signalViewer) dragged(dx, dy, x, y float32) {
 		sv.scp.addTimeZoomBoxOffset(dt)
 		sv.scp.clearAllFtPersistentLayers()
 		sv.scp.clearAllDftPersistentLayers()
+		if sv.scp.ftBottomLabelViewer != nil {
+			sv.scp.ftBottomLabelViewer.enableRefresh()
+		}
 		sv.scp.refreshRasters()
 	} else if sv.showInspector {
 		sv.mouseX = x
