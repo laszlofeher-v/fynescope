@@ -792,13 +792,13 @@ func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType C
 	return
 }
 
-func simMaximumValue(handle int16) (value int16, err error) {
-	value = maxValue
+func simMaximumValue(handle int16) (value int32, err error) {
+	value = int32(maxValue)
 	return
 }
 
-func simMinimumValue(handle int16) (value int16, err error) {
-	value = -maxValue
+func simMinimumValue(handle int16) (value int32, err error) {
+	value = -int32(maxValue)
 	return
 }
 

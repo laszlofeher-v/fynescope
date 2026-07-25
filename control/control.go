@@ -175,11 +175,11 @@ type (
 		numOfSamplesAcquired        uint32
 		downSampleRatioMode         genericps.RatioMode
 		downSampleRatio             uint32
-		maxValue                    int16
+		maxValue                    int32
 		maxScreenTime               float64
 		scopeScreenWidth            float64
 		timeBaseDec                 uint32
-		minValue                    int16
+		minValue                    int32
 		RefreshCallback             func(buffers [][]int16, startTimeOffset int64,
 			xRoundError, samplingTimeInterval float64)
 		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64)
@@ -390,7 +390,7 @@ func (psControl *PscDesc) UnitBatchAndSerialInfo() (info string, err error) {
 	return
 }
 
-func (psControl *PscDesc) MinMaxValues() (min, max int16, err error) {
+func (psControl *PscDesc) MinMaxValues() (min, max int32, err error) {
 	max, err = psControl.Con.MaximumValue()
 	if err != nil {
 		slog.Error("MaximumValue", "error", err)
