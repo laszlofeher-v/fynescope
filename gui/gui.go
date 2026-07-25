@@ -149,6 +149,8 @@ type (
 		ffFftBuf          []float64
 		ffFftResult       []complex128
 		ffFftSamples      int
+		ffAutoRangedFreq  float64
+		ffOriginalRanges  map[genericps.ChannelId]genericps.RangeEnum
 		ffCurrentFreqDisp *disp7.DigitArray
 		ffMinFreqDisp     *disp7.DigitArray
 		ffMaxFreqDisp     *disp7.DigitArray
@@ -248,6 +250,7 @@ type (
 		SettingFileName            string
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
+		FfAutoRangeEnabled         bool
 		HighResUIEnabled           bool
 		useExtGenCheck             *widget.Check
 		hiResCheck                 *widget.Check

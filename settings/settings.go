@@ -163,6 +163,7 @@ type (
 		MaxFreq           float64 `yaml:"maxfreq"`
 		DisplayMode       string  `yaml:"displaymode"`
 		PtsDec            float64 `yaml:"deltafreq"`
+		TargetCycles      float64 `yaml:"targetcycles"`
 		UseExternalGen    bool    `yaml:"useexternalgen"`
 		ExternalGenPort   string  `yaml:"externalgenport"`
 		ExternalGenUsbVid string  `yaml:"externalgenusbvid"`
@@ -290,7 +291,7 @@ func NewDefaultSettings() *PsSettings {
 		},
 
 		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
-		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
+		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Theme:         DarkTheme,
 		StreamEnabled: &streamDefault,
 	}
