@@ -28,3 +28,4 @@ WIKI.md
 .vscode/settings.json
 raster_*.png
 window_*.png
+fuzzer_report_*.tar.gz
