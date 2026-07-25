@@ -49,8 +49,8 @@ func (d7 *DigitArray) Tapped(event *fyne.PointEvent) {
 }
 
 func (d7 *DigitArray) Cursor() desktop.Cursor {
-	defer d7.lock.Unlock()
 	d7.lock.Lock()
+	defer d7.lock.Unlock()
 	if d7.Readonly || d7.digitCursor == digitCursorOut {
 		return desktop.DefaultCursor
 	}
@@ -157,8 +157,8 @@ func (d7 *DigitArray) TypedKey(k *fyne.KeyEvent) {
 func (d7 *DigitArray) TypedRune(r rune) {
 }
 func (d7 *DigitArray) FocusGained() {
-	defer d7.lock.Unlock()
 	d7.lock.Lock()
+	defer d7.lock.Unlock()
 	if d7.Readonly {
 		return
 	}
@@ -167,8 +167,8 @@ func (d7 *DigitArray) FocusGained() {
 }
 
 func (d7 *DigitArray) FocusLost() {
-	defer d7.lock.Unlock()
 	d7.lock.Lock()
+	defer d7.lock.Unlock()
 	if d7.Readonly {
 		return
 	}
