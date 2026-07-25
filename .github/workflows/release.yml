@@ -27,10 +27,6 @@ jobs:
     - name: Download Go Dependencies
       run: go mod download
 
-    - name: Build Fynescope (Hardware + web)
-      run: |
-        go build -tags=web -ldflags="-X main.GitUUID=${GITHUB_SHA::7} -X main.BuildDate=$(date +%Y-%m-%d)" -o fynescope-linux-amd64 .
-    
     - name: Build Fynescope Simulator (noscope + web)
       run: |
         go build -tags="noscope,web" -ldflags="-X main.GitUUID=${GITHUB_SHA::7} -X main.BuildDate=$(date +%Y-%m-%d)" -o fynescope-sim-linux-amd64 .
@@ -39,7 +35,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          fynescope-linux-amd64
           fynescope-sim-linux-amd64
         generate_release_notes: true
       env:
