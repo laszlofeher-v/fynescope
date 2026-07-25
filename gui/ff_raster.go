@@ -1538,12 +1538,30 @@ func (scp *ScpDesc) startFfSweep() {
 
 	// Pre-allocate bodeBuffers so no append growth occurs during the sweep.
 	scp.ffLocker.Lock()
+	scp.ffOriginalRanges = make(map[genericps.ChannelId]genericps.RangeEnum)
+	for i := 0; i < int(scp.channelCount); i++ {
+		if scp.Settings.Channels[i].Enabled {
+			scp.ffOriginalRanges[genericps.ChannelId(i)] = scp.Settings.Channels[i].VRange
+		}
+	}
+	scp.ffAutoRangedFreq = -1.0
 	for i := range scp.bodeBuffers {
 		scp.bodeBuffers[i] = make([]bodePoint, 0, len(freqs))
 	}
 	scp.ffLocker.Unlock()
 
 	go func() {
+		defer func() {
+			// Automatically stop the run block mode when the sweep completes and restore ranges
+			fyne.Do(func() {
+				scp.StopRunning()
+				for ch, rEnum := range scp.ffOriginalRanges {
+					if opt, ok := rangeEnumToString[rEnum]; ok {
+						scp.changeChannelRange(ch, opt)
+					}
+				}
+			})
+		}()
 		slog.Debug("startFfSweep", "points", len(freqs), "ppd", pointsPerDecade,
 			"min", scp.Settings.Ff.MinFreq, "max", scp.Settings.Ff.MaxFreq,
 			"dwell", dwellTime)
@@ -1610,10 +1628,6 @@ func (scp *ScpDesc) startFfSweep() {
 		}
 
 		slog.Debug("startFfSweep: sweep complete")
-		// Automatically stop the run block mode when the sweep completes
-		fyne.Do(func() {
-			scp.StopRunning()
-		})
 	}()
 }
 
@@ -1787,6 +1801,74 @@ func (scp *ScpDesc) processFfData() {
 	targetFreq := scp.currentFfFreq
 	if targetFreq <= 0 {
 		targetFreq = measuredFreq
+	}
+
+	// Auto-Ranging step
+	if scp.FfAutoRangeEnabled && targetFreq > 0 && targetFreq != scp.ffAutoRangedFreq {
+		needsWait := false
+		totalChannels := int(scp.channelCount) + len(scp.Settings.VirtualChannels)
+		for i := 0; i < totalChannels; i++ {
+			if i >= int(scp.channelCount) || !scp.Settings.Channels[i].Enabled {
+				continue
+			}
+			
+			chBuf := scp.displayBuffers[i]
+			if len(chBuf) == 0 {
+				continue
+			}
+			maxAbs := float32(0.0)
+			for _, v := range chBuf {
+				absV := v
+				if absV < 0 {
+					absV = -absV
+				}
+				if absV > maxAbs {
+					maxAbs = absV
+				}
+			}
+
+			if maxAbs > 0.9 || maxAbs < 0.25 {
+				currentRangeEnum := scp.Settings.Channels[i].VRange
+				peakMv := float64(maxAbs) * genericps.RangeValuesMv[currentRangeEnum]
+				
+				availableRanges, _ := scp.psControl.ChannelRanges(genericps.ChannelId(i))
+				var bestRange genericps.RangeEnum
+				var bestRangeMv float64 = 1e9
+				
+				for _, rInt := range availableRanges {
+					r := genericps.RangeEnum(rInt)
+					rangeMv := genericps.RangeValuesMv[r]
+					if rangeMv >= peakMv*1.2 {
+						if rangeMv < bestRangeMv {
+							bestRangeMv = rangeMv
+							bestRange = r
+						}
+					}
+				}
+				
+				if bestRangeMv == 1e9 && len(availableRanges) > 0 {
+					bestRange = genericps.RangeEnum(availableRanges[len(availableRanges)-1])
+				}
+				
+				if bestRange != currentRangeEnum {
+					slog.Info("Auto-ranging", "channel", i, "old", currentRangeEnum, "new", bestRange, "peakMv", peakMv)
+					if opt, ok := rangeEnumToString[bestRange]; ok {
+						fyne.Do(func() {
+							scp.changeChannelRange(genericps.ChannelId(i), opt)
+						})
+						needsWait = true
+					}
+				}
+			}
+		}
+		
+		scp.ffAutoRangedFreq = targetFreq
+		if needsWait {
+			scp.ffLocker.Lock()
+			scp.ffSweepAcquireTime = time.Now().Add(time.Duration(scp.maxScreenTime * float64(time.Second)))
+			scp.ffLocker.Unlock()
+			return
+		}
 	}
 
 	// 2. Compute FFT for each channel to get magnitude at measured frequency

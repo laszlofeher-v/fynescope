@@ -64,7 +64,10 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 		if refFreq <= 0 {
 			refFreq = 10.0 // absolute fallback
 		}
-		const targetCycles = 20.0
+		targetCycles := scp.Settings.Ff.TargetCycles
+		if targetCycles <= 0 {
+			targetCycles = 20.0
+		}
 		targetScreenTime := targetCycles / refFreq
 
 		// Only update the acquisition window if it changed significantly (> 5%).

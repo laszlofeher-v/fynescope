@@ -13,7 +13,7 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(t)**: The standard time-domain oscilloscope view. Use the control panel on the right to adjust the timebase, signal display interpolation, trigger settings, and channel properties (voltage range, coupling, offset, and persistence). Toggle the **Pers** checkbox to overlay successive signal traces and track history over time. Clicking the magnifier icon on the top toolbar opens the **Time Zoom** window, which acts as a secondary wide-scale overview of the capture buffer while the main window becomes a movable, magnified viewport.
 - **FFT**: The Fast Fourier Transform (FFT) view for frequency spectrum analysis with both logarithmic and linear X-axis display options. Toggle the **Pers** checkbox to enable persistent frequency magnitude tracking over time.
-- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots with both logarithmic and linear X-axis options. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. *Note: Sweeping at very low frequencies is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
+- **f(f)**: The frequency response analysis tab. Use this to perform automated frequency sweeps and generate Bode plots with both logarithmic and linear X-axis options. The amplitude response is automatically plotted for all enabled channels, while phase plotting can be toggled individually. Capable of evaluating sub-1Hz frequencies (down to 0.01 Hz) and seamlessly integrating with external SCPI-compatible signal generators. You can adjust the FFT resolution using the **Cycles** control (default 20), which dictates the number of cycles used for the time window at each step. Enable auto-ranging via the `-ff-auto-range=true` command-line flag to dynamically adjust the input voltage range during sweeps for maximum dynamic range. *Note: Sweeping at very low frequencies or using a high Cycles value is slow because the analysis relies on capturing sufficiently long time windows for FFT processing.*
 <p align="center">
   <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
 </p>
@@ -128,6 +128,7 @@ For more options, including displaying version, build date, and license informat
 | `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-gif` | `false` | Enable GIF generation button on the toolbar |
+| `-ff-auto-range` | `false` | Enable auto-ranging during f(f) Bode plot sweeps |
 | `-loglevel` | `warning` | Log verbosity: `debug`, `info`, `warning`, `error` |
 | `-profile` | `false` | Enable CPU profiling (outputs `fynescope_0.prof`) |
 | `-webport` | `0` | Start a read-only web server on the specified port (requires `web` build tag, 0 to disable) |

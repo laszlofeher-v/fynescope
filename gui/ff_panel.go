@@ -329,6 +329,26 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 	dispModeControls := container.NewHBox(widget.NewLabel(" Mode:"), dispModeSelect, logXCheck)
 
+	targetCyclesDisp, _ := disp7.NewCustomDisp7Array(3, 0,
+		100,
+		20,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
+		refCol,
+		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
+		disp7.DeafultDigitHeight, 1,
+		disp7.DefaultVCursorSpace, "Cycles:", "")
+
+	targetCyclesDisp.OnChanged = func(v float64) {
+		scp.Settings.Ff.TargetCycles = v
+		go scp.SaveSettings()
+	}
+	if scp.Settings.Ff.TargetCycles < 20 {
+		scp.Settings.Ff.TargetCycles = 20
+	} else if scp.Settings.Ff.TargetCycles > 100 {
+		scp.Settings.Ff.TargetCycles = 100
+	}
+	targetCyclesDisp.SetValue(int(scp.Settings.Ff.TargetCycles))
+
 	// Generator controls container
 	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
@@ -380,7 +400,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	genVBox.Add(scp.ffCurrentFreqDisp)
 
 	genSettings := container.New(layout.NewVBoxLayout(), scp.ffMinFreqDisp,
-		scp.ffMaxFreqDisp, scp.ffDeltaTDisp, scp.ffStepFreqDisp,
+		scp.ffMaxFreqDisp, scp.ffDeltaTDisp, targetCyclesDisp, scp.ffStepFreqDisp,
 		dispModeControls, genVBox)
 	panel.Add(genSettings)
 
