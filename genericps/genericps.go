@@ -331,7 +331,7 @@ type (
 	}
 	MaximumValueRsp struct {
 		RespBase
-		Value int16
+		Value int32
 	}
 
 	MinimumValueMsg struct {
@@ -339,7 +339,7 @@ type (
 	}
 	MinimumValueResp struct {
 		RespBase
-		Value int16
+		Value int32
 	}
 
 	SetSimpleTriggerMsg struct {
@@ -1146,7 +1146,7 @@ func (c Connection) LsReady() (ready int16, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) MaximumValue() (value int16, err error) {
+func (c Connection) MaximumValue() (value int32, err error) {
 	msg := &MaximumValueMsg{}
 	msg.rsp = &MaximumValueRsp{}
 	c.Send(msg)
@@ -1164,7 +1164,7 @@ func (c Connection) MemorySegments(nSegments uint32) (nMaxSamples int32, err err
 	err = rsp.Status()
 	return
 }
-func (c Connection) MinimumValue() (value int16, err error) {
+func (c Connection) MinimumValue() (value int32, err error) {
 	msg := &MinimumValueMsg{}
 	msg.rsp = &MinimumValueResp{}
 	c.Send(msg)

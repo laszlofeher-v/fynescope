@@ -116,7 +116,7 @@ type (
 		lastRange                           genericps.RangeEnum
 		ratioMode                           genericps.RatioMode
 		displayMovedDivs, timeDiv, timeUnit int // timeUnit: -12: ps, -9: ns, -6: us, -3:ms, 0: s
-		MaxValue, MinValue                  int16
+		MaxValue, MinValue                  int32
 		controlTriggerTimeOffset            int64
 		dftScopeFullScreen                  rasterImage
 		dftScopeSignalScreen                rasterImage
@@ -710,18 +710,18 @@ func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {
 }
 func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
-	if adc > math.MaxInt16 {
-		adc = math.MaxInt16 - 1
-	} else if adc < math.MinInt16 {
-		adc = math.MinInt16 + 1
+	if adc > scp.MaxValue {
+		adc = scp.MaxValue
+	} else if adc < scp.MinValue {
+		adc = scp.MinValue
 	}
 	return adc
 }
 
 func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
-	if adc > math.MaxUint16 {
-		adc = math.MaxInt16 - 1
+	if adc > scp.MaxValue {
+		adc = scp.MaxValue
 	}
 	return adc
 }

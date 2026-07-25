@@ -377,18 +377,22 @@ func ps2000aSetChannel(handle int16, channel ChannelId, enabled bool, couplingTy
 	return
 }
 
-func ps2000aMaximumValue(handle int16) (value int16, err error) {
+func ps2000aMaximumValue(handle int16) (value int32, err error) {
 	slog.Debug("ps2000aMaximumValue", "handle", handle)
-	stat := C.ps2000aMaximumValue((C.short)(handle), (*C.short)(&value))
+	var val int16
+	stat := C.ps2000aMaximumValue((C.short)(handle), (*C.short)(&val))
+	value = int32(val)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MaximumValue:  %s", psc.StatStr(int(stat)))
 	}
 	return
 }
 
-func ps2000aMinimumValue(handle int16) (value int16, err error) {
+func ps2000aMinimumValue(handle int16) (value int32, err error) {
 	slog.Debug("ps2000aMinimumValue", "handle", handle)
-	stat := C.ps2000aMinimumValue((C.short)(handle), (*C.short)(&value))
+	var val int16
+	stat := C.ps2000aMinimumValue((C.short)(handle), (*C.short)(&val))
+	value = int32(val)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MinimumValue:  %s", psc.StatStr(int(stat)))
 	}
