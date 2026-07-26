@@ -163,8 +163,17 @@ func (ff *ffViewer) draw() {
 	channelIndex := ff.scp.displayMovedDivs - 1
 	var yOffsetShift float64
 	if channelIndex >= 0 {
-		channelViewer := &ff.scp.channelViewers[channelIndex]
-		yOffsetShift = channelViewer.ffDisplayOffsetFraction
+		if channelIndex < int(ff.scp.channelCount) {
+			channelViewer := &ff.scp.channelViewers[channelIndex]
+			yOffsetShift = channelViewer.ffDisplayOffsetFraction
+		} else {
+			vchIdx := channelIndex - int(ff.scp.channelCount)
+			if vchIdx < len(ff.scp.Settings.VirtualChannels) {
+				yOffsetShift = ff.offsetNToFf(ff.scp.Settings.VirtualChannels[vchIdx].FfDisplayVOffset)
+			} else {
+				yOffsetShift = 0
+			}
+		}
 	}
 
 	if fullRefresh {
@@ -174,7 +183,17 @@ func (ff *ffViewer) draw() {
 
 			if channelIndex >= 0 {
 				drawHDiv(yf, color.NRGBA{50, 50, 50, 255})
-				col := ff.scp.Settings.Channels[channelIndex].Col[ff.scp.Settings.ChannelColorIndex]
+				var col color.NRGBA
+				if channelIndex < int(ff.scp.channelCount) {
+					col = ff.scp.Settings.Channels[channelIndex].Col[ff.scp.Settings.ChannelColorIndex]
+				} else {
+					vchIdx := channelIndex - int(ff.scp.channelCount)
+					if vchIdx < len(ff.scp.Settings.VirtualChannels) {
+						col = ff.scp.Settings.VirtualChannels[vchIdx].Col[ff.scp.Settings.ChannelColorIndex]
+					} else {
+						col = ff.scp.Settings.Channels[0].Col[ff.scp.Settings.ChannelColorIndex] // Fallback
+					}
+				}
 				counter := 0
 				yfShifted := yf + yOffsetShift
 				for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -303,7 +322,7 @@ func (ff *ffViewer) draw() {
 				enabled = vch.Enabled
 				col = vch.Col[ff.scp.Settings.ChannelColorIndex]
 				vRange = vch.VRange
-				ffDisplayVOffset = 0
+				ffDisplayVOffset = vch.FfDisplayVOffset
 			}
 
 			if !enabled {
@@ -559,7 +578,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 			enabled = vch.Enabled
 			col = vch.Col[ff.scp.Settings.ChannelColorIndex]
 			vRange = vch.VRange
-			ffDisplayVOffset = 0
+			ffDisplayVOffset = vch.FfDisplayVOffset
 			phaseEnabled = false
 		}
 
@@ -1119,9 +1138,16 @@ func (ff *ffViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 		if p.In(bounds) {
 			if button == desktop.MouseButtonSecondary || button == desktop.RightMouseButton {
 				if chIdx >= 0 {
-					channelViewer := &ff.scp.channelViewers[chIdx]
-					channelViewer.ffDisplayOffsetFraction = 0
-					ff.scp.Settings.Channels[chIdx].FfDisplayVOffset = 0
+					if chIdx < int(ff.scp.channelCount) {
+						channelViewer := &ff.scp.channelViewers[chIdx]
+						channelViewer.ffDisplayOffsetFraction = 0
+						ff.scp.Settings.Channels[chIdx].FfDisplayVOffset = 0
+					} else {
+						vchIdx := chIdx - int(ff.scp.channelCount)
+						if vchIdx < len(ff.scp.Settings.VirtualChannels) {
+							ff.scp.Settings.VirtualChannels[vchIdx].FfDisplayVOffset = 0
+						}
+					}
 					ff.scp.ffFullRefresh = true
 					ff.scp.refreshRasters()
 				}
@@ -1231,22 +1257,45 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 	}
 	// Vertical shift
 	h := float64(ff.img.Bounds().Dy())
-	ch := &ff.scp.Settings.Channels[chIndex]
-	channelViewer := &ff.scp.channelViewers[chIndex]
-	if scroll {
-		channelViewer.ffDisplayOffsetFraction = dy + ff.offsetNToFf(ch.FfDisplayVOffset)
+	if chIndex < int(ff.scp.channelCount) {
+		ch := &ff.scp.Settings.Channels[chIndex]
+		channelViewer := &ff.scp.channelViewers[chIndex]
+		if scroll {
+			channelViewer.ffDisplayOffsetFraction = dy + ff.offsetNToFf(ch.FfDisplayVOffset)
+		} else {
+			channelViewer.ffDisplayOffsetFraction += dy
+		}
+		if channelViewer.ffDisplayOffsetFraction < -h {
+			channelViewer.ffDisplayOffsetFraction = -h
+		}
+		if channelViewer.ffDisplayOffsetFraction > h {
+			channelViewer.ffDisplayOffsetFraction = h
+		}
+		ch.FfDisplayVOffset = ff.snapYToFfN(channelViewer.ffDisplayOffsetFraction)
+		ff.scp.ffFullRefresh = true
+		ff.scp.refreshRasters()
 	} else {
-		channelViewer.ffDisplayOffsetFraction += dy
+		vchIdx := chIndex - int(ff.scp.channelCount)
+		if vchIdx < len(ff.scp.Settings.VirtualChannels) {
+			vch := &ff.scp.Settings.VirtualChannels[vchIdx]
+			var currentFraction float64
+			if scroll {
+				currentFraction = dy + ff.offsetNToFf(vch.FfDisplayVOffset)
+			} else {
+				currentFraction = dy + ff.offsetNToFf(vch.FfDisplayVOffset)
+			}
+			
+			if currentFraction < -h {
+				currentFraction = -h
+			}
+			if currentFraction > h {
+				currentFraction = h
+			}
+			vch.FfDisplayVOffset = ff.snapYToFfN(currentFraction)
+			ff.scp.ffFullRefresh = true
+			ff.scp.refreshRasters()
+		}
 	}
-	if channelViewer.ffDisplayOffsetFraction < -h {
-		channelViewer.ffDisplayOffsetFraction = -h
-	}
-	if channelViewer.ffDisplayOffsetFraction > h {
-		channelViewer.ffDisplayOffsetFraction = h
-	}
-	ch.FfDisplayVOffset = ff.snapYToFfN(channelViewer.ffDisplayOffsetFraction)
-	ff.scp.ffFullRefresh = true
-	ff.scp.refreshRasters()
 }
 
 // dragged handles click-and-drag interactions.
@@ -1377,12 +1426,16 @@ func (scp *ScpDesc) ffRasterGenerator(wInt int, hInt int) image.Image {
 	for i := 0; i < int(scp.channelCount); i++ {
 		ch := scp.Settings.Channels[i]
 		if ch.Enabled {
-			if ch.Enabled {
-				ampChannelsCount++
-			}
+			ampChannelsCount++
 			if ch.FfPhaseEnabled {
 				hasPhase = true
 			}
+		}
+	}
+	for i := 0; i < len(scp.Settings.VirtualChannels); i++ {
+		vch := scp.Settings.VirtualChannels[i]
+		if vch.Enabled {
+			ampChannelsCount++
 		}
 	}
 	ffActiveAxesCount := ampChannelsCount

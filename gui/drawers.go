@@ -62,6 +62,9 @@ func (scp *ScpDesc) clearAllFtPersistentLayers() {
 	for i := range scp.ftPersistentLayers {
 		clearRGBA(scp.ftPersistentLayers[i])
 	}
+	if scp.ftBottomLabelViewer != nil {
+		scp.ftBottomLabelViewer.enableRefresh()
+	}
 	scp.scheduleClearAllPersistentLayers()
 }
 
@@ -75,6 +78,9 @@ func (scp *ScpDesc) clearDftPersistentLayer(chIndex genericps.ChannelId) {
 func (scp *ScpDesc) clearAllDftPersistentLayers() {
 	for i := range scp.dftPersistentLayers {
 		clearRGBA(scp.dftPersistentLayers[i])
+	}
+	if scp.dftBottomLabelViewer != nil {
+		scp.dftBottomLabelViewer.enableRefresh()
 	}
 	scp.scheduleClearAllPersistentLayers()
 }
