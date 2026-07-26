@@ -1,6 +1,6 @@
-//go:build ps3000a
+//go:build !noscope && ps2000
 
-package ps3000a
+package ps2000
 
 type (
 	PwqConditions struct {
@@ -28,7 +28,9 @@ type (
 		Inverted   bool
 		Offset     float32
 	}
-
+	PsDesc struct {
+		handle int16
+	}
 	BlockReady     func(handle int16, status int, param any)
 	DataReady      func(handle int16, status int, noOfSamples uint32, overflow int16, param any)
 	StreamingReady func(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
