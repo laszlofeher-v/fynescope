@@ -228,6 +228,7 @@ type (
 		dftDrawers                 []drawer
 		ftDrawers                  []drawer
 	ftVChannelLabels           []ftVChannelLabelViewer
+	dftVChannelLabels          []dftVChannelLabelViewer
 		fvDrawers                  []drawer
 		ffDrawers                  []drawer
 		ftBottomLabelViewer        drawer

@@ -59,6 +59,8 @@ type (
 		Expression     string              `yaml:"expression"`
 		Inverted       bool                `yaml:"inverted"`
 		DisplayVOffset int                 `yaml:"displayvoffset"`
+		FfDisplayVOffset int               `yaml:"ffdisplayvoffset"`
+		DftDisplayVOffset int              `yaml:"dftdisplayvoffset"`
 		Col            [2]color.NRGBA      `yaml:"color"`
 		VRange         genericps.RangeEnum `yaml:"range"`
 		Enabled        bool                `yaml:"enabled"`

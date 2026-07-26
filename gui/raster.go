@@ -188,6 +188,17 @@ func (raster *screenRaster) LeftMouseDown(event *desktop.MouseEvent) {
 				channelViewer.displayOffsetFraction = raster.scp.offsetNToFtY(channelViewer.displayOffsetInt)
 			}
 		}
+		for i := range raster.scp.Settings.VirtualChannels {
+			if raster.isDft {
+				if i < len(raster.scp.dftVChannelLabels) {
+					raster.scp.dftVChannelLabels[i].displayOffsetFraction = raster.scp.offsetNToDftY(raster.scp.Settings.VirtualChannels[i].DftDisplayVOffset)
+				}
+			} else {
+				if i < len(raster.scp.ftVChannelLabels) {
+					raster.scp.ftVChannelLabels[i].displayOffsetFraction = raster.scp.offsetNToFtY(raster.scp.Settings.VirtualChannels[i].DisplayVOffset)
+				}
+			}
+		}
 		for channelIndex := range raster.scp.channelViewers {
 			channel := &raster.scp.Settings.Channels[channelIndex]
 			channelViewer := &raster.scp.channelViewers[channelIndex]
@@ -204,6 +215,26 @@ func (raster *screenRaster) LeftMouseDown(event *desktop.MouseEvent) {
 					if p.In(bounds) {
 						raster.scp.displayMovedDivs = int(channelIndex) + 1
 						channelViewer.label.enableRefresh()
+						break
+					}
+				}
+			}
+		}
+		for vChannelIndex := range raster.scp.Settings.VirtualChannels {
+			vch := &raster.scp.Settings.VirtualChannels[vChannelIndex]
+			if vch.Enabled {
+				if raster.isDft && vChannelIndex < len(raster.scp.dftVChannelLabels) {
+					bounds := raster.scp.dftVChannelLabels[vChannelIndex].rect()
+					if p.In(bounds) {
+						raster.scp.displayMovedDivs = int(raster.scp.channelCount) + vChannelIndex + 1
+						raster.scp.dftVChannelLabels[vChannelIndex].enableRefresh()
+						break
+					}
+				} else if !raster.isDft && vChannelIndex < len(raster.scp.ftVChannelLabels) {
+					bounds := raster.scp.ftVChannelLabels[vChannelIndex].rect()
+					if p.In(bounds) {
+						raster.scp.displayMovedDivs = int(raster.scp.channelCount) + vChannelIndex + 1
+						raster.scp.ftVChannelLabels[vChannelIndex].enableRefresh()
 						break
 					}
 				}

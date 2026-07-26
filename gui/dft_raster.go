@@ -229,7 +229,7 @@ func (frql *frqLabelViewer) draw() {
 		step := niceStep(maxFreqPlot / float64(numDivs))
 		firstFreq := math.Floor(minFreq/step) * step
 
-		for i := 0; i < 20; i++ { // Draw up to 20 potential labels
+		for i := 0; ; i++ { // Draw labels until they go off-screen
 			freq := firstFreq + float64(i)*step
 			if freq < 0 {
 				continue
@@ -530,11 +530,7 @@ func (dv *dftViewer) draw() {
 			vRange = vch.VRange
 			col = vch.Col[dv.scp.Settings.ChannelColorIndex]
 			dftPersistence = false
-			if vchIdx < len(dv.scp.ftVChannelLabels) {
-				dftDisplayOffsetInt = dv.scp.snapYToDftN(dv.scp.ftVChannelLabels[vchIdx].displayOffsetFraction)
-			} else {
-				dftDisplayOffsetInt = 0
-			}
+			dftDisplayOffsetInt = vch.DftDisplayVOffset
 		}
 
 		yScale := 1.0 / float32(genericps.RangeValuesMv[vRange])
@@ -710,11 +706,7 @@ func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rec
 		} else {
 			vchIdx := chIdx - int(dv.scp.channelCount)
 			enabled = dv.scp.Settings.VirtualChannels[vchIdx].Enabled
-			if vchIdx < len(dv.scp.ftVChannelLabels) {
-				dftDisplayOffsetInt = dv.scp.snapYToDftN(dv.scp.ftVChannelLabels[vchIdx].displayOffsetFraction)
-			} else {
-				dftDisplayOffsetInt = 0
-			}
+			dftDisplayOffsetInt = dv.scp.Settings.VirtualChannels[vchIdx].DftDisplayVOffset
 		}
 		if enabled && len(dv.magnitudesCache) > chIdx && len(dv.magnitudesCache[chIdx]) > 0 {
 			magnitudes := dv.magnitudesCache[chIdx]
@@ -1123,11 +1115,15 @@ func (scp *ScpDesc) setDftHDivsX() {
 		step := niceStep(span / 10.0)
 		firstFreq := math.Floor(minFreq/step) * step
 
-		if len(scp.dftDivsX) < 11 {
-			scp.dftDivsX = make([]float32, 11)
+		maxFreq := minFreq + span
+		numLines := int(math.Ceil((maxFreq - firstFreq) / step)) + 1
+		
+		if cap(scp.dftDivsX) < numLines {
+			scp.dftDivsX = make([]float32, numLines, numLines+10)
 		}
-		scp.dftDivsX = scp.dftDivsX[:11]
-		for i := range scp.dftDivsX {
+		scp.dftDivsX = scp.dftDivsX[:numLines]
+		
+		for i := 0; i < numLines; i++ {
 			freq := firstFreq + float64(i)*step
 			x := float32(bounds.Min.X) + float32((freq-minFreq)/span*w)
 			scp.dftDivsX[i] = x
@@ -1206,10 +1202,23 @@ func (scp *ScpDesc) drawDftDivisions() {
 	channelIndex := scp.displayMovedDivs - 1
 	col := scp.theme.Color(ColorNameDivision, 0)
 	if channelIndex >= 0 {
-		if scp.displayMovedDivs > 0 && scp.channelViewers[channelIndex].dftDisplayOffsetInt != 0 {
+		var offsetInt int
+		var chCol color.NRGBA
+		if channelIndex < int(scp.channelCount) {
+			offsetInt = scp.channelViewers[channelIndex].dftDisplayOffsetInt
+			chCol = scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex]
+		} else {
+			vchIdx := channelIndex - int(scp.channelCount)
+			if vchIdx < len(scp.Settings.VirtualChannels) {
+				offsetInt = scp.Settings.VirtualChannels[vchIdx].DftDisplayVOffset
+				chCol = scp.Settings.VirtualChannels[vchIdx].Col[scp.Settings.ChannelColorIndex]
+			}
+		}
+
+		if scp.displayMovedDivs > 0 && offsetInt != 0 {
 			drawDivs(0, gray)
-			yOffset := scp.offsetNToDftY(scp.channelViewers[channelIndex].dftDisplayOffsetInt)
-			drawDivs(float32(yOffset), scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex])
+			yOffset := scp.offsetNToDftY(offsetInt)
+			drawDivs(float32(yOffset), chCol)
 		} else {
 			drawDivs(0, col)
 		}
@@ -1220,11 +1229,17 @@ func (scp *ScpDesc) drawDftDivisions() {
 
 func (scp *ScpDesc) clipDftChRangeScrs(w, h float32) (leftMargin, rightMargin float32) {
 	numberOfEnabledChannels, _ := scp.numberOfEnabledChannels()
+	for _, vch := range scp.Settings.VirtualChannels {
+		if vch.Enabled {
+			numberOfEnabledChannels++
+		}
+	}
 	if numberOfEnabledChannels == 0 {
 		leftMargin = defaultLeftMargin
 		rightMargin = defaultRightMargin
 		return
 	}
+	scp.dftVChannelLabels = make([]dftVChannelLabelViewer, len(scp.Settings.VirtualChannels))
 	leftColumnCount := numberOfEnabledChannels / 2
 	rightColumnCount := numberOfEnabledChannels / 2
 	if numberOfEnabledChannels%2 != 0 {
@@ -1266,6 +1281,32 @@ func (scp *ScpDesc) clipDftChRangeScrs(w, h float32) (leftMargin, rightMargin fl
 			channelViewer.hasScreenPartition = true
 		} else {
 			channelViewer.hasScreenPartition = false
+		}
+	}
+	for vChannelIndex := range scp.Settings.VirtualChannels {
+		channel := &scp.Settings.VirtualChannels[vChannelIndex]
+		if channel.Enabled {
+			scp.dftVChannelLabels[vChannelIndex] = newDftVChannelLabelViewer(scp.dftScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				vChannelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), scp)
+			scp.addDftDrawer(&scp.dftVChannelLabels[vChannelIndex])
+			switch {
+			case leftColumnCount > 1:
+				scp.dftVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				scp.dftVChannelLabels[vChannelIndex].leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				scp.dftVChannelLabels[vChannelIndex].leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
 		}
 	}
 	return

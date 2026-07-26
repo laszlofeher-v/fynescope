@@ -1154,10 +1154,23 @@ func (scp *ScpDesc) drawFtDivisions() {
 	channelIndex := scp.displayMovedDivs - 1
 	col := scp.theme.Color(ColorNameDivision, 0)
 	if channelIndex >= 0 {
-		if scp.displayMovedDivs > 0 && scp.channelViewers[channelIndex].displayOffsetInt != 0 {
+		var offsetInt int
+		var chCol color.NRGBA
+		if channelIndex < int(scp.channelCount) {
+			offsetInt = scp.channelViewers[channelIndex].displayOffsetInt
+			chCol = scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex]
+		} else {
+			vchIdx := channelIndex - int(scp.channelCount)
+			if vchIdx < len(scp.ftVChannelLabels) {
+				offsetInt = scp.Settings.VirtualChannels[vchIdx].DisplayVOffset
+				chCol = scp.Settings.VirtualChannels[vchIdx].Col[scp.Settings.ChannelColorIndex]
+			}
+		}
+
+		if scp.displayMovedDivs > 0 && offsetInt != 0 {
 			drawDivs(0, gray)
-			yOffset := scp.offsetNToFtY(scp.channelViewers[channelIndex].displayOffsetInt)
-			drawDivs(float32(yOffset), scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex])
+			yOffset := scp.offsetNToFtY(offsetInt)
+			drawDivs(float32(yOffset), chCol)
 		} else {
 			drawDivs(0, col)
 		}
@@ -1225,10 +1238,23 @@ func (scp *ScpDesc) drawTzDivisions() {
 	channelIndex := scp.displayMovedDivs - 1
 	col := scp.theme.Color(ColorNameDivision, 0)
 	if channelIndex >= 0 {
-		if scp.displayMovedDivs > 0 && scp.channelViewers[channelIndex].displayOffsetInt != 0 {
+		var offsetInt int
+		var chCol color.NRGBA
+		if channelIndex < int(scp.channelCount) {
+			offsetInt = scp.channelViewers[channelIndex].displayOffsetInt
+			chCol = scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex]
+		} else {
+			vchIdx := channelIndex - int(scp.channelCount)
+			if vchIdx < len(scp.ftVChannelLabels) {
+				offsetInt = scp.Settings.VirtualChannels[vchIdx].DisplayVOffset
+				chCol = scp.Settings.VirtualChannels[vchIdx].Col[scp.Settings.ChannelColorIndex]
+			}
+		}
+
+		if scp.displayMovedDivs > 0 && offsetInt != 0 {
 			drawDivs(0, gray)
-			yOffset := scp.offsetNToFtY(scp.channelViewers[channelIndex].displayOffsetInt)
-			drawDivs(float32(yOffset), scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex])
+			yOffset := scp.offsetNToFtY(offsetInt)
+			drawDivs(float32(yOffset), chCol)
 		} else {
 			drawDivs(0, col)
 		}
