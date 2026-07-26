@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"fynescope/genericps"
 	"fynescope/gui"
+	_ "fynescope/ps2000"
 	_ "fynescope/ps2000a"
 	_ "fynescope/ps3000a"
 	"fynescope/settings"
