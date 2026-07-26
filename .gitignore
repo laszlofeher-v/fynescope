@@ -28,3 +28,5 @@ WIKI.md
 raster_*.png
 window_*.png
 fuzzer_report_*.tar.gz
+fynescope-sim-linux-amd64
+fynescope-linux-amd64

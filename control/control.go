@@ -167,6 +167,7 @@ type (
 		overSample                  int16
 		SamplingTimeInterval        float64
 		lastTriggerSamplingInterval float64
+		initialTriggerSet           bool
 		SampleCountRequired         int32
 		NPre, NPro                  int32
 		XRoundError                 float64
@@ -270,12 +271,13 @@ func (psControl *PscDesc) setTrigger() (err error) {
 	samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
 	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth
 
-	if newSettings || (samplingIntervalChanged && timeDependentTrigger) {
+	if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
 		err = psControl.sendTrigger() // 			   send to the scope
 		if err != nil {
 			slog.Error("setTrigger", "error", err)
 			return
 		}
+		psControl.initialTriggerSet = true
 		psControl.lastTriggerSamplingInterval = psControl.SamplingTimeInterval
 	}
 	return
