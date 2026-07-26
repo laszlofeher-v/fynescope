@@ -7,9 +7,9 @@ import (
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
+	"image/color"
 	"log/slog"
 	"math"
-	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -206,7 +206,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 
 		waveRow := container.NewHBox(widget.NewLabel("Waveform:"), waveTypeSelect)
 
-		const maxV = 2000000
+		const maxV = 20000000 //20V
 		const size = 0.8
 		fontScale := float32(0.8)
 		const maxFreq = 100000000.0 // 100 MHz
@@ -245,7 +245,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}()
 		}
 
-		amp, _ := disp7.NewCustomDisp7Array(7, 6, maxV, 0,
+		amp, _ := disp7.NewCustomDisp7Array(5, 3, maxV, 0,
 			disp7.SignedHidden, disp7.NoTrailingZeroes, scp.Window,
 			color.White,
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
@@ -257,7 +257,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			go func() {
 				scp.Settings.ExtGen[chIdx].Amplitude = uint32(v)
 				if scp.extGen.Connected() {
-					if err := scp.extGen.SetAmplitude(scpiCh, v/1000000.0); err != nil {
+					if err := scp.extGen.SetAmplitude(scpiCh, v/1000.0); err != nil {
 						slog.Error("extgen set amplitude", "err", err)
 					}
 				}
@@ -265,7 +265,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}()
 		}
 
-		offset, _ := disp7.NewCustomDisp7Array(7, 6, maxV, -maxV,
+		offset, _ := disp7.NewCustomDisp7Array(5, 3, maxV, -maxV,
 			disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 			color.White,
 			disp7.ReadWrite, fontScale*disp7.DefaultDigitWidth,
@@ -277,7 +277,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			go func() {
 				scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v)
 				if scp.extGen.Connected() {
-					if err := scp.extGen.SetOffset(scpiCh, v/1000000.0); err != nil {
+					if err := scp.extGen.SetOffset(scpiCh, v/1000.0); err != nil {
 						slog.Error("extgen set offset", "err", err)
 					}
 				}
@@ -478,12 +478,12 @@ func (scp *ScpDesc) syncExtGenSettings() {
 		}
 
 		// Set amplitude
-		if err := scp.extGen.SetAmplitude(scpiCh, float64(settings.Amplitude)/1000000.0); err != nil {
+		if err := scp.extGen.SetAmplitude(scpiCh, float64(settings.Amplitude)/1000.0); err != nil {
 			slog.Error("extgen sync amplitude", "err", err)
 		}
 
 		// Set offset
-		if err := scp.extGen.SetOffset(scpiCh, float64(settings.OffsetVoltage)/1000000.0); err != nil {
+		if err := scp.extGen.SetOffset(scpiCh, float64(settings.OffsetVoltage)/1000.0); err != nil {
 			slog.Error("extgen sync offset", "err", err)
 		}
 
