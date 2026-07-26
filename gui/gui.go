@@ -1078,7 +1078,9 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
-			scp.toolbar.Add(scp.recordGifButton)
+			if scp.GifEnabled {
+				scp.toolbar.Add(scp.recordGifButton)
+			}
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
@@ -1098,7 +1100,9 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
-			scp.toolbar.Add(scp.recordGifButton)
+			if scp.GifEnabled {
+				scp.toolbar.Add(scp.recordGifButton)
+			}
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
