@@ -80,13 +80,13 @@ type (
 		mouseX, mouseY float32
 		disableInput   bool
 		widget.BaseWidget
-		Window fyne.Window
-		raster *canvas.Raster
-		min    fyne.Size
-		scp    *ScpDesc
-		isDft  bool
-		isFv   bool
-		isFf   bool
+		Window     fyne.Window
+		raster     *canvas.Raster
+		min        fyne.Size
+		scp        *ScpDesc
+		isDft      bool
+		isFv       bool
+		isFf       bool
 		isTimeZoom bool
 	}
 )
@@ -396,6 +396,8 @@ func (raster *screenRaster) Dragged(event *fyne.DragEvent) {
 			scaleX = float32(raster.scp.fvScopeFullScreen.Bounds().Dx()) / raster.Size().Width
 		} else if raster.isFf {
 			scaleX = float32(raster.scp.ffScopeFullScreen.Bounds().Dx()) / raster.Size().Width
+		} else if raster.isTimeZoom {
+			scaleX = float32(raster.scp.timeZoomScopeFullScreen.Bounds().Dx()) / raster.Size().Width
 		} else {
 			scaleX = float32(raster.scp.ftScopeFullScreen.Bounds().Dx()) / raster.Size().Width
 		}
