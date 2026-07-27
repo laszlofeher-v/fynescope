@@ -165,26 +165,26 @@ const (
 	DigitalMaxDirection             DigitalDirection = 0
 )
 
-type WaveTypeEnum int16
+type WaveTypeEnum int32
 const (
 	Sine      WaveTypeEnum = C.PS2000_SINE
 	Square    WaveTypeEnum = C.PS2000_SQUARE
 	Triangle  WaveTypeEnum = C.PS2000_TRIANGLE
-	RampUp    WaveTypeEnum = C.PS2000_RAMPUP
-	RampDown  WaveTypeEnum = C.PS2000_RAMPDOWN
-	SinC      WaveTypeEnum = C.PS2000_SINC
-	Gaussian  WaveTypeEnum = C.PS2000_GAUSSIAN
-	HalfSine  WaveTypeEnum = C.PS2000_HALF_SINE
-	DcVoltage WaveTypeEnum = C.PS2000_DC_VOLTAGE
+	RampUp    WaveTypeEnum = 3
+	RampDown  WaveTypeEnum = 4
+	SinC      WaveTypeEnum = 5
+	Gaussian  WaveTypeEnum = 6
+	HalfSine  WaveTypeEnum = 7
+	DcVoltage WaveTypeEnum = 8
 )
 
-type SweepTypeEnum C.PS2000_SWEEP_TYPE
+type SweepTypeEnum int32
 const (
-	SweepUp       SweepTypeEnum = C.PS2000_UP
-	SweepDown     SweepTypeEnum = C.PS2000_DOWN
-	SweepUpDown   SweepTypeEnum = C.PS2000_UPDOWN
-	SweepDownUp   SweepTypeEnum = C.PS2000_DOWNUP
-	SweepMaxTypes SweepTypeEnum = C.MAX_SWEEP_TYPES
+	SweepUp       SweepTypeEnum = 0
+	SweepDown     SweepTypeEnum = 1
+	SweepUpDown   SweepTypeEnum = 2
+	SweepDownUp   SweepTypeEnum = 3
+	SweepMaxTypes SweepTypeEnum = 4
 )
 
 type ExtraOperations int

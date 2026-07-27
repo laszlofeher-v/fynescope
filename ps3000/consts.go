@@ -80,17 +80,17 @@ const (
 type ThresholdDirection int
 
 const (
-	TriggerAbove           ThresholdDirection = C.PS3000_ABOVE
-	TriggerBelow           ThresholdDirection = C.PS3000_BELOW
-	TriggerRising          ThresholdDirection = C.PS3000_ADV_RISING
-	TriggerFalling         ThresholdDirection = C.PS3000_ADV_FALLING
-	TriggerRisingOrFalling ThresholdDirection = C.PS3000_RISING_OR_FALLING
-	TriggerOutside         ThresholdDirection = C.PS3000_OUTSIDE
-	TriggerInside          ThresholdDirection = C.PS3000_INSIDE
-	TriggerEnter           ThresholdDirection = C.PS3000_ENTER
-	TriggerExit            ThresholdDirection = C.PS3000_EXIT
-	TriggerEnterOrExit     ThresholdDirection = C.PS3000_ENTER_OR_EXIT
-	TriggerNone            ThresholdDirection = C.PS3000_ADV_NONE
+	TriggerAbove           ThresholdDirection = C.ABOVE
+	TriggerBelow           ThresholdDirection = C.BELOW
+	TriggerRising          ThresholdDirection = C.RISING
+	TriggerFalling         ThresholdDirection = C.FALLING
+	TriggerRisingOrFalling ThresholdDirection = C.RISING_OR_FALLING
+	TriggerOutside         ThresholdDirection = C.OUTSIDE
+	TriggerInside          ThresholdDirection = C.INSIDE
+	TriggerEnter           ThresholdDirection = C.ENTER
+	TriggerExit            ThresholdDirection = C.EXIT
+	TriggerEnterOrExit     ThresholdDirection = C.ENTER_OR_EXIT
+	TriggerNone            ThresholdDirection = C.NONE
 )
 
 type PicoInfo int
@@ -132,19 +132,19 @@ const (
 
 type TriggerState int
 const (
-	CondDontCare TriggerState = C.PS3000_CONDITION_DONT_CARE
-	CondTrue     TriggerState = C.PS3000_CONDITION_TRUE
-	CondFalse    TriggerState = C.PS3000_CONDITION_FALSE
-	CondMax      TriggerState = C.PS3000_CONDITION_MAX
+	CondDontCare TriggerState = C.CONDITION_DONT_CARE
+	CondTrue     TriggerState = C.CONDITION_TRUE
+	CondFalse    TriggerState = C.CONDITION_FALSE
+	CondMax      TriggerState = C.CONDITION_MAX
 )
 
 type PulseWidthType int
 const (
-	PwTypeNone        PulseWidthType = C.PS3000_PW_TYPE_NONE
-	PwTypeLessThan    PulseWidthType = C.PS3000_PW_TYPE_LESS_THAN
-	PwTypeGreaterThan PulseWidthType = C.PS3000_PW_TYPE_GREATER_THAN
-	PwTypeInRange     PulseWidthType = C.PS3000_PW_TYPE_IN_RANGE
-	PwTypeOutOfRange  PulseWidthType = C.PS3000_PW_TYPE_OUT_OF_RANGE
+	PwTypeNone        PulseWidthType = C.PW_TYPE_NONE
+	PwTypeLessThan    PulseWidthType = C.PW_TYPE_LESS_THAN
+	PwTypeGreaterThan PulseWidthType = C.PW_TYPE_GREATER_THAN
+	PwTypeInRange     PulseWidthType = C.PW_TYPE_IN_RANGE
+	PwTypeOutOfRange  PulseWidthType = C.PW_TYPE_OUT_OF_RANGE
 )
 
 type EtsMode int
@@ -165,26 +165,26 @@ const (
 	DigitalMaxDirection             DigitalDirection = 0
 )
 
-type WaveTypeEnum int16
+type WaveTypeEnum int32
 const (
 	Sine      WaveTypeEnum = C.PS3000_SINE
 	Square    WaveTypeEnum = C.PS3000_SQUARE
 	Triangle  WaveTypeEnum = C.PS3000_TRIANGLE
-	RampUp    WaveTypeEnum = C.PS3000_RAMPUP
-	RampDown  WaveTypeEnum = C.PS3000_RAMPDOWN
-	SinC      WaveTypeEnum = C.PS3000_SINC
-	Gaussian  WaveTypeEnum = C.PS3000_GAUSSIAN
-	HalfSine  WaveTypeEnum = C.PS3000_HALF_SINE
-	DcVoltage WaveTypeEnum = C.PS3000_DC_VOLTAGE
+	RampUp    WaveTypeEnum = 3
+	RampDown  WaveTypeEnum = 4
+	SinC      WaveTypeEnum = 5
+	Gaussian  WaveTypeEnum = 6
+	HalfSine  WaveTypeEnum = 7
+	DcVoltage WaveTypeEnum = 8
 )
 
-type SweepTypeEnum C.PS3000_SWEEP_TYPE
+type SweepTypeEnum int32
 const (
-	SweepUp       SweepTypeEnum = C.PS3000_UP
-	SweepDown     SweepTypeEnum = C.PS3000_DOWN
-	SweepUpDown   SweepTypeEnum = C.PS3000_UPDOWN
-	SweepDownUp   SweepTypeEnum = C.PS3000_DOWNUP
-	SweepMaxTypes SweepTypeEnum = C.MAX_SWEEP_TYPES
+	SweepUp       SweepTypeEnum = 0
+	SweepDown     SweepTypeEnum = 1
+	SweepUpDown   SweepTypeEnum = 2
+	SweepDownUp   SweepTypeEnum = 3
+	SweepMaxTypes SweepTypeEnum = 4
 )
 
 type ExtraOperations int
