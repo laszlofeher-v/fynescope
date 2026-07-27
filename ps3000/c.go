@@ -293,10 +293,10 @@ func ps3000SetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, wa
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
 	slog.Debug("ps3000SetSigGenBuiltIn")
-	stat := C.ps3000_set_sig_gen_built_in((C.short)(handle), (C.int)(offsetVoltage),
-		(C.uint)(pkToPK), (C.PS3000_WAVE_TYPE)(waveType), (C.float)(startFrequency),
-		(C.float)(stopFrequency), (C.float)(increment), (C.float)(dwellTime),
-		(C.PS3000_SWEEP_TYPE)(sweepType), (C.uint)(sweeps))
+	stat := C.ps3000_set_siggen((C.short)(handle),
+		(C.short)(waveType), (C.int)(startFrequency),
+		(C.int)(stopFrequency), (C.float)(increment), (C.short)(dwellTime),
+		(C.short)(0), (C.short)(0))
 	if stat == 0 {
 		err = fmt.Errorf("SetSigGenBuiltIn failed")
 	}
