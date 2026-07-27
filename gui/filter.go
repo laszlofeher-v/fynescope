@@ -297,7 +297,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		lpCheck.SetChecked(chSettings.DigitalFilter.LowpassEnabled)
 
 		lpVal, lpUnit := fromHz(chSettings.DigitalFilter.LowpassFc)
-		lpEntry := widget.NewEntry()
+		lpEntry := newNumericalEntry()
 		lpEntry.SetText(strconv.FormatFloat(lpVal, 'f', -1, 64))
 
 		lpUnitSelect := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
@@ -340,7 +340,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		hpCheck.SetChecked(chSettings.DigitalFilter.HighpassEnabled)
 
 		hpVal, hpUnit := fromHz(chSettings.DigitalFilter.HighpassFc)
-		hpEntry := widget.NewEntry()
+		hpEntry := newNumericalEntry()
 		hpEntry.SetText(strconv.FormatFloat(hpVal, 'f', -1, 64))
 
 		hpUnitSelect := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
@@ -383,7 +383,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bpCheck.SetChecked(chSettings.DigitalFilter.BandpassEnabled)
 
 		bpVal1, bpUnit1 := fromHz(chSettings.DigitalFilter.BandpassFc1)
-		bpEntry1 := widget.NewEntry()
+		bpEntry1 := newNumericalEntry()
 		bpEntry1.SetText(strconv.FormatFloat(bpVal1, 'f', -1, 64))
 
 		bpUnitSelect1 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
@@ -404,7 +404,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bpEntryContainer1 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bpEntry1)
 
 		bpVal2, bpUnit2 := fromHz(chSettings.DigitalFilter.BandpassFc2)
-		bpEntry2 := widget.NewEntry()
+		bpEntry2 := newNumericalEntry()
 		bpEntry2.SetText(strconv.FormatFloat(bpVal2, 'f', -1, 64))
 
 		bpUnitSelect2 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
@@ -450,7 +450,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bsCheck.SetChecked(chSettings.DigitalFilter.BandstopEnabled)
 
 		bsVal1, bsUnit1 := fromHz(chSettings.DigitalFilter.BandstopFc1)
-		bsEntry1 := widget.NewEntry()
+		bsEntry1 := newNumericalEntry()
 		bsEntry1.SetText(strconv.FormatFloat(bsVal1, 'f', -1, 64))
 
 		bsUnitSelect1 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
@@ -471,7 +471,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		bsEntryContainer1 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bsEntry1)
 
 		bsVal2, bsUnit2 := fromHz(chSettings.DigitalFilter.BandstopFc2)
-		bsEntry2 := widget.NewEntry()
+		bsEntry2 := newNumericalEntry()
 		bsEntry2.SetText(strconv.FormatFloat(bsVal2, 'f', -1, 64))
 
 		bsUnitSelect2 := selectscroll.NewSelectScroll([]string{settings.UnitHz, settings.UnitKHz, settings.UnitMHz}, func(s string, exc selectscroll.Exception) {
