@@ -292,6 +292,8 @@ func ps3000aGetMaxSegments(handle int16) (maxSegments uint32, err error) {
 	return
 }
 
+// ps3000aChangePowerSource
+// ps3000aCurrentPowerSource
 func ps3000aGetNumOfCaptures(handle int16) (nCaptures uint32, err error) {
 	slog.Debug("ps3000aGetNoOfCaptures", "handle", handle)
 	stat := C.ps3000aGetNoOfCaptures((C.short)(handle), (*C.uint)(&nCaptures))
@@ -333,6 +335,8 @@ func ps3000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar Streami
 	return
 }
 
+// ps3000aCheckForUpdate
+// ps3000aStartFirmwareUpdate
 func ps3000aGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
 	slog.Debug("ps3000aGetTimebase", "handle", handle, "timeBase", timeBase, "noOfSamples", noOfSamples, "overSample", overSample, "segmentIndex", segmentIndex)
 	stat := C.ps3000aGetTimebase((C.short)(handle), (C.uint)(timeBase), (C.int)(noOfSamples),
@@ -819,6 +823,7 @@ func ps3000aSetOutputEdgeDetect(handle int16, state int16) (err error) {
 	return
 }
 
+// ps3000aGetScalingValues
 func ps3000aSetPulseWidthDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
 	slog.Debug("ps3000aSetPulseWidthDigitalPortProperties", "handle", handle, "digitalDirections", digitalDirections)
 	cDigitalDirections := make([]C.PS3000A_DIGITAL_CHANNEL_DIRECTIONS, len(digitalDirections))
