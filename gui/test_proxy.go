@@ -135,6 +135,11 @@ const (
 	rlcLUnitId     = "rlcLUnit"
 	rlcCId         = "rlcC"
 	rlcCUnitId     = "rlcCUnit"
+	vchNameEntryId = "vchNameEntry"
+	vchExprEntryId = "vchExprEntry"
+	vchAcceptBtnId = "vchAcceptBtn"
+	vchDeleteBtnId = "vchDeleteBtn"
+	vchNewBtnId    = "vchNewBtn"
 	sleepTime      = 100 * time.Millisecond
 	timeout        = time.Duration(30) * time.Second
 )
@@ -218,6 +223,18 @@ func randKey(name string) bool {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
 				runes := []rune("0123456789abcdefABCDEF")
+				r := runes[rand.Intn(len(runes))]
+				c.TypedRune(r)
+			}
+		})
+	case *widget.Entry:
+		slog.Debug("randKey", "name", name)
+		wait()
+		fyne.Do(func() {
+			if rand.Float32() < 0.2 && len(c.Text) > 0 {
+				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
+			} else {
+				runes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/() ")
 				r := runes[rand.Intn(len(runes))]
 				c.TypedRune(r)
 			}

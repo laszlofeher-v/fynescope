@@ -5,7 +5,7 @@
   <img src="signal.png" width="100%" alt="Fynescope Interface Screenshot">
 </p>
 
-`fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000 Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000 series SDK.
+`fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000A Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000A series SDK.
 
 ## Key Features & Navigation
 
@@ -224,7 +224,7 @@ A time-based qualifier that triggers when a pulse (the duration between two cons
 
 ### Complex Trigger ⚠️ Experimental
 
-Complex triggering allows you to define trigger conditions across **multiple channels simultaneously**, using AND logic. It maps directly onto the PicoScope 2000 Series API calls `ps2000aSetTriggerChannelProperties`, `ps2000aSetTriggerChannelConditions`, and `ps2000aSetTriggerChannelDirections`.
+Complex triggering allows you to define trigger conditions across **multiple channels simultaneously**, using AND logic. It maps directly onto the PicoScope 2000A Series API calls `ps2000aSetTriggerChannelProperties`, `ps2000aSetTriggerChannelConditions`, and `ps2000aSetTriggerChannelDirections`.
 
 #### Enabling Complex Trigger
 
@@ -421,7 +421,7 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 **Platform & Hardware**
 
 - **Linux only**: CGo bindings to the PicoScope driver are Linux-specific. Windows and macOS are not supported.
-- **PicoScope 2000 Series only**: Tied to the `libps2000a` driver; PS3000, PS4000, PS5000, PS6000, etc. are not supported. *Note: Older models like the 2104, 2105, 2202, 2203, 2204, 2205, 2204A, and 2205A use the older `libps2000` library and are therefore NOT supported, despite being part of the 2000 series.*
+- **PicoScope 2000 Series only**: Tied to the `libps2000a` driver; PS3000, PS4000, PS5000, PS6000, etc. are not supported. *Note: Older models like the 2104, 2105, 2202, 2203, 2204, 2205, 2204A, and 2205A use the older `libps2000` library and are therefore NOT supported.*
 - **No MSO support**: Digital channels on Mixed-Signal Oscilloscope variants are not implemented.
 - **Single device only**: Using multiple PicoScope devices simultaneously is not supported.
 

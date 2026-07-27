@@ -50,10 +50,18 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	)
 
 	nameEntry := widget.NewEntry()
+	nameEntry.OnChanged = func(s string) {
+		if len(s) > 1 {
+			nameEntry.SetText(s[:1])
+		}
+	}
 	exprEntry := widget.NewMultiLineEntry()
 	exprEntry.SetMinRowsVisible(3)
 	errorLabel := widget.NewLabel("")
 	errorLabel.Hide()
+	
+	addToTest(nameEntry, vchNameEntryId, vchTabIndex)
+	addToTest(exprEntry, vchExprEntryId, vchTabIndex)
 
 	vRangeSelect := selectscroll.NewSelectScroll(inputRanges, func(s string, _ selectscroll.Exception) {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
@@ -225,6 +233,8 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		extraFields.Show()
 	})
 
+	addToTest(newBtn, vchNewBtnId, vchTabIndex)
+
 	acceptBtn := widget.NewButton("Accept", func() {
 		if nameEntry.Text == "" {
 			errorLabel.SetText("Error: channel name must not be empty")
@@ -297,6 +307,8 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		setFlag(scp.tzRepartition)
 		scp.refreshRasters()
 	})
+	
+	addToTest(acceptBtn, vchAcceptBtnId, vchTabIndex)
 
 	deleteBtn := widget.NewButton("Delete", func() {
 		if selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
@@ -338,6 +350,8 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		setFlag(scp.tzRepartition)
 		scp.refreshRasters() // immediately remove the trace from the screen
 	})
+	
+	addToTest(deleteBtn, vchDeleteBtnId, vchTabIndex)
 
 	// Undock button: pops the content into a floating window and removes the tab.
 	var undockBtn *widget.Button
