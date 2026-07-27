@@ -1420,3 +1420,20 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	scp.Window.Show()
 	return
 }
+
+// numericalEntry is a customized Fyne entry widget designed to input numerical values only.
+type numericalEntry struct {
+	widget.Entry
+}
+
+func newNumericalEntry() *numericalEntry {
+	e := &numericalEntry{}
+	e.ExtendBaseWidget(e)
+	return e
+}
+
+func (e *numericalEntry) TypedRune(r rune) {
+	if (r >= '0' && r <= '9') || r == '.' || r == '-' || r == 'e' || r == 'E' || r == '+' {
+		e.Entry.TypedRune(r)
+	}
+}

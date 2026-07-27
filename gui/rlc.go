@@ -85,7 +85,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		// Helper to build entry + unit selector
 		buildInput := func(labelStr string, value *float64, unit *string, units []string, valId string, unitId string) *fyne.Container {
 			lbl := widget.NewLabel(labelStr)
-			entry := widget.NewEntry()
+			entry := newNumericalEntry()
 
 			// Format correctly without trailing zeros
 			entry.SetText(strconv.FormatFloat(*value, 'f', -1, 64))
