@@ -494,6 +494,7 @@ type (
 
 	SetTriggerDigitalPortPropertiesMsg struct {
 		MsgBase
+		Port              ChannelId
 		DigitalDirections []DigitalChannelDirections
 	}
 	SetTriggerDigitalPortPropertiesRsp struct {
