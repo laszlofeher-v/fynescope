@@ -1036,6 +1036,13 @@ func (scp *ScpDesc) build2000Gui() {
 			var err error
 			scp.running = true
 			scp.runblockButton.SetIcon(theme.MediaPauseIcon())
+
+			// Force re-apply trigger settings so the device is synchronized on run.
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			scp.psControl.SetTriggerCh <- &triggerCopy
+			<-triggerCopy.Done
+
 			switch scp.triggerSettingMsg.Mode {
 			case control.ETS:
 
