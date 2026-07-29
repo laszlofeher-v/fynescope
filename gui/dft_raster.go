@@ -2,10 +2,12 @@ package gui
 
 import (
 	"fmt"
+	"fynescope/selectscroll"
 	"image"
 	"image/color"
 	"image/draw"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"fynescope/genericps"
@@ -451,7 +453,7 @@ func (dv *dftViewer) draw() {
 		copy(newCache, dv.magnitudesCache)
 		dv.magnitudesCache = newCache
 	}
-	
+
 	for chIdx := 0; chIdx < totalChannels; chIdx++ {
 		var enabled bool
 		if chIdx < int(dv.scp.channelCount) {
@@ -459,7 +461,7 @@ func (dv *dftViewer) draw() {
 		} else {
 			enabled = dv.scp.Settings.VirtualChannels[chIdx-int(dv.scp.channelCount)].Enabled
 		}
-		
+
 		if !enabled {
 			if chIdx < len(dv.magnitudesCache) {
 				dv.magnitudesCache[chIdx] = nil
@@ -684,7 +686,7 @@ func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rec
 		maxFreq := minFreq + maxFreqPlot
 		logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
 		logRange := logMax - logMin
-		
+
 		logF := logMin + fractionAtCursor*logRange
 		freqAtCursor = math.Pow(10, logF)
 	} else {
@@ -840,7 +842,7 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		var col color.NRGBA
 		var vRange genericps.RangeEnum
 		var chName string
-		
+
 		if chIdx < int(dv.scp.channelCount) {
 			enabled = dv.scp.Settings.Channels[chIdx].Enabled
 			col = dv.scp.Settings.Channels[chIdx].Col[dv.scp.Settings.ChannelColorIndex]
@@ -1004,12 +1006,33 @@ func (scp *ScpDesc) updateDftDataCollectionTime() {
 	fyne.Do(func() { scp.dftDataCollectionTimeLabel.SetText(text) })
 }
 
+func (scp *ScpDesc) checkDftSampleRateLimit(rateStr, unitStr string) bool {
+	rate, err := strconv.Atoi(rateStr)
+	if err != nil {
+		return false
+	}
+	multiplier := uint32(1)
+	switch unitStr {
+	case selectscroll.UnitKSps:
+		multiplier = 1000
+	case selectscroll.UnitMSps:
+		multiplier = 1000000
+	case selectscroll.UnitGSps:
+		multiplier = 1000000000
+	}
+	return uint32(rate)*multiplier <= scp.maxSamplingRate
+}
+
 func (scp *ScpDesc) dftSampleUnitUp() {
 	if scp.dftSampleUnitSelect == nil || scp.dftSampleRateSelect == nil {
 		return
 	}
 	index := scp.dftSampleUnitSelect.SelectedIndex()
 	if index < len(scp.dftSampleUnitSelect.Options)-1 {
+		nextUnit := scp.dftSampleUnitSelect.Options[index+1]
+		if !scp.checkDftSampleRateLimit("1", nextUnit) {
+			return
+		}
 		scp.dftSampleRateSelect.SilentSetSelectedIndex(0) // Set to "1"
 		scp.Settings.Dft.SampleRate = scp.dftSampleRateSelect.Selected
 		scp.dftSampleUnitSelect.SetSelectedIndex(index + 1)
@@ -1023,13 +1046,21 @@ func (scp *ScpDesc) dftSampleUnitDown() {
 	}
 	index := scp.dftSampleUnitSelect.SelectedIndex()
 	if index > 0 {
-		scp.dftSampleRateSelect.SilentSetSelectedIndex(len(scp.dftSampleRateSelect.Options) - 1) // Set to "500"
+		prevUnit := scp.dftSampleUnitSelect.Options[index-1]
+		// Find max allowed rate
+		maxRateIdx := len(scp.dftSampleRateSelect.Options) - 1
+		for i := len(scp.dftSampleRateSelect.Options) - 1; i >= 0; i-- {
+			if scp.checkDftSampleRateLimit(scp.dftSampleRateSelect.Options[i], prevUnit) {
+				maxRateIdx = i
+				break
+			}
+		}
+		scp.dftSampleRateSelect.SilentSetSelectedIndex(maxRateIdx)
 		scp.Settings.Dft.SampleRate = scp.dftSampleRateSelect.Selected
 		scp.dftSampleUnitSelect.SetSelectedIndex(index - 1)
 		scp.Settings.Dft.SampleRateUnit = scp.dftSampleUnitSelect.Selected
 	}
 }
-
 
 func applyWindow(samples []float64, windowType string) {
 	n := len(samples)
@@ -1116,13 +1147,13 @@ func (scp *ScpDesc) setDftHDivsX() {
 		firstFreq := math.Floor(minFreq/step) * step
 
 		maxFreq := minFreq + span
-		numLines := int(math.Ceil((maxFreq - firstFreq) / step)) + 1
-		
+		numLines := int(math.Ceil((maxFreq-firstFreq)/step)) + 1
+
 		if cap(scp.dftDivsX) < numLines {
 			scp.dftDivsX = make([]float32, numLines, numLines+10)
 		}
 		scp.dftDivsX = scp.dftDivsX[:numLines]
-		
+
 		for i := 0; i < numLines; i++ {
 			freq := firstFreq + float64(i)*step
 			x := float32(bounds.Min.X) + float32((freq-minFreq)/span*w)
