@@ -733,6 +733,7 @@ type (
 	SetPulseWidthDigitalPortPropertiesMsg struct {
 		MsgBase
 		DigitalDirections []DigitalChannelDirections
+		Port              DigitalPort
 	}
 	SetPulseWidthDigitalPortPropertiesRsp struct {
 		RespBase

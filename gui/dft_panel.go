@@ -255,12 +255,17 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	dftSampleUnits := []string{selectscroll.UnitSps, selectscroll.UnitKSps, selectscroll.UnitMSps, selectscroll.UnitGSps}
 
 	scp.dftSampleRateSelect = selectscroll.NewSelectScroll(dftSampleRates, func(selected string, ex selectscroll.Exception) {
+		prevSelected := scp.Settings.Dft.SampleRate
 		if ex == selectscroll.Over {
 			scp.dftSampleUnitUp()
 			return
 		}
 		if ex == selectscroll.Under {
 			scp.dftSampleUnitDown()
+			return
+		}
+		if !scp.checkDftSampleRateLimit(selected, scp.Settings.Dft.SampleRateUnit) {
+			scp.dftSampleRateSelect.SilentSetSelected(prevSelected)
 			return
 		}
 		scp.Settings.Dft.SampleRate = selected
@@ -270,6 +275,22 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	addToTest(scp.dftSampleRateSelect, dftSampleRateId, dftTabIndex)
 
 	scp.dftSampleUnitSelect = selectscroll.NewSelectScroll(dftSampleUnits, func(selected string, _ selectscroll.Exception) {
+		if !scp.checkDftSampleRateLimit(scp.Settings.Dft.SampleRate, selected) {
+			// Find max allowed rate for the new unit
+			maxRateIdx := -1
+			for i := len(scp.dftSampleRateSelect.Options) - 1; i >= 0; i-- {
+				if scp.checkDftSampleRateLimit(scp.dftSampleRateSelect.Options[i], selected) {
+					maxRateIdx = i
+					break
+				}
+			}
+			if maxRateIdx == -1 {
+				scp.dftSampleUnitSelect.SilentSetSelected(scp.Settings.Dft.SampleRateUnit)
+				return
+			}
+			scp.dftSampleRateSelect.SilentSetSelected(scp.dftSampleRateSelect.Options[maxRateIdx])
+			scp.Settings.Dft.SampleRate = scp.dftSampleRateSelect.Selected
+		}
 		scp.Settings.Dft.SampleRateUnit = selected
 		scp.syncTimeDivToDft()
 		scp.updateAcquisitionParameters()
