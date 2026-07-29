@@ -14,10 +14,8 @@ fynescope
 *.nogo
 *.py
 *.pcapng
-.gitignore
 decoder.go
 PicoStatus.h
-.gitignore
 ps2000aApi.h
 rename_files.sh
 icon1.png
@@ -30,3 +28,8 @@ window_*.png
 fuzzer_report_*.tar.gz
 fynescope-sim-linux-amd64
 fynescope-linux-amd64
+ps3000a/build_emu.sh
+ps3000a/emu.c
+ps3000a/emu.o
+ps3000a/libemu3000a.a
+ps3000a/libemu3000a.so

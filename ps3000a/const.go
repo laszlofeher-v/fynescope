@@ -3,7 +3,6 @@
 package ps3000a
 
 // #cgo CFLAGS: -g -Wall -I/opt/picoscope/include/libps6000a
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps3000a
 // #include <stdlib.h>
 // #include "/opt/picoscope/include/libps3000/ps3000.h"
 // #include "/opt/picoscope/include/libps3000a/PicoStatus.h"
