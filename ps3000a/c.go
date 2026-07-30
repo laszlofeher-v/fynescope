@@ -85,6 +85,7 @@ func openUnit(serial string) (handle int16, err error) {
 		err = fmt.Errorf("OpenUnit:  %s", psc.StatStr(int(stat)))
 		return
 	}
+	loadConstants()
 	return
 }
 
@@ -140,6 +141,7 @@ func ps3000aGetUnitInfo(handle int16, info PicoInfo) (infoString string, err err
 	}
 	b := C.GoBytes(unsafe.Pointer(cstrPtr), (C.int)(requiredSize-1))
 	infoString = string(b)
+	slog.Debug("ps3000aGetUnitInfo", "infoString", infoString)
 	return
 }
 
@@ -601,9 +603,13 @@ func ps3000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, dir
 		cPwqConditions[i].external = (C.PS3000A_TRIGGER_STATE)(conditions[i].External)
 		cPwqConditions[i].aux = (C.PS3000A_TRIGGER_STATE)(conditions[i].Aux)
 	}
+	pcPwqConditions := (*C.PS3000A_PWQ_CONDITIONS)(nil)
+	if len(conditions) > 0 {
+		pcPwqConditions = &cPwqConditions[0]
+	}
 	slog.Debug("ps3000aSetPulseWidthQualifier", "handle", handle, "conditions", conditions, "direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
 	stat := C.ps3000aSetPulseWidthQualifier((C.short)(handle),
-		(*C.PS3000A_PWQ_CONDITIONS)(&cPwqConditions[0]), (C.short)(len(conditions)),
+		pcPwqConditions, (C.short)(len(conditions)),
 		(C.PS3000A_THRESHOLD_DIRECTION)(direction), (C.uint)(lower), (C.uint)(upper),
 		(C.PS3000A_PULSE_WIDTH_TYPE)(pwType))
 	if stat != C.PICO_OK {
@@ -617,9 +623,13 @@ func ps3000aSetTriggerDigitalPortProperties(handle int16, digitalDirections []Di
 		cDigitalDirections[i].channel = (C.PS3000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
 		cDigitalDirections[i].direction = (C.PS3000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
 	}
+	pcDigitalDirections := (*C.PS3000A_DIGITAL_CHANNEL_DIRECTIONS)(nil)
+	if len(digitalDirections) > 0 {
+		pcDigitalDirections = &cDigitalDirections[0]
+	}
 	slog.Debug("ps3000aSetTriggerDigitalPortProperties", "handle", handle, "digitalDirections", digitalDirections)
 	stat := C.ps3000aSetTriggerDigitalPortProperties((C.short)(handle),
-		(*C.PS3000A_DIGITAL_CHANNEL_DIRECTIONS)(&cDigitalDirections[0]), (C.short)(len(digitalDirections)))
+		pcDigitalDirections, (C.short)(len(digitalDirections)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetTriggerDigitalPortProperties:  %s", psc.StatStr(int(stat)))
 	}
@@ -830,8 +840,12 @@ func ps3000aSetPulseWidthDigitalPortProperties(handle int16, digitalDirections [
 		cDigitalDirections[i].channel = (C.PS3000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
 		cDigitalDirections[i].direction = (C.PS3000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
 	}
+	pcDigitalDirections := (*C.PS3000A_DIGITAL_CHANNEL_DIRECTIONS)(nil)
+	if len(digitalDirections) > 0 {
+		pcDigitalDirections = &cDigitalDirections[0]
+	}
 	stat := C.ps3000aSetPulseWidthDigitalPortProperties((C.short)(handle),
-		(*C.PS3000A_DIGITAL_CHANNEL_DIRECTIONS)(&cDigitalDirections[0]), (C.short)(len(digitalDirections)))
+		pcDigitalDirections, (C.short)(len(digitalDirections)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetPulseWidthDigitalPortProperties:  %s", psc.StatStr(int(stat)))
 	}

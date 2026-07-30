@@ -15,7 +15,6 @@ Inputs:
 SCOPE
 */
 import (
-	"io"
 	"fmt"
 	"fynescope/control"
 	"fynescope/disp7"
@@ -28,6 +27,7 @@ import (
 	"image/draw"
 	"image/gif"
 	"image/png"
+	"io"
 	"log/slog"
 	"math"
 	"os"
@@ -227,8 +227,8 @@ type (
 		channelViewers             []channelViewerDesc
 		dftDrawers                 []drawer
 		ftDrawers                  []drawer
-	ftVChannelLabels           []ftVChannelLabelViewer
-	dftVChannelLabels          []dftVChannelLabelViewer
+		ftVChannelLabels           []ftVChannelLabelViewer
+		dftVChannelLabels          []dftVChannelLabelViewer
 		fvDrawers                  []drawer
 		ffDrawers                  []drawer
 		ftBottomLabelViewer        drawer
@@ -470,7 +470,7 @@ func (scp *ScpDesc) toggleGifRecording() {
 		}
 
 		// Atomic counters for progress tracking.
-		var capturedFrames atomic.Int64 // total frames sent to frameChan
+		var capturedFrames atomic.Int64  // total frames sent to frameChan
 		var processedFrames atomic.Int64 // frames finished quantization
 
 		frameChan := make(chan rawGifFrame, 100)
@@ -1140,8 +1140,8 @@ func (scp *ScpDesc) build2000Gui() {
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
-	addToTest(fullScreen, fullScreenId, -1)
-	addToTest(restoreScreen, restoreScreenId, -1)
+	// addToTest(fullScreen, fullScreenId, -1)
+	// addToTest(restoreScreen, restoreScreenId, -1)
 	addToTest(changeSide, changeSideId, -1)
 	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
@@ -1269,9 +1269,8 @@ func (scp *ScpDesc) build2000IMGui() {
 }
 
 func (scp *ScpDesc) SetVariant() (err error) {
-
 	scp.psControl.Info, err = scp.psControl.UnitVariantInfo()
-	slog.Info("scope ", "info string", scp.psControl.Info)
+	slog.Debug("scope ", "info string", scp.psControl.Info)
 	// TODO select preconfigured gui description, including
 	// channel count
 	// e.g. ETS mode is available, voltage, frequency ranges
@@ -1305,7 +1304,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.bodeBuffers = make([][]bodePoint, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
-	
+
 	scp.virtualChannelEngines = make([]*VirtualChannelEngine, len(scp.Settings.VirtualChannels))
 	for i, vch := range scp.Settings.VirtualChannels {
 		eng, err := CompileVirtualChannel(vch.Expression)
@@ -1313,7 +1312,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 			scp.virtualChannelEngines[i] = eng
 		}
 	}
-	
+
 	scp.ftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()

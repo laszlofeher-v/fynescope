@@ -81,7 +81,8 @@ func OpenUnit(con *Connection, id, serial string) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		slog.Debug("OpenUnit", "implementedScopeHandlers", implementedScopeHandlers)
 		if implementedScopeHandlers[i].Id == id {
-			handle, err = implementedScopeHandlers[i].OpenUnit("")
+			slog.Debug("OpenUnit", "found id", id)
+			handle, err = implementedScopeHandlers[i].OpenUnit(serial)
 			go proxy(implementedScopeHandlers[i].Dispatch, con)
 			return
 		}
