@@ -137,6 +137,22 @@ For more options, including displaying version, build date, and license informat
 | `-webauth-view` | — | Credentials for read-only stream access in `user:password` format |
 | `-about` | — | Print version, build date, and license info, then exit |
 
+#### UI Scaling and Fonts
+
+Because `fynescope` is built using the Fyne UI toolkit, you can easily scale the entire application's user interface (including all fonts, icons, and padding) using the `FYNE_SCALE` environment variable. 
+
+You can launch the application from your terminal with a scale multiplier like this:
+
+```bash
+FYNE_SCALE=1.5 ./fynescope
+```
+*(You can adjust the `1.5` to any value that works best for your screen, such as `1.2`, `2`, or `2.5`.)*
+
+Alternatively, you can use the Fyne settings utility to permanently adjust the scale across all Fyne apps on your system:
+```bash
+go run fyne.io/fyne/v2/cmd/fyne_settings@latest
+```
+
 ## Web Server & Voice Control
 
 When compiled with the `web` build tag, `fynescope` can stream a live view of the GUI to any web browser on the network using MJPEG. It also includes an integrated **Voice Control** interface powered by the Web Speech API, allowing hands-free operation of basic oscilloscope functions!

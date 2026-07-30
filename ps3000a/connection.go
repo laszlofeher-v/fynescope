@@ -65,6 +65,7 @@ func getUnitInfo(m *genericps.GetUnitInfoMsg) {
 		err error
 		s   string
 	)
+	slog.Debug("GetUnitInfo ", "genericps.GetUnitInfoMsg:", m)
 	s, err = ps3000aGetUnitInfo(m.Handle(), PicoInfo(m.Info))
 	if err != nil {
 		slog.Error("PicoInfo ", "error:", err)

@@ -33,3 +33,4 @@ ps3000a/emu.c
 ps3000a/emu.o
 ps3000a/libemu3000a.a
 ps3000a/libemu3000a.so
+ps3000a/emu.ccc

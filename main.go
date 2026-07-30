@@ -54,8 +54,8 @@ var (
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
-		"ps2000a/c.go":                       false,
-		"ps3000a/c.go":                       false,
+		"ps2000a/c.go":                       true,
+		"ps3000a/c.go":                       true,
 		"ps2000a/callbacks.go":               false,
 		"ps3000a/callbacks.go":               false,
 		"control/channels.go":                false,
@@ -64,6 +64,7 @@ var (
 		"genericps/connection.go":            false,
 		"ps2000a/const.go":                   false,
 		"ps3000a/const.go":                   false,
+		"ps3000a/connection.go":              true,
 		"settings/consts.go":                 false,
 		"control/control.go":                 false,
 		"gui/dft_channel_label.go":           false,
@@ -77,12 +78,12 @@ var (
 		"gui/fv_raster.go":                   false,
 		"control/gen.go":                     false,
 		"genericps/genericps.go":             false,
-		"gui/gui.go":                         false,
+		"gui/gui.go":                         true,
 		"control/interpolation.go":           false,
-		"main/main.go":                       false,
+		"main/main.go":                       true,
 		"gui/measure.go":                     false,
 		"genericps/no_scope.go":              false,
-		"genericps/open.go":                  false,
+		"genericps/open.go":                  true,
 		"gui/params.go":                      false,
 		"psc/ps_consts.go":                   false,
 		"gui/raster.go":                      false,
@@ -293,6 +294,7 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 	if device.IsSimulator {
 		con.Handle, err = genericps.OpenSimulator(con, device.Id)
 	} else {
+		slog.Debug("Open", "device", device)
 		con.Handle, err = genericps.OpenUnit(con, device.Id, device.Serial)
 	}
 	con.ID = device.Id
