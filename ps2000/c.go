@@ -3,7 +3,6 @@
 package ps2000
 
 // #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000
 // #include <stdlib.h>
 // #include "/opt/picoscope/include/libps2000/ps2000.h"
 /*
