@@ -1011,6 +1011,10 @@ func (scp *ScpDesc) checkDftSampleRateLimit(rateStr, unitStr string) bool {
 	if err != nil {
 		return false
 	}
+	if rate < 0 || rate > math.MaxUint32 {
+		return false
+	}
+	rateU32 := uint32(rate)
 	multiplier := uint32(1)
 	switch unitStr {
 	case selectscroll.UnitKSps:
@@ -1020,7 +1024,17 @@ func (scp *ScpDesc) checkDftSampleRateLimit(rateStr, unitStr string) bool {
 	case selectscroll.UnitGSps:
 		multiplier = 1000000000
 	}
-	return uint32(rate)*multiplier <= scp.maxSamplingRate
+
+	n, _ := scp.numberOfEnabledChannels()
+	if n == 0 {
+		n = 1
+	}
+	div := uint32(1)
+	for div < uint32(n) {
+		div <<= 1
+	}
+
+	return rateU32*multiplier <= scp.maxSamplingRate/div
 }
 
 func (scp *ScpDesc) dftSampleUnitUp() {

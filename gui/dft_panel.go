@@ -251,7 +251,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	scp.updateDftDataCollectionTime()
 
 	// Sample Rate Selector
-	dftSampleRates := []string{"1", "2", "5", "10", "20", "50", "100", "200", "500"}
+	dftSampleRates := []string{"1", "2", "5", "10", "20", "25", "50", "100", "125", "200", "250", "500"}
 	dftSampleUnits := []string{selectscroll.UnitSps, selectscroll.UnitKSps, selectscroll.UnitMSps, selectscroll.UnitGSps}
 
 	scp.dftSampleRateSelect = selectscroll.NewSelectScroll(dftSampleRates, func(selected string, ex selectscroll.Exception) {
