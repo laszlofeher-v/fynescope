@@ -542,7 +542,7 @@ type (
 		RespBase
 	}
 
-	SetSimGenMsg struct {
+	SetDemoGenMsg struct {
 		MsgBase
 		Channel                                             ChannelId
 		On                                                  bool
@@ -558,11 +558,11 @@ type (
 		ExtInThreshold                                      int16
 		Phase                                               float64
 	}
-	SetSimGenRsp struct {
+	SetDemoGenRsp struct {
 		RespBase
 	}
 
-	SetSimRlcFilterMsg struct {
+	SetDemoRlcFilterMsg struct {
 		MsgBase
 		Channel    ChannelId
 		GenSource  ChannelId
@@ -575,7 +575,7 @@ type (
 		C          float64
 		CUnit      string
 	}
-	SetSimRlcFilterRsp struct {
+	SetDemoRlcFilterRsp struct {
 		RespBase
 	}
 
@@ -1388,26 +1388,26 @@ func (c Connection) SetSigGenBuiltInV2(offsetVoltage int32, pkToPK uint32, waveT
 	err = rsp.Status()
 	return
 }
-func (c Connection) SetSimGen(channel ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
+func (c Connection) SetDemoGen(channel ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16, phase float64) (err error) {
-	msg := &SetSimGenMsg{Channel: channel, On: on, OffsetVoltage: offsetVoltage, PkToPK: pkToPK, WaveType: waveType,
+	msg := &SetDemoGenMsg{Channel: channel, On: on, OffsetVoltage: offsetVoltage, PkToPK: pkToPK, WaveType: waveType,
 		StartFrequency: startFrequency, StopFrequency: stopFrequency, Increment: increment, DwellTime: dwellTime,
 		SweepType: sweepType, Operation: operation, Shots: shots, Sweeps: sweeps, TriggerType: triggerType,
 		TriggerSource: triggerSource, ExtInThreshold: extInThreshold, Phase: phase}
-	msg.rsp = &SetSimGenRsp{}
+	msg.rsp = &SetDemoGenRsp{}
 	c.Send(msg)
-	rsp := msg.Rsp().(*SetSimGenRsp)
+	rsp := msg.Rsp().(*SetDemoGenRsp)
 	err = rsp.Status()
 	return
 }
 
-func (c Connection) SetSimRlcFilter(channel ChannelId, genSource ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) (err error) {
-	msg := &SetSimRlcFilterMsg{Channel: channel, GenSource: genSource, Enabled: enabled, FilterType: filterType, R: r, RUnit: runit, L: l, LUnit: lunit, C: cval, CUnit: cunit}
-	msg.rsp = &SetSimRlcFilterRsp{}
+func (c Connection) SetDemoRlcFilter(channel ChannelId, genSource ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) (err error) {
+	msg := &SetDemoRlcFilterMsg{Channel: channel, GenSource: genSource, Enabled: enabled, FilterType: filterType, R: r, RUnit: runit, L: l, LUnit: lunit, C: cval, CUnit: cunit}
+	msg.rsp = &SetDemoRlcFilterRsp{}
 	c.Send(msg)
-	rsp := msg.Rsp().(*SetSimRlcFilterRsp)
+	rsp := msg.Rsp().(*SetDemoRlcFilterRsp)
 	err = rsp.Status()
 	return
 }

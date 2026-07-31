@@ -19,8 +19,8 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		for i := 0; i < len(scp.Settings.ExtGen); i++ {
 			scp.Settings.ExtGen[i].WaveType = genericps.Sine
 		}
-		for i := 0; i < len(scp.Settings.SimGenPanel); i++ {
-			scp.Settings.SimGenPanel[i].WaveType = genericps.Sine
+		for i := 0; i < len(scp.Settings.DemoGenPanel); i++ {
+			scp.Settings.DemoGenPanel[i].WaveType = genericps.Sine
 		}
 
 		scp.SaveSettings()
@@ -28,8 +28,8 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		// Refresh generator panels to reflect Sine wave selection in UI
 		if scp.genLayout != nil {
 			scp.genLayout.RemoveAll()
-			if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-				scp.newSimGenPanel(scp.genLayout, true)
+			if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+				scp.newDemoGenPanel(scp.genLayout, true)
 			} else {
 				scp.newGenPanel(scp.genLayout)
 			}
@@ -48,9 +48,9 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		if scp.psControl != nil {
 			if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 				scp.syncExtGenSettings()
-			} else if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-				scp.applyFfSimGenSettings(false)
-				scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
+			} else if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+				scp.applyFfDemoGenSettings(false)
+				scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 			} else {
 				scp.applyFfGenSettings(false)
 				scp.applyFfGenSettings(scp.Settings.FfGen.On)
@@ -68,9 +68,9 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 			scp.psControl.DisplayStatus("", control.Info)
 		}
 		scp.stopFfSweep() // stop any running Bode sweep
-		if scp.psControl != nil && scp.psControl.Con.ID == genericps.SimId {
+		if scp.psControl != nil && scp.psControl.Con.ID == genericps.DemoId {
 			for i := 0; i < int(scp.channelCount); i++ {
-				scp.applySimGenSettings(genericps.ChannelId(i), &scp.Settings.SimGenPanel[i])
+				scp.applyDemoGenSettings(genericps.ChannelId(i), &scp.Settings.DemoGenPanel[i])
 			}
 		} else {
 			scp.applyInternalGenSettings(scp.Settings.GenPanel.On)

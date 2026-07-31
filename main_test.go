@@ -11,7 +11,7 @@ import (
 
 // No MockConnection needed as we use genericps directly for tests here or mock at lower level.
 
-func TestOpenSimulator(t *testing.T) {
+func TestOpenDemo(t *testing.T) {
 	tests := []struct {
 		name           string
 		id             string
@@ -20,7 +20,7 @@ func TestOpenSimulator(t *testing.T) {
 	}{
 		{
 			name:           "Successful Open Sim",
-			id:             genericps.SimId,
+			id:             genericps.DemoId,
 			expectedHandle: 1, // first handle is usually 1 from uniqueHandle()
 			expectedError:  "",
 		},
@@ -34,7 +34,7 @@ func TestOpenSimulator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			con, err := openSimulator(tt.id)
+			con, err := openDemo(tt.id)
 
 			if tt.expectedError != "" {
 				if err == nil {

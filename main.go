@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"fynescope/demo"
 	"fynescope/genericps"
 	"fynescope/gui"
 	_ "fynescope/ps2000"
@@ -14,7 +15,6 @@ import (
 	_ "fynescope/ps4000"
 	_ "fynescope/ps4000a"
 	"fynescope/settings"
-	"fynescope/sim"
 	"fynescope/web"
 	"image"
 	"log/slog"
@@ -54,8 +54,8 @@ var (
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
-		"ps2000a/c.go":                       true,
-		"ps3000a/c.go":                       true,
+		"ps2000a/c.go":                       false,
+		"ps3000a/c.go":                       false,
 		"ps2000a/callbacks.go":               false,
 		"ps3000a/callbacks.go":               false,
 		"control/channels.go":                false,
@@ -64,7 +64,7 @@ var (
 		"genericps/connection.go":            false,
 		"ps2000a/const.go":                   false,
 		"ps3000a/const.go":                   false,
-		"ps3000a/connection.go":              true,
+		"ps3000a/connection.go":              false,
 		"settings/consts.go":                 false,
 		"control/control.go":                 false,
 		"gui/dft_channel_label.go":           false,
@@ -78,12 +78,12 @@ var (
 		"gui/fv_raster.go":                   false,
 		"control/gen.go":                     false,
 		"genericps/genericps.go":             false,
-		"gui/gui.go":                         true,
+		"gui/gui.go":                         false,
 		"control/interpolation.go":           false,
-		"main/main.go":                       true,
+		"main/main.go":                       false,
 		"gui/measure.go":                     false,
 		"genericps/no_scope.go":              false,
-		"genericps/open.go":                  true,
+		"genericps/open.go":                  false,
 		"gui/params.go":                      false,
 		"psc/ps_consts.go":                   false,
 		"gui/raster.go":                      false,
@@ -93,13 +93,13 @@ var (
 		"gui/screen_draw.go":                 false,
 		"control/screen_time.go":             false,
 		"selectscroll/selectscroll.go":       false,
-		"settings/settings.go":               true,
-		"sim/sim.go":                         false,
-		"sim/sim_gen.go":                     false,
+		"settings/settings.go":               false,
+		"demo/demo.go":                       false,
+		"gui/demo_gen.go":                    false,
 		"sliderscroll/slider_scroll.go":      false,
 		"gui/status.go":                      false,
 		"control/stream.go":                  false,
-		"sim/sweep.go":                       false,
+		"demo/sweep.go":                      false,
 		"gui/sync.go":                        false,
 		"tastybutton/tasty_button.go":        false,
 		"gui/test_proxy.go":                  false,
@@ -111,7 +111,7 @@ var (
 		"ps2000a/types.go":                   false,
 		"ps3000a/types.go":                   false,
 		"genericps/types.go":                 false,
-		"sim/waveforms.go":                   false,
+		"demo/waveforms.go":                  false,
 	}
 )
 
@@ -234,15 +234,15 @@ func startProfile(n int) error {
 //
 //	-loglevel: Sets logging verbosity (debug, info, warning, error)
 //	-profile:  Enables CPU profiling when set to true
-//	-sim:      Runs in simulator-only mode when set to true
+//	-demo:      Runs in demo-only mode when set to true
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
 //	-highres:  Enables the High-Resolution (HiRes) GUI option and feature (default false)
-func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool) {
+func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
-	simulator = flag.Bool("sim", false, "-sim=true")
-	chCount = flag.Int("chcount", sim.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (simulator only)", sim.MinChannels, sim.MaxChannels))
+	demoOnly = flag.Bool("sim", false, "-demo=true")
+	chCount = flag.Int("chcount", demo.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (demo only)", demo.MinChannels, demo.MaxChannels))
 	about := flag.Bool("about", false, "show version, build date and license")
 	webPort = flag.Int("webport", 0, "-webport=8080 (starts web server on specified port, 0 to disable)")
 	webPortNoVoice = flag.Int("webport-novoice", 0, "-webport-novoice=8081 (starts web server without voice control on specified port, 0 to disable)")
@@ -271,8 +271,8 @@ func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount 
 		}
 	})
 
-	if *chCount < sim.MinChannels || *chCount > sim.MaxChannels {
-		fmt.Fprintf(os.Stderr, "invalid channel count %d: must be between %d and %d\n", *chCount, sim.MinChannels, sim.MaxChannels)
+	if *chCount < demo.MinChannels || *chCount > demo.MaxChannels {
+		fmt.Fprintf(os.Stderr, "invalid channel count %d: must be between %d and %d\n", *chCount, demo.MinChannels, demo.MaxChannels)
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -282,8 +282,8 @@ func parseFlags() (profile, simulator, highRes *bool, logLevel *string, chCount 
 }
 
 // connectToDevice opens a connection to the specified device.
-// It handles both real hardware devices and simulator connections.
-// For simulators, only the device ID is needed.
+// It handles both real hardware devices and demo connections.
+// For demo devices, only the device ID is needed.
 // For real devices, both ID and serial number are required.
 // Returns a Connection object or an error if the connection fails.
 func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error) {
@@ -291,8 +291,8 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 	var err error
 
 	// Choose connection method based on device type
-	if device.IsSimulator {
-		con.Handle, err = genericps.OpenSimulator(con, device.Id)
+	if device.IsDemo {
+		con.Handle, err = genericps.OpenDemo(con, device.Id)
 	} else {
 		slog.Debug("Open", "device", device)
 		con.Handle, err = genericps.OpenUnit(con, device.Id, device.Serial)
@@ -305,9 +305,9 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 	return con, nil
 }
 
-// openSimulator is a helper function for tests to open a simulator connection.
-func openSimulator(id string) (*genericps.Connection, error) {
-	return connectToDevice(&genericps.DeviceInfo{Id: id, IsSimulator: true})
+// openDemo is a helper function for tests to open a demo connection.
+func openDemo(id string) (*genericps.Connection, error) {
+	return connectToDevice(&genericps.DeviceInfo{Id: id, IsDemo: true})
 }
 
 // setupSettingsFile configures the settings filename based on device info.
@@ -365,8 +365,8 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 	// Build display strings for each device
 	options := make([]string, len(devices))
 	for i, dev := range devices {
-		if dev.IsSimulator {
-			options[i] = "Simulator"
+		if dev.IsDemo {
+			options[i] = "Demo"
 		} else {
 			options[i] = dev.Id + " - " + dev.Serial
 		}
@@ -469,11 +469,11 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 
 // main is the entry point for the PicoScope GUI application.
 // Application flow:
-// 1. Parse command-line flags (log level, profiling, simulator mode)
+// 1. Parse command-line flags (log level, profiling, demo mode)
 // 2. Configure logging system
 // 3. Optionally start CPU profiling
 // 4. Initialize Fyne GUI application
-// 5. Enumerate available devices (or use simulator only)
+// 5. Enumerate available devices (or use demo only)
 // 6. Show device selection dialog
 // 7. User selects device, connects, and uses the application
 // 8. On exit, cleanup and save settings
@@ -484,10 +484,10 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, simulatorOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange := parseFlags()
+	profile, demoOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange := parseFlags()
 	setLogging(logLevel)
 
-	err = sim.SetChannelCount(*chCount, chCountExplicit)
+	err = demo.SetChannelCount(*chCount, chCountExplicit)
 
 	// Start CPU profiling if requested
 	if *profile {
@@ -526,12 +526,12 @@ func main() {
 	}
 
 	// Determine which devices to show in the selection dialog
-	if *simulatorOnly {
-		// Simulator mode: enumerate devices but filter for only simulators
+	if *demoOnly {
+		// Demo mode: enumerate devices but filter for only demo devices
 		// This ensures we get the correct serial number (e.g., SIM/CH2)
 		allDevices, _ := genericps.EnumerateAllDevices(256)
 		for _, dev := range allDevices {
-			if dev.IsSimulator {
+			if dev.IsDemo {
 				devices = append(devices, dev)
 			}
 		}
@@ -539,9 +539,9 @@ func main() {
 			// Fallback if enumeration failed
 			devices = []genericps.DeviceInfo{
 				{
-					Id:          genericps.SimId,
-					Serial:      "",
-					IsSimulator: true,
+					Id:     genericps.DemoId,
+					Serial: "",
+					IsDemo: true,
 				},
 			}
 		}

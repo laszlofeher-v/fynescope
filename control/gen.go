@@ -76,23 +76,23 @@ func (psControl *PscDesc) generatorMonitor() {
 	}
 }
 
-func (psControl *PscDesc) simGeneratorMonitor() {
+func (psControl *PscDesc) demoGeneratorMonitor() {
 	var storedSettings [4]GeneratorDesc
 	for {
 		var msg *GeneratorDescMsg
 		select {
 		case <-psControl.shutdownCh:
 			return
-		case msg = <-psControl.SetSimGenCh:
+		case msg = <-psControl.SetDemoGenCh:
 		}
 		ch := int(msg.Channel)
 		if ch >= 0 && ch < 4 {
-			// If the simulator connection isn't set up yet or is not the simulator, we probably shouldn't panic, but let's check it.
-			if psControl.Con != nil && psControl.Con.ID == genericps.SimId {
+			// If the demo connection isn't set up yet or is not the demo, we probably shouldn't panic, but let's check it.
+			if psControl.Con != nil && psControl.Con.ID == genericps.DemoId {
 				if storedSettings[ch] != msg.GeneratorDesc {
 					storedSettings[ch] = msg.GeneratorDesc
-					// Send to simulator directly
-					psControl.Con.SetSimGen(msg.Channel, msg.On, msg.OffsetVoltage, msg.PkToPK, msg.WaveType,
+					// Send to demo directly
+					psControl.Con.SetDemoGen(msg.Channel, msg.On, msg.OffsetVoltage, msg.PkToPK, msg.WaveType,
 						msg.StartFrequency, msg.StopFrequency, msg.Increment, msg.DwellTime, msg.SweepType,
 						msg.Operation, msg.Shots, msg.Sweeps, msg.TriggerType, msg.TriggerSource,
 						msg.ExtInThreshold, msg.Phase)

@@ -1,4 +1,4 @@
-package sim
+package demo
 
 import (
 	"log/slog"

@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	con, err := openSimulator(genericps.SimId)
+	con, err := openDemo(genericps.DemoId)
 	if err != nil {
 		log.Fatalf("failed to open simulator: %v", err)
 	}

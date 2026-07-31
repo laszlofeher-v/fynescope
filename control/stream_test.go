@@ -12,7 +12,7 @@ import (
 
 func TestStreamModeTransition(t *testing.T) {
 	con := genericps.NewConnection()
-	handle, err := genericps.OpenSimulator(con, "sim")
+	handle, err := genericps.OpenDemo(con, "demo")
 	if err != nil {
 		t.Fatalf("Failed to open simulator: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestStreamModeTransition(t *testing.T) {
 
 	go psControl.channelStateMachine(4)
 	go psControl.generatorMonitor()
-	go psControl.simGeneratorMonitor()
+	go psControl.demoGeneratorMonitor()
 	go psControl.interpolationMonitor()
 	go psControl.triggerMonitor()
 

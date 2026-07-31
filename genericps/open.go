@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	SimId = "sim"
+	DemoId = "sim"
 )
 
 type (
 	DeviceInfo struct {
-		Id          string // Handler ID (e.g., "ps2000a", "sim")
-		Serial      string // Serial number (empty for simulator)
-		IsSimulator bool
+		Id     string // Handler ID (e.g., "ps2000a", "sim")
+		Serial string // Serial number (empty for demo)
+		IsDemo bool
 	}
 )
 
@@ -67,7 +67,7 @@ func proxy(dispatch func(msg Message), con *Connection) {
 	}
 }
 
-func OpenSimulator(con *Connection, id string) (handle int16, err error) {
+func OpenDemo(con *Connection, id string) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		if implementedScopeHandlers[i].Id == id {
 			handle, err = implementedScopeHandlers[i].OpenUnit("")
@@ -75,7 +75,7 @@ func OpenSimulator(con *Connection, id string) (handle int16, err error) {
 			return
 		}
 	}
-	return 0, fmt.Errorf("Simulator not found")
+	return 0, fmt.Errorf("Demo not found")
 }
 func OpenUnit(con *Connection, id, serial string) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
@@ -87,12 +87,12 @@ func OpenUnit(con *Connection, id, serial string) (handle int16, err error) {
 			return
 		}
 	}
-	return 0, fmt.Errorf("Simulator not found")
+	return 0, fmt.Errorf("Device not found")
 }
 
 func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
 	for i := range implementedScopeHandlers {
-		if implementedScopeHandlers[i].Id == SimId {
+		if implementedScopeHandlers[i].Id == DemoId {
 			count, serials, serialLth, err = implementedScopeHandlers[i].EnumerateUnits(bufferLen)
 			if err == nil {
 				return
@@ -127,7 +127,7 @@ func EnumerateAllDevices(bufferLen int16) (devices []DeviceInfo, err error) {
 				devices = append(devices, DeviceInfo{
 					Id:          handler.Id,
 					Serial:      serial,
-					IsSimulator: (handler.Id == SimId),
+					IsDemo: (handler.Id == DemoId),
 				})
 			}
 		}

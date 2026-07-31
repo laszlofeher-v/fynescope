@@ -13,7 +13,7 @@ import (
 	"fynescope/disp7"
 	"fynescope/selectscroll"
 	"fynescope/settings"
-	"fynescope/sim"
+	"fynescope/demo"
 	"fynescope/sliderscroll"
 	"sort"
 
@@ -24,7 +24,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func (scp *ScpDesc) applySimGenSettings(ch genericps.ChannelId, genSettings *settings.GeneratorSettings) {
+func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *settings.GeneratorSettings) {
 	msg := &control.GeneratorDescMsg{}
 	msg.Channel = ch
 	msg.On = genSettings.On
@@ -68,19 +68,19 @@ func (scp *ScpDesc) applySimGenSettings(ch genericps.ChannelId, genSettings *set
 	msg.Phase = genSettings.Phase
 	
 	if genSettings.On {
-		sim.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
-		sim.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
-		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
+		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
+		demo.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
+		demo.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 	}
 	
-	if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
+	if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
 		msgCopy := msg
-		go func() { scp.psControl.SetSimGenCh <- msgCopy }()
+		go func() { scp.psControl.SetDemoGenCh <- msgCopy }()
 	}
 	go scp.SaveSettings()
 }
 
-func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err error) {
+func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err error) {
 
 	const (
 		maxV   = 2000000
@@ -105,8 +105,8 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 
 		triggerCalculationOptions = []string{"Interpolated", "Fine-grained"}
 		triggerCalculationModes   = map[string]int{
-			triggerCalculationOptions[0]: sim.InterpolatedTrigger,
-			triggerCalculationOptions[1]: sim.FineGrainedTrigger,
+			triggerCalculationOptions[0]: demo.InterpolatedTrigger,
+			triggerCalculationOptions[1]: demo.FineGrainedTrigger,
 		}
 	)
 
@@ -142,14 +142,14 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 	onTriggerCalculationModeChange := func(option string, ex selectscroll.Exception) {
 		mode := triggerCalculationModes[option]
 		scp.Settings.Trigger.CalculationMode = mode
-		sim.SetTriggerCalculationMode(mode)
+		demo.SetTriggerCalculationMode(mode)
 		scp.SaveSettings()
 	}
 
 	var newGenSettings func(ch genericps.ChannelId, undockable bool) (box *fyne.Container, err error)
 
 	newGenSettings = func(ch genericps.ChannelId, undockable bool) (box *fyne.Container, err error) {
-		genSettings := &scp.Settings.SimGenPanel[ch]
+		genSettings := &scp.Settings.DemoGenPanel[ch]
 		var (
 			top, analog, digital, sweepBox, frqBox                           *fyne.Container
 			freqSetAnalog, ampSetAnalog                                      *sliderscroll.SliderScroll
@@ -168,10 +168,10 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			reloadData = make(chan struct{})
 		}
 		chCol := scp.Settings.Channels[ch].Col[scp.Settings.ChannelColorIndex]
-		scp.channelViewers[ch].simGenDisplays = nil
+		scp.channelViewers[ch].demoGenDisplays = nil
 		checked := func(c bool) {
 			genSettings.On = c
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		showChanged := func(c bool) {
 			genSettings.Digital = c
@@ -197,29 +197,29 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		addToTest(check, genCheckId, genTabIndex)
 		dwellTimeChanged := func(v float64) {
 			genSettings.Dwelltime = v / 10000000
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 
 		// Initialize channel name label
 		nameLabel = canvas.NewText(channelNames[ch], chCol)
 		nameLabel.TextStyle.Bold = true
-		scp.channelViewers[ch].simGenNameLabel = nameLabel
+		scp.channelViewers[ch].demoGenNameLabel = nameLabel
 
 		freqChanged := func(v float64) {
 			genSettings.Frequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		startFreqChanged := func(v float64) {
 			genSettings.StartFrequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		stopFreqChanged := func(v float64) {
 			genSettings.StopFrequency = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		stepFreqChanged := func(v float64) {
 			genSettings.Increment = v / 100
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		setOffsetMinMax := func() {
 			maxOffset := maxV - int(genSettings.Amplitude)
@@ -229,13 +229,13 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		ampChanged := func(v float64) {
 			genSettings.Amplitude = uint32(v)
 			setOffsetMinMax()
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		offsetChanged := func(v float64) {
 			genSettings.OffsetVoltage = int32(v)
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
-		sim.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
+		demo.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 		raiseFallTimeDisp, err = disp7.NewCustomDisp7Array(5, 2,
 			10000, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -243,19 +243,19 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Rise/Fall:", " %")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, raiseFallTimeDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, raiseFallTimeDisp)
 		addToTest(raiseFallTimeDisp, genRiseFallTimeId, genTabIndex)
 		if err != nil {
 			return
 		}
 		raiseFallTimeDisp.OnChanged = func(v float64) {
 			genSettings.RaiseFallTimePercent = v / 100.0 // Value comes back in % * 100, e.g. 159 for 1.59%
-			sim.SetRaiseFallTimePercent(v / 10000.0)     // 1.59% -> 0.0159
-			scp.applySimGenSettings(ch, genSettings)
+			demo.SetRaiseFallTimePercent(v / 10000.0)     // 1.59% -> 0.0159
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
 
-		sim.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
+		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
 		noiseAmplitudeDisp, err = disp7.NewCustomDisp7Array(5, 0,
 			10000, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -263,18 +263,18 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Noise:", " mV")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, noiseAmplitudeDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, noiseAmplitudeDisp)
 		addToTest(noiseAmplitudeDisp, genNoiseAmpId, genTabIndex)
 		if err != nil {
 			return
 		}
 		noiseAmplitudeDisp.OnChanged = func(v float64) {
 			genSettings.NoiseAmplitude = v
-			sim.SetNoiseAmplitude(int(ch), v)
-			scp.applySimGenSettings(ch, genSettings)
+			demo.SetNoiseAmplitude(int(ch), v)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
-		sim.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
+		demo.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
 		phaseNoiseDisp, err = disp7.NewCustomDisp7Array(5, 2,
 			36000, 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
@@ -282,7 +282,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Phase Noise:", " °")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, phaseNoiseDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, phaseNoiseDisp)
 		addToTest(phaseNoiseDisp, genPhaseNoiseId, genTabIndex)
 		if err != nil {
 			return
@@ -290,8 +290,8 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		phaseNoiseDisp.OnChanged = func(v float64) {
 			genSettings.PhaseNoiseDegree = v / 100.0
 			slog.Debug("phaseNoiseDisp", "PhaseNoiseDegree", genSettings.PhaseNoiseDegree)
-			sim.SetPhaseNoiseDegree(int(ch), v/100.0)
-			scp.applySimGenSettings(ch, genSettings)
+			demo.SetPhaseNoiseDegree(int(ch), v/100.0)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
 		phaseDisp, err = disp7.NewCustomDisp7Array(3, 0,
@@ -301,14 +301,14 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Phase      :", " °")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, phaseDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, phaseDisp)
 		addToTest(phaseDisp, genPhaseId, genTabIndex)
 		if err != nil {
 			return
 		}
 		phaseDisp.OnChanged = func(v float64) {
 			genSettings.Phase = v
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		phaseDisp.SilentSetValue(int(genSettings.Phase))
 
@@ -324,7 +324,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			default:
 				raiseFallTimeDisp.Hide()
 			}
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 
 		const (
@@ -338,14 +338,14 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		operationOptions := []string{operationNormal, operationPrbs}
 		operationChanged := func(option string, e selectscroll.Exception) {
 			genSettings.Operation = operationMap[option]
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 			scp.SaveSettings()
 		}
 		sweepChanged := func(option string, e selectscroll.Exception) {
 			if option == sweepOff {
 				sweepBox.Hide()
 				genSettings.Sweep = genericps.NoSweep
-				scp.applySimGenSettings(ch, genSettings)
+				scp.applyDemoGenSettings(ch, genSettings)
 				frqBox.Show()
 			} else {
 				frqBox.Hide()
@@ -364,7 +364,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 					return
 				}(option)
 			}
-			scp.applySimGenSettings(ch, genSettings)
+			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
 		waveType.SetSelected(waveTypeOptions[genSettings.WaveType])
@@ -434,7 +434,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Frq : ", " Hz")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, frequency)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, frequency)
 		if err != nil {
 			return
 		}
@@ -449,7 +449,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "∆t   :", " s")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, dwellTime)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, dwellTime)
 		addToTest(dwellTime, genDwellTimeId, genTabIndex)
 		if err != nil {
 			return
@@ -465,7 +465,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Low :", " Hz")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, startFrqDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, startFrqDisp)
 		if err != nil {
 			return
 		}
@@ -479,7 +479,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "High:", " Hz")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, stopFrqDisp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, stopFrqDisp)
 		if err != nil {
 			return
 		}
@@ -493,7 +493,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Step :", " Hz")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, stepFreq)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, stepFreq)
 		if err != nil {
 			return
 		}
@@ -506,7 +506,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Amplitude:", " V")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, amp)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, amp)
 		if err != nil {
 			return
 		}
@@ -520,7 +520,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 			disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Offset   :", " V")
-		scp.channelViewers[ch].simGenDisplays = append(scp.channelViewers[ch].simGenDisplays, offset)
+		scp.channelViewers[ch].demoGenDisplays = append(scp.channelViewers[ch].demoGenDisplays, offset)
 		if err != nil {
 			return
 		}
@@ -565,7 +565,7 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId, genTabIndex)
 		scp.triggerCalculationModeSelect.SetSelected(triggerCalculationOptions[scp.Settings.Trigger.CalculationMode])
 		// initialize simulator with saved setting
-		sim.SetTriggerCalculationMode(scp.Settings.Trigger.CalculationMode)
+		demo.SetTriggerCalculationMode(scp.Settings.Trigger.CalculationMode)
 
 		label := widget.NewLabel("Trigger Calc:")
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
@@ -585,18 +585,18 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 			onWindowClose := func() {
 				scp.genWindow.Hide()
 				scp.genLayout.RemoveAll()
-				scp.newSimGenPanel(scp.genLayout, true)
+				scp.newDemoGenPanel(scp.genLayout, true)
 
 				scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genLayout)
 				scp.dockTab(scp.genTab)
 				scp.controlTab.SelectIndex(ftTabIndex)
 				fyne.Do(scp.genTab.Content.Refresh)
 			}
-			scp.genWindow = scp.App.NewWindow("Simulator Generator")
+			scp.genWindow = scp.App.NewWindow("Demo Generator")
 			windowLayout := container.New(layout.NewVBoxLayout())
-			err = scp.newSimGenPanel(windowLayout, false)
+			err = scp.newDemoGenPanel(windowLayout, false)
 			if err != nil {
-				slog.Error("newSimGenPanel error", "err", err)
+				slog.Error("newDemoGenPanel error", "err", err)
 				return
 			}
 			scp.controlTab.Remove(scp.genTab)
@@ -621,11 +621,11 @@ func (scp *ScpDesc) newSimGenPanel(cont *fyne.Container, undockable bool) (err e
 		tabs.Append(tabItem)
 	}
 
-	if scp.Settings.Window.SimGenActiveTab >= 0 && scp.Settings.Window.SimGenActiveTab < len(tabs.Items) {
-		tabs.SelectIndex(scp.Settings.Window.SimGenActiveTab)
+	if scp.Settings.Window.DemoGenActiveTab >= 0 && scp.Settings.Window.DemoGenActiveTab < len(tabs.Items) {
+		tabs.SelectIndex(scp.Settings.Window.DemoGenActiveTab)
 	}
-	tabs.OnSelected = func(item *container.TabItem) {
-		scp.Settings.Window.SimGenActiveTab = tabs.SelectedIndex()
+	tabs.OnSelected = func(tab *container.TabItem) {
+		scp.Settings.Window.DemoGenActiveTab = tabs.SelectedIndex()
 		scp.SaveSettings()
 	}
 

@@ -151,10 +151,10 @@ func (m *MockScopeHandler) ScopeHandler() ScopeHandler {
 	}
 }
 
-func TestOpenSimulator_Success(t *testing.T) {
+func TestOpenDemo_Success(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
-		IdVal: SimId,
+		IdVal: DemoId,
 		OpenUnitFunc: func(serial string) (int16, error) {
 			return 456, nil
 		},
@@ -170,14 +170,14 @@ func TestOpenSimulator_Success(t *testing.T) {
 	con := NewConnection()
 
 	// Act
-	handle, err := OpenSimulator(con, SimId)
+	handle, err := OpenDemo(con, DemoId)
 
 	// Assert
 	if err != nil {
-		t.Fatalf("OpenSimulator() failed: %v", err)
+		t.Fatalf("OpenDemo() failed: %v", err)
 	}
 	if handle != 456 {
-		t.Errorf("OpenSimulator() returned wrong handle. Expected: 456, Got: %d", handle)
+		t.Errorf("OpenDemo() returned wrong handle. Expected: 456, Got: %d", handle)
 	}
 
 	// mockHandler.mutex.Lock()
@@ -204,19 +204,19 @@ func TestOpenSimulator_Success(t *testing.T) {
 
 }
 
-func TestOpenSimulator_SimulatorNotFound(t *testing.T) {
+func TestOpenDemo_DemoNotFound(t *testing.T) {
 	// Arrange
 	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
 	con := NewConnection()
 	// Act
-	_, err := OpenSimulator(con, SimId)
+	_, err := OpenDemo(con, DemoId)
 
 	// Assert
 	if err == nil {
-		t.Error("OpenSimulator() should have returned an error.")
+		t.Error("OpenDemo() should have returned an error.")
 	}
 	if err.Error() != "Simulator not found" {
-		t.Errorf("OpenSimulator() returned wrong error message. Expected: Simulator not found, Got: %s", err.Error())
+		t.Errorf("OpenDemo() returned wrong error message. Expected: Demo not found, Got: %s", err.Error())
 	}
 }
 func TestOpenUnit_Success(t *testing.T) {
@@ -265,7 +265,7 @@ func TestOpenUnit_Success(t *testing.T) {
 	}
 }
 
-func TestOpenUnit_SimulatorNotFound(t *testing.T) {
+func TestOpenUnit_DemoNotFound(t *testing.T) {
 	// Arrange
 	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
 	con := NewConnection()
@@ -284,7 +284,7 @@ func TestOpenUnit_SimulatorNotFound(t *testing.T) {
 func TestEnumerateUnits_Success(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
-		IdVal: SimId,
+		IdVal: DemoId,
 		EnumerateUnitsFunc: func(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
 			return 2, "serial1,serial2", 15, nil
 		},
@@ -315,7 +315,7 @@ func TestEnumerateUnits_Success(t *testing.T) {
 	}
 }
 
-func TestEnumerateUnits_SimulatorNotFound(t *testing.T) {
+func TestEnumerateUnits_DemoNotFound(t *testing.T) {
 	// Arrange
 	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
 	// Act
@@ -330,7 +330,7 @@ func TestEnumerateUnits_SimulatorNotFound(t *testing.T) {
 func TestEnumerateUnits_Error(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
-		IdVal: SimId,
+		IdVal: DemoId,
 		EnumerateUnitsFunc: func(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
 			return 0, "", 0, errors.New("enumerate error")
 		},

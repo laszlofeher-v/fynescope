@@ -18,7 +18,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 	}
 
 	if scp.controlTab.SelectedIndex() == ffTabIndex {
-		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
+		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
 			// Simulator mode: only sinus wave, for generators mapped via RLC
 			activeGens := make([]bool, scp.channelCount)
 			var missingGenChannels []string
@@ -28,7 +28,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					if scp.Settings.Channels[i].Enabled {
 						genSrc := int(scp.Settings.Channels[i].RlcFilter.GeneratorSource)
 						if genSrc >= 0 && genSrc < int(scp.channelCount) {
-							if scp.Settings.SimGenPanel[genSrc].On {
+							if scp.Settings.DemoGenPanel[genSrc].On {
 								activeGens[genSrc] = true
 							} else {
 								missingGenChannels = append(missingGenChannels, channelNames[i])
@@ -61,7 +61,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 							Phase:          0,
 						},
 					}
-					scp.psControl.SetSimGenCh <- msg
+					scp.psControl.SetDemoGenCh <- msg
 				} else {
 					offMsg := &control.GeneratorDescMsg{
 						GeneratorDesc: control.GeneratorDesc{
@@ -69,7 +69,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 							On:      false,
 						},
 					}
-					scp.psControl.SetSimGenCh <- offMsg
+					scp.psControl.SetDemoGenCh <- offMsg
 				}
 			}
 			return
@@ -92,7 +92,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 		return
 	}
 
-	if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
+	if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
 		// Simulator mode: update all enabled simulator channels
 		for i := 0; i < int(scp.channelCount); i++ {
 			msg := &control.GeneratorDescMsg{
@@ -102,14 +102,14 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					Increment:      0,
 					DwellTime:      1,
 					SweepType:      genericps.SweepDown,
-					WaveType:       scp.Settings.SimGenPanel[i].WaveType,
-					OffsetVoltage:  scp.Settings.SimGenPanel[i].OffsetVoltage,
-					PkToPK:         scp.Settings.SimGenPanel[i].Amplitude * 2,
+					WaveType:       scp.Settings.DemoGenPanel[i].WaveType,
+					OffsetVoltage:  scp.Settings.DemoGenPanel[i].OffsetVoltage,
+					PkToPK:         scp.Settings.DemoGenPanel[i].Amplitude * 2,
 					Channel:        genericps.ChannelId(i),
 					On:             true,
 				},
 			}
-			scp.psControl.SetSimGenCh <- msg
+			scp.psControl.SetDemoGenCh <- msg
 		}
 		return
 	}
@@ -180,7 +180,7 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 	}
 }
 
-func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
+func (scp *ScpDesc) applyFfDemoGenSettings(on bool) {
 	if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 		go func() {
 			if on {
@@ -196,15 +196,15 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 				msg := &control.GeneratorDescMsg{}
 				msg.Channel = genericps.ChannelId(i)
 				msg.Operation = genericps.EsOff
-				if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
-					scp.psControl.SetSimGenCh <- msg
+				if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
+					scp.psControl.SetDemoGenCh <- msg
 				}
 			}
 		}()
 		return
 	}
 
-	if scp.psControl != nil && scp.psControl.SetSimGenCh != nil {
+	if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
 		activeGens := make([]bool, scp.channelCount)
 		var missingGenChannels []string
 
@@ -213,7 +213,7 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 				if scp.Settings.Channels[i].Enabled {
 					genSrc := int(scp.Settings.Channels[i].RlcFilter.GeneratorSource)
 					if genSrc >= 0 && genSrc < int(scp.channelCount) {
-						if scp.Settings.SimGenPanel[genSrc].On {
+						if scp.Settings.DemoGenPanel[genSrc].On {
 							activeGens[genSrc] = true
 						} else {
 							missingGenChannels = append(missingGenChannels, channelNames[i])
@@ -260,9 +260,9 @@ func (scp *ScpDesc) applyFfSimGenSettings(on bool) {
 			msg.TriggerType = genericps.SigGenRising
 			msg.TriggerSource = genericps.SigGenNone
 			msg.ExtInThreshold = 0
-			if scp.psControl.SetSimGenCh != nil {
+			if scp.psControl.SetDemoGenCh != nil {
 				msgCopy := msg
-				go func() { scp.psControl.SetSimGenCh <- msgCopy }()
+				go func() { scp.psControl.SetDemoGenCh <- msgCopy }()
 			}
 		}
 	}
