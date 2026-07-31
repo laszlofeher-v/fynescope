@@ -1348,6 +1348,26 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	case "2408B":
 		slog.Warn("2408B not tested")
 		scp.maxSamplingRate = maxSampling1G
+	case "24EMU":
+		slog.Warn("EMU via PS2000 driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "30EMU":
+		slog.Warn("PS2407B via PS3000 driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "40EMU":
+		slog.Warn("PS2407B via PS4000 driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "4AEMU":
+		slog.Warn("PS2407B via PS4000a driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "3AEMU":
+		slog.Warn("PS2407B via PS3000a driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	// case "2205MSO":
 	// case "2205AMSO":
 	// case "2206BMSO":
