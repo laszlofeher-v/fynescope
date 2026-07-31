@@ -38,7 +38,7 @@ type (
 		Fullscreen       bool    `yaml:"fullscreen"`
 		LeftControl      bool    `yaml:"leftsignalscreen"`
 		FilterActiveTab  int     `yaml:"filteractivetab"`
-		SimGenActiveTab  int     `yaml:"simgenactivetab"`
+		DemoGenActiveTab int     `yaml:"demogenactivetab"`
 	}
 	ChTriggerSettings struct {
 		Type              string                       `yaml:"type"` // "Simple", "Advanced", "Window", "Complex", "Interval", "Pulse Width"
@@ -184,8 +184,8 @@ type (
 		Trigger           TriggerSettings       `yaml:"trigger"`
 		Time              TimeSettings          `yaml:"time"`
 		GenPanel          GeneratorSettings     `yaml:"genpanel"`
-		SimGenPanel       []GeneratorSettings   `yaml:"simgenpanel"`
-		FfGen             GeneratorSettings     `yaml:"ffgen"`  // Simulator and real hw has the same functionality
+		DemoGenPanel      []GeneratorSettings   `yaml:"demogenpanel"`
+		FfGen             GeneratorSettings     `yaml:"ffgen"`  // Demo and real hw has the same functionality
 		ExtGen            [2]GeneratorSettings  `yaml:"extgen"` // External generator explicit settings
 		Dft               DftSettings           `yaml:"dft"`
 		Ff                FfSettings            `yaml:"ff"`
@@ -273,7 +273,7 @@ func NewDefaultSettings() *PsSettings {
 			{Frequency: defaultFrequency, StartFrequency: defaultFrequency, StopFrequency: defaultFrequency, Amplitude: defaultAmplitude, WaveType: genericps.Sine, On: false},
 			{Frequency: defaultFrequency, StartFrequency: defaultFrequency, StopFrequency: defaultFrequency, Amplitude: defaultAmplitude, WaveType: genericps.Sine, On: false},
 		},
-		SimGenPanel: []GeneratorSettings{
+		DemoGenPanel: []GeneratorSettings{
 			{Frequency: defaultFrequency, StartFrequency: defaultFrequency,
 				StopFrequency: defaultFrequency, Sweep: genericps.NoSweep, Digital: true,
 				Amplitude: defaultAmplitude, RaiseFallTimePercent: defaultRaiseFallTimePercent,
@@ -322,10 +322,10 @@ func Load(fileName string) (*PsSettings, error) {
 		return nil, fmt.Errorf("unmarshal settings: %w", err)
 	}
 
-	// Ensure SimGenPanel has at least 4 elements (matching maximum possible channels)
-	const minSimGenElements = 4
-	for len(settings.SimGenPanel) < minSimGenElements {
-		settings.SimGenPanel = append(settings.SimGenPanel, GeneratorSettings{
+	// Ensure DemoGenPanel has at least 4 elements (matching maximum possible channels)
+	const minDemoGenElements = 4
+	for len(settings.DemoGenPanel) < minDemoGenElements {
+		settings.DemoGenPanel = append(settings.DemoGenPanel, GeneratorSettings{
 			Frequency:            defaultFrequency,
 			StartFrequency:       defaultFrequency,
 			StopFrequency:        defaultFrequency,

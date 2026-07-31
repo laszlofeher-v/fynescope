@@ -796,7 +796,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab)
 
-	if scp.psControl != nil && scp.psControl.Con.ID != genericps.SimId {
+	if scp.psControl != nil && scp.psControl.Con.ID != genericps.DemoId {
 		scp.controlTab.Remove(scp.rlcTab)
 	}
 	if !scp.ExtGenEnabled {
@@ -1001,9 +1001,9 @@ func (scp *ScpDesc) build2000Gui() {
 					return
 				}
 				// Set up the generator in non-sweep mode; the app controls stepping.
-				if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-					scp.applyFfSimGenSettings(false)
-					scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
+				if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+					scp.applyFfDemoGenSettings(false)
+					scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 				} else {
 					scp.applyFfGenSettings(false)
 					scp.applyFfGenSettings(scp.Settings.FfGen.On)
@@ -1013,7 +1013,7 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.applyInternalGenSettings(true)
 				}
 				for i := 0; i < int(scp.channelCount); i++ {
-					scp.applySimGenSettings(genericps.ChannelId(i), &scp.Settings.SimGenPanel[i])
+					scp.applyDemoGenSettings(genericps.ChannelId(i), &scp.Settings.DemoGenPanel[i])
 				}
 			}
 			if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
@@ -1264,7 +1264,7 @@ func (scp *ScpDesc) build2407Gui() {
 func (scp *ScpDesc) build2000IMGui() {
 
 	scp.build2000Gui()
-	scp.newSimGenPanel(scp.genLayout, true)
+	scp.newDemoGenPanel(scp.genLayout, true)
 
 }
 
@@ -1388,7 +1388,6 @@ func (scp *ScpDesc) setRangeMargin() {
 
 func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fileName string) (err error) {
 	scp.SettingFileName = fileName
-	slog.Debug("menu", "cfg", *cfg)
 	scp.triggerSettingMsg.Done = make(chan struct{})
 	scp.psControl = control.NewControl(con)
 	scp.Settings = cfg

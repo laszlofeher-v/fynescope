@@ -20,10 +20,10 @@ Once the application is running, you can navigate between different visualizatio
 
 - **f(v)**: The X-Y plotting mode, useful for viewing Lissajous figures or phase relationships between channels.
 - **Gen / ExtGen**: Control panels for configuring the PicoScope's built-in arbitrary waveform generator or a connected external SCPI signal generator.
-- **Filters**: Built-in tabs for simple **RLC** filters (**simulator mode only**) and digital **filters** (FIR/IIR) with Zero Phase (FiltFilt) support to eliminate phase shifting.
+- **Filters**: Built-in tabs for simple **RLC** filters (**demo mode only**) and digital **filters** (FIR/IIR) with Zero Phase (FiltFilt) support to eliminate phase shifting.
 - **Virtual Channels**: Computed channels derived from physical channel data using arbitrary math expressions (see [Virtual Channels](#virtual-channels) below).
 
-Additionally, the application features a **Simulator Mode**, allowing you to explore the interface without physical hardware using the built-in software simulator.
+Additionally, the application features a **demo Mode**, allowing you to explore the interface without physical hardware using the built-in software simulator.
 ## Getting Started
 
 ### Prerequisites
@@ -37,7 +37,7 @@ To use **real hardware**, the PicoScope driver libraries are also required:
 
 - `libps2000a` (PicoScope 2000a Series driver) — available from the [Pico Technology downloads page](https://www.picotech.com/downloads/linux).
 
-If you only want to explore the UI in **simulator mode**, no PicoScope drivers are needed. Use the `noscope` build tag (see [Building](#building) below).
+If you only want to explore the UI in **demo mode**, no PicoScope drivers are needed. Use the `noscope` build tag (see [Building](#building) below).
 
 ### Building
 
@@ -61,7 +61,7 @@ go mod tidy
 
 The application can be compiled with different features enabled via build tags:
 
-- `noscope`: Build without the PicoScope C driver libraries (simulator mode only).
+- `noscope`: Build without the PicoScope C driver libraries (demo mode only).
 - `scpi`: Include the external SCPI signal generator module (requires `libusb-1.0-0-dev`).
 - `web`: Include the read-only web server for sharing the GUI over the network via MJPEG streaming.
 
@@ -106,10 +106,10 @@ Run the application directly. It will attempt to detect connected PicoScope devi
 ./fynescope
 ```
 
-To run the application strictly in simulator mode (without connected hardware):
+To run the application strictly in demo mode (without connected hardware):
 
 ```bash
-./fynescope -sim
+./fynescope -demo
 ```
 
 For more options, including displaying version, build date, and license information, run:
@@ -123,9 +123,9 @@ For more options, including displaying version, build date, and license informat
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-sim` | `false` | Run in simulator mode only (no hardware required) |
+| `-demo` | `false` | Run in demo mode only (no hardware required) |
 | `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
-| `-chcount=N` | `2` | Number of channels to simulate (simulator only, 1–4) |
+| `-chcount=N` | `2` | Number of channels to simulate (demo only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-gif` | `false` | Enable GIF generation button on the toolbar |
 | `-ff-auto-range` | `false` | Enable auto-ranging during f(f) Bode plot sweeps |
@@ -160,13 +160,13 @@ When compiled with the `web` build tag, `fynescope` can stream a live view of th
 To enable the web server, start the application with the `-webport` flag:
 
 ```bash
-./fynescope -sim -webport=8080
+./fynescope -demo -webport=8080
 ```
 
 You can secure the web server using HTTP Basic Authentication by providing the `-webauth` and `-webauth-view` flags:
 
 ```bash
-./fynescope -sim -webport=8080 -webauth=admin:secret -webauth-view=guest:hello
+./fynescope -demo -webport=8080 -webauth=admin:secret -webauth-view=guest:hello
 ```
 
 When authentication is enabled, logging in with the `-webauth` credentials grants full access (including voice control), while the `-webauth-view` credentials grant read-only access to the stream.
@@ -267,7 +267,7 @@ With Complex mode, a trigger fires only when **all** channels with a `True` cond
 
 #### Simulator Support
 
-The software simulator fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The simulator accurately tracks state for Window triggering boundaries (Enter/Exit direction rules) and evaluates Interval and Pulse Width durations with sample-precision. The trigger fires at the first time step where all `True` conditions and time constraints are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution. Additionally, the simulator's built-in signal generator supports very long period repeating PRBS sequences using a fast hash algorithm; the trigger's behavior when using PRBS is not identical to that of the real hardware.
+The software simulator in demo mode fully supports complex trigger evaluation, including AC coupling simulation (using a physically accurate 1 Hz highpass filter). At each simulated time step, all active channel conditions are evaluated simultaneously. The simulator accurately tracks state for Window triggering boundaries (Enter/Exit direction rules) and evaluates Interval and Pulse Width durations with sample-precision. The trigger fires at the first time step where all `True` conditions and time constraints are met. Sub-sample interpolation is not applied in complex mode — trigger precision is at sample resolution. Additionally, the simulator's built-in signal generator supports very long period repeating PRBS sequences using a fast hash algorithm; the trigger's behavior when using PRBS is not identical to that of the real hardware.
 
 #### Limitations & Known Issues
 
@@ -361,7 +361,7 @@ Expressions are compiled to byte-code at definition time using the [`github.com/
 
 The settings are saved in a YAML file in the working directory. The filename is device-specific, which allows you to maintain separate configurations for different PicoScope units or the simulator:
 
-- `scopesettings_1_1.yaml` (simulator mode)
+- `scopesettings_1_1.yaml` (demo mode)
 - `scopesettings_<batch_and_serial>.yaml` (e.g., `scopesettings_GQ123_456.yaml`)
 
 **Restoring Defaults:**
@@ -420,7 +420,7 @@ During the fuzzing process, a secondary **Fuzzer Status** window will automatica
 | `control/` | Channel state machine, screen time and ETS timing, interpolation modes, stream mode transitions, built-in generator state |
 | `control/scpi/` | SCPI command builder and parser |
 | `gui/` | Modular graphical interface components (panels, drawers, tabs), time zoom logic, FIR/IIR digital filter application, frequency conversion helpers, Bode sweep raster logic |
-| `sim/` | Simulator waveform generation, RLC filter simulation |
+| `demo/` | Simulator waveform generation, RLC filter simulation |
 | `genericps/` | Generic PicoScope device interface and open/close lifecycle |
 | `settings/` | Settings save/load, checksum validation |
 | `disp7/` | 7-segment display widget: value setting, digit editing, keyboard/mouse/scroll interaction |

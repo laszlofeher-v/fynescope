@@ -1,4 +1,4 @@
-package sim
+package demo
 
 import (
 	"fmt"
@@ -738,15 +738,15 @@ func sigGenSoftwareControl(m *genericps.SigGenSoftwareControlMsg) {
 	m.RspCh() <- struct{}{}
 }
 
-func setSimGen(m *genericps.SetSimGenMsg) {
-	response := m.Rsp().(*genericps.SetSimGenRsp)
+func setDemoGen(m *genericps.SetDemoGenMsg) {
+	response := m.Rsp().(*genericps.SetDemoGenRsp)
 	if err := checkHandle(m.Handle()); err != nil {
 		response.SetStatus(err)
 		m.RspCh() <- struct{}{}
 		return
 	}
 	s := SimDesc{handle: m.Handle()}
-	err := s.SetSimGen(m.Channel, m.On, m.OffsetVoltage, m.PkToPK, genericps.WaveTypeEnum(m.WaveType),
+	err := s.SetDemoGen(m.Channel, m.On, m.OffsetVoltage, m.PkToPK, genericps.WaveTypeEnum(m.WaveType),
 		m.StartFrequency, m.StopFrequency, m.Increment, m.DwellTime, genericps.SweepTypeEnum(m.SweepType),
 		genericps.ExtraOperations(m.Operation), m.Shots, m.Sweeps, genericps.SigGenTrigType(m.TriggerType),
 		genericps.SigGenTrigSource(m.TriggerSource), m.ExtInThreshold, m.Phase)
@@ -754,15 +754,15 @@ func setSimGen(m *genericps.SetSimGenMsg) {
 	m.RspCh() <- struct{}{}
 }
 
-func setSimRlcFilter(m *genericps.SetSimRlcFilterMsg) {
-	response := m.Rsp().(*genericps.SetSimRlcFilterRsp)
+func setDemoRlcFilter(m *genericps.SetDemoRlcFilterMsg) {
+	response := m.Rsp().(*genericps.SetDemoRlcFilterRsp)
 	if err := checkHandle(m.Handle()); err != nil {
 		response.SetStatus(err)
 		m.RspCh() <- struct{}{}
 		return
 	}
 	s := SimDesc{handle: m.Handle()}
-	err := s.SetSimRlcFilter(m.Channel, m.GenSource, m.Enabled, m.FilterType, m.R, m.RUnit, m.L, m.LUnit, m.C, m.CUnit)
+	err := s.SetDemoRlcFilter(m.Channel, m.GenSource, m.Enabled, m.FilterType, m.R, m.RUnit, m.L, m.LUnit, m.C, m.CUnit)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

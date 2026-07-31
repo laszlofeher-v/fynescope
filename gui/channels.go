@@ -57,9 +57,9 @@ type (
 		dftNameLabel             *canvas.Text
 		ffNameLabel              *canvas.Text
 		rlcNameLabel             *canvas.Text
-		simGenNameLabel          *canvas.Text
+		demoGenNameLabel         *canvas.Text
 		filterWarning            *canvas.Text
-		simGenDisplays           []*disp7.DigitArray
+		demoGenDisplays          []*disp7.DigitArray
 		triggerDirectionSelect   *selectscroll.SelectScroll
 		triggerConditionSelect   *selectscroll.SelectScroll
 		acdcSelect               *selectscroll.SelectScroll
@@ -779,12 +779,12 @@ func (scp *ScpDesc) SetChannelColors(col color.Color,
 			cfg.Col[scp.Settings.ChannelColorIndex]
 		channelViewer.rlcNameLabel.Refresh()
 	}
-	if channelViewer.simGenNameLabel != nil {
-		channelViewer.simGenNameLabel.Color =
+	if channelViewer.demoGenNameLabel != nil {
+		channelViewer.demoGenNameLabel.Color =
 			cfg.Col[scp.Settings.ChannelColorIndex]
-		channelViewer.simGenNameLabel.Refresh()
+		channelViewer.demoGenNameLabel.Refresh()
 	}
-	for _, d := range channelViewer.simGenDisplays {
+	for _, d := range channelViewer.demoGenDisplays {
 		if d != nil {
 			d.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
 		}

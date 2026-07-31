@@ -150,7 +150,7 @@ type (
 		getInterpolationMode   getInterpolationModeMsg
 
 		SetGeneratorCh chan *GeneratorDescMsg
-		SetSimGenCh    chan *GeneratorDescMsg
+		SetDemoGenCh   chan *GeneratorDescMsg
 		getGeneratorCh chan *getGeneratorMsg
 		getGenerator   getGeneratorMsg
 
@@ -213,7 +213,7 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	psControl.stopChannel = make(chan struct{}, 1)    // non blocking
 
 	psControl.SetGeneratorCh = make(chan *GeneratorDescMsg)
-	psControl.SetSimGenCh = make(chan *GeneratorDescMsg)
+	psControl.SetDemoGenCh = make(chan *GeneratorDescMsg)
 	psControl.getGeneratorCh = make(chan *getGeneratorMsg)
 	psControl.getGenerator.newSetting = make(chan bool)
 
@@ -238,7 +238,7 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	go psControl.stateMachine()
 	go psControl.triggerMonitor()
 	go psControl.generatorMonitor()
-	go psControl.simGeneratorMonitor()
+	go psControl.demoGeneratorMonitor()
 	go psControl.interpolationMonitor()
 	return psControl
 }

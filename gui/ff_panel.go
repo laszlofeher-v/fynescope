@@ -242,9 +242,9 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.Settings.FfGen.Dwelltime = scp.Settings.Ff.DeltaT
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-			scp.applyFfSimGenSettings(false)
-			scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
+		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+			scp.applyFfDemoGenSettings(false)
+			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
 			scp.applyFfGenSettings(false)
 			scp.applyFfGenSettings(scp.Settings.FfGen.On)
@@ -353,14 +353,14 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	isSim := false
-	if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
+	if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
 		isSim = true
 	}
 
 	var genPanel *fyne.Container
 	var genErr error
 	if isSim {
-		genPanel, genErr = scp.newFfSimGenPanel()
+		genPanel, genErr = scp.newFfDemoGenPanel()
 	} else {
 		genPanel, genErr = scp.newFfGenPanel()
 	}
@@ -373,8 +373,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.updateFfWidgetLimits()
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.SimId {
-			scp.applyFfSimGenSettings(scp.Settings.FfGen.On)
+		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
 			scp.applyFfGenSettings(scp.Settings.FfGen.On)
 		}
@@ -506,10 +506,10 @@ func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
 	return box, nil
 }
 
-func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
+func (scp *ScpDesc) newFfDemoGenPanel() (box *fyne.Container, err error) {
 	checked := func(c bool) {
 		scp.Settings.FfGen.On = c
-		scp.applyFfSimGenSettings(c)
+		scp.applyFfDemoGenSettings(c)
 		scp.SaveSettings()
 	}
 	check := widget.NewCheck("On", checked)
@@ -535,7 +535,7 @@ func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
 		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 			scp.extGen.SetAmplitude(scpi.Ch1, float64(scp.Settings.FfGen.Amplitude)/1000000.0)
 		} else {
-			scp.applyFfSimGenSettings(check.Checked)
+			scp.applyFfDemoGenSettings(check.Checked)
 		}
 	}
 
@@ -556,7 +556,7 @@ func (scp *ScpDesc) newFfSimGenPanel() (box *fyne.Container, err error) {
 		if scp.ExtGenEnabled && scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 			scp.extGen.SetOffset(scpi.Ch1, float64(scp.Settings.FfGen.OffsetVoltage)/1000000.0)
 		} else {
-			scp.applyFfSimGenSettings(check.Checked)
+			scp.applyFfDemoGenSettings(check.Checked)
 		}
 	}
 

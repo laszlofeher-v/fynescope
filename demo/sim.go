@@ -1,7 +1,7 @@
-// Package sim provides a PicoScope simulator for testing and development.
+// Package demo provides a PicoScope demo for testing and development.
 // It simulates the behavior of a PicoScope oscilloscope including signal generation,
 // triggering, and data acquisition without requiring physical hardware.
-package sim
+package demo
 
 import (
 	"fmt"
@@ -993,20 +993,20 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, waveT
 	return
 }
 
-// simSetSigGenBuiltInV2 is a no-op for the simulator.
-// The simulator manages generators per-channel via SetSimGen, so the global
+// simSetSigGenBuiltInV2 is a no-op for the demo.
+// The demo manages generators per-channel via SetDemoGen, so the global
 // hardware path must not overwrite the per-channel sweep controllers that were
-// already configured by SetSimGen calls. Clobbering them here would reset the
+// already configured by SetDemoGen calls. Clobbering them here would reset the
 // sweep state on every block-mode restart (e.g. on a tab switch).
 func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("simSetSigGenBuiltInV2 (no-op: sim uses per-channel SetSimGen)")
+	slog.Debug("simSetSigGenBuiltInV2 (no-op: demo uses per-channel SetDemoGen)")
 	return
 }
 
-func (s *SimDesc) SetSimGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
+func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
 	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64) (err error) {
@@ -1033,7 +1033,7 @@ func (s *SimDesc) SetSimGen(channel genericps.ChannelId, on bool, offsetVoltage 
 	return nil
 }
 
-func (s *SimDesc) SetSimRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, c float64, cunit string) (err error) {
+func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, c float64, cunit string) (err error) {
 	ch := int(channel)
 	if ch < 0 || ch >= MaxChannels {
 		return fmt.Errorf("invalid channel")
@@ -1282,10 +1282,10 @@ func dispatch(msg genericps.Message) {
 		setSigGenBuiltIn(m)
 	case *genericps.SetSigGenBuiltInV2Msg:
 		setSigGenBuiltInV2(m)
-	case *genericps.SetSimGenMsg:
-		setSimGen(m)
-	case *genericps.SetSimRlcFilterMsg:
-		setSimRlcFilter(m)
+	case *genericps.SetDemoGenMsg:
+		setDemoGen(m)
+	case *genericps.SetDemoRlcFilterMsg:
+		setDemoRlcFilter(m)
 
 	case *genericps.SigGenFrequencyToPhasenMsg:
 		sigGenFrequencyToPhase(m)
@@ -1345,7 +1345,7 @@ func init() {
 	scopeHandler.OpenUnit = openUnit
 	scopeHandler.OpenUnitAsync = openUnitAsync
 	scopeHandler.OpenUnitProgress = openUnitProgress
-	scopeHandler.Id = genericps.SimId
+	scopeHandler.Id = genericps.DemoId
 	genericps.Register(scopeHandler)
 }
 func SetChannelCount(n int, explicit bool) error {
