@@ -3,6 +3,7 @@ package demo
 import (
 	"log/slog"
 	"math"
+	"math/rand"
 )
 
 // RaiseFallTimePercent is kept for backwards compatibility; use SetRaiseFallTimePercent
@@ -42,6 +43,14 @@ func NewWaveformGenerator(waveType WaveTypeEnum) WaveformGenerator {
 	}
 }
 
+var prbsBlockOffset uint64
+
+// AdvancePRBS randomizes the PRBS sequence offset for the next simulation block.
+// Calling this at the start of each block simulates a continuously running PRBS generator.
+func AdvancePRBS() {
+	prbsBlockOffset = rand.Uint64()
+}
+
 // NewPrbsGenerator returns a WaveformGenerator that produces a PRBS signal
 // (Pseudo-Random Binary Sequence) using a 15-bit maximal-length LFSR.
 // The bit-clock period is 1/freq, so the configured frequency controls the
@@ -57,11 +66,12 @@ func NewPrbsGenerator() WaveformGenerator {
 		// Which bit period are we in?
 		// `t` here is phase in radians: t = t_seconds * freq * 2π
 		// So t / (2π) = t_seconds * freq = number of elapsed bit periods.
-		bitIndex := int64(t / (2 * math.Pi))
-		
-		// Use a fast, high-quality 64-bit integer hash (SplitMix64) 
+		// Use math.Floor to ensure correct uniform bit periods across t=0.
+		bitIndex := int64(math.Floor(t / (2 * math.Pi)))
+
+		// Use a fast, high-quality 64-bit integer hash (SplitMix64)
 		// to deterministically generate a bit for this specific bit index.
-		x := uint64(bitIndex)
+		x := uint64(bitIndex) + prbsBlockOffset
 		x += 0x9e3779b97f4a7c15 // Weyl constant
 		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9
 		x = (x ^ (x >> 27)) * 0x94d049bb133111eb
@@ -200,5 +210,3 @@ func rampDownWave(t float64, freq float64) float64 {
 func dcVoltageWave(t float64, freq float64) float64 {
 	return 0
 }
-
-

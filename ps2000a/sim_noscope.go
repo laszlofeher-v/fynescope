@@ -159,10 +159,21 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 	nOfPreTrSamples = pre
 	nOfPostTrSamples = post
 	timeBaseSet = timebase
+	demo.AdvancePRBS()
 
 	go func() {
 		// Fill buffers
-		dt := float64(timebase+1) * 1e-9 // Mock dt
+		var dt float64
+		switch {
+		case timebase == 0:
+			dt = 1e-9
+		case timebase == 1:
+			dt = 2e-9
+		case timebase == 2:
+			dt = 4e-9
+		default:
+			dt = (1000.0 * (float64(timebase) - 2.0) / 125.0) * 1e-9
+		}
 
 		signalFunc := func(t float64, ch demo.ChannelId) float64 {
 			return calculateSampleLevelAtTime(t, int(ch))
@@ -211,11 +222,15 @@ func simStop(handle int16) {
 	isReady = false
 }
 
-func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveType int, startFreq float64, stopFreq float64, increment float64, dwellTime float64, sweepType int) {
+func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveType int, startFreq float64, stopFreq float64, increment float64, dwellTime float64, sweepType int, operation int) {
 	genOn = true
 	genOffsetVoltage = offsetVoltage
 	genPkToPk = pkToPk
-	genWaveFunction = demo.NewWaveformGenerator(demo.WaveTypeEnum(waveType))
+	if operation == int(Prbs) {
+		genWaveFunction = demo.NewPrbsGenerator()
+	} else {
+		genWaveFunction = demo.NewWaveformGenerator(demo.WaveTypeEnum(waveType))
+	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
 	sweepController = demo.NewSweepController(startFreq, stopFreq, increment, demo.SweepTypeEnum(sweepType), dwellDuration)
 }

@@ -138,13 +138,13 @@ func Gops2000aStop(handle C.int16_t) C.uint32_t {
 
 //export Gops2000aSetSigGenBuiltIn
 func Gops2000aSetSigGenBuiltIn(handle C.int16_t, offsetVoltage C.int32_t, pkToPk C.uint32_t, waveType C.int16_t, startFrequency C.float, stopFrequency C.float, increment C.float, dwellTime C.float, sweepType C.int32_t, operation C.int32_t, shots C.uint32_t, sweeps C.uint32_t, triggerType C.int32_t, triggerSource C.int32_t, extInThreshold C.int16_t) C.uint32_t {
-	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType))
+	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType), int(operation))
 	return 0
 }
 
 //export Gops2000aSetSigGenBuiltInV2
 func Gops2000aSetSigGenBuiltInV2(handle C.int16_t, offsetVoltage C.int32_t, pkToPk C.uint32_t, waveType C.int16_t, startFrequency C.double, stopFrequency C.double, increment C.double, dwellTime C.double, sweepType C.int32_t, operation C.int32_t, shots C.uint32_t, sweeps C.uint32_t, triggerType C.int32_t, triggerSource C.int32_t, extInThreshold C.int16_t) C.uint32_t {
-	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType))
+	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType), int(operation))
 	return 0
 }
 

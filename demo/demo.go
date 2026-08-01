@@ -317,6 +317,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		}
 	}
 
+	AdvancePRBS()
+
 	// Find trigger point using trigger detector
 
 	var triggerTime float64
