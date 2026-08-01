@@ -1340,10 +1340,19 @@ func (ff *ffViewer) scrolled(delta, x, y float32) {
 	for chIdx, bounds := range ff.labelBounds {
 		if p.In(bounds) {
 			if chIdx == -1 {
-				ff.setChDispOffset(-1, float64(-delta)*100, true) // Arbitrary horizontal scroll scale
+				nX := float64(ff.img.Bounds().Dx()) / float64(numberOfDivs)
+				if delta < 0 {
+					ff.setChDispOffset(-1, nX, true)
+				} else if delta > 0 {
+					ff.setChDispOffset(-1, -nX, true)
+				}
 			} else {
-				nY := (float64(ff.img.Bounds().Dy()) / float64(numberOfDivs)) / 10
-				ff.setChDispOffset(chIdx, float64(-delta)*nY, true)
+				nY := float64(ff.img.Bounds().Dy()) / float64(numberOfDivs)
+				if delta < 0 {
+					ff.setChDispOffset(chIdx, nY, true)
+				} else if delta > 0 {
+					ff.setChDispOffset(chIdx, -nY, true)
+				}
 			}
 			break
 		}

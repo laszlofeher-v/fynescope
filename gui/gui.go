@@ -1261,7 +1261,7 @@ func (scp *ScpDesc) build2407Gui() {
 	scp.newGenPanel(scp.genLayout)
 }
 
-func (scp *ScpDesc) build2000IMGui() {
+func (scp *ScpDesc) build2000SIMGui() {
 
 	scp.build2000Gui()
 	scp.newDemoGenPanel(scp.genLayout, true)
@@ -1320,51 +1320,61 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	switch scp.psControl.Info {
 	case "2107SIM", "2207SIM", "2307SIM", "2407SIM":
 		scp.maxSamplingRate = maxSampling1G
-		scp.build2000IMGui()
+		scp.build2407Gui()
+	case "2407DEMO":
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2000SIMGui()
 	case "2204A":
 		slog.Warn("2204A not tested")
 		scp.maxSamplingRate = maxSampling100M
+		scp.build2407Gui()
 	case "2205A":
 		slog.Warn("2205A not tested")
 		scp.maxSamplingRate = maxSampling200M
+		scp.build2407Gui()
 	case "2206B":
 		slog.Warn("2206B not tested")
 		scp.maxSamplingRate = maxSampling500M
+		scp.build2407Gui()
 	case "2207B":
 		slog.Warn("2207B not tested")
 		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	case "2208B":
 		slog.Warn("2208B not tested")
 		scp.maxSamplingRate = maxSampling1G
 	case "2405A":
 		slog.Warn("2208B not tested")
 		scp.maxSamplingRate = maxSampling500M
+		scp.build2407Gui()
 	case "2406B":
 		slog.Warn("2406B not tested")
 		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	case "2407B":
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	case "2408B":
 		slog.Warn("2408B not tested")
 		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	case "24EMU":
 		slog.Warn("EMU via PS2000 driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	case "30EMU":
+	case "34EMU":
 		slog.Warn("PS2407B via PS3000 driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	case "40EMU":
+	case "44EMU":
 		slog.Warn("PS2407B via PS4000 driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	case "4AEMU":
+	case "44AEM":
 		slog.Warn("PS2407B via PS4000a driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	case "3AEMU":
+	case "34AEM":
 		slog.Warn("PS2407B via PS3000a driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()

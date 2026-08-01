@@ -130,8 +130,12 @@ func (cl *ftVChannelLabelViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (cl *ftVChannelLabelViewer) scrolled(delta, x, y float32) {
-	nY := (float64(cl.img.Bounds().Dy()) / float64(numberOfDivs)) / 10
-	cl.setChDispYOffset(float64(-delta)*nY, float64(x), float64(y), true)
+	nY := float64(cl.img.Bounds().Dy()) / float64(numberOfDivs)
+	if delta < 0 {
+		cl.setChDispYOffset(nY, float64(x), float64(y), true)
+	} else if delta > 0 {
+		cl.setChDispYOffset(-nY, float64(x), float64(y), true)
+	}
 }
 
 func (cl *ftVChannelLabelViewer) draw() {

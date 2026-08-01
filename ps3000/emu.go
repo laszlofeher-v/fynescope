@@ -1,4 +1,4 @@
-//go:build !noscope && ps3000 && emu
+//go:build emu && ps3000 && !demo
 
 package ps3000
 
@@ -24,7 +24,7 @@ int16_t ps3000_get_unit_info(int16_t handle, int8_t *string, int16_t string_leng
     PICO_STATUS status = ps2000aGetUnitInfo(handle, string, string_length, &reqSize, (PICO_INFO)line);
     if (status == 0) {
         if (string && string_length > 0 && line == 3) {
-            strcpy((char *)&string[0], "30EMU");
+            strcpy((char *)&string[0], "34EMU");
         }
         return reqSize;
     }

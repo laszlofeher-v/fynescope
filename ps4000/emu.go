@@ -1,4 +1,4 @@
-//go:build !noscope && ps4000 && emu
+//go:build emu && ps4000 && !demo
 
 package ps4000
 
@@ -15,7 +15,7 @@ PICO_STATUS ps4000OpenUnitAsync(int16_t *status) { return 0; }
 PICO_STATUS ps4000OpenUnitProgress(int16_t *handle, int16_t *progressPercent, int16_t *complete) { return 0; }
 PICO_STATUS ps4000CloseUnit(int16_t handle) { return 0; }
 PICO_STATUS ps4000GetUnitInfo(int16_t handle, int8_t *string, int16_t stringLength, int16_t *requiredSize, PICO_INFO info) {
-    if (string && stringLength > 0) { strcpy((char *)string, "40EMU"); }
+    if (string && stringLength > 0) { strcpy((char *)string, "44EMU"); }
     return 0;
 }
 PICO_STATUS ps4000FlashLed(int16_t handle, int16_t start) { return 0; }

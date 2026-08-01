@@ -1,4 +1,4 @@
-//go:build scpi
+//go:build !demo && scpi
 
 package main
 

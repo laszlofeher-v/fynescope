@@ -22,7 +22,7 @@ const (
 
 var (
 	numberOfChannels       = 4
-	scopeVariantInfo       = "2407SIM"
+	scopeVariantInfo       = "2407DEMO"
 	scopeBathAndSerialInfo = "1/1"
 	MaxChannelBuffers      = 8
 )

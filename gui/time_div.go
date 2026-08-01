@@ -205,8 +205,12 @@ func (tl *timeLabelViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (tl *timeLabelViewer) scrolled(delta, x, y float32) {
-	nX := (float32(tl.scp.ftScopeSignalScreen.Bounds().Dx()-1) / float32(numberOfDivs)) / 10
-	tl.setDtDispXOffset(delta*nX, x, y)
+	nX := float32(tl.scp.ftScopeSignalScreen.Bounds().Dx()-1) / float32(numberOfDivs)
+	if delta < 0 {
+		tl.setDtDispXOffset(-nX, x, y)
+	} else if delta > 0 {
+		tl.setDtDispXOffset(nX, x, y)
+	}
 }
 
 func (tl *timeLabelViewer) typedKey(x, y float32, keyName fyne.KeyName) {

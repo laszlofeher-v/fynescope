@@ -646,7 +646,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	if commitID == "" {
 		fmt.Println("Error: Fuzzer requires a specified commit id.")
 		fmt.Println("Please run with the required command, for example:")
-		fmt.Println("FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=\"noscope,testsw\" -v -run Test0 -timeout 105m")
+		fmt.Println("FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=\"testsw\" -v -run Test0 -timeout 105m")
 		os.Exit(1)
 	}
 

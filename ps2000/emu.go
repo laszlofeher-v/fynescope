@@ -1,4 +1,4 @@
-//go:build !noscope && ps2000 && emu
+//go:build emu && ps2000 && !demo
 
 package ps2000
 

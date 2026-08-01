@@ -1,4 +1,4 @@
-//go:build ps6000
+//go:build !demo && ps6000
 
 package ps6000
 
