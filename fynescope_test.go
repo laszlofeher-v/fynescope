@@ -93,7 +93,7 @@ func TestGui(t *testing.T) {
 }
 
 // Test0 runs the GUI fuzzer for the duration set by the -timeout flag.
-// Run with: go test -tags=noscope -tags=testsw -v -run Test0 -timeout 105m
+// Run with: go test -tags=testsw -v -run Test0 -timeout 105m
 func Test0(t *testing.T) {
 	if deadline, ok := t.Deadline(); ok {
 		if time.Until(deadline) < 20*time.Minute {
@@ -131,7 +131,7 @@ func Test0(t *testing.T) {
 }
 
 // Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout flag.
-// Run with: go test -tags="noscope,testsw,web" -v -run Test1 -timeout 105m
+// Run with: go test -tags="testsw,web" -v -run Test1 -timeout 105m
 func Test1(t *testing.T) {
 	if deadline, ok := t.Deadline(); ok {
 		if time.Until(deadline) < 20*time.Minute {

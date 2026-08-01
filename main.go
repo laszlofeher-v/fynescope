@@ -238,10 +238,10 @@ func startProfile(n int) error {
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
 //	-highres:  Enables the High-Resolution (HiRes) GUI option and feature (default false)
-func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool) {
+func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange, simOnly *bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
-	demoOnly = flag.Bool("sim", false, "-demo=true")
+	demoOnly = flag.Bool("demo", false, "-demo=true")
 	chCount = flag.Int("chcount", demo.DefaultChannels, fmt.Sprintf("-chcount=%d .. %d (demo only)", demo.MinChannels, demo.MaxChannels))
 	about := flag.Bool("about", false, "show version, build date and license")
 	webPort = flag.Int("webport", 0, "-webport=8080 (starts web server on specified port, 0 to disable)")
@@ -254,6 +254,7 @@ func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *
 	highRes = flag.Bool("highres", false, "-highres=true (enables HiRes UI option)")
 	gifEnabled = flag.Bool("gif", false, "-gif=true (enables GIF generation button)")
 	ffAutoRange = flag.Bool("ff-auto-range", false, "-ff-auto-range=true (enables auto ranging during Bode sweep)")
+	simOnly = registerSimFlag()
 
 	flag.Parse()
 
@@ -296,6 +297,7 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 	} else {
 		slog.Debug("Open", "device", device)
 		con.Handle, err = genericps.OpenUnit(con, device.Id, device.Serial)
+		slog.Debug("Open", "con.Handle", con.Handle)
 	}
 	con.ID = device.Id
 	if err != nil {
@@ -484,7 +486,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, demoOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange := parseFlags()
+	profile, demoOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simOnly := parseFlags()
 	setLogging(logLevel)
 
 	err = demo.SetChannelCount(*chCount, chCountExplicit)
@@ -526,6 +528,12 @@ func main() {
 	}
 
 	// Determine which devices to show in the selection dialog
+	if *simOnly && *demoOnly {
+		fmt.Fprintf(os.Stderr, "cannot specify both -sim=true and -demo=true\n")
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	if *demoOnly {
 		// Demo mode: enumerate devices but filter for only demo devices
 		// This ensures we get the correct serial number (e.g., SIM/CH2)
@@ -544,6 +552,15 @@ func main() {
 					IsDemo: true,
 				},
 			}
+		}
+	} else if *simOnly {
+		// Simulator mode: use the ps2000a simulator
+		devices = []genericps.DeviceInfo{
+			{
+				Id:     "ps2000a",
+				Serial: "SIM",
+				IsDemo: false,
+			},
 		}
 	} else {
 		// Normal mode: enumerate all connected PicoScope devices

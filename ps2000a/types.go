@@ -1,4 +1,4 @@
-//go:build !noscope
+//go:build !demo
 
 package ps2000a
 

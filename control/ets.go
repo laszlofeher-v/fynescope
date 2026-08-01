@@ -13,7 +13,7 @@ const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) etsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
 	switch psControl.Info {
-	case "2407B", "2407SIM":
+	case "2407B", "2407SIM", "2407DEMO":
 		// Specification for 2407B:
 		// Sample time = 2000 / EtsInterleave
 		// EtsCycles >= EtsInterleave
@@ -117,7 +117,7 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		psControl.SamplingTimeInterval = float64(sampleTimePicoseconds) * 1e-12
 		slog.Debug("ETS", "TimeInterval", psControl.SamplingTimeInterval, "psControl.maxScreenTime", psControl.maxScreenTime)
-		
+
 		err = psControl.setTrigger()
 		if err != nil {
 			slog.Error("ETS prepare setTrigger failed", "error", err)
@@ -135,7 +135,7 @@ func etsBlockMode(psControl *PscDesc) state {
 			slog.Debug("ETS sample count clamped to memory segment limit", "original", rawSampleCount, "max", sampleCount)
 			rawSampleCount = float64(sampleCount)
 		}
-		
+
 		psControl.SampleCountRequired = int32(rawSampleCount)
 
 		if psControl.SampleCountRequired <= 0 {

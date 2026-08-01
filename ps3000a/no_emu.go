@@ -1,4 +1,4 @@
-//go:build !noscope && ps3000a && !emu
+//go:build !demo && ps3000a && !emu
 
 package ps3000a
 

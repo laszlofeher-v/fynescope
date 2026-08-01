@@ -167,8 +167,12 @@ func (frql *frqLabelViewer) scrolled(delta, x, y float32) {
 	if !frql.mousIn(x, y) {
 		return
 	}
-	nX := (float32(frql.scp.dftScopeSignalScreen.Bounds().Dx()) / float32(numberOfDivs)) / 10
-	frql.setDispFreqOffset(delta * nX)
+	nX := float32(frql.scp.dftScopeSignalScreen.Bounds().Dx()) / float32(numberOfDivs)
+	if delta < 0 {
+		frql.setDispFreqOffset(-nX)
+	} else if delta > 0 {
+		frql.setDispFreqOffset(nX)
+	}
 }
 
 func (frql *frqLabelViewer) typedKey(x, y float32, keyName fyne.KeyName) {

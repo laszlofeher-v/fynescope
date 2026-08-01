@@ -1,4 +1,4 @@
-//go:build !noscope && ps3000a && emu
+//go:build emu && ps3000a && !demo
 
 package ps3000a
 
@@ -6,6 +6,7 @@ package ps3000a
 #cgo CFLAGS: -I/opt/picoscope/include/libps2000a -I/opt/picoscope/include/libps2000
 #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include "/opt/picoscope/include/libps2000/ps2000.h"
@@ -60,7 +61,7 @@ PICO_STATUS ps3000aGetUnitInfo(int16_t handle, int8_t *str, int16_t stringLength
     PICO_STATUS status = ps2000aGetUnitInfo(handle, str, stringLength, requiredSize, info);
     if (status == 0 && str != 0 && stringLength > 0) {
         if (info == 3) {
-            strcpy((char *)&str[0],"3AEMU");
+            strcpy((char *)&str[0],"34AEM");
         }
     }
     return status;

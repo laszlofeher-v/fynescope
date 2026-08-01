@@ -1,0 +1,213 @@
+//go:build demo
+
+package ps2000a
+
+import (
+	"fynescope/genericps"
+	"math/rand"
+)
+
+type TriggerArmedState int
+
+const (
+	TriggerStateIdle TriggerArmedState = iota
+	TriggerStateArmedRising
+	TriggerStateArmedFalling
+)
+
+type ChannelTriggerState struct {
+	LevelState TriggerArmedState
+	UpperState TriggerArmedState
+	LowerState TriggerArmedState
+}
+
+// TriggerDetector handles trigger point detection for signal acquisition.
+// Simplified for ps2000a noscope.
+type TriggerDetector struct {
+	enabled       bool
+	threshold     int16
+	hysteresis    uint16
+	direction     genericps.ThresholdDirection
+	source        genericps.ChannelId
+	maxIterations int
+	channels      [4]TriggerChannelConfig
+}
+
+type TriggerChannelConfig struct {
+	Enabled                  bool
+	Threshold                int16
+	Hysteresis               uint16
+	ThresholdLower           int16
+	ThresholdLowerHysteresis uint16
+	ThresholdMode            genericps.ThresholdModeId
+	Direction                genericps.ThresholdDirection
+	Condition                genericps.TriggerRespBase
+}
+
+// NewTriggerDetector creates a new trigger detector with the specified parameters.
+func NewTriggerDetector(enabled bool, threshold int16, hysteresis uint16, direction genericps.ThresholdDirection, source genericps.ChannelId) *TriggerDetector {
+	td := &TriggerDetector{
+		enabled:       enabled,
+		threshold:     threshold,
+		hysteresis:    hysteresis,
+		direction:     direction,
+		source:        source,
+		maxIterations: 1000,
+	}
+	if enabled && source >= 0 && int(source) < len(td.channels) {
+		td.channels[source] = TriggerChannelConfig{
+			Enabled:    true,
+			Threshold:  threshold,
+			Hysteresis: hysteresis,
+			Direction:  direction,
+			Condition:  genericps.CondTrue,
+		}
+	}
+	return td
+}
+
+func (td *TriggerDetector) GetSource() genericps.ChannelId {
+	return td.source
+}
+
+func (td *TriggerDetector) SetMaxIterations(iter int) {
+	td.maxIterations = iter
+}
+
+func (td *TriggerDetector) SetChannelProperties(props []genericps.TriggerChannelProperties) {
+	for _, p := range props {
+		if p.Channel >= 0 && int(p.Channel) < len(td.channels) {
+			td.channels[p.Channel].Threshold = p.ThresholdUpper
+			td.channels[p.Channel].Hysteresis = p.ThresholdUpperHysteresis
+			td.channels[p.Channel].ThresholdLower = p.ThresholdLower
+			td.channels[p.Channel].ThresholdLowerHysteresis = p.ThresholdLowerHysteresis
+			td.channels[p.Channel].ThresholdMode = p.ThresholdMode
+		}
+	}
+}
+
+func (td *TriggerDetector) SetChannelConditions(conds []genericps.TriggerConditions) {
+	if len(conds) == 0 {
+		return
+	}
+	c := conds[0]
+	td.channels[0].Condition = c.ChannelA
+	td.channels[1].Condition = c.ChannelB
+	td.channels[2].Condition = c.ChannelC
+	td.channels[3].Condition = c.ChannelD
+}
+
+func (td *TriggerDetector) SetChannelDirections(chA, chB, chC, chD genericps.ThresholdDirection) {
+	td.channels[0].Direction = chA
+	td.channels[1].Direction = chB
+	td.channels[2].Direction = chC
+	td.channels[3].Direction = chD
+}
+
+// FindTriggerPoint searches for a trigger point in the signal.
+func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch genericps.ChannelId) float64,
+	reqSamples uint32, maxTime float64, dt float64) (triggerTime float64) {
+
+	anyEnabled := false
+	for _, cfg := range td.channels {
+		if cfg.Enabled && cfg.Condition != genericps.CondDontCare {
+			anyEnabled = true
+			break
+		}
+	}
+
+	if !anyEnabled {
+		return rand.Float64() * float64(reqSamples)
+	}
+
+	states := [4]ChannelTriggerState{}
+
+	t := float64(0)
+	for t < maxTime {
+		allConditionsMet := true
+		var edgeTriggerTime float64 = t - dt
+
+		for i, cfg := range td.channels {
+			if !cfg.Enabled || cfg.Condition == genericps.CondDontCare {
+				continue
+			}
+
+			level := signalFunc(t, genericps.ChannelId(i))
+			conditionMet := false
+			fired := false
+
+			if cfg.ThresholdMode == genericps.Window {
+				// Window logic simplified
+				lowerBound := float64(cfg.ThresholdLower)
+				upperBound := float64(cfg.Threshold)
+				inWindow := level >= lowerBound && level <= upperBound
+				conditionMet = inWindow
+				if cfg.Direction == genericps.TriggerInside {
+					if inWindow { fired = true }
+				} else if cfg.Direction == genericps.TriggerOutside {
+					if !inWindow { fired = true }
+				} else {
+					if inWindow { fired = true }
+				}
+			} else {
+				triggerLevel := float64(cfg.Threshold)
+				hysteresis := float64(cfg.Hysteresis)
+
+				switch cfg.Direction {
+				case genericps.TriggerRising, genericps.TriggerRisingOrFalling:
+					if states[i].LevelState == TriggerStateIdle {
+						if level < triggerLevel-hysteresis {
+							states[i].LevelState = TriggerStateArmedRising
+						}
+					} else if states[i].LevelState == TriggerStateArmedRising {
+						if level >= triggerLevel {
+							fired = true
+							states[i].LevelState = TriggerStateIdle
+							edgeTriggerTime = interpolateTime(t-dt, t, signalFunc(t-dt, genericps.ChannelId(i)), level, triggerLevel)
+						}
+					}
+				case genericps.TriggerFalling:
+					if states[i].LevelState == TriggerStateIdle {
+						if level > triggerLevel+hysteresis {
+							states[i].LevelState = TriggerStateArmedFalling
+						}
+					} else if states[i].LevelState == TriggerStateArmedFalling {
+						if level <= triggerLevel {
+							fired = true
+							states[i].LevelState = TriggerStateIdle
+							edgeTriggerTime = interpolateTime(t-dt, t, signalFunc(t-dt, genericps.ChannelId(i)), level, triggerLevel)
+						}
+					}
+				default:
+					if level >= triggerLevel { fired = true }
+				}
+				
+				if fired {
+					conditionMet = true
+				}
+			}
+
+			if cfg.Condition == genericps.CondTrue && !conditionMet {
+				allConditionsMet = false
+			}
+			if cfg.Condition == genericps.CondFalse && conditionMet {
+				allConditionsMet = false
+			}
+		}
+
+		if allConditionsMet {
+			return edgeTriggerTime
+		}
+		t += dt
+	}
+
+	return rand.Float64() * float64(reqSamples)
+}
+
+func interpolateTime(t1, t2, v1, v2, target float64) float64 {
+	if v1 == v2 { return t1 }
+	fraction := (target - v1) / (v2 - v1)
+	if fraction < 0 { fraction = 0 }
+	if fraction > 1 { fraction = 1 }
+	return t1 + fraction*(t2-t1)
+}

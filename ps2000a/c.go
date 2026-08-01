@@ -1,9 +1,7 @@
-//go:build !noscope
+//go:build !demo
 
 package ps2000a
 
-// #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
 // #include <stdlib.h>
 // #include "/opt/picoscope/include/libps2000/ps2000.h"
 // #include "/opt/picoscope/include/libps2000a/PicoStatus.h"
@@ -16,6 +14,7 @@ int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 int lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t overflow, uint32_t triggerAt, int16_t triggered,
                 int16_t autoStop, void * pParameter);
+// #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
 */
 import "C"
 

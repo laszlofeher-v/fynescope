@@ -37,7 +37,7 @@ To use **real hardware**, the PicoScope driver libraries are also required:
 
 - `libps2000a` (PicoScope 2000a Series driver) — available from the [Pico Technology downloads page](https://www.picotech.com/downloads/linux).
 
-If you only want to explore the UI in **demo mode**, no PicoScope drivers are needed. Use the `noscope` build tag (see [Building](#building) below).
+If you only want to explore the UI in **demo mode**, no PicoScope drivers are needed. Use the `demo` build tag (see [Building](#building) below).
 
 ### Building
 
@@ -61,16 +61,23 @@ go mod tidy
 
 The application can be compiled with different features enabled via build tags:
 
-- `noscope`: Build without the PicoScope C driver libraries (demo mode only).
+- `demo`: Build without the PicoScope C driver libraries (pure-Go UI demo mode only).
+- `sim`: Build with a software-simulated hardware layer (mocks the PicoScope C driver for testing).
 - `scpi`: Include the external SCPI signal generator module (requires `libusb-1.0-0-dev`).
 - `web`: Include the read-only web server for sharing the GUI over the network via MJPEG streaming.
 
 **Build Examples:**
 
-To build the application purely for the simulator without requiring the PicoScope C driver libraries, and without external SCPI generator support:
+To build the application purely for the UI demo without requiring the PicoScope C driver libraries, and without external SCPI generator support:
 
 ```bash
-go build -tags=noscope -o fynescope .
+go build -tags=demo -o fynescope .
+```
+
+To build the application with the C-level hardware simulator (ideal for testing scope functionality without hardware):
+
+```bash
+go build -tags=sim -o fynescope .
 ```
 
 If you want to build the application with installed libps2000a driver and external SCPI generator support: 
@@ -82,7 +89,7 @@ go build -tags=scpi -o fynescope .
 If you want to build with simulator and web server support:
 
 ```bash
-go build -tags="noscope,web" -o fynescope .
+go build -tags="demo,web" -o fynescope .
 ```
 
 If you want to build the application with installed libps2000a driver but without the SCPI/USB dependency: 
@@ -123,8 +130,10 @@ For more options, including displaying version, build date, and license informat
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-demo` | `false` | Run in demo mode only (no hardware required) |
+| `-demo` | `false` | Run in pure-Go demo mode (no hardware required) |
+| `-sim` | `false` | Run in C-level simulator mode (only available with `demo` tag) |
 | `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
+| `-highres` | `false` | Enables High-Resolution UI layout options |
 | `-chcount=N` | `2` | Number of channels to simulate (demo only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-gif` | `false` | Enable GIF generation button on the toolbar |
@@ -186,7 +195,7 @@ Then open `https://localhost:8080` (or `https://<host>:8080` over the network) i
 
 ### Visual Indicators
 
-- **Digital Filter Warning**: A warning icon (⚠️) is displayed next to a channel's label across all visualization tabs (f(t), f(v), FFT, Bode, RLC) whenever a digital filter (lowpass, highpass, bandpass, or bandstop) is actively applied to that channel. This serves as a reminder that the displayed signal has been actively modified. Digital filters also support a **Zero Phase Delay (FiltFilt)** mode to neutralize phase-shifting and keep trigger points perfectly aligned.
+- **Digital Filter Warning**: A warning icon (⚠️) is displayed next to a channel's label across all visualization tabs (f(t), f(v), FFT, Bode, RLC) whenever a digital filter (lowpass, highpass, bandpass, or bandstop) is actively applied to that channel. This serves as a reminder that the displayed signal has been actively modified. Digital filters also support a **Zero Phase Delay (FiltFilt)** mode to neutralize phase-shifting and keep trigger points better aligned.
 
 ### Media Export
 
@@ -371,12 +380,12 @@ To restore all settings to their default values, simply delete or clear the cont
 
 ## Testing
 
-The project includes unit tests across all major packages. **Important:** There are no tests specified for real hardware. All testing is conducted strictly using the built-in software simulator. Therefore, tests run entirely without any PicoScope hardware — only the `noscope` tag is needed to exclude the CGo driver dependency.
+The project includes unit tests across all major packages. **Important:** There are no tests specified for real hardware. All testing is conducted strictly using the built-in software simulator. Therefore, tests run entirely without any PicoScope hardware — only the `demo` tag is needed to exclude the CGo driver dependency.
 
 ### Run all tests (no hardware required)
 
 ```bash
-go test -tags=noscope ./...
+go test -tags=demo ./...
 ```
 
 ### Automated UI Fuzzing (Random Testing)
@@ -386,7 +395,7 @@ The top-level `fynescope` package tests include an automated UI "random test" (f
 To run the automated UI test suite specifically (e.g., `Test0`) with the software simulator, verbose output, and an extended timeout, you **must** provide the `FUZZER_COMMIT_ID` environment variable (the fuzzer will refuse to run without it):
 
 ```bash
-FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -v -tags=noscope,testsw -run Test0 -timeout 105m
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -v -tags=demo,testsw -run Test0 -timeout 105m
 ```
 
 **Other Examples:**
@@ -394,19 +403,19 @@ FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -v -tags=noscope,testsw -run Test
 To run the fuzzer test specifically with a very long timeout:
 
 ```bash
-FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope -run Test0 -timeout 99999s
+FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=demo -run Test0 -timeout 99999s
 ```
 
 To run the fuzzer test and time the execution:
 
 ```bash
-time FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=noscope,testsw -v -run Test0 -timeout 99999s
+time FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags=demo,testsw -v -run Test0 -timeout 99999s
 ```
 
 To run **only** the fast, deterministic (hardcoded) GUI operations with software rendering:
 
 ```bash
-go test -tags=noscope,testsw -v
+go test -tags=demo,testsw -v
 ```
 
 > **Note:** `Test0` and `Test1` are the specific fuzzer tests and require an extended timeout (e.g. `-timeout 105m`) to run. Omitting the timeout causes Go to use the default 10-minute timeout, which safely skips the fuzzer and runs only the deterministic tests.
