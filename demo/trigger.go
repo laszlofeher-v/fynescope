@@ -332,13 +332,13 @@ func (td *TriggerDetector) evaluateWindowTrigger(
 		Hysteresis: cfg.ThresholdLowerHysteresis,
 	}
 
-	if cfg.Direction == TriggerEnter {
+	if cfg.Direction == TriggerEnter || cfg.Direction == TriggerInside || cfg.Direction == TriggerAbove || cfg.Direction == TriggerRising {
 		upperCfg.Direction = TriggerFalling
 		lowerCfg.Direction = TriggerRising
-	} else if cfg.Direction == TriggerExit {
+	} else if cfg.Direction == TriggerExit || cfg.Direction == TriggerOutside || cfg.Direction == TriggerBelow || cfg.Direction == TriggerFalling {
 		upperCfg.Direction = TriggerRising
 		lowerCfg.Direction = TriggerFalling
-	} else if cfg.Direction == TriggerEnterOrExit {
+	} else if cfg.Direction == TriggerEnterOrExit || cfg.Direction == TriggerRisingOrFalling {
 		upperCfg.Direction = TriggerRisingOrFalling
 		lowerCfg.Direction = TriggerRisingOrFalling
 	}
