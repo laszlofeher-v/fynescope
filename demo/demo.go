@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"math"
 
-	"math/rand"
 	"fynescope/genericps"
+	"math/rand"
 	"time"
 )
 
@@ -38,7 +38,6 @@ type (
 		rlcLUnit   string
 		rlcC       float64
 		rlcCUnit   string
-
 	}
 )
 
@@ -268,7 +267,7 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	// Signal generated from waveform function (typically in range [-1, 1])
 	rangeMv := float64(InputRanges(chDesc.vrange))
 
-	// Default to no generator output
+	// Defaults to no generator output
 	a := float64(0)
 	genOffset := float64(0)
 
@@ -294,13 +293,6 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	levelFloat := (signal*a + genOffset + chOffset + noise_offset) * float64(maxValue)
 	return levelFloat
 }
-
-// // calculateSampleLevel calculates signal level from sample index.
-// func calculateSampleLevel(sampleIndex float64, timeIntervalNs float64, ch ChannelId) float64 {
-// 	// Convert sample index to time in seconds
-// 	t := sampleIndex * timeIntervalNs / 1e9
-// 	return calculateSampleLevelAtTime(t, ch)
-// }
 
 func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
@@ -426,7 +418,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		if t > prevT[i] && t < lastT[i] && prevT[i] != -1 {
 			// Interpolate for FineGrainedTrigger
 			fraction := (t - prevT[i]) / (lastT[i] - prevT[i])
-			return prevVal[i] + fraction*(lastVal[i] - prevVal[i])
+			return prevVal[i] + fraction*(lastVal[i]-prevVal[i])
 		}
 
 		raw := calculateSampleLevelAtTime(t, ch)
@@ -437,7 +429,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 		if triggerAcFilters[i] != nil {
 			val = triggerAcFilters[i].Step(val)
 		}
-
 
 		prevT[i] = lastT[i]
 		prevVal[i] = lastVal[i]
@@ -516,8 +507,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				if acFilters[ch] != nil {
 					levelFloat = acFilters[ch].Step(levelFloat)
 				}
-
-
 
 				// Clamp to valid range and detect overflow
 				var level int16
@@ -856,19 +845,19 @@ func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeU
 	maxPreTriggerSamples, maxPostTriggerSamples uint32,
 	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 	overviewBufferSize uint32) (sampleInterval uint32, err error) {
-	
+
 	streamingIntervalNs = float64(reqSampleInterval) * TimeUnitToVal(sampleIntervalTimeUnits) * 1e9
 	if streamingIntervalNs <= 0 {
 		streamingIntervalNs = 1.0
 	}
-	
+
 	streamingRunning = true
 	running = true
 	streamingStartTime = time.Now()
 	streamingLastReadTime = time.Now()
 	streamingWriteIndex = 0
 	totalSamplesGenerated = 0
-	
+
 	sampleInterval = reqSampleInterval
 	return sampleInterval, nil
 }

@@ -33,6 +33,10 @@ var (
 	genOffsetVoltage int32
 	genWaveFunction  demo.WaveformGenerator
 	sweepController  *demo.SweepController
+
+	etsEnabled              bool
+	etsTimeBuffer           []int64
+	timeIntervalPicoSeconds float64
 )
 
 const maxValue = 32767
@@ -165,6 +169,8 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		// Fill buffers
 		var dt float64
 		switch {
+		case etsEnabled:
+			dt = timeIntervalPicoSeconds / 1e12
 		case timebase == 0:
 			dt = 1e-9
 		case timebase == 1:
@@ -191,6 +197,15 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 				}
 				for i := 0; i < length; i++ {
 					rt := (float64(i)-float64(pre))*dt + triggerTime
+
+					if etsEnabled && ch == 0 {
+						t0Fs := 1e15 * float64(pre) * dt
+						rteFs := float64(i) * dt * 1e15
+						if i < len(etsTimeBuffer) {
+							etsTimeBuffer[i] = int64(rteFs - t0Fs)
+						}
+					}
+
 					val := calculateSampleLevelAtTime(rt, ch)
 
 					var level int16
@@ -241,4 +256,25 @@ func simIsReady(handle int16) bool {
 
 func simGetValues(handle int16, startIndex uint32, noOfSamples uint32) (uint32, int16) {
 	return noOfSamples, 0
+}
+
+func simSetEts(handle int16, mode int, etsCycles int16, etsInterLeave int16, sampleTimePicoseconds *int32) {
+	etsEnabled = mode != 0
+	if etsCycles < etsInterLeave {
+		return
+	}
+	if etsCycles > etsInterLeave*10+9 {
+		return
+	}
+	timeIntervalPicoSeconds = 2000.0 / float64(etsInterLeave)
+	if sampleTimePicoseconds != nil {
+		*sampleTimePicoseconds = int32(timeIntervalPicoSeconds)
+	}
+}
+
+func simSetEtsTimeBuffer(handle int16, buffer []int64) {
+	etsTimeBuffer = buffer
+}
+
+func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) {
 }

@@ -217,26 +217,32 @@ func Gops2000aGetChannelInformation(handle C.int16_t, info C.int32_t, probe C.in
 
 //export Gops2000aSetEts
 func Gops2000aSetEts(handle C.int16_t, mode C.int32_t, etsCycles C.int16_t, etsInterleave C.int16_t, sampleTimePicoseconds *C.int32_t) C.uint32_t {
+	simSetEts(int16(handle), int(mode), int16(etsCycles), int16(etsInterleave), (*int32)(unsafe.Pointer(sampleTimePicoseconds)))
 	return 0
 }
 
 //export Gops2000aSetEtsTimeBuffer
 func Gops2000aSetEtsTimeBuffer(handle C.int16_t, buffer *C.int64_t, bufferLth C.int32_t) C.uint32_t {
+	slice := unsafe.Slice((*int64)(unsafe.Pointer(buffer)), int(bufferLth))
+	simSetEtsTimeBuffer(int16(handle), slice)
 	return 0
 }
 
 //export Gops2000aSetEtsTimeBuffers
 func Gops2000aSetEtsTimeBuffers(handle C.int16_t, timeUpper *C.uint32_t, timeLower *C.uint32_t, bufferLth C.int32_t) C.uint32_t {
+	sliceUpper := unsafe.Slice((*uint32)(unsafe.Pointer(timeUpper)), int(bufferLth))
+	sliceLower := unsafe.Slice((*uint32)(unsafe.Pointer(timeLower)), int(bufferLth))
+	simSetEtsTimeBuffers(int16(handle), sliceUpper, sliceLower)
 	return 0
 }
 
 //export Gops2000aGetMaxEtsValues
 func Gops2000aGetMaxEtsValues(handle C.int16_t, etsCycles *C.int16_t, etsInterleave *C.int16_t) C.uint32_t {
 	if etsCycles != nil {
-		*etsCycles = 0
+		*etsCycles = 250
 	}
 	if etsInterleave != nil {
-		*etsInterleave = 0
+		*etsInterleave = 50
 	}
 	return 0
 }
