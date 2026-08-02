@@ -81,7 +81,7 @@ func blockMode(psControl *PscDesc) state {
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(rawSampleCount)
 		
 		if rawSampleCount > maxSampleCount {
-			psControl.downSampleRatio = uint32(maxSampleCount / psControl.SampleCountRequired)
+			psControl.downSampleRatio = uint64(maxSampleCount / psControl.SampleCountRequired)
 			if psControl.downSampleRatio < 1 {
 				psControl.downSampleRatio = 1
 			}

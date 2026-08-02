@@ -186,44 +186,44 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		}
 
 		reqSamples := uint32(pre + post)
-		triggerTime := triggerDetector.FindTriggerPoint(signalFunc, reqSamples, 1.0, dt)
+		found, triggerTime := triggerDetector.FindTriggerPoint(signalFunc, reqSamples, 1.0, dt)
+		if found {
+			for ch := 0; ch < 4; ch++ {
+				buf := buffers[ch]
+				if channels[ch].enabled && buf != nil {
+					length := int(pre + post)
+					if length > len(buf) {
+						length = len(buf)
+					}
+					for i := 0; i < length; i++ {
+						rt := (float64(i)-float64(pre))*dt + triggerTime
 
-		for ch := 0; ch < 4; ch++ {
-			buf := buffers[ch]
-			if channels[ch].enabled && buf != nil {
-				length := int(pre + post)
-				if length > len(buf) {
-					length = len(buf)
-				}
-				for i := 0; i < length; i++ {
-					rt := (float64(i)-float64(pre))*dt + triggerTime
-
-					if etsEnabled && ch == 0 {
-						t0Fs := 1e15 * float64(pre) * dt
-						rteFs := float64(i) * dt * 1e15
-						if i < len(etsTimeBuffer) {
-							etsTimeBuffer[i] = int64(rteFs - t0Fs)
+						if etsEnabled && ch == 0 {
+							t0Fs := 1e15 * float64(pre) * dt
+							rteFs := float64(i) * dt * 1e15
+							if i < len(etsTimeBuffer) {
+								etsTimeBuffer[i] = int64(rteFs - t0Fs)
+							}
 						}
-					}
 
-					val := calculateSampleLevelAtTime(rt, ch)
+						val := calculateSampleLevelAtTime(rt, ch)
 
-					var level int16
-					if val > maxValue {
-						level = maxValue
-					} else if val < -maxValue {
-						level = -maxValue
-					} else {
-						level = int16(math.Round(val))
+						var level int16
+						if val > maxValue {
+							level = maxValue
+						} else if val < -maxValue {
+							level = -maxValue
+						} else {
+							level = int16(math.Round(val))
+						}
+						buf[i] = level
 					}
-					buf[i] = level
 				}
-			}
-			if sweepController != nil {
-				sweepController.Update()
+				if sweepController != nil {
+					sweepController.Update()
+				}
 			}
 		}
-
 		time.Sleep(10 * time.Millisecond)
 		isReady = true
 		if readyCallback != nil {

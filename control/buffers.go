@@ -91,14 +91,14 @@ func (psControl *PscDesc) checkOverflow(overflow int16) {
 	}
 }
 
-func (psControl *PscDesc) getData(sampleCount int32, segmentIndex uint32, ets bool) (err error) {
+func (psControl *PscDesc) getData(sampleCount int32, segmentIndex uint64, ets bool) (err error) {
 	var overflow int16
 	downSampleRatio := psControl.downSampleRatio
 	if downSampleRatio < 1 {
 		downSampleRatio = 1
 	}
 	downSampleRatioMode := psControl.downSampleRatioMode
-	psControl.numOfSamplesAcquired, overflow, err = psControl.Con.GetValues(0, uint32(sampleCount), downSampleRatio, downSampleRatioMode, segmentIndex)
+	psControl.numOfSamplesAcquired, overflow, err = psControl.Con.GetValues(0, uint64(sampleCount), downSampleRatio, downSampleRatioMode, segmentIndex)
 	if err != nil {
 		return
 	}

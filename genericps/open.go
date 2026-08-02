@@ -20,8 +20,8 @@ type (
 type (
 	ScopeHandler struct {
 		EnumerateUnits   func(bufferLen int16) (count int16, serials string, serialLth int16, err error)
-		OpenUnit         func(serial string) (handle int16, err error)
-		OpenUnitAsync    func(serial string) (status int16, err error)
+		OpenUnit         func(serial string, resolution int) (handle int16, err error)
+		OpenUnitAsync    func(serial string, resolution int) (status int16, err error)
 		OpenUnitProgress func() (retHandle int16, progressPercent, complete int16, err error)
 		Dispatch         func(msg Message)
 		Id               string
@@ -46,10 +46,10 @@ func UnRegister(id string) {
 	}
 }
 
-func Open(serial string) (handle int16, err error) {
+func Open(serial string, resolution int) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		if implementedScopeHandlers[i].Id == serial {
-			handle, err = implementedScopeHandlers[i].OpenUnit(serial)
+			handle, err = implementedScopeHandlers[i].OpenUnit(serial, resolution)
 			return
 		}
 	}
@@ -70,19 +70,19 @@ func proxy(dispatch func(msg Message), con *Connection) {
 func OpenDemo(con *Connection, id string) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		if implementedScopeHandlers[i].Id == id {
-			handle, err = implementedScopeHandlers[i].OpenUnit("")
+			handle, err = implementedScopeHandlers[i].OpenUnit("", 0)
 			go proxy(implementedScopeHandlers[i].Dispatch, con)
 			return
 		}
 	}
 	return 0, fmt.Errorf("Demo not found")
 }
-func OpenUnit(con *Connection, id, serial string) (handle int16, err error) {
+func OpenUnit(con *Connection, id, serial string, resolution int) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		slog.Debug("OpenUnit", "implementedScopeHandlers", implementedScopeHandlers)
 		if implementedScopeHandlers[i].Id == id {
 			slog.Debug("OpenUnit", "found id", id)
-			handle, err = implementedScopeHandlers[i].OpenUnit(serial)
+			handle, err = implementedScopeHandlers[i].OpenUnit(serial, resolution)
 			go proxy(implementedScopeHandlers[i].Dispatch, con)
 			return
 		}
@@ -125,8 +125,8 @@ func EnumerateAllDevices(bufferLen int16) (devices []DeviceInfo, err error) {
 			serialList := parseSerials(serials, int(count))
 			for _, serial := range serialList {
 				devices = append(devices, DeviceInfo{
-					Id:          handler.Id,
-					Serial:      serial,
+					Id:     handler.Id,
+					Serial: serial,
 					IsDemo: (handler.Id == DemoId),
 				})
 			}

@@ -72,7 +72,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	return
 }
 
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
@@ -88,7 +88,7 @@ func openUnit(serial string) (handle int16, err error) {
 	loadConstants()
 	return
 }
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
@@ -811,13 +811,15 @@ func ps2000aMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, e
 	return
 }
 
-func ps2000aNumOfStreamingValues(handle int16) (numOfValues uint32, err error) {
+func ps2000aNumOfStreamingValues(handle int16) (numOfValues uint64, err error) {
 	slog.Debug("ps2000aNoOfStreamingValues", "handle", handle)
+	nv := uint32(numOfValues)
 	stat := C.ps2000aNoOfStreamingValues((C.short)(handle),
-		(*C.uint)(&numOfValues))
+		(*C.uint)(&nv))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("NumOfStreamingValues:  %s", psc.StatStr(int(stat)))
 	}
+	numOfValues = uint64(nv)
 	return
 }
 

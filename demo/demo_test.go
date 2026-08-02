@@ -93,7 +93,7 @@ func TestOpenUnit(t *testing.T) {
 			if tt.behaviour == timeoutNormal || tt.behaviour == timeoutfaulty {
 				timeout = 10 * time.Millisecond
 			}
-			_, err := openUnit("test")
+			_, err := openUnit("test", 0)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("openUnit() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -124,7 +124,7 @@ func TestOpenUnitAsync(t *testing.T) {
 			if tt.behaviour == timeoutNormal || tt.behaviour == timeoutfaulty {
 				timeout = 10 * time.Millisecond
 			}
-			gotStatus, err := openUnitAsync("test")
+			gotStatus, err := openUnitAsync("test", 0)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("openUnitAsync() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -217,7 +217,7 @@ func TestSimGetValues(t *testing.T) {
 	behaviour = normal
 
 	// Open unit
-	h, err := openUnit("serial")
+	h, err := openUnit("serial", 0)
 	if err != nil {
 		t.Fatalf("openUnit failed: %v", err)
 	}

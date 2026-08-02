@@ -18,7 +18,7 @@ import (
 	// _ "fynescope/ps5000"
 	// _ "fynescope/ps5000a"
 	// _ "fynescope/ps6000"
-	// _ "fynescope/ps6000a"
+	_ "fynescope/ps6000a"
 	"fynescope/settings"
 	"fynescope/web"
 	"image"
@@ -300,7 +300,7 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 		con.Handle, err = genericps.OpenDemo(con, device.Id)
 	} else {
 		slog.Debug("Open", "device", device)
-		con.Handle, err = genericps.OpenUnit(con, device.Id, device.Serial)
+		con.Handle, err = genericps.OpenUnit(con, device.Id, device.Serial, 0) // 0 default resolution
 		slog.Debug("Open", "con.Handle", con.Handle)
 	}
 	con.ID = device.Id

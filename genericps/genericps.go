@@ -128,16 +128,16 @@ type (
 
 	GetValuesMsg struct {
 		MsgBase
-		StartIndex          uint32
-		ReqNumOfSamples     uint32
-		DownSampleRatio     uint32
+		StartIndex          uint64
+		ReqNumOfSamples     uint64
+		DownSampleRatio     uint64
 		DownSampleRatioMode RatioMode
-		SegmentIndex        uint32
+		SegmentIndex        uint64
 	}
 
 	GetValuesRsp struct {
 		RespBase
-		NumOfSamples uint32
+		NumOfSamples uint64
 		Overflow     int16
 	}
 
@@ -184,12 +184,12 @@ type (
 	}
 	GetValuesAsyncMsg struct {
 		MsgBase
-		StartIndex          uint32
-		NumOfSamples        uint32
-		DownSampleRatio     uint32
+		StartIndex          uint64
+		NumOfSamples        uint64
+		DownSampleRatio     uint64
 		DownSampleRatioMode RatioMode
 		LpDataReady         DataReady
-		SegmentIndex        uint32
+		SegmentIndex        uint64
 		Param               any
 	}
 	GetValuesAsyncRsp struct {
@@ -610,7 +610,7 @@ type (
 
 	GetTriggerTimeOffset64Msg struct {
 		MsgBase
-		SegmentIndex uint32
+		SegmentIndex uint64
 	}
 	GetTriggerTimeOffset64Rsp struct {
 		RespBase
@@ -677,7 +677,7 @@ type (
 	}
 	NumOfStreamingValuesRsp struct {
 		RespBase
-		NumOfValues uint32
+		NumOfValues uint64
 	}
 
 	OpenUnitProgressMsg struct {
@@ -1030,7 +1030,7 @@ func (c Connection) GetTriggerTimeOffset(segmentIndex uint32) (timeUpper, timeLo
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetTriggerTimeOffset64(segmentIndex uint32) (time int64, timeUnits TimeUnits, err error) {
+func (c Connection) GetTriggerTimeOffset64(segmentIndex uint64) (time int64, timeUnits TimeUnits, err error) {
 	msg := &GetTriggerTimeOffset64Msg{SegmentIndex: segmentIndex}
 	msg.rsp = &GetTriggerTimeOffset64Rsp{}
 	c.Send(msg)
@@ -1050,8 +1050,8 @@ func (c Connection) GetUnitInfo(info PicoInfo) (infoString string, err error) {
 	return
 }
 
-func (c Connection) GetValues(startIndex, reqNumOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, segmentIndex uint32) (numOfSamples uint32, overflow int16, err error) {
+func (c Connection) GetValues(startIndex, reqNumOfSamples, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, segmentIndex uint64) (numOfSamples uint64, overflow int16, err error) {
 	msg := &GetValuesMsg{StartIndex: startIndex, ReqNumOfSamples: reqNumOfSamples,
 		DownSampleRatio: downSampleRatio, DownSampleRatioMode: downSampleRatioMode,
 		SegmentIndex: segmentIndex}
@@ -1063,8 +1063,8 @@ func (c Connection) GetValues(startIndex, reqNumOfSamples, downSampleRatio uint3
 	overflow = rsp.Overflow
 	return
 }
-func (c Connection) GetValuesAsync(startIndex, numOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
+func (c Connection) GetValuesAsync(startIndex, numOfSamples, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint64,
 	param any) (err error) {
 	msg := &GetValuesAsyncMsg{StartIndex: startIndex, NumOfSamples: numOfSamples,
 		DownSampleRatio: downSampleRatio, DownSampleRatioMode: downSampleRatioMode,
@@ -1175,7 +1175,7 @@ func (c Connection) MinimumValue() (value int32, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) NumOfStreamingValues() (numOfValues uint32, err error) {
+func (c Connection) NumOfStreamingValues() (numOfValues uint64, err error) {
 	msg := &NumOfStreamingValuesMsg{}
 	msg.rsp = &NumOfStreamingValuesRsp{}
 	c.Send(msg)

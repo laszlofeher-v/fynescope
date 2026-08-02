@@ -127,7 +127,7 @@ func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	}
 	return
 }
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	slog.Debug("openUnit called")
 	nf := func() {
 		handle = uniqueHandle()
@@ -153,7 +153,7 @@ func openUnit(serial string) (handle int16, err error) {
 	loadConstants()
 	return
 }
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	nf := func() {
 		status = 0
 		triggerDetector = NewTriggerDetector(false, 0, 0, 0, 0)
@@ -1217,7 +1217,7 @@ func simMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err e
 	return
 }
 
-func simNoOfStreamingValues(handle int16) (noOfValues uint32, err error) {
+func simNoOfStreamingValues(handle int16) (noOfValues uint64, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}

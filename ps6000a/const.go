@@ -311,6 +311,14 @@ const (
 	MaxDigitalPorts DigitalPort = 4
 )
 
+type PicoDeviceResolution int
+
+const (
+	PicoDr8Bit PicoDeviceResolution = iota
+	PicoDr12Bit
+	PicoDr10But
+)
+
 var (
 	inputRanges []int32 = []int32{
 		10,
