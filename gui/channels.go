@@ -868,12 +868,26 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	for _, vRange := range channelViewer.vRangeSelects {
 		p := vRange.SelectedIndex()
 		if c {
-			vRange.SetOptions(ranges[:len(ranges)-3])
-			if p >= len(ranges)-3 {
-				p = p - 3
+			end := len(ranges) - 3
+			if end < 1 {
+				end = len(ranges)
+			}
+			if end < 0 {
+				end = 0
+			}
+			vRange.SetOptions(ranges[:end])
+			if p >= end {
+				p = end - 1
 				indexChanged = true
 			}
-			vRange.SetSelectedIndex(p)
+			if p < 0 {
+				p = 0
+			}
+			if len(ranges[:end]) > 0 {
+				vRange.SetSelectedIndex(p)
+			} else {
+				vRange.ClearSelected()
+			}
 			canvas.Refresh(vRange)
 		} else {
 			vRange.SetOptions(ranges)
