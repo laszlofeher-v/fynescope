@@ -119,16 +119,14 @@ func TestTriggerDetector_FindTriggerPoint_TrueInterval(t *testing.T) {
 		if ch != ChA {
 			return 0
 		}
-		// Edges:
-		// t=100: Rising Edge 1
-		// t=120: Falling Edge 1
-		// t=150: Rising Edge 2. Interval = 150-100 = 50. Not > 100.
-		// t=170: Falling Edge 2
-		// t=300: Rising Edge 3. Interval = 300-150 = 150. IS > 100!
-		// It should trigger at t=300 exactly.
+		// Pulses:
+		// t=100 to 120: Pulse Width 20. Not > 100.
+		// t=150 to 170: Pulse Width 20. Not > 100.
+		// t=200 to 350: Pulse Width 150. IS > 100!
+		// It should trigger at the end of the pulse (t=350).
 		if time >= 100 && time < 120 { return 100 }
 		if time >= 150 && time < 170 { return 100 }
-		if time >= 300 && time < 320 { return 100 }
+		if time >= 200 && time < 350 { return 100 }
 		return 0
 	}
 
@@ -136,9 +134,9 @@ func TestTriggerDetector_FindTriggerPoint_TrueInterval(t *testing.T) {
 	maxTime := 500.0
 	triggerTime := td.FindTriggerPoint(signalFunc, 1000, maxTime, dt)
 
-	// Due to dt being 1.0 and checking logic edgeTriggerTime = t - dt, it will be 299
-	if math.Abs(triggerTime-299.0) > 1.0 {
-		t.Errorf("Expected trigger near t=299, got %v", triggerTime)
+	// Due to dt being 1.0 and checking logic edgeTriggerTime = t - dt, it will be 349
+	if math.Abs(triggerTime-349.0) > 1.0 {
+		t.Errorf("Expected trigger near t=349, got %v", triggerTime)
 	}
 }
 

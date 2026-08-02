@@ -215,7 +215,7 @@ func TestOpenDemo_DemoNotFound(t *testing.T) {
 	if err == nil {
 		t.Error("OpenDemo() should have returned an error.")
 	}
-	if err.Error() != "Simulator not found" {
+	if err.Error() != "Demo not found" {
 		t.Errorf("OpenDemo() returned wrong error message. Expected: Demo not found, Got: %s", err.Error())
 	}
 }
@@ -277,8 +277,8 @@ func TestOpenUnit_DemoNotFound(t *testing.T) {
 	if err == nil {
 		t.Error("OpenUnit() should have returned an error.")
 	}
-	if err.Error() != "Simulator not found" {
-		t.Errorf("OpenUnit() returned wrong error message. Expected: Simulator not found, Got: %s", err.Error())
+	if err.Error() != "Device not found" {
+		t.Errorf("OpenUnit() returned wrong error message. Expected: Device not found, Got: %s", err.Error())
 	}
 }
 func TestEnumerateUnits_Success(t *testing.T) {

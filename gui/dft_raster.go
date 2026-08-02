@@ -42,9 +42,10 @@ type dftViewer struct {
 	inspectorLastUpdate time.Time
 
 	// Reference point state for interval measurement
-	refActive bool
-	refX      float32
-	refY      float32
+	refActive   bool
+	refDragging bool
+	refX        float32
+	refY        float32
 }
 
 var (
@@ -352,6 +353,23 @@ func (dv *dftViewer) mouseMoved(x, y float32) {
 		}
 		dv.enableRefresh()
 		canvas.Refresh(dv.scp.dftRaster)
+	} else if dv.refDragging {
+		dv.refX = x
+		dv.refY = y
+		if dv.refX < float32(dv.imgRect.Min.X) {
+			dv.refX = float32(dv.imgRect.Min.X)
+		}
+		if dv.refX > float32(dv.imgRect.Max.X-1) {
+			dv.refX = float32(dv.imgRect.Max.X - 1)
+		}
+		if dv.refY < float32(dv.imgRect.Min.Y) {
+			dv.refY = float32(dv.imgRect.Min.Y)
+		}
+		if dv.refY > float32(dv.imgRect.Max.Y-1) {
+			dv.refY = float32(dv.imgRect.Max.Y - 1)
+		}
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
 	}
 }
 
@@ -364,6 +382,7 @@ func (dv *dftViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModi
 	if button == desktop.RightMouseButton && dv.mousIn(x, y) {
 		if modifier&fyne.KeyModifierShift != 0 {
 			dv.refActive = true
+			dv.refDragging = true
 			dv.refX = x
 			dv.refY = y
 		} else {
@@ -381,6 +400,7 @@ func (dv *dftViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModi
 func (dv *dftViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		dv.showInspector = false
+		dv.refDragging = false
 		dv.enableRefresh()
 		canvas.Refresh(dv.scp.dftRaster)
 		return
@@ -403,6 +423,23 @@ func (dv *dftViewer) dragged(dx, dy, x, y float32) {
 		}
 		if dv.mouseY > float32(dv.imgRect.Max.Y-1) {
 			dv.mouseY = float32(dv.imgRect.Max.Y - 1)
+		}
+		dv.enableRefresh()
+		canvas.Refresh(dv.scp.dftRaster)
+	} else if dv.refDragging {
+		dv.refX = x
+		dv.refY = y
+		if dv.refX < float32(dv.imgRect.Min.X) {
+			dv.refX = float32(dv.imgRect.Min.X)
+		}
+		if dv.refX > float32(dv.imgRect.Max.X-1) {
+			dv.refX = float32(dv.imgRect.Max.X - 1)
+		}
+		if dv.refY < float32(dv.imgRect.Min.Y) {
+			dv.refY = float32(dv.imgRect.Min.Y)
+		}
+		if dv.refY > float32(dv.imgRect.Max.Y-1) {
+			dv.refY = float32(dv.imgRect.Max.Y - 1)
 		}
 		dv.enableRefresh()
 		canvas.Refresh(dv.scp.dftRaster)
@@ -742,14 +779,16 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		return
 	}
 
-	crosscol := color.RGBA{180, 180, 180, 180}
-	mx := int(dv.mouseX)
-	my := int(dv.mouseY)
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		dv.scp.dftScopeFullScreen.Set(i, my, crosscol)
-	}
-	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
-		dv.scp.dftScopeFullScreen.Set(mx, i, crosscol)
+	if dv.showInspector {
+		crosscol := color.RGBA{180, 180, 180, 180}
+		mx := int(dv.mouseX)
+		my := int(dv.mouseY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			dv.scp.dftScopeFullScreen.Set(i, my, crosscol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			dv.scp.dftScopeFullScreen.Set(mx, i, crosscol)
+		}
 	}
 
 	if dv.refActive {

@@ -56,6 +56,9 @@ type (
 		m         int          // Internal variable for gonum DSP operations.
 
 		showInspector         bool      // Toggled on when the user right-clicks and drags inside the signal screen.
+		refActive             bool      // Reference point state for interval measurement
+		refDragging           bool      // Whether the reference point is currently being dragged
+		refX, refY            float32   // Coordinates of the reference point
 		mouseX, mouseY        float32   // Current mouse coordinates on the scope raster image.
 		inspectorLastX        float32   // Previous X coordinate to detect mouse movement.
 		inspectorLastY        float32   // Previous Y coordinate to detect mouse movement.
@@ -69,11 +72,6 @@ type (
 		inspectorDispPhaseCur []float64 // Averaged Y-position phase displayed in the inspector overlay.
 		inspectorSamples      int       // Count of data frames collected in the current averaging period.
 		inspectorLastUpdate   time.Time // Timestamp of the last visual update of the inspector values.
-
-		// Reference point state for interval measurement
-		refActive bool
-		refX      float32
-		refY      float32
 
 		// cached scratch slices reused per drawInspector/drawChannels call to avoid per-frame allocs
 		instAmp          []float64
@@ -216,17 +214,17 @@ func (ff *ffViewer) draw() {
 			logMin := math.Log10(math.Max(minFreq, 1e-6))
 			logMax := math.Log10(math.Max(maxFreq, math.Max(minFreq, 1e-6)*1.001))
 			logRange := logMax - logMin
-	
+
 			getX := func(f float64) float64 {
 				if f <= 0 {
 					f = 1e-6
 				}
 				return float64(bounds.Min.X) + ((math.Log10(f)-logMin)/logRange)*w
 			}
-	
+
 			startDecade := int(math.Floor(logMin))
 			endDecade := int(math.Ceil(logMax))
-	
+
 			for dec := startDecade; dec <= endDecade; dec++ {
 				base := math.Pow(10, float64(dec))
 				for j := 1; j < 10; j++ {
@@ -237,13 +235,13 @@ func (ff *ffViewer) draw() {
 						if channelIndex >= 0 {
 							col = color.NRGBA{50, 50, 50, 255}
 						}
-	
+
 						if j == 1 {
 							ixf := int(math.Round(xf))
 							for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 								ff.scp.ffScopeFullScreen.Set(ixf, y, col)
 							}
-	
+
 							vstr := fmt.Sprintf("%gHz", f)
 							if f >= 1000000 {
 								vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
@@ -266,7 +264,7 @@ func (ff *ffViewer) draw() {
 			}
 			step := niceStep(span / 10.0)
 			firstFreq := math.Floor(minFreq/step) * step
-	
+
 			for i := 0; i < 20; i++ {
 				f := firstFreq + float64(i)*step
 				if f < minFreq-step || f > maxFreq+step {
@@ -274,18 +272,18 @@ func (ff *ffViewer) draw() {
 				}
 				fraction := (f - minFreq) / span
 				xf := float64(bounds.Min.X) + fraction*w
-	
+
 				if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
 					col := gridCol
 					if channelIndex >= 0 {
 						col = color.NRGBA{50, 50, 50, 255}
 					}
-	
+
 					ixf := int(math.Round(xf))
 					for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 						ff.scp.ffScopeFullScreen.Set(ixf, y, col)
 					}
-	
+
 					vstr := fmt.Sprintf("%gHz", f)
 					if f >= 1000000 {
 						vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
@@ -541,7 +539,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 		logMin := math.Log10(math.Max(minFreq, 1e-6))
 		logMax := math.Log10(math.Max(minFreq+freqRange, math.Max(minFreq, 1e-6)*1.001))
 		logRange := logMax - logMin
-	
+
 		getX = func(f float64) float64 {
 			if f <= 0 {
 				f = 1e-6
@@ -795,14 +793,16 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		freqRange = 1000
 	}
 
-	crosscol := color.RGBA{180, 180, 180, 180}
-	mx := int(ff.mouseX)
-	my := int(ff.mouseY)
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		ff.scp.ffScopeFullScreen.Set(i, my, crosscol)
-	}
-	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
-		ff.scp.ffScopeFullScreen.Set(mx, i, crosscol)
+	if ff.showInspector {
+		crosscol := color.RGBA{180, 180, 180, 180}
+		mx := int(ff.mouseX)
+		my := int(ff.mouseY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			ff.scp.ffScopeFullScreen.Set(i, my, crosscol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			ff.scp.ffScopeFullScreen.Set(mx, i, crosscol)
+		}
 	}
 
 	if ff.refActive {
@@ -1117,6 +1117,7 @@ func (ff *ffViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 	if button == desktop.RightMouseButton && ff.mouseInSignalScreen(x, y) {
 		if modifier&fyne.KeyModifierShift != 0 {
 			ff.refActive = true
+			ff.refDragging = true
 			ix, iy := ff.fyneToImg(x, y)
 			ff.refX = float32(ix)
 			ff.refY = float32(iy)
@@ -1166,6 +1167,7 @@ func (ff *ffViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 func (ff *ffViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		ff.showInspector = false
+		ff.refDragging = false
 		ff.scp.ffFullRefresh = true
 		ff.enableRefresh()
 		canvas.Refresh(ff.scp.ffRaster)
@@ -1193,6 +1195,26 @@ func (ff *ffViewer) mouseMoved(x, y float32) {
 		}
 		if ff.mouseY > float32(bounds.Max.Y-1) {
 			ff.mouseY = float32(bounds.Max.Y - 1)
+		}
+		ff.scp.ffFullRefresh = true
+		ff.enableRefresh()
+		canvas.Refresh(ff.scp.ffRaster)
+	} else if ff.refDragging {
+		ix, iy := ff.fyneToImg(x, y)
+		ff.refX = float32(ix)
+		ff.refY = float32(iy)
+		bounds := ff.scp.ffScopeSignalScreen.Bounds()
+		if ff.refX < float32(bounds.Min.X) {
+			ff.refX = float32(bounds.Min.X)
+		}
+		if ff.refX > float32(bounds.Max.X-1) {
+			ff.refX = float32(bounds.Max.X - 1)
+		}
+		if ff.refY < float32(bounds.Min.Y) {
+			ff.refY = float32(bounds.Min.Y)
+		}
+		if ff.refY > float32(bounds.Max.Y-1) {
+			ff.refY = float32(bounds.Max.Y - 1)
 		}
 		ff.scp.ffFullRefresh = true
 		ff.enableRefresh()
@@ -1225,7 +1247,7 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 			logMax := math.Log10(math.Max(ff.scp.Settings.Ff.MaxFreq, math.Max(ff.scp.Settings.Ff.MinFreq, 1e-6)*1.001))
 			diff := logMax - logMin
 			shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
-	
+
 			ff.scp.Settings.Ff.MinFreq = math.Pow(10, logMin+shift)
 			ff.scp.Settings.Ff.MaxFreq = math.Pow(10, logMax+shift)
 		} else {
@@ -1234,7 +1256,7 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 				diff = 1000
 			}
 			shift := -diff * (dy / float64(ff.img.Bounds().Dx()))
-			
+
 			ff.scp.Settings.Ff.MinFreq += shift
 			ff.scp.Settings.Ff.MaxFreq += shift
 		}
@@ -1284,7 +1306,7 @@ func (ff *ffViewer) setChDispOffset(chIndex int, dy float64, scroll bool) {
 			} else {
 				currentFraction = dy + ff.offsetNToFf(vch.FfDisplayVOffset)
 			}
-			
+
 			if currentFraction < -h {
 				currentFraction = -h
 			}
@@ -1319,6 +1341,26 @@ func (ff *ffViewer) dragged(dx, dy, x, y float32) {
 		}
 		if ff.mouseY > float32(bounds.Max.Y-1) {
 			ff.mouseY = float32(bounds.Max.Y - 1)
+		}
+		ff.scp.ffFullRefresh = true
+		ff.enableRefresh()
+		canvas.Refresh(ff.scp.ffRaster)
+	} else if ff.refDragging {
+		ix, iy := ff.fyneToImg(x, y)
+		ff.refX = float32(ix)
+		ff.refY = float32(iy)
+		bounds := ff.scp.ffScopeSignalScreen.Bounds()
+		if ff.refX < float32(bounds.Min.X) {
+			ff.refX = float32(bounds.Min.X)
+		}
+		if ff.refX > float32(bounds.Max.X-1) {
+			ff.refX = float32(bounds.Max.X - 1)
+		}
+		if ff.refY < float32(bounds.Min.Y) {
+			ff.refY = float32(bounds.Min.Y)
+		}
+		if ff.refY > float32(bounds.Max.Y-1) {
+			ff.refY = float32(bounds.Max.Y - 1)
 		}
 		ff.scp.ffFullRefresh = true
 		ff.enableRefresh()
@@ -1873,7 +1915,7 @@ func (scp *ScpDesc) processFfData() {
 			if i >= int(scp.channelCount) || !scp.Settings.Channels[i].Enabled {
 				continue
 			}
-			
+
 			chBuf := scp.displayBuffers[i]
 			if len(chBuf) == 0 {
 				continue
@@ -1892,11 +1934,11 @@ func (scp *ScpDesc) processFfData() {
 			if maxAbs > 0.9 || maxAbs < 0.25 {
 				currentRangeEnum := scp.Settings.Channels[i].VRange
 				peakMv := float64(maxAbs) * genericps.RangeValuesMv[currentRangeEnum]
-				
+
 				availableRanges, _ := scp.psControl.ChannelRanges(genericps.ChannelId(i))
 				var bestRange genericps.RangeEnum
 				var bestRangeMv float64 = 1e9
-				
+
 				for _, rInt := range availableRanges {
 					r := genericps.RangeEnum(rInt)
 					rangeMv := genericps.RangeValuesMv[r]
@@ -1907,11 +1949,11 @@ func (scp *ScpDesc) processFfData() {
 						}
 					}
 				}
-				
+
 				if bestRangeMv == 1e9 && len(availableRanges) > 0 {
 					bestRange = genericps.RangeEnum(availableRanges[len(availableRanges)-1])
 				}
-				
+
 				if bestRange != currentRangeEnum {
 					slog.Info("Auto-ranging", "channel", i, "old", currentRangeEnum, "new", bestRange, "peakMv", peakMv)
 					if opt, ok := rangeEnumToString[bestRange]; ok {
@@ -1923,7 +1965,7 @@ func (scp *ScpDesc) processFfData() {
 				}
 			}
 		}
-		
+
 		scp.ffAutoRangedFreq = targetFreq
 		if needsWait {
 			scp.ffLocker.Lock()

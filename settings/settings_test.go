@@ -27,7 +27,7 @@ func TestSaveAndLoadSettings(t *testing.T) {
 	s.Time.TimeDiv = "10"
 	s.GenPanel.Frequency = 2500
 	s.Window.FilterActiveTab = 2
-	s.Window.SimGenActiveTab = 3
+	s.Window.DemoGenActiveTab = 3
 	streamVal := false
 	s.StreamEnabled = &streamVal
 
@@ -40,7 +40,7 @@ func TestSaveAndLoadSettings(t *testing.T) {
 	assert.Equal(t, "10", loaded.Time.TimeDiv)
 	assert.Equal(t, 2500.0, loaded.GenPanel.Frequency)
 	assert.Equal(t, 2, loaded.Window.FilterActiveTab)
-	assert.Equal(t, 3, loaded.Window.SimGenActiveTab)
+	assert.Equal(t, 3, loaded.Window.DemoGenActiveTab)
 	assert.Len(t, loaded.Channels, 4)
 	assert.NotNil(t, loaded.StreamEnabled)
 	assert.False(t, *loaded.StreamEnabled)
