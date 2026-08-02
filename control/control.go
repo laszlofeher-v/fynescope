@@ -191,7 +191,6 @@ type (
 		Info               string
 		MaxSamplingRate    uint32
 		StreamEnabled      atomic.Bool
-		hiResEnabled       atomic.Bool
 	}
 )
 
@@ -349,12 +348,7 @@ func (psControl *PscDesc) SuggestSampleCount(sc int32) {
 	}
 }
 
-func (psControl *PscDesc) SetHiRes(enabled bool) {
-	if psControl.hiResEnabled.Load() != enabled {
-		psControl.hiResEnabled.Store(enabled)
-		psControl.requestRestart()
-	}
-}
+
 
 func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 	psControl.getNumOfEnabledCh <- &psControl.getNumOfEnabled

@@ -252,9 +252,7 @@ type (
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
 		FfAutoRangeEnabled         bool
-		HighResUIEnabled           bool
 		useExtGenCheck             *widget.Check
-		hiResCheck                 *widget.Check
 		complexTriggerCheck        *widget.Check
 		timeZoomButton             *widget.Button
 		timeZoomWindow             fyne.Window
@@ -1405,10 +1403,7 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	if scp.Settings.StreamEnabled != nil {
 		scp.psControl.StreamEnabled.Store(*scp.Settings.StreamEnabled)
 	}
-	scp.psControl.SetHiRes(scp.Settings.Time.HiRes)
-
 	GlobalScreenScale = scp.getScreenScale()
-
 	scp.Window = scp.App.NewWindow("")
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)

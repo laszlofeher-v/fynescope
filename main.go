@@ -237,8 +237,8 @@ func startProfile(n int) error {
 //	-demo:      Runs in demo-only mode when set to true
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
-//	-highres:  Enables the High-Resolution (HiRes) GUI option and feature (default false)
-func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange, simOnly *bool) {
+//	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
+func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange, simOnly *bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	demoOnly = flag.Bool("demo", false, "-demo=true")
@@ -251,7 +251,6 @@ func parseFlags() (profile, demoOnly, highRes *bool, logLevel *string, chCount *
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := registerExtGenFlag(inTestMode)
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
-	highRes = flag.Bool("highres", false, "-highres=true (enables HiRes UI option)")
 	gifEnabled = flag.Bool("gif", false, "-gif=true (enables GIF generation button)")
 	ffAutoRange = flag.Bool("ff-auto-range", false, "-ff-auto-range=true (enables auto ranging during Bode sweep)")
 	simOnly = registerSimFlag()
@@ -486,7 +485,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, demoOnly, highRes, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simOnly := parseFlags()
+	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simOnly := parseFlags()
 	setLogging(logLevel)
 
 	err = demo.SetChannelCount(*chCount, chCountExplicit)
@@ -503,7 +502,6 @@ func main() {
 	// Initialize the GUI application
 	scp := &gui.ScpDesc{
 		ExtGenEnabled:      extGenEnabled,
-		HighResUIEnabled:   *highRes,
 		GifEnabled:         *gifEnabled,
 		FfAutoRangeEnabled: *ffAutoRange,
 	}
