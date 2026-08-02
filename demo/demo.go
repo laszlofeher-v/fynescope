@@ -1212,7 +1212,7 @@ func simTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pulse
 	return
 }
 
-func simMemorySegments(handle int16, nSegments uint32) (nMaxSamples int32, err error) {
+func simMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
 	nMaxSamples = 64 * mega
 	return
 }

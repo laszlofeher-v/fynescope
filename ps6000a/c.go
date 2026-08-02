@@ -629,12 +629,14 @@ func ps6000aTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, p
 	return 0, 0, fmt.Errorf("TriggerOrPulseWidthQualifierEnabled not supported on ps6000a")
 }
 
-func ps6000aMemorySegments(handle int16, nSegments uint64) (nMaxSamples uint64, err error) {
+func ps6000aMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
 	slog.Debug("ps6000aMemorySegments", "handle", handle, "nSegments", nSegments)
-	stat := C.ps6000aMemorySegments((C.short)(handle), (C.uint64_t)(nSegments), (*C.uint64_t)(&nMaxSamples))
+	var maxSamples C.uint64_t
+	stat := C.ps6000aMemorySegments((C.short)(handle), (C.uint64_t)(nSegments), &maxSamples)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MemorySegments:  %s", psc.StatStr(int(stat)))
 	}
+	nMaxSamples = int64(maxSamples)
 	return
 }
 

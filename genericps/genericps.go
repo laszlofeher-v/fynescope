@@ -665,11 +665,11 @@ type (
 
 	MemorySegmentsMsg struct {
 		MsgBase
-		NSegments uint32
+		NSegments uint64
 	}
 	MemorySegmentsRsp struct {
 		RespBase
-		NMaxSamples int32
+		NMaxSamples int64
 	}
 
 	NumOfStreamingValuesMsg struct {
@@ -1157,7 +1157,7 @@ func (c Connection) MaximumValue() (value int32, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) MemorySegments(nSegments uint32) (nMaxSamples int32, err error) {
+func (c Connection) MemorySegments(nSegments uint64) (nMaxSamples int64, err error) {
 	msg := &MemorySegmentsMsg{NSegments: nSegments}
 	msg.rsp = &MemorySegmentsRsp{}
 	c.Send(msg)

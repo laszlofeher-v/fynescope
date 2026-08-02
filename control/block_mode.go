@@ -47,9 +47,9 @@ func blockMode(psControl *PscDesc) state {
 		} else {
 			psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth)) + LeftOut + RightOut
 		}
-		sampleCount, err := psControl.memorySegments(1)
-		if sampleCount < psControl.SampleCountRequired {
-			psControl.SampleCountRequired = sampleCount
+		sampleCount, err := psControl.memorySegments(uint64(1))
+		if sampleCount < int64(psControl.SampleCountRequired) {
+			psControl.SampleCountRequired = int32(sampleCount)
 		}
 		if err != nil {
 			slog.Error("runblock memorySegments", "err", err)
