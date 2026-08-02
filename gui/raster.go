@@ -333,6 +333,18 @@ func (raster *screenRaster) TypedShortcut(r fyne.Shortcut) {
 }
 
 func (raster *screenRaster) KeyUp(k *fyne.KeyEvent) {
+	if raster.disableInput {
+		return
+	}
+	if k.Name == desktop.KeyShiftLeft || k.Name == desktop.KeyShiftRight {
+		drawers := raster.Drawers()
+		for i := range drawers {
+			switch m := drawers[i].(type) {
+			case mouser:
+				m.mouseUp(desktop.RightMouseButton, 0, raster.mouseX, raster.mouseY)
+			}
+		}
+	}
 }
 func (raster *screenRaster) KeyDown(k *fyne.KeyEvent) {
 }

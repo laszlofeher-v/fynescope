@@ -3,7 +3,7 @@ package control
 import (
 	"fynescope/genericps"
 	"fynescope/settings"
-	_ "fynescope/sim"
+	_ "fynescope/demo"
 	"testing"
 	"time"
 
@@ -12,7 +12,7 @@ import (
 
 func TestStreamModeTransition(t *testing.T) {
 	con := genericps.NewConnection()
-	handle, err := genericps.OpenDemo(con, "demo")
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
 	if err != nil {
 		t.Fatalf("Failed to open simulator: %v", err)
 	}

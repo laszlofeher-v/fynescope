@@ -35,9 +35,10 @@ type (
 		inspectorLastUpdate time.Time
 
 		// Reference point state for interval measurement
-		refActive bool
-		refX      float32
-		refY      float32
+		refActive   bool
+		refDragging bool
+		refX        float32
+		refY        float32
 	}
 )
 
@@ -358,14 +359,16 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		}
 	}
 
-	crosscol := color.RGBA{180, 180, 180, 180}
-	mx := int(fv.mouseX)
-	my := int(fv.mouseY)
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		fv.scp.fvScopeFullScreen.Set(i, my, crosscol)
-	}
-	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
-		fv.scp.fvScopeFullScreen.Set(mx, i, crosscol)
+	if fv.showInspector {
+		crosscol := color.RGBA{180, 180, 180, 180}
+		mx := int(fv.mouseX)
+		my := int(fv.mouseY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			fv.scp.fvScopeFullScreen.Set(i, my, crosscol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			fv.scp.fvScopeFullScreen.Set(mx, i, crosscol)
+		}
 	}
 
 	if fv.refActive {
@@ -582,6 +585,7 @@ func (fv *fvViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 	if button == desktop.RightMouseButton && fv.mouseInSignalScreen(x, y) {
 		if modifier&fyne.KeyModifierShift != 0 {
 			fv.refActive = true
+			fv.refDragging = true
 			fv.refX = x
 			fv.refY = y
 		} else {
@@ -626,6 +630,7 @@ func (fv *fvViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModif
 func (fv *fvViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if button == desktop.RightMouseButton {
 		fv.showInspector = false
+		fv.refDragging = false
 		fv.enableRefresh()
 		canvas.Refresh(fv.scp.fvRaster)
 		return
@@ -652,6 +657,24 @@ func (fv *fvViewer) mouseMoved(x, y float32) {
 		}
 		if fv.mouseY > float32(bounds.Max.Y-1) {
 			fv.mouseY = float32(bounds.Max.Y - 1)
+		}
+		fv.enableRefresh()
+		canvas.Refresh(fv.scp.fvRaster)
+	} else if fv.refDragging {
+		fv.refX = x
+		fv.refY = y
+		bounds := fv.scp.fvScopeSignalScreen.Bounds()
+		if fv.refX < float32(bounds.Min.X) {
+			fv.refX = float32(bounds.Min.X)
+		}
+		if fv.refX > float32(bounds.Max.X-1) {
+			fv.refX = float32(bounds.Max.X - 1)
+		}
+		if fv.refY < float32(bounds.Min.Y) {
+			fv.refY = float32(bounds.Min.Y)
+		}
+		if fv.refY > float32(bounds.Max.Y-1) {
+			fv.refY = float32(bounds.Max.Y - 1)
 		}
 		fv.enableRefresh()
 		canvas.Refresh(fv.scp.fvRaster)
@@ -766,6 +789,27 @@ func (fv *fvViewer) dragged(dx, dy, x, y float32) {
 		}
 		if fv.mouseY > float32(bounds.Max.Y-1) {
 			fv.mouseY = float32(bounds.Max.Y - 1)
+		}
+		fv.enableRefresh()
+		canvas.Refresh(fv.scp.fvRaster)
+	} else if fv.refDragging {
+		if fv.scp.fvScopeSignalScreen == nil {
+			return
+		}
+		fv.refX = x
+		fv.refY = y
+		bounds := fv.scp.fvScopeSignalScreen.Bounds()
+		if fv.refX < float32(bounds.Min.X) {
+			fv.refX = float32(bounds.Min.X)
+		}
+		if fv.refX > float32(bounds.Max.X-1) {
+			fv.refX = float32(bounds.Max.X - 1)
+		}
+		if fv.refY < float32(bounds.Min.Y) {
+			fv.refY = float32(bounds.Min.Y)
+		}
+		if fv.refY > float32(bounds.Max.Y-1) {
+			fv.refY = float32(bounds.Max.Y - 1)
 		}
 		fv.enableRefresh()
 		canvas.Refresh(fv.scp.fvRaster)

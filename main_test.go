@@ -28,7 +28,7 @@ func TestOpenDemo(t *testing.T) {
 			name:           "Simulator Not Found",
 			id:             "wrong_id",
 			expectedHandle: 0,
-			expectedError:  "Simulator not found",
+			expectedError:  "Demo not found",
 		},
 	}
 

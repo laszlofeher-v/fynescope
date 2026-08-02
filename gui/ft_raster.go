@@ -26,7 +26,6 @@ type (
 	signalViewer struct {
 		rasterPartition
 		scp            *ScpDesc
-		showInspector  bool
 		mouseX, mouseY float32
 
 		inspectorLastX, inspectorLastY float32
@@ -44,11 +43,12 @@ type (
 		isDraggingZoomBox bool
 
 		// Reference point state for interval measurement
-		refActive bool
-		refX      float32
-		refY      float32
-		refTime   float64
-		refVolts  []float32
+		showInspector bool
+		refActive     bool
+		refDragging   bool
+		refX, refY    float32
+		refTime       float64
+		refVolts      []float32
 	}
 )
 
@@ -105,6 +105,7 @@ func (sv *signalViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyM
 	} else if button == desktop.RightMouseButton && sv.mouseIn(x, y) {
 		if modifier&fyne.KeyModifierShift != 0 {
 			sv.refActive = true
+			sv.refDragging = true
 			sv.refX = x
 			sv.refY = y
 		} else {
@@ -126,12 +127,15 @@ func (sv *signalViewer) typedKey(x, y float32, keyName fyne.KeyName) {
 }
 
 func (sv *signalViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
-	if sv.isTimeZoom && button == desktop.LeftMouseButton {
-		sv.isDraggingZoomBox = false
-	} else if button == desktop.RightMouseButton {
+	if button == desktop.RightMouseButton {
 		sv.showInspector = false
+		sv.refDragging = false
 		sv.enableRefresh()
 		canvas.Refresh(sv.scp.ftRaster)
+		return
+	}
+	if sv.isTimeZoom && button == desktop.LeftMouseButton {
+		sv.isDraggingZoomBox = false
 	}
 }
 
@@ -151,6 +155,24 @@ func (sv *signalViewer) mouseMoved(x, y float32) {
 		}
 		if sv.mouseY > float32(sv.imgRect.Max.Y-1) {
 			sv.mouseY = float32(sv.imgRect.Max.Y - 1)
+		}
+		sv.enableRefresh()
+		canvas.Refresh(sv.scp.ftRaster)
+	} else if sv.refDragging {
+		sv.refX = x
+		sv.refY = y
+		// Clamp to signal viewer bounds
+		if sv.refX < float32(sv.imgRect.Min.X) {
+			sv.refX = float32(sv.imgRect.Min.X)
+		}
+		if sv.refX > float32(sv.imgRect.Max.X-1) { // -1 because it's the last pixel
+			sv.refX = float32(sv.imgRect.Max.X - 1)
+		}
+		if sv.refY < float32(sv.imgRect.Min.Y) {
+			sv.refY = float32(sv.imgRect.Min.Y)
+		}
+		if sv.refY > float32(sv.imgRect.Max.Y-1) {
+			sv.refY = float32(sv.imgRect.Max.Y - 1)
 		}
 		sv.enableRefresh()
 		canvas.Refresh(sv.scp.ftRaster)
@@ -186,6 +208,23 @@ func (sv *signalViewer) dragged(dx, dy, x, y float32) {
 		}
 		if sv.mouseY > float32(sv.imgRect.Max.Y-1) {
 			sv.mouseY = float32(sv.imgRect.Max.Y - 1)
+		}
+		sv.enableRefresh()
+		canvas.Refresh(sv.scp.ftRaster)
+	} else if sv.refDragging {
+		sv.refX = x
+		sv.refY = y
+		if sv.refX < float32(sv.imgRect.Min.X) {
+			sv.refX = float32(sv.imgRect.Min.X)
+		}
+		if sv.refX > float32(sv.imgRect.Max.X-1) {
+			sv.refX = float32(sv.imgRect.Max.X - 1)
+		}
+		if sv.refY < float32(sv.imgRect.Min.Y) {
+			sv.refY = float32(sv.imgRect.Min.Y)
+		}
+		if sv.refY > float32(sv.imgRect.Max.Y-1) {
+			sv.refY = float32(sv.imgRect.Max.Y - 1)
 		}
 		sv.enableRefresh()
 		canvas.Refresh(sv.scp.ftRaster)
@@ -698,7 +737,6 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 	}
 }
 
-
 func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (tAtCursor float64, instV, instVCur []float32) {
 	unit := w / sv.scp.maxScreenTime
 	tAtCursor = (float64(mx)-float64(bounds.Min.X))/unit - sv.scp.Settings.Time.TriggerTimeOffset
@@ -829,14 +867,16 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		return
 	}
 
-	crosscol := color.RGBA{180, 180, 180, 180}
-	mx := int(sv.mouseX)
-	my := int(sv.mouseY)
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		sv.scp.ftScopeFullScreen.Set(i, my, crosscol)
-	}
-	for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
-		sv.scp.ftScopeFullScreen.Set(mx, i, crosscol)
+	if sv.showInspector {
+		crosscol := color.RGBA{180, 180, 180, 180}
+		mx := int(sv.mouseX)
+		my := int(sv.mouseY)
+		for i := bounds.Min.X; i < bounds.Max.X; i++ {
+			sv.scp.ftScopeFullScreen.Set(i, my, crosscol)
+		}
+		for i := bounds.Min.Y; i < bounds.Max.Y; i++ {
+			sv.scp.ftScopeFullScreen.Set(mx, i, crosscol)
+		}
 	}
 
 	if sv.refActive {
@@ -1321,7 +1361,7 @@ func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 				vChannelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
 					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, false)
 			scp.addFtDrawer(&scp.ftVChannelLabels[vChannelIndex])
-			
+
 			switch {
 			case leftColumnCount > 1:
 				scp.ftVChannelLabels[vChannelIndex].leftLabel = true
@@ -1424,7 +1464,7 @@ func (scp *ScpDesc) clipTzChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 				vChannelIndex, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
 					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, true)
 			scp.addTzDrawer(&scp.tzVChannelLabels[vChannelIndex])
-			
+
 			switch {
 			case leftColumnCount > 1:
 				scp.tzVChannelLabels[vChannelIndex].leftLabel = true
