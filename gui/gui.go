@@ -388,9 +388,10 @@ func drawFakeCursor(img draw.Image, cx, cy int) {
 	for y, row := range pattern {
 		for x, char := range row {
 			px, py := cx+x, cy+y
-			if char == '1' {
+			switch char {
+			case '1':
 				img.Set(px, py, cOut)
-			} else if char == '2' {
+			case '2':
 				img.Set(px, py, cIn)
 			}
 		}

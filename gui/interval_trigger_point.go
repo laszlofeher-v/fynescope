@@ -301,7 +301,8 @@ func (tp *intervalTriggerPointViewer) draw() {
 			// Draw horizontal line from trigger point to xUpper
 			drawLine(tp.signalScreen(), x, y, xUpper, y, colUpper)
 
-			if pwType == genericps.PwTypeInRange {
+			switch pwType {
+			case genericps.PwTypeInRange:
 				// xLower points LEFT (inside)
 				// Tip is at xLower. Base is at xLower + halfRectSize.
 				drawLine(tp.signalScreen(), xLower+halfRectSize, y-halfRectSize, xLower+halfRectSize, y+halfRectSize, colLower)
@@ -313,7 +314,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper-halfRectSize, y+halfRectSize, colUpper)
 				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper, y, colUpper)
 				drawLine(tp.signalScreen(), xUpper-halfRectSize, y+halfRectSize, xUpper, y, colUpper)
-			} else if pwType == genericps.PwTypeOutOfRange {
+			case genericps.PwTypeOutOfRange:
 				// xLower points RIGHT (outside)
 				// Tip is at xLower. Base is at xLower - halfRectSize.
 				drawLine(tp.signalScreen(), xLower-halfRectSize, y-halfRectSize, xLower-halfRectSize, y+halfRectSize, colLower)

@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+const (
+	invalidHandle = "Invalid handle"
+)
+
 type (
 	returnStatus int
 	channelDesc  struct {
@@ -201,6 +205,9 @@ func openUnitProgress() (handle int16, progressPercent, complete int16, err erro
 }
 
 func simCloseUnit(handle int16) (err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	return
 }
 
@@ -217,7 +224,10 @@ func simGetUnitInfo(handle int16, info PicoInfo) (infoString string, err error) 
 }
 
 func simFlashLed(handle int16, start int16) (err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -227,6 +237,9 @@ func lpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16,
 func simGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 	param any) (err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	return
 }
 
@@ -438,7 +451,11 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	}
 
 	maxTime := float64(maxIter) * dt
-	triggerTime = triggerDetector.FindTriggerPoint(signalFunc, reqNoOfSamples, maxTime, dt)
+	found := false
+	found, triggerTime = triggerDetector.FindTriggerPoint(signalFunc, reqNoOfSamples, maxTime, dt)
+	if !found {
+		return
+	}
 
 	// Initialize and pre-roll filters for enabled channels
 	filters := make([]*RlcFilter, MaxChannels)
@@ -538,28 +555,43 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 func simGetValuesBulk(handle int16, reqNoOfSamples uint32, fromSegmentIndex, toSegmentIndex, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, overflow []int16) (noSamples uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetValuesOverlapped(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, segmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error) {
 	maximumVoltage, minimumVoltage = 20, -20
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	return
 }
 
 func simGetChannelInformation(handle int16, info int16, probe int32, ranges []int32, channels ChannelId) (lengthOfRanges int32, err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	chRanges := []int32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	lengthOfRanges = int32(len(chRanges))
 	copy(ranges, chRanges)
@@ -567,22 +599,34 @@ func simGetChannelInformation(handle int16, info int16, probe int32, ranges []in
 }
 
 func simGetMaxDownSampleRatio(handle int16, noOfUnaggregatedSamples uint32, downSampleRatioMode RatioMode, segmentIndex int32) (maxDownSampleRatio uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetMaxSegments(handle int16) (maxSegments uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetNoOfCaptures(handle int16) (nCaptures uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetNoOfProcessedCaptures(handle int16) (nCaptures uint32, err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -784,11 +828,17 @@ func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType C
 }
 
 func simMaximumValue(handle int16) (value int32, err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	value = int32(maxValue)
 	return
 }
 
 func simMinimumValue(handle int16) (value int32, err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	value = -int32(maxValue)
 	return
 }
@@ -797,32 +847,45 @@ var buffers [4][]int16
 
 func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	buffers[ch] = bufferIn
 	return
 }
 
 func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	//64 bit buffers
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	etsTimeBuffer = buffer
 	return
 }
 
 func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err error) {
 	//32 bit buffers
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -845,7 +908,9 @@ func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeU
 	maxPreTriggerSamples, maxPostTriggerSamples uint32,
 	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 	overviewBufferSize uint32) (sampleInterval uint32, err error) {
-
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	streamingIntervalNs = float64(reqSampleInterval) * TimeUnitToVal(sampleIntervalTimeUnits) * 1e9
 	if streamingIntervalNs <= 0 {
 		streamingIntervalNs = 1.0
@@ -874,6 +939,9 @@ func delayedCall(handle int16, lpBlockReadyGoPar BlockReady) {
 func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param any) (timeIndisposedMs int32, err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	if !running {
 		for i := range channels {
@@ -895,6 +963,9 @@ func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int
 func simSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold int16,
 	direction ThresholdDirection, delay uint32, autoTriggerMs int16) (err error) {
 	slog.Debug("SetSimpleTrigger", "threshold", threshold)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	triggerDetector = NewTriggerDetector(enable, threshold, 0, direction, source)
 	triggerDetector.SetTriggerCalculationMode(TriggerCalculationMode)
 	// triggerDelay = delay
@@ -907,6 +978,9 @@ func simSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold 
 func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerChannelProperties, auxOutputEnable bool,
 	autoTriggerMs int32) (err error) {
 	slog.Debug("sim trigg prop", "channelProperties", channelProperties)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	for i := 0; i < len(simChannelProperties) && i < len(channelProperties); i++ {
 		simChannelProperties[i] = channelProperties[i]
 	}
@@ -922,6 +996,9 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 // simSetTriggerChannelConditions configures trigger channel conditions.
 func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerConditions) (err error) {
 	slog.Debug("sim trigg cond", "simTriggerConditions", simTriggerConditions)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	for i := 0; i < len(simTriggerConditions) && i < len(triggerConditions); i++ {
 		simTriggerConditions[i] = triggerConditions[i]
 	}
@@ -936,6 +1013,9 @@ func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerCon
 func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, channelD, ext, aux ThresholdDirection) (err error) {
 	channelAThresholdDirection, channelBThresholdDirection,
 		channelCThresholdDirection, channelDThresholdDirection = channelA, channelB, channelC, channelD
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	complexTrigger = true
 
 	if triggerDetector != nil {
@@ -945,25 +1025,35 @@ func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, 
 }
 
 func simSetTriggerDelay(handle int16, delay uint32) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
 	pwType PulseWidthType) (err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	if triggerDetector != nil {
 		triggerDetector.SetPulseWidthQualifier(conditions, direction, lower, upper, pwType)
 	}
 	return nil
 }
 func simSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simStop(handle int16) (err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	running = false
 	streamingRunning = false
 	return
@@ -980,7 +1070,10 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, waveT
 	startFrequency, stopFrequency, increment, dwellTime float32, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -994,6 +1087,9 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
 	slog.Debug("simSetSigGenBuiltInV2 (no-op: demo uses per-channel SetDemoGen)")
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	return
 }
 
@@ -1042,24 +1138,33 @@ func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource generi
 }
 
 func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode IndexMode, bufferLength uint32) (phase uint32, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetNoCaptures(handle int16, nCaptures uint32) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (t int64, timeUnits TimeUnits, err error) {
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
 	t = int64(GetTriggerTimeOffset() * 1e15)
 	timeUnits = TuFs
 	return
@@ -1067,33 +1172,43 @@ func simGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (t int64, time
 
 func simGetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower []uint32, timeUnits []TimeUnits,
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simGetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUnits []TimeUnits,
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simHoldOff(handle int16, holdOff uint64, holdOffType HoldOffType) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simLsReady(handle int16) (ready int16, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pulseWidthQualifierEnabledint16 int16, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -1103,50 +1218,63 @@ func simMemorySegments(handle int16, nSegments uint32) (nMaxSamples int32, err e
 }
 
 func simNoOfStreamingValues(handle int16) (noOfValues uint32, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func OpenUnitProgress() (retHandle, progressPercent, complete int16, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simPingUnit(handle int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simQueryOutputEdgeDetect(handle int16) (state int16, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetOutputEdgeDetect(handle int16, state int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetPulseWidthDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -1156,7 +1284,10 @@ func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPK uint32,
 	indexMode IndexMode, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
 	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -1165,8 +1296,10 @@ func simSetSigGenPropertiesArbitrary(handle int16, offsetVoltage int32,
 	sweepType SweepTypeEnum, operation ExtraOperations,
 	indexMode IndexMode, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
@@ -1175,21 +1308,27 @@ func simSetSigGenPropertiesBuiltIn(handle int16, offsetVoltage int32,
 	sweepType SweepTypeEnum,
 	shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSigGenArbitraryMinMaxValues(handle int16) (minArbitraryWaveformValue, maxArbitraryWaveformValue int16,
 	minArbitraryWaveformSize, maxArbitraryWaveformSize uint32, err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSigGenSoftwareControl(handle int16, state int16) (err error) {
-	slog.Error(notImplemented)
-	err = fmt.Errorf(notImplemented)
+	if handle <= 0 {
+		err = fmt.Errorf(invalidHandle)
+	}
+	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 

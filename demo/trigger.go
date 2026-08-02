@@ -115,9 +115,10 @@ type ChannelTriggerState struct {
 // Returns:
 //   - triggerTime: Time offset in seconds where trigger occurred
 func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch ChannelId) float64,
-	reqSamples uint32, maxTime float64, dt float64) (triggerTime float64) {
+	reqSamples uint32, maxTime float64, dt float64) (found bool, triggerTime float64) {
 
 	// Check if any channels are enabled
+	found = false
 	anyEnabled := false
 	for _, cfg := range td.channels {
 		if cfg.Enabled {
@@ -127,6 +128,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	}
 
 	if !anyEnabled {
+		found = true
 		triggerTime = rand.Float64() * float64(reqSamples)
 		return
 	}
@@ -181,14 +183,10 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				continue
 			}
 
-			// If PWQ is active for this channel, the main trigger marks the END of the pulse,
-			// so it must trigger on the opposite edge of the PWQ start edge.
+			// For interval triggers, the PWQ start edge and main end edge
+			// should be of the same direction.
 			if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
-				if td.pwqConfig.Direction == TriggerRisingLower || td.pwqConfig.Direction == TriggerRising {
-					cfg.Direction = TriggerFalling
-				} else if td.pwqConfig.Direction == TriggerFallingLower || td.pwqConfig.Direction == TriggerFalling {
-					cfg.Direction = TriggerRising
-				}
+				// We no longer flip the direction here.
 			}
 
 			level := signalFunc(t, ChannelId(i))
@@ -246,7 +244,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 				if intervalSatisfied && allConditionsMet {
 					SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
-					return edgeTriggerTime
+					found = true
+					triggerTime = edgeTriggerTime
+					return
 				}
 				intervalActive = false
 			}
@@ -258,7 +258,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		} else {
 			if allConditionsMet {
 				SetTriggerTimeOffset(0)
-				return edgeTriggerTime
+				found = true
+				triggerTime = edgeTriggerTime
+				return
 			}
 		}
 
@@ -266,6 +268,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	}
 
 	triggerTime = rand.Float64() * float64(reqSamples) * dt
+	if !td.pwqConfig.Enabled {
+		found = true
+	}
 	return
 }
 
@@ -278,21 +283,22 @@ func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state 
 		return level >= thresh, false
 	}
 
-	if cfg.Direction == TriggerRising || cfg.Direction == TriggerRisingLower {
+	switch cfg.Direction {
+	case TriggerRising, TriggerRisingLower:
 		if *state == TriggerStateIdle && level <= (thresh-hyst) {
 			*state = TriggerStateArmedRising
 		} else if *state == TriggerStateArmedRising && level > thresh {
 			*state = TriggerStateIdle
 			return true, true
 		}
-	} else if cfg.Direction == TriggerFalling || cfg.Direction == TriggerFallingLower {
+	case TriggerFalling, TriggerFallingLower:
 		if *state == TriggerStateIdle && level >= (thresh+hyst) {
 			*state = TriggerStateArmedFalling
 		} else if *state == TriggerStateArmedFalling && level < thresh {
 			*state = TriggerStateIdle
 			return true, true
 		}
-	} else if cfg.Direction == TriggerRisingOrFalling {
+	case TriggerRisingOrFalling:
 		if *state == TriggerStateIdle {
 			if level <= (thresh - hyst) {
 				*state = TriggerStateArmedRising
@@ -330,13 +336,14 @@ func (td *TriggerDetector) evaluateWindowTrigger(
 		Hysteresis: cfg.ThresholdLowerHysteresis,
 	}
 
-	if cfg.Direction == TriggerEnter || cfg.Direction == TriggerInside || cfg.Direction == TriggerAbove || cfg.Direction == TriggerRising {
+	switch cfg.Direction {
+	case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
 		upperCfg.Direction = TriggerFalling
 		lowerCfg.Direction = TriggerRising
-	} else if cfg.Direction == TriggerExit || cfg.Direction == TriggerOutside || cfg.Direction == TriggerBelow || cfg.Direction == TriggerFalling {
+	case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
 		upperCfg.Direction = TriggerRising
 		lowerCfg.Direction = TriggerFalling
-	} else if cfg.Direction == TriggerEnterOrExit || cfg.Direction == TriggerRisingOrFalling {
+	case TriggerEnterOrExit, TriggerRisingOrFalling:
 		upperCfg.Direction = TriggerRisingOrFalling
 		lowerCfg.Direction = TriggerRisingOrFalling
 	}
