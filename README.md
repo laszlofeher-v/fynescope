@@ -133,7 +133,6 @@ For more options, including displaying version, build date, and license informat
 | `-demo` | `false` | Run in pure-Go demo mode (no hardware required) |
 | `-sim` | `false` | Run in C-level simulator mode (only available with `demo` tag) |
 | `-screensize` | `1920x1080` | Set the screen size scaling (e.g., `1920x1080`, `1366x768`, `1280x720`, `1024x768`) |
-| `-highres` | `false` | Enables High-Resolution UI layout options |
 | `-chcount=N` | `2` | Number of channels to simulate (demo only, 1–4) |
 | `-extgen` | `false` | Enable external SCPI signal generator tab (requires `scpi` build tag) |
 | `-gif` | `false` | Enable GIF generation button on the toolbar |
