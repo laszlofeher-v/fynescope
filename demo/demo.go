@@ -1325,7 +1325,6 @@ func dispatch(msg genericps.Message) {
 	case *genericps.SigGenSoftwareControlMsg:
 		sigGenSoftwareControl(m)
 	default:
-		// slog.Error("dispatch unhandled", "type", reflect.TypeOf(msg), "msg", msg)
 		slog.Error("dispatch unhandled", "m", m, "msg", msg)
 	}
 }

@@ -338,7 +338,7 @@ func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc, explicitSc
 	var err error
 	scp.Settings, err = settings.Load(settingFileName)
 	if err != nil {
-		slog.Error("failed to load settings, using defaults", "err", err)
+		slog.Warn("failed to load settings, using defaults", "err", err)
 		scp.Settings = settings.NewDefaultSettings()
 	}
 
@@ -409,7 +409,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 			// Attempt to connect to the selected device
 			con, err = connectToDevice(selectedDevice)
 			if err != nil {
-				slog.Error("failed to connect to device", "err", err)
+				slog.Warn("failed to connect to device", "err", err)
 				fyne.Do(func() {
 					selectButton.Enable()
 					cancelButton.Enable()
@@ -566,7 +566,7 @@ func main() {
 		// Normal mode: enumerate all connected PicoScope devices
 		devices, err = genericps.EnumerateAllDevices(256)
 		if err != nil {
-			slog.Error("no devices found", "err", err)
+			slog.Warn("no devices found", "err", err)
 			return
 		}
 	}
