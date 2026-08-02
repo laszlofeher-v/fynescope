@@ -52,13 +52,13 @@ func etsBlockMode(psControl *PscDesc) state {
 		psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth))
 		slog.Debug("prepare", "psControl.scopeScreenWidth", psControl.scopeScreenWidth)
 
-		sampleCount, err := psControl.memorySegments(1)
+		sampleCount, err := psControl.memorySegments(uint64(1))
 		if err != nil {
 			slog.Error("ETS prepare: memorySegments failed", "error", err)
 			return err
 		}
-		if sampleCount < psControl.SampleCountRequired {
-			psControl.SampleCountRequired = sampleCount
+		if sampleCount < int64(psControl.SampleCountRequired) {
+			psControl.SampleCountRequired = int32(sampleCount)
 		}
 		etsDx := psControl.scopeScreenWidth / (psControl.maxScreenTime * 1e15)
 		slog.Debug("draw", "etsDx", etsDx)

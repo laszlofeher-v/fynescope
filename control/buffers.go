@@ -61,7 +61,7 @@ func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (er
 	return
 }
 
-func (psControl *PscDesc) memorySegments(numberOfSegments uint32) (sampleCount int32, err error) {
+func (psControl *PscDesc) memorySegments(numberOfSegments uint64) (sampleCount int64, err error) {
 	sampleCount, err = psControl.Con.MemorySegments(numberOfSegments)
 	if err != nil {
 		slog.Error("memorySegments", "error:", err)

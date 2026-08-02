@@ -658,13 +658,14 @@ func ps5000TriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pu
 	return
 }
 
-func ps5000MemorySegments(handle int16, nSegments uint32) (nMaxSamples int32, err error) {
+func ps5000MemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
 	slog.Debug("ps5000MemorySegments", "handle", handle, "nSegments", nSegments)
-	stat := C.ps5000MemorySegments((C.short)(handle),
-		(C.uint)(nSegments), (*C.int)(&nMaxSamples))
+	var maxSamples C.int32_t
+	stat := C.ps5000MemorySegments((C.short)(handle), (C.uint16_t)(nSegments), &maxSamples)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MemorySegments:  %s", psc.StatStr(int(stat)))
 	}
+	nMaxSamples = int64(maxSamples)
 	return
 }
 
