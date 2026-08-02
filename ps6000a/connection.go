@@ -19,7 +19,7 @@ func Stop() (err error) {
 
 func getValues(m *genericps.GetValuesMsg) {
 	var (
-		numOfSamples uint32
+		numOfSamples uint64
 		overflow     int16
 		err          error
 	)
@@ -614,7 +614,7 @@ func setPulseWidthDigitalPortProperties(m *genericps.SetPulseWidthDigitalPortPro
 		dd[i].Channel = DigitalChannel(m.DigitalDirections[i].Channel)
 		dd[i].Direction = DigitalDirection(m.DigitalDirections[i].Direction)
 	}
-	err = ps6000aSetPulseWidthDigitalPortProperties(m.Handle(), dd)
+	err = ps6000aSetPulseWidthDigitalPortProperties(m.Handle(), DigitalPort(m.Port), dd)
 	response := m.Rsp().(*genericps.SetPulseWidthDigitalPortPropertiesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -765,8 +765,8 @@ func dispatch(msg genericps.Message) {
 		getTriggerTimeOffset64(m)
 	case *genericps.GetValuesTriggerTimeOffsetBulk64Msg:
 		getValuesTriggerTimeOffsetBulk(m)
-	case *genericps.GetValuesTriggerTimeOffsetBulk64Msg:
-		getValuesTriggerTimeOffsetBulk64(m)
+	// case *genericps.GetValuesTriggerTimeOffsetBulk64Msg:
+	// 	getValuesTriggerTimeOffsetBulk64(m)
 	case *genericps.HoldOffMsg:
 		holdOff(m)
 	case *genericps.LsReadyMsg:

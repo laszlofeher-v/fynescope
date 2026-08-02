@@ -30,14 +30,14 @@ func getValues(m *genericps.GetValuesMsg) {
 		err          error
 	)
 
-	numOfSamples, overflow, err = simGetValues(m.Handle(), m.StartIndex,
-		m.ReqNumOfSamples,
-		m.DownSampleRatio,
+	numOfSamples, overflow, err = simGetValues(m.Handle(), uint32(m.StartIndex),
+		uint32(m.ReqNumOfSamples),
+		uint32(m.DownSampleRatio),
 		RatioMode(m.DownSampleRatioMode),
-		m.SegmentIndex)
+		uint32(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetValuesRsp)
 	response.SetStatus(err)
-	response.NumOfSamples = numOfSamples
+	response.NumOfSamples = uint64(numOfSamples)
 	response.Overflow = overflow
 	m.RspCh() <- struct{}{}
 }
@@ -86,12 +86,12 @@ func getUnitInfo(m *genericps.GetUnitInfoMsg) {
 
 func getValuesAsync(m *genericps.GetValuesAsyncMsg) {
 	var err error
-	err = simGetValuesAsync(m.Handle(), m.StartIndex,
-		m.NumOfSamples,
-		m.DownSampleRatio,
+	err = simGetValuesAsync(m.Handle(), uint32(m.StartIndex),
+		uint32(m.NumOfSamples),
+		uint32(m.DownSampleRatio),
 		RatioMode(m.DownSampleRatioMode),
 		DataReady(m.LpDataReady),
-		m.SegmentIndex,
+		uint32(m.SegmentIndex),
 		m.Param)
 	response := m.Rsp().(*genericps.GetValuesAsyncRsp)
 	response.SetStatus(err)
@@ -525,7 +525,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 }
 
 func getTriggerTimeOffset64(m *genericps.GetTriggerTimeOffset64Msg) {
-	time, timeUnits, err := simGetTriggerTimeOffset64(m.Handle(), m.SegmentIndex)
+	time, timeUnits, err := simGetTriggerTimeOffset64(m.Handle(), uint32(m.SegmentIndex))
 
 	response := m.Rsp().(*genericps.GetTriggerTimeOffset64Rsp)
 	response.Time = time

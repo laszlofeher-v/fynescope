@@ -9,8 +9,8 @@ import (
 // MockScopeHandler is a mock implementation of ScopeHandler for testing.
 type MockScopeHandler struct {
 	EnumerateUnitsFunc        func(bufferLen int16) (count int16, serials string, serialLth int16, err error)
-	OpenUnitFunc              func(serial string) (handle int16, err error)
-	OpenUnitAsyncFunc         func(serial string) (status int16, err error)
+	OpenUnitFunc              func(serial string, resolution int) (handle int16, err error)
+	OpenUnitAsyncFunc         func(serial string, resolution int) (status int16, err error)
 	OpenUnitProgressFunc      func() (retHandle, progressPercent, complete int16, err error)
 	DispatchFunc              func(msg Message)
 	IdVal                     string
@@ -32,22 +32,22 @@ func (m *MockScopeHandler) EnumerateUnits(bufferLen int16) (count int16, serials
 	return 0, "", 0, nil
 }
 
-func (m *MockScopeHandler) OpenUnit(serial string) (handle int16, err error) {
+func (m *MockScopeHandler) OpenUnit(serial string, resolution int) (handle int16, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.OpenUnitCallCount++
 	if m.OpenUnitFunc != nil {
-		return m.OpenUnitFunc(serial)
+		return m.OpenUnitFunc(serial, resolution)
 	}
 	return 0, nil
 }
 
-func (m *MockScopeHandler) OpenUnitAsync(serial string) (status int16, err error) {
+func (m *MockScopeHandler) OpenUnitAsync(serial string, resolution int) (status int16, err error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.OpenUnitAsyncCallCount++
 	if m.OpenUnitAsyncFunc != nil {
-		return m.OpenUnitAsyncFunc(serial)
+		return m.OpenUnitAsyncFunc(serial, resolution)
 	}
 	return 0, nil
 }
@@ -99,7 +99,7 @@ func TestOpen_Success(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
 		IdVal: "test_success",
-		OpenUnitFunc: func(serial string) (int16, error) {
+		OpenUnitFunc: func(serial string, resolution int) (int16, error) {
 			return 123, nil
 		},
 	}
@@ -107,7 +107,7 @@ func TestOpen_Success(t *testing.T) {
 	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
 
 	// Act
-	handle, err := Open("test_success")
+	handle, err := Open("test_success", 0)
 
 	// Assert
 	if err != nil {
@@ -130,7 +130,7 @@ func TestOpen_ScopeNotFound(t *testing.T) {
 	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
 
 	// Act
-	_, err := Open("nonexistent")
+	_, err := Open("nonexistent", 0)
 
 	// Assert
 	if err == nil {
@@ -155,7 +155,7 @@ func TestOpenDemo_Success(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
 		IdVal: DemoId,
-		OpenUnitFunc: func(serial string) (int16, error) {
+		OpenUnitFunc: func(serial string, resolution int) (int16, error) {
 			return 456, nil
 		},
 		DispatchFunc: func(msg Message) {
@@ -223,7 +223,7 @@ func TestOpenUnit_Success(t *testing.T) {
 	// Arrange
 	mockHandler := &MockScopeHandler{
 		IdVal: "mock_scope",
-		OpenUnitFunc: func(serial string) (int16, error) {
+		OpenUnitFunc: func(serial string, resolution int) (int16, error) {
 			return 789, nil
 		},
 		DispatchFunc: func(msg Message) {
@@ -238,7 +238,7 @@ func TestOpenUnit_Success(t *testing.T) {
 	con := NewConnection()
 
 	// Act
-	handle, err := OpenUnit(con, "mock_scope", "")
+	handle, err := OpenUnit(con, "mock_scope", "", 0)
 
 	// Assert
 	if err != nil {
@@ -271,7 +271,7 @@ func TestOpenUnit_DemoNotFound(t *testing.T) {
 	con := NewConnection()
 
 	// Act
-	_, err := OpenUnit(con, "nonexistent_id", "")
+	_, err := OpenUnit(con, "nonexistent_id", "", 0)
 
 	// Assert
 	if err == nil {

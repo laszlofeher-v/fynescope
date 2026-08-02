@@ -173,9 +173,9 @@ type (
 		XRoundError                 float64
 		timeBase                    uint32
 		ipmode                      settings.InterpolationType
-		numOfSamplesAcquired        uint32
+		numOfSamplesAcquired        uint64
 		downSampleRatioMode         genericps.RatioMode
-		downSampleRatio             uint32
+		downSampleRatio             uint64
 		maxValue                    int32
 		maxScreenTime               float64
 		scopeScreenWidth            float64
@@ -347,8 +347,6 @@ func (psControl *PscDesc) SuggestSampleCount(sc int32) {
 		psControl.requestRestart()
 	}
 }
-
-
 
 func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 	psControl.getNumOfEnabledCh <- &psControl.getNumOfEnabled

@@ -1,11 +1,8 @@
 package psc
 
 // #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000/ps2000.h"
 // #include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-// #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
 import "C"
 
 const (

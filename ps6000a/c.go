@@ -15,6 +15,33 @@ int ps6000aLpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 int ps6000aLpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t overflow, uint32_t triggerAt, int16_t triggered,
                 int16_t autoStop, void * pParameter);
+
+static inline PICO_STATUS wrap_ps6000aGetValuesAsync(
+	int16_t handle,
+	uint64_t startIndex,
+	uint64_t noOfSamples,
+	uint64_t downSampleRatio,
+	PICO_RATIO_MODE downSampleRatioMode,
+	uint64_t segmentIndex,
+	void *lpDataReady,
+	void *pParameter)
+{
+	return ps6000aGetValuesAsync(handle, startIndex, noOfSamples, downSampleRatio, downSampleRatioMode, segmentIndex, (ps6000aDataReady)lpDataReady, (PICO_POINTER)pParameter);
+}
+
+static inline PICO_STATUS wrap_ps6000aGetValuesBulkAsync(
+	int16_t handle,
+	uint64_t startIndex,
+	uint64_t noOfSamples,
+	uint64_t fromSegmentIndex,
+	uint64_t toSegmentIndex,
+	uint64_t downSampleRatio,
+	PICO_RATIO_MODE downSampleRatioMode,
+	void *lpDataReady,
+	void *pParameter)
+{
+	return ps6000aGetValuesBulkAsync(handle, startIndex, noOfSamples, fromSegmentIndex, toSegmentIndex, downSampleRatio, downSampleRatioMode, (ps6000aDataReady)lpDataReady, (PICO_POINTER)pParameter);
+}
 */
 import "C"
 
@@ -72,7 +99,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	return
 }
 
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
@@ -80,7 +107,8 @@ func openUnit(serial string) (handle int16, err error) {
 		defer C.free(unsafe.Pointer(p))
 	}
 	slog.Debug("ps6000aOpenUnit", "serial", serial)
-	stat := C.ps6000aOpenUnit((*C.short)(&handle), (*C.schar)(p))
+	stat := C.ps6000aOpenUnit((*C.short)(&handle),
+		(*C.schar)(p), (C.PICO_DEVICE_RESOLUTION)(resolution))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("OpenUnit:  %s", psc.StatStr(int(stat)))
 		return
@@ -88,7 +116,7 @@ func openUnit(serial string) (handle int16, err error) {
 	return
 }
 
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
@@ -96,7 +124,8 @@ func openUnitAsync(serial string) (status int16, err error) {
 		defer C.free(unsafe.Pointer(p))
 	}
 	slog.Debug("ps6000aOpenUnitAsync", "serial", serial)
-	stat := C.ps6000aOpenUnitAsync((*C.short)(&status), (*C.schar)(p))
+	stat := C.ps6000aOpenUnitAsync((*C.short)(&status), (*C.schar)(p),
+		(C.PICO_DEVICE_RESOLUTION)(resolution))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("OpenUnitAsync:  %s", psc.StatStr(int(stat)))
 		return
@@ -162,18 +191,18 @@ func ps6000aLpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow
 	return
 }
 
-func ps6000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
+func ps6000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint64,
 	param interface{}) (err error) {
 	regLpDataReadyGo = lpDataReadyGoPar
 	slog.Debug("ps6000aGetValuesAsync", "handle", handle, "startIndex", startIndex, "noOfSamples", noOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "lpDataReadyGoPar", lpDataReadyGoPar, "segmentIndex", segmentIndex, "param", param)
-	stat := C.ps6000aGetValuesAsync((C.short)(handle),
-		(C.uint)(startIndex),
-		(C.uint)(noOfSamples),
-		(C.uint)(downSampleRatio),
+	stat := C.wrap_ps6000aGetValuesAsync((C.short)(handle),
+		(C.uint64_t)(startIndex),
+		(C.uint64_t)(noOfSamples),
+		(C.uint64_t)(downSampleRatio),
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
-		(C.uint)(segmentIndex),
-		(C.ps6000aLpDataReady), // C callback function in callbacks.go
+		(C.uint64_t)(segmentIndex),
+		unsafe.Pointer(C.ps6000aLpDataReady),
 		unsafe.Pointer(&param))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesAsync:  %s", psc.StatStr(int(stat)))
@@ -181,15 +210,15 @@ func ps6000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 	return
 }
 
-func ps6000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
+func ps6000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, segmentIndex uint64) (noOfSamples uint64, overflow int16, err error) {
 	slog.Debug("ps6000aGetValues", "handle", handle, "startIndex", startIndex, "reqNoOfSamples", reqNoOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "segmentIndex", segmentIndex)
 	stat := C.ps6000aGetValues((C.short)(handle),
-		(C.uint)(startIndex),
-		(*C.uint)(&reqNoOfSamples),
-		(C.uint)(downSampleRatio),
+		(C.uint64_t)(startIndex),
+		(*C.uint64_t)(&reqNoOfSamples),
+		(C.uint64_t)(downSampleRatio),
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
-		(C.uint)(segmentIndex),
+		(C.uint64_t)(segmentIndex),
 		(*C.short)(&overflow))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValues:  %s", psc.StatStr(int(stat)))
@@ -581,7 +610,7 @@ func ps6000aGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, 
 	return
 }
 
-func ps6000aGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (time int64, timeUnits TimeUnits, err error) {
+func ps6000aGetTriggerTimeOffset64(handle int16, segmentIndex uint64) (time int64, timeUnits TimeUnits, err error) {
 	slog.Debug("ps6000aGetTriggerTimeOffset64", "handle", handle, "segmentIndex", segmentIndex)
 	stat := C.ps6000aGetTriggerTimeOffset((C.short)(handle), (*C.int64_t)(unsafe.Pointer(&time)),
 		(*C.PICO_TIME_UNITS)(&timeUnits), (C.uint64_t)(segmentIndex))
@@ -1012,7 +1041,7 @@ func ps6000aSetPulseWidthQualifierDirections(handle int16, channelA, channelB Th
 
 func ps6000aGetValuesBulkAsync(handle int16, startIndex, noOfSamples, fromSegmentIndex, toSegmentIndex, downSampleRatio uint64, downSampleRatioMode RatioMode, param interface{}) (err error) {
 	slog.Debug("ps6000aGetValuesBulkAsync", "handle", handle, "startIndex", startIndex, "noOfSamples", noOfSamples)
-	stat := C.ps6000aGetValuesBulkAsync((C.short)(handle), (C.uint64_t)(startIndex), (C.uint64_t)(noOfSamples), (C.uint64_t)(fromSegmentIndex), (C.uint64_t)(toSegmentIndex), (C.uint64_t)(downSampleRatio), (C.PICO_RATIO_MODE)(downSampleRatioMode), (C.ps6000aLpDataReady), nil)
+	stat := C.wrap_ps6000aGetValuesBulkAsync((C.short)(handle), (C.uint64_t)(startIndex), (C.uint64_t)(noOfSamples), (C.uint64_t)(fromSegmentIndex), (C.uint64_t)(toSegmentIndex), (C.uint64_t)(downSampleRatio), (C.PICO_RATIO_MODE)(downSampleRatioMode), unsafe.Pointer(C.ps6000aLpDataReady), nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesBulkAsync: %s", psc.StatStr(int(stat)))
 	}
