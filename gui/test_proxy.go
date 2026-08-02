@@ -817,7 +817,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			evs := atomic.LoadUint64(&eventCount)
 			if evs%10 == 0 {
 				uptime := time.Since(startTime)
-				remaining := deadline.Sub(time.Now())
+				remaining := time.Until(deadline)
 				if remaining < 0 {
 					remaining = 0
 				}

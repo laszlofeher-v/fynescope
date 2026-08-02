@@ -2,8 +2,8 @@ package demo
 
 import (
 	"fmt"
-	"log/slog"
 	"fynescope/genericps"
+	"log/slog"
 	"time"
 )
 
@@ -572,7 +572,9 @@ func holdOff(m *genericps.HoldOffMsg) {
 	m.RspCh() <- struct{}{}
 }
 func simIsReady(handle int16) (ready int16, err error) {
-	ready = 1
+	if handle > 0 {
+		ready = 1
+	}
 	return
 }
 
@@ -612,8 +614,6 @@ func numOfStreamingValues(m *genericps.NumOfStreamingValuesMsg) {
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
-
-
 
 func pingUnit(m *genericps.PingUnitMsg) {
 	err := simPingUnit(m.Handle())
@@ -766,4 +766,3 @@ func setDemoRlcFilter(m *genericps.SetDemoRlcFilterMsg) {
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
-
