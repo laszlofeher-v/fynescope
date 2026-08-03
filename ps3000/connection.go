@@ -28,18 +28,18 @@ func getValues(m *genericps.GetValuesMsg) {
 	buffersMutex.Lock()
 	chMap := scopeBuffers[m.Handle()]
 	buffersMutex.Unlock()
-	
+
 	bufA := chMap[genericps.ChA]
 	bufB := chMap[genericps.ChB]
 	bufC := chMap[genericps.ChC]
 	bufD := chMap[genericps.ChD]
 
 	numOfSamples, overflow, err := ps3000GetValues(m.Handle(),
-		m.ReqNumOfSamples, bufA, bufB, bufC, bufD)
-		
+		uint32(m.ReqNumOfSamples), bufA, bufB, bufC, bufD)
+
 	response := m.Rsp().(*genericps.GetValuesRsp)
 	response.SetStatus(err)
-	response.NumOfSamples = numOfSamples
+	response.NumOfSamples = uint64(numOfSamples)
 	response.Overflow = overflow
 	m.RspCh() <- struct{}{}
 }
@@ -169,10 +169,11 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 }
 
 func getTimebase(m *genericps.GetTimebaseMsg) {
-	timeIntervalNanoseconds, maxSamples, err := ps3000GetTimebase(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps3000GetTimebase(m.Handle(),
+		m.TimeBase, int32(m.NumOfSamples), m.OverSample, m.SegmentIndex)
 	response := m.Rsp().(*genericps.GetTimebaseRsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -215,7 +216,7 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 	}
 	scopeBuffers[m.Handle()][m.Ch] = m.BufferIn
 	buffersMutex.Unlock()
-	
+
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
@@ -266,8 +267,10 @@ func runStreaming(m *genericps.RunStreamingMsg) {
 }
 
 func runBlock(m *genericps.RunBlockMsg) {
-	timeIndisposedMs, err := ps3000RunBlock(m.Handle(), m.NumOfPreTriggerSamples, m.NumOfPostTriggerSamples,
-		m.TimeBase, m.OverSample, m.SegmentIndex, genericps.BlockReady(m.LpBlockReadyGoPar), m.Param)
+	timeIndisposedMs, err := ps3000RunBlock(m.Handle(), int32(m.NumOfPreTriggerSamples),
+		int32(m.NumOfPostTriggerSamples),
+		uint32(m.TimeBase), m.OverSample, uint32(m.SegmentIndex),
+		genericps.BlockReady(m.LpBlockReadyGoPar), m.Param)
 	response := m.Rsp().(*genericps.RunBlockRsp)
 	response.TimeIndisposedMs = timeIndisposedMs
 	response.SetStatus(err)

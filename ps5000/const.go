@@ -20,9 +20,9 @@ import "C"
 
 const (
 	MaxChannelBuffers = C.PS5000_MAX_CHANNEL_BUFFERS
-	//	MaxDigitalPorts   = C.PS5000_MAX_DIGITAL_PORTS
+	//	MaxDigitalPorts   = C.MAX_DIGITAL_PORTS
 	MaxChannels       = C.PS5000_MAX_CHANNELS
-	ChannelInfoRanges = C.PS5000_CI_RANGES
+	ChannelInfoRanges = C.CI_RANGES
 )
 
 type NumOfChannelEnum int
@@ -78,37 +78,24 @@ const (
 type ThresholdModeId int
 
 const (
-	Level  ThresholdModeId = C.PS5000_LEVEL
-	Window ThresholdModeId = C.PS5000_WINDOW
-)
-
-type Coupling int
-
-const (
-	Ac Coupling = C.PS5000_AC
-	Dc Coupling = C.PS5000_DC
+	Level  ThresholdModeId = C.LEVEL
+	Window ThresholdModeId = C.WINDOW
 )
 
 type ThresholdDirection int
 
 const (
-	TriggerAbove           ThresholdDirection = C.PS5000_ABOVE
-	TriggerBelow           ThresholdDirection = C.PS5000_BELOW
-	TriggerRaising         ThresholdDirection = C.PS5000_RISING
-	TriggerFalling         ThresholdDirection = C.PS5000_FALLING
-	TriggerRisingOrFalling ThresholdDirection = C.PS5000_RISING_OR_FALLING
-	TriggerAboveLower      ThresholdDirection = C.PS5000_ABOVE_LOWER
-	TriggerBelowLower      ThresholdDirection = C.PS5000_BELOW_LOWER
-	TriggerRisingLower     ThresholdDirection = C.PS5000_RISING_LOWER
-	TriggerFallingLower    ThresholdDirection = C.PS5000_FALLING_LOWER
-	TriggerOutside         ThresholdDirection = C.PS5000_OUTSIDE
-	TriggerInside          ThresholdDirection = C.PS5000_INSIDE
-	TriggerEnter           ThresholdDirection = C.PS5000_ENTER
-	TriggerExit            ThresholdDirection = C.PS5000_EXIT
-	TriggerEnterOrExit     ThresholdDirection = C.PS5000_ENTER_OR_EXIT
-	TriggerPositiveRunt    ThresholdDirection = C.PS5000_POSITIVE_RUNT
-	TriggerNegativeRunt    ThresholdDirection = C.PS5000_NEGATIVE_RUNT
-	TriggerNone            ThresholdDirection = C.PS5000_NONE
+	TriggerAbove           ThresholdDirection = C.ABOVE
+	TriggerBelow           ThresholdDirection = C.BELOW
+	TriggerRaising         ThresholdDirection = C.RISING
+	TriggerFalling         ThresholdDirection = C.FALLING
+	TriggerRisingOrFalling ThresholdDirection = C.RISING_OR_FALLING
+	TriggerOutside         ThresholdDirection = C.OUTSIDE
+	TriggerInside          ThresholdDirection = C.INSIDE
+	TriggerEnter           ThresholdDirection = C.ENTER
+	TriggerExit            ThresholdDirection = C.EXIT
+	TriggerEnterOrExit     ThresholdDirection = C.ENTER_OR_EXIT
+	TriggerNone            ThresholdDirection = C.NONE
 )
 
 type PicoInfo int
@@ -163,20 +150,20 @@ const (
 type TriggerState int
 
 const (
-	CondDontCare TriggerState = C.PS5000_CONDITION_DONT_CARE
-	CondTrue     TriggerState = C.PS5000_CONDITION_TRUE
-	CondFalse    TriggerState = C.PS5000_CONDITION_FALSE
-	CondMax      TriggerState = C.PS5000_CONDITION_MAX
+	CondDontCare TriggerState = C.CONDITION_DONT_CARE
+	CondTrue     TriggerState = C.CONDITION_TRUE
+	CondFalse    TriggerState = C.CONDITION_FALSE
+	CondMax      TriggerState = C.CONDITION_MAX
 )
 
 type PulseWidthType int
 
 const (
-	PwTypeNone        PulseWidthType = C.PS5000_PW_TYPE_NONE
-	PwTypeLessThan    PulseWidthType = C.PS5000_PW_TYPE_LESS_THAN
-	PwTypeGreaterThan PulseWidthType = C.PS5000_PW_TYPE_GREATER_THAN
-	PwTypeInRange     PulseWidthType = C.PS5000_PW_TYPE_IN_RANGE
-	PwTypeOutOfRange  PulseWidthType = C.PS5000_PW_TYPE_OUT_OF_RANGE
+	PwTypeNone        PulseWidthType = C.PW_TYPE_NONE
+	PwTypeLessThan    PulseWidthType = C.PW_TYPE_LESS_THAN
+	PwTypeGreaterThan PulseWidthType = C.PW_TYPE_GREATER_THAN
+	PwTypeInRange     PulseWidthType = C.PW_TYPE_IN_RANGE
+	PwTypeOutOfRange  PulseWidthType = C.PW_TYPE_OUT_OF_RANGE
 )
 
 type EtsMode int
@@ -187,17 +174,15 @@ const (
 	EtsSlow EtsMode = C.PS5000_ETS_SLOW
 	EtsMax  EtsMode = C.PS5000_ETS_MODES_MAX
 )
-const (
-	Ps2207MaxEtsCyscles       = C.PS3207A_MAX_ETS_CYCLES
-	Ps2207MaxEtsMaxInterleave = C.PS3207A_MAX_INTERLEAVE
-)
 
 type DigitalChannel int
+
 const (
 	DchMax DigitalChannel = 0
 )
 
 type DigitalDirection int
+
 const (
 	DigitalMaxDirection DigitalDirection = 0
 )
@@ -205,34 +190,28 @@ const (
 type WaveTypeEnum int16
 
 const (
-	Sine      WaveTypeEnum = C.PS5000_SINE
-	Square    WaveTypeEnum = C.PS5000_SQUARE
-	Triangle  WaveTypeEnum = C.PS5000_TRIANGLE
-	RampUp    WaveTypeEnum = C.PS5000_RAMP_UP
-	RampDown  WaveTypeEnum = C.PS5000_RAMP_DOWN
-	SinC      WaveTypeEnum = C.PS5000_SINC
-	Gaussian  WaveTypeEnum = C.PS5000_GAUSSIAN
-	HalfSine  WaveTypeEnum = C.PS5000_HALF_SINE
-	DcVoltage WaveTypeEnum = C.PS5000_DC_VOLTAGE
+	Sine     WaveTypeEnum = C.PS5000_SINE
+	Square   WaveTypeEnum = C.PS5000_SQUARE
+	Triangle WaveTypeEnum = C.PS5000_TRIANGLE
+	RampUp   WaveTypeEnum = C.PS5000_RAMP_UP
+	RampDown WaveTypeEnum = C.PS5000_RAMP_DOWN
+	SinC     WaveTypeEnum = C.PS5000_SINC
+	Gaussian WaveTypeEnum = C.PS5000_GAUSSIAN
+	HalfSine WaveTypeEnum = C.PS5000_HALF_SINE
+	Noise    WaveTypeEnum = C.PS5000_WHITE_NOISE
 )
 
 type SweepTypeEnum C.SWEEP_TYPE
 
 const (
-	SweepUp       SweepTypeEnum = C.PS5000_UP
-	SweepDown     SweepTypeEnum = C.PS5000_DOWN
-	SweepUpDown   SweepTypeEnum = C.PS5000_UPDOWN
-	SweepDownUp   SweepTypeEnum = C.PS5000_DOWNUP
-	SweepMaxTypes SweepTypeEnum = C.PS5000_MAX_SWEEP_TYPES
+	SweepUp       SweepTypeEnum = C.UP
+	SweepDown     SweepTypeEnum = C.DOWN
+	SweepUpDown   SweepTypeEnum = C.UPDOWN
+	SweepDownUp   SweepTypeEnum = C.DOWNUP
+	SweepMaxTypes SweepTypeEnum = C.MAX_SWEEP_TYPES
 )
 
 type ExtraOperations int
-
-const (
-	EsOff      ExtraOperations = C.PS5000_ES_OFF
-	WhiteNoise ExtraOperations = C.PS5000_WHITENOISE
-	Prbs       ExtraOperations = C.PS5000_PRBS
-)
 
 const (
 	SineMaxFrequency     = C.PS5000_SINE_MAX_FREQUENCY
@@ -242,51 +221,50 @@ const (
 	RampMaxFrequency     = C.PS5000_RAMP_MAX_FREQUENCY
 	HalfSineMaxFrequency = C.PS5000_HALF_SINE_MAX_FREQUENCY
 	GaussianMaxFrequency = C.PS5000_GAUSSIAN_MAX_FREQUENCY
-	PrbsMaxFrequency     = C.PS5000_PRBS_MAX_FREQUENCY
-	PrbsMinFrequency     = C.PS5000_PRBS_MIN_FREQUENCY
 	MinFrequency         = C.PS5000_MIN_FREQUENCY
 )
 
 const (
-	MaxSweepShots              = C.MAX_SWEEPS_SHOTS
-	ShotSweepTriggerContinuous = C.PS5000_SHOT_SWEEP_TRIGGER_CONTINUOUS_RUN
+	MaxSweepShots = C.MAX_SWEEPS_SHOTS
 )
 
 type SigGenTrigType int
 
 const (
-	SigGenRising   SigGenTrigType = C.PS5000_SIGGEN_RISING
-	SigGenFalling  SigGenTrigType = C.PS5000_SIGGEN_FALLING
-	SigGenGateHigh SigGenTrigType = C.PS5000_SIGGEN_GATE_HIGH
-	SigGenGateLow  SigGenTrigType = C.PS5000_SIGGEN_GATE_LOW
+	SigGenRising   SigGenTrigType = C.SIGGEN_RISING
+	SigGenFalling  SigGenTrigType = C.SIGGEN_FALLING
+	SigGenGateHigh SigGenTrigType = C.SIGGEN_GATE_HIGH
+	SigGenGateLow  SigGenTrigType = C.SIGGEN_GATE_LOW
 )
 
 type SigGenTrigSource int
 
 const (
-	SigGenNone      SigGenTrigSource = C.PS5000_SIGGEN_NONE
-	SigGenScopeTrig SigGenTrigSource = C.PS5000_SIGGEN_SCOPE_TRIG
-	SigGenAuxIn     SigGenTrigSource = C.PS5000_SIGGEN_AUX_IN
-	SigGenExtIn     SigGenTrigSource = C.PS5000_SIGGEN_EXT_IN
-	SigGenSoftTrig  SigGenTrigSource = C.PS5000_SIGGEN_SOFT_TRIG
+	SigGenNone      SigGenTrigSource = C.SIGGEN_NONE
+	SigGenScopeTrig SigGenTrigSource = C.SIGGEN_SCOPE_TRIG
+	SigGenAuxIn     SigGenTrigSource = C.SIGGEN_AUX_IN
+	SigGenExtIn     SigGenTrigSource = C.SIGGEN_EXT_IN
+	SigGenSoftTrig  SigGenTrigSource = C.SIGGEN_SOFT_TRIG
 )
 
 type IndexMode int
 
 const (
-	Single        IndexMode = C.PS5000_SINGLE
-	Dual          IndexMode = C.PS5000_DUAL
-	Quad          IndexMode = C.PS5000_QUAD
-	MaxIndexModes IndexMode = C.PS5000_MAX_INDEX_MODES
+	Single        IndexMode = C.SINGLE
+	Dual          IndexMode = C.DUAL
+	Quad          IndexMode = C.QUAD
+	MaxIndexModes IndexMode = C.MAX_INDEX_MODES
 )
 
 type HoldOffType int
+
 const (
-	HofTime HoldOffType = 0
+	HofTime        HoldOffType = 0
 	MaxHoldOffTime HoldOffType = 1
 )
 
 type DigitalPort int
+
 const (
 	MaxDigitalPorts DigitalPort = 0
 )

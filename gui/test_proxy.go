@@ -569,6 +569,12 @@ func (scp *ScpDesc) Test() {
 		// Ensure Channels A and B are enabled and Signal Generator is ON for Bode plot sweep and signal drawing
 		scp.Settings.Channels[0].Enabled = true
 		scp.Settings.Channels[1].Enabled = true
+		if scp.psControl != nil && scp.psControl.SetChannelCh != nil {
+			c0 := scp.Settings.Channels[0]
+			c1 := scp.Settings.Channels[1]
+			scp.psControl.SetChannelCh <- &c0
+			scp.psControl.SetChannelCh <- &c1
+		}
 		scp.Settings.GenPanel.On = true
 		scp.Settings.FfGen.On = true
 		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {

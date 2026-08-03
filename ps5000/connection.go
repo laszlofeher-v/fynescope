@@ -23,14 +23,14 @@ func getValues(m *genericps.GetValuesMsg) {
 		overflow     int16
 		err          error
 	)
-	numOfSamples, overflow, err = ps5000GetValues(m.Handle(), m.StartIndex,
-		m.ReqNumOfSamples,
-		m.DownSampleRatio,
+	numOfSamples, overflow, err = ps5000GetValues(m.Handle(), uint32(m.StartIndex),
+		uint32(m.ReqNumOfSamples),
+		uint32(m.DownSampleRatio),
 		RatioMode(m.DownSampleRatioMode),
-		m.SegmentIndex)
+		uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetValuesRsp)
 	response.SetStatus(err)
-	response.NumOfSamples = numOfSamples
+	response.NumOfSamples = uint64(numOfSamples)
 	response.Overflow = overflow
 	m.RspCh() <- struct{}{}
 }
@@ -46,7 +46,7 @@ func closeUnit(m *genericps.CloseUnitMsg) {
 func setChannel(m *genericps.SetChannelMsg) {
 	var err error
 	err = ps5000SetChannel(m.Handle(), ChannelId(m.Channel),
-		m.Enabled, Coupling(m.CouplingType),
+		m.Enabled, m.CouplingType == genericps.Dc,
 		RangeEnum(m.VoltageRange), m.AnalogOffset)
 	response := m.Rsp().(*genericps.SetChannelRsp)
 	response.SetStatus(err)
@@ -78,12 +78,12 @@ func getUnitInfo(m *genericps.GetUnitInfoMsg) {
 
 func getValuesAsync(m *genericps.GetValuesAsyncMsg) {
 	var err error
-	err = ps5000GetValuesAsync(m.Handle(), m.StartIndex,
-		m.NumOfSamples,
-		m.DownSampleRatio,
+	err = ps5000GetValuesAsync(m.Handle(), uint32(m.StartIndex),
+		uint32(m.NumOfSamples),
+		uint32(m.DownSampleRatio),
 		RatioMode(m.DownSampleRatioMode),
 		DataReady(m.LpDataReady),
-		m.SegmentIndex,
+		uint16(m.SegmentIndex),
 		m.Param)
 	response := m.Rsp().(*genericps.GetValuesAsyncRsp)
 	response.SetStatus(err)
@@ -95,10 +95,12 @@ func getValuesBulk(m *genericps.GetValuesBulkMsg) {
 		err          error
 		numOfSamples uint32
 	)
-	numOfSamples, err = ps5000GetValuesBulk(m.Handle(), m.ReqNumOfSamples, m.FromSegmentIndex, m.ToSegmentIndex,
-		m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.Overflow)
+	numOfSamples, err = ps5000GetValuesBulk(m.Handle(),
+		uint32(m.ReqNumOfSamples), uint16(m.FromSegmentIndex),
+		uint16(m.ToSegmentIndex),
+		m.Overflow)
 	response := m.Rsp().(*genericps.GetValuesBulkRsp)
-	response.NumOfSamples = numOfSamples
+	response.NumOfSamples = uint64(numOfSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -134,7 +136,8 @@ func getAnalogueOffsetMsg(m *genericps.GetAnalogueOffsetMsg) {
 		err                            error
 		maximumVoltage, minimumVoltage float32
 	)
-	maximumVoltage, minimumVoltage, err = ps5000GetAnalogueOffset(m.Handle(), m.VoltageRange, Coupling(m.Coupling))
+	maximumVoltage, minimumVoltage, err = ps5000GetAnalogueOffset(m.Handle(),
+		m.VoltageRange)
 	response := m.Rsp().(*genericps.GetAnalogueOffsetRsp)
 	response.MinimumVoltage = minimumVoltage
 	response.MaximumVoltage = maximumVoltage
@@ -161,7 +164,9 @@ func getMaxDownSampleRatio(m *genericps.GetMaxDownSampleRatioMsg) {
 		err                error
 		maxDownSampleRatio uint32
 	)
-	maxDownSampleRatio, err = ps5000GetMaxDownSampleRatio(m.Handle(), m.NumOfUnaggregatedSamples, RatioMode(m.DownSampleRatioMode), m.SegmentIndex)
+	maxDownSampleRatio, err = ps5000GetMaxDownSampleRatio(m.Handle(),
+		m.NumOfUnaggregatedSamples, RatioMode(m.DownSampleRatioMode),
+		uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetMaxDownSampleRatioRsp)
 	response.MaxDownSampleRatio = maxDownSampleRatio
 	response.SetStatus(err)
@@ -179,7 +184,7 @@ func getMaxSegments(m *genericps.GetMaxSegmentsMsg) {
 func getNumberOfCaptures(m *genericps.GetNumOfCapturesMsg) {
 	numOfCaptures, err := ps5000GetNumOfCaptures(m.Handle())
 	response := m.Rsp().(*genericps.GetNumOfCapturesRsp)
-	response.NCaptures = numOfCaptures
+	response.NCaptures = uint64(numOfCaptures)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -187,7 +192,7 @@ func getNumberOfCaptures(m *genericps.GetNumOfCapturesMsg) {
 func getNumberOfProcessedCaptures(m *genericps.GetNumOfProcessedCapturesMsg) {
 	numOfCaptures, err := ps5000GetNumOfProcessedCaptures(m.Handle())
 	response := m.Rsp().(*genericps.GetNumOfProcessedCapturesRsp)
-	response.NCaptures = numOfCaptures
+	response.NCaptures = uint64(numOfCaptures)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -203,19 +208,22 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 }
 
 func getTimebase(m *genericps.GetTimebaseMsg) {
-	timeIntervalNanoseconds, maxSamples, err := ps5000GetTimebase(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps5000GetTimebase(m.Handle(),
+		uint32(m.TimeBase), int32(m.NumOfSamples), m.OverSample,
+		uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTimebaseRsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
 func getTimebase2(m *genericps.GetTimebase2Msg) {
-	timeIntervalNanoseconds, maxSamples, err := ps5000GetTimebase2(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps5000GetTimebase2(m.Handle(),
+		uint32(m.TimeBase), int32(m.NumOfSamples), m.OverSample, uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTimebase2Rsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -251,7 +259,7 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 	var (
 		err error
 	)
-	err = ps5000SetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, m.SegmentIndex, RatioMode(m.Mode))
+	err = ps5000SetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn)
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -261,7 +269,8 @@ func setDataBuffers(m *genericps.SetDataBuffersMsg) {
 	var (
 		err error
 	)
-	err = ps5000SetDataBuffers(m.Handle(), ChannelId(m.Ch), m.BufferMax, m.BufferMin, m.SegmentIndex, RatioMode(m.Mode))
+	err = ps5000SetDataBuffers(m.Handle(), ChannelId(m.Ch),
+		m.BufferMax, m.BufferMin)
 	response := m.Rsp().(*genericps.SetDataBuffersRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -271,7 +280,8 @@ func setUnscaledDataBuffers(m *genericps.SetUnscaledDataBuffersMsg) {
 	var (
 		err error
 	)
-	err = ps5000SetUnscaledDataBuffers(m.Handle(), ChannelId(m.Ch), m.BufferMax, m.BufferMin, m.SegmentIndex, RatioMode(m.Mode))
+	err = ps5000SetUnscaledDataBuffers(m.Handle(), ChannelId(m.Ch),
+		m.BufferMax, m.BufferMin)
 	response := m.Rsp().(*genericps.SetUnscaledataBuffersRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -307,8 +317,9 @@ func runStreaming(m *genericps.RunStreamingMsg) {
 		err            error
 		sampleInterval uint32
 	)
-	sampleInterval, err = ps5000RunStreaming(m.Handle(), m.ReqSampleInterval, TimeUnits(m.SampleIntervalTimeUnits), m.MaxPostTriggerSamples,
-		m.MaxPostTriggerSamples, m.AutoStop, m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.OverviewBufferSize)
+	sampleInterval, err = ps5000RunStreaming(m.Handle(), m.ReqSampleInterval,
+		TimeUnits(m.SampleIntervalTimeUnits), m.MaxPostTriggerSamples,
+		m.MaxPostTriggerSamples, m.AutoStop, m.DownSampleRatio, m.OverviewBufferSize)
 	response := m.Rsp().(*genericps.RunStreamingRsp)
 	response.SampleInterval = sampleInterval
 	response.SetStatus(err)
@@ -320,8 +331,10 @@ func runBlock(m *genericps.RunBlockMsg) {
 		err              error
 		timeIndisposedMs int32
 	)
-	timeIndisposedMs, err = ps5000RunBlock(m.Handle(), m.NumOfPreTriggerSamples, m.NumOfPostTriggerSamples,
-		m.TimeBase, m.OverSample, m.SegmentIndex, BlockReady(m.LpBlockReadyGoPar), m.Param)
+	timeIndisposedMs, err = ps5000RunBlock(m.Handle(),
+		int32(m.NumOfPreTriggerSamples), int32(m.NumOfPostTriggerSamples),
+		uint32(m.TimeBase), m.OverSample, uint16(m.SegmentIndex),
+		BlockReady(m.LpBlockReadyGoPar), m.Param)
 	response := m.Rsp().(*genericps.RunBlockRsp)
 	response.TimeIndisposedMs = timeIndisposedMs
 	response.SetStatus(err)
@@ -479,7 +492,8 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 		timeUpper, timeLower uint32
 		timeUnits            TimeUnits
 	)
-	timeUpper, timeLower, timeUnits, err = ps5000GetTriggerTimeOffset(m.Handle(), m.SegmentIndex)
+	timeUpper, timeLower, timeUnits, err = ps5000GetTriggerTimeOffset(m.Handle(),
+		uint32(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTriggerTimeOffsetRsp)
 	response.TimeLower = timeLower
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -489,7 +503,8 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 }
 
 func getTriggerTimeOffset64(m *genericps.GetTriggerTimeOffset64Msg) {
-	time, timeUnits, err := ps5000GetTriggerTimeOffset64(m.Handle(), m.SegmentIndex)
+	time, timeUnits, err := ps5000GetTriggerTimeOffset64(m.Handle(),
+		uint32(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTriggerTimeOffset64Rsp)
 	response.Time = time
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -553,14 +568,14 @@ func memorySegments(m *genericps.MemorySegmentsMsg) {
 	nMaxSamples, err := ps5000MemorySegments(m.Handle(), m.NSegments)
 	response := m.Rsp().(*genericps.MemorySegmentsRsp)
 	response.SetStatus(err)
-	response.NMaxSamples = nMaxSamples
+	response.NMaxSamples = uint64(nMaxSamples)
 	m.RspCh() <- struct{}{}
 }
 
 func numOfStreamingValues(m *genericps.NumOfStreamingValuesMsg) {
 	numOfValues, err := ps5000NoOfStreamingValues(m.Handle())
 	response := m.Rsp().(*genericps.NumOfStreamingValuesRsp)
-	response.NumOfValues = numOfValues
+	response.NumOfValues = uint64(numOfValues)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

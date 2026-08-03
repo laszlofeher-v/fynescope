@@ -62,7 +62,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	return
 }
 
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	slog.Debug("ps3000OpenUnit")
 	stat := C.ps3000_open_unit()
 	if stat <= 0 {
@@ -74,7 +74,7 @@ func openUnit(serial string) (handle int16, err error) {
 	return
 }
 
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	err = fmt.Errorf("openUnitAsync not supported on ps3000")
 	return
 }
@@ -95,7 +95,7 @@ func ps3000GetUnitInfo(handle int16, info PicoInfo) (infoString string, err erro
 	var cstrPtr *C.int8_t
 	cstrPtr = (*C.int8_t)(C.malloc(C.sizeof_int8_t * listLen))
 	defer C.free(unsafe.Pointer(cstrPtr))
-	
+
 	slog.Debug("ps3000GetUnitInfo", "handle", handle, "info", info)
 	stat := C.ps3000_get_unit_info((C.short)(handle), cstrPtr, (C.short)(listLen), (C.short)(info))
 	if stat == 0 {
@@ -223,14 +223,14 @@ func ps3000RunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples 
 	param interface{}) (timeIndisposedMs int32, err error) {
 	nSamples := noOfPreTriggerSamples + noOfPostTriggerSamples
 	slog.Debug("ps3000RunBlock", "handle", handle, "timeBase", timeBase)
-	
+
 	stat := C.ps3000_run_block((C.short)(handle), (C.int)(nSamples),
 		(C.short)(timeBase), (C.short)(overSample), (*C.int)(&timeIndisposedMs))
 	if stat == 0 {
 		err = fmt.Errorf("RunBlock failed")
 		return
 	}
-	
+
 	// ps3000 doesn't support a callback for RunBlock, so we start a goroutine to poll.
 	go func() {
 		for {
@@ -262,7 +262,7 @@ func ps3000Stop(handle int16) (err error) {
 
 func ps3000GetValues(handle int16, reqNoOfSamples uint32, bufferA, bufferB, bufferC, bufferD []int16) (noOfSamples uint32, overflow int16, err error) {
 	slog.Debug("ps3000GetValues", "handle", handle, "reqNoOfSamples", reqNoOfSamples)
-	
+
 	pA := (*C.short)(nil)
 	if len(bufferA) > 0 {
 		pA = (*C.short)(&bufferA[0])
@@ -279,7 +279,7 @@ func ps3000GetValues(handle int16, reqNoOfSamples uint32, bufferA, bufferB, buff
 	if len(bufferD) > 0 {
 		pD = (*C.short)(&bufferD[0])
 	}
-	
+
 	stat := C.ps3000_get_values((C.short)(handle), pA, pB, pC, pD, (*C.short)(&overflow), (C.int)(reqNoOfSamples))
 	if stat == 0 {
 		err = fmt.Errorf("GetValues failed")
