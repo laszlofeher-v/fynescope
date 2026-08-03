@@ -1655,16 +1655,19 @@ func (scp *ScpDesc) startFfSweep() {
 	scp.ffLocker.Unlock()
 
 	go func() {
+		completed := false
 		defer func() {
-			// Automatically stop the run block mode when the sweep completes and restore ranges
-			fyne.Do(func() {
-				scp.StopRunning()
-				for ch, rEnum := range scp.ffOriginalRanges {
-					if opt, ok := rangeEnumToString[rEnum]; ok {
-						scp.changeChannelRange(ch, opt)
+			if completed {
+				// Automatically stop the run block mode when the sweep completes and restore ranges
+				fyne.Do(func() {
+					scp.StopRunning()
+					for ch, rEnum := range scp.ffOriginalRanges {
+						if opt, ok := rangeEnumToString[rEnum]; ok {
+							scp.changeChannelRange(ch, opt)
+						}
 					}
-				}
-			})
+				})
+			}
 		}()
 		slog.Debug("startFfSweep", "points", len(freqs), "ppd", pointsPerDecade,
 			"min", scp.Settings.Ff.MinFreq, "max", scp.Settings.Ff.MaxFreq,
@@ -1731,6 +1734,7 @@ func (scp *ScpDesc) startFfSweep() {
 			}
 		}
 
+		completed = true
 		slog.Debug("startFfSweep: sweep complete")
 	}()
 }

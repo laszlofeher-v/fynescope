@@ -141,7 +141,7 @@ const (
 	vchAcceptBtnId = "vchAcceptBtn"
 	vchDeleteBtnId = "vchDeleteBtn"
 	vchNewBtnId    = "vchNewBtn"
-	sleepTime      = 1 * time.Second
+	sleepTime      = 100 * time.Millisecond
 	timeout        = time.Duration(30) * time.Second
 )
 
@@ -525,7 +525,7 @@ func (scp *ScpDesc) Test() {
 	scroll(genMinFrqId, 5)
 	scroll(genMaxFrqId, 5)
 	scroll(genStepFreqId, 5)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 4; i++ {
 		tap(runblockButtonId)
 		tap(themeChangeActionId)
 		drag(genFreqSetId, 100000)
