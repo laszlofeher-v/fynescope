@@ -15,7 +15,7 @@ const (
 )
 
 // TODO this function is for 1 GS/s maximum sampling rate models only
-func timeBase1G(timeIntervalNanoseconds uint32) (timeBase uint32) {
+func timeBase1G(timeIntervalNanoseconds uint64) (timeBase uint64) {
 	switch {
 	case timeIntervalNanoseconds == 0: //TODO this should be an error
 		timeBase = 0
@@ -27,12 +27,12 @@ func timeBase1G(timeIntervalNanoseconds uint32) (timeBase uint32) {
 		timeBase = 2
 	default:
 		tb := float64(timeIntervalNanoseconds)*float64(125)/float64(1000) + 2
-		timeBase = uint32(math.Round(tb))
+		timeBase = uint64(math.Round(tb))
 	}
 	return
 }
 
-func timeInterval1G(timeBase uint32) (timeIntervalNanoseconds uint32) {
+func timeInterval1G(timeBase uint64) (timeIntervalNanoseconds uint64) {
 	switch {
 	case timeBase == 0:
 		timeIntervalNanoseconds = 1
@@ -46,7 +46,7 @@ func timeInterval1G(timeBase uint32) (timeIntervalNanoseconds uint32) {
 	return
 }
 
-func timeBase500M(timeIntervalNanoseconds uint32) (timeBase uint32) {
+func timeBase500M(timeIntervalNanoseconds uint64) (timeBase uint64) {
 	switch {
 	case timeIntervalNanoseconds == 0:
 		timeBase = 0
@@ -58,12 +58,12 @@ func timeBase500M(timeIntervalNanoseconds uint32) (timeBase uint32) {
 		timeBase = 2
 	default:
 		tb := float64(timeIntervalNanoseconds)*float64(625)/float64(10000) + 2
-		timeBase = uint32(math.Round(tb))
+		timeBase = uint64(math.Round(tb))
 	}
 	return
 }
 
-func timeInterval500M(timeBase uint32) (timeIntervalNanoseconds uint32) {
+func timeInterval500M(timeBase uint64) (timeIntervalNanoseconds uint64) {
 	switch {
 	case timeBase == 0:
 		timeIntervalNanoseconds = 2
@@ -77,7 +77,7 @@ func timeInterval500M(timeBase uint32) (timeIntervalNanoseconds uint32) {
 	return
 }
 
-func timeBase200M(timeIntervalNanoseconds uint32) (timeBase uint32) {
+func timeBase200M(timeIntervalNanoseconds uint64) (timeBase uint64) {
 	switch {
 	case timeIntervalNanoseconds == 0:
 		timeBase = 0
@@ -89,12 +89,12 @@ func timeBase200M(timeIntervalNanoseconds uint32) (timeBase uint32) {
 		timeBase = 2
 	default:
 		tb := float64(timeIntervalNanoseconds)*float64(250)/float64(10000) + 2
-		timeBase = uint32(math.Round(tb))
+		timeBase = uint64(math.Round(tb))
 	}
 	return
 }
 
-func timeInterval200M(timeBase uint32) (timeIntervalNanoseconds uint32) {
+func timeInterval200M(timeBase uint64) (timeIntervalNanoseconds uint64) {
 	switch {
 	case timeBase == 0:
 		timeIntervalNanoseconds = 5
@@ -108,7 +108,7 @@ func timeInterval200M(timeBase uint32) (timeIntervalNanoseconds uint32) {
 	return
 }
 
-func timeBase100M(timeIntervalNanoseconds uint32) (timeBase uint32) {
+func timeBase100M(timeIntervalNanoseconds uint64) (timeBase uint64) {
 	switch {
 	case timeIntervalNanoseconds == 0:
 		timeBase = 0
@@ -120,7 +120,7 @@ func timeBase100M(timeIntervalNanoseconds uint32) (timeBase uint32) {
 		timeBase = 2
 	default:
 		tb := float64(timeIntervalNanoseconds)*float64(125)/float64(10000) + 2
-		timeBase = uint32(math.Round(tb))
+		timeBase = uint64(math.Round(tb))
 	}
 	return
 }
@@ -139,7 +139,7 @@ func timeInterval100M(timeBase uint32) (timeIntervalNanoseconds uint32) {
 	return
 }
 
-func (psControl *PscDesc) getTimeBase(sampleCount int32) (maxSamples int32, timeIntervalNanoseconds float32, err error) {
+func (psControl *PscDesc) getTimeBase(sampleCount uint64) (maxSamples uint64, timeIntervalNanoseconds float64, err error) {
 	initialTimeBase := psControl.timeBase
 	for psControl.timeBase < maxTimeBase {
 		timeIntervalNanoseconds, maxSamples, err = psControl.Con.GetTimebase2(psControl.timeBase, sampleCount, psControl.overSample, 0)

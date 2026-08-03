@@ -197,16 +197,16 @@ type (
 	}
 	GetValuesBulkMsg struct {
 		MsgBase
-		ReqNumOfSamples     uint32
-		FromSegmentIndex    uint32
-		ToSegmentIndex      uint32
-		DownSampleRatio     uint32
+		ReqNumOfSamples     uint64
+		FromSegmentIndex    uint64
+		ToSegmentIndex      uint64
+		DownSampleRatio     uint64
 		DownSampleRatioMode RatioMode
 		Overflow            []int16
 	}
 	GetValuesBulkRsp struct {
 		RespBase
-		NumOfSamples uint32
+		NumOfSamples uint64
 	}
 	GetValuesOverlappedMsg struct {
 		MsgBase
@@ -280,7 +280,7 @@ type (
 	}
 	GetNumOfCapturesRsp struct {
 		RespBase
-		NCaptures uint32
+		NCaptures uint64
 	}
 
 	GetNumOfProcessedCapturesMsg struct {
@@ -288,7 +288,7 @@ type (
 	}
 	GetNumOfProcessedCapturesRsp struct {
 		RespBase
-		NCaptures uint32
+		NCaptures uint64
 	}
 
 	GetStreamingLatestValuesMsg struct {
@@ -303,27 +303,27 @@ type (
 	GetTimebaseMsg struct {
 		MsgBase
 		TimeBase     uint32
-		NumOfSamples int32
+		NumOfSamples uint64
 		OverSample   int16
 		SegmentIndex uint32
 	}
 	GetTimebaseRsp struct {
 		RespBase
-		TimeIntervalNanoseconds int32
-		MaxSamples              int32
+		TimeIntervalNanoseconds float64
+		MaxSamples              uint64
 	}
 
 	GetTimebase2Msg struct {
 		MsgBase
-		TimeBase     uint32
-		NumOfSamples int32
+		TimeBase     uint64
+		NumOfSamples uint64
 		OverSample   int16
-		SegmentIndex uint32
+		SegmentIndex uint64
 	}
 	GetTimebase2Rsp struct {
 		RespBase
-		TimeIntervalNanoseconds float32
-		MaxSamples              int32
+		TimeIntervalNanoseconds float64
+		MaxSamples              uint64
 	}
 
 	MaximumValueMsg struct {
@@ -359,7 +359,7 @@ type (
 		MsgBase
 		Ch           ChannelId
 		BufferIn     []int16
-		SegmentIndex uint32
+		SegmentIndex uint64
 		Mode         RatioMode
 	}
 	SetDataBufferRsp struct {
@@ -434,11 +434,11 @@ type (
 
 	RunBlockMsg struct {
 		MsgBase
-		NumOfPreTriggerSamples  int32
-		NumOfPostTriggerSamples int32
-		TimeBase                uint32
+		NumOfPreTriggerSamples  uint64
+		NumOfPostTriggerSamples uint64
+		TimeBase                uint64
 		OverSample              int16
-		SegmentIndex            uint32
+		SegmentIndex            uint64
 		LpBlockReadyGoPar       BlockReady
 		Param                   any
 	}
@@ -600,7 +600,7 @@ type (
 
 	GetTriggerTimeOffsetMsg struct {
 		MsgBase
-		SegmentIndex uint32
+		SegmentIndex uint64
 	}
 	GetTriggerTimeOffsetRsp struct {
 		RespBase
@@ -669,7 +669,7 @@ type (
 	}
 	MemorySegmentsRsp struct {
 		RespBase
-		NMaxSamples int64
+		NMaxSamples uint64
 	}
 
 	NumOfStreamingValuesMsg struct {
@@ -972,7 +972,7 @@ func (c Connection) GetMaxSegments() (maxSegments uint32, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetNumOfCaptures() (nCaptures uint32, err error) {
+func (c Connection) GetNumOfCaptures() (nCaptures uint64, err error) {
 	msg := &GetNumOfCapturesMsg{}
 	msg.rsp = &GetNumOfCapturesRsp{}
 	c.Send(msg)
@@ -981,7 +981,7 @@ func (c Connection) GetNumOfCaptures() (nCaptures uint32, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetNumOfProcessedCaptures() (nCaptures uint32, err error) {
+func (c Connection) GetNumOfProcessedCaptures() (nCaptures uint64, err error) {
 	msg := &GetNumOfProcessedCapturesMsg{}
 	msg.rsp = &GetNumOfProcessedCapturesRsp{}
 	c.Send(msg)
@@ -998,7 +998,7 @@ func (c Connection) GetStreamingLatestValues(lpStreamingReadyGoPar StreamingRead
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetTimebase(timeBase uint32, numOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
+func (c Connection) GetTimebase(timeBase uint32, numOfSamples uint64, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float64, maxSamples uint64, err error) {
 	msg := &GetTimebaseMsg{TimeBase: timeBase, NumOfSamples: numOfSamples, OverSample: overSample, SegmentIndex: segmentIndex}
 	msg.rsp = &GetTimebaseRsp{}
 	c.Send(msg)
@@ -1008,7 +1008,10 @@ func (c Connection) GetTimebase(timeBase uint32, numOfSamples int32, overSample 
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetTimebase2(timeBase uint32, numOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
+func (c Connection) GetTimebase2(timeBase uint64, numOfSamples uint64,
+	overSample int16, segmentIndex uint64) (timeIntervalNanoseconds float64,
+	maxSamples uint64, err error) {
+
 	msg := &GetTimebase2Msg{TimeBase: timeBase, NumOfSamples: numOfSamples, OverSample: overSample, SegmentIndex: segmentIndex}
 	msg.rsp = &GetTimebase2Rsp{}
 	c.Send(msg)
@@ -1019,7 +1022,7 @@ func (c Connection) GetTimebase2(timeBase uint32, numOfSamples int32, overSample
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetTriggerTimeOffset(segmentIndex uint32) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
+func (c Connection) GetTriggerTimeOffset(segmentIndex uint64) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
 	msg := &GetTriggerTimeOffsetMsg{SegmentIndex: segmentIndex}
 	msg.rsp = &GetTriggerTimeOffsetRsp{}
 	c.Send(msg)
@@ -1075,8 +1078,8 @@ func (c Connection) GetValuesAsync(startIndex, numOfSamples, downSampleRatio uin
 	err = rsp.Status()
 	return
 }
-func (c Connection) GetValuesBulk(reqNumOfSamples uint32, fromSegmentIndex, toSegmentIndex, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, overflow []int16) (numOfSamples uint32, err error) {
+func (c Connection) GetValuesBulk(reqNumOfSamples, fromSegmentIndex, toSegmentIndex, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, overflow []int16) (numOfSamples uint64, err error) {
 	msg := &GetValuesBulkMsg{ReqNumOfSamples: reqNumOfSamples, FromSegmentIndex: fromSegmentIndex,
 		ToSegmentIndex: toSegmentIndex, DownSampleRatio: downSampleRatio, DownSampleRatioMode: downSampleRatioMode,
 		Overflow: overflow}
@@ -1157,7 +1160,7 @@ func (c Connection) MaximumValue() (value int32, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) MemorySegments(nSegments uint64) (nMaxSamples int64, err error) {
+func (c Connection) MemorySegments(nSegments uint64) (nMaxSamples uint64, err error) {
 	msg := &MemorySegmentsMsg{NSegments: nSegments}
 	msg.rsp = &MemorySegmentsRsp{}
 	c.Send(msg)
@@ -1193,8 +1196,8 @@ func (c Connection) QueryOutputEdgeDetect() (state int16, err error) {
 	err = rsp.Status()
 	return
 }
-func (c Connection) RunBlock(numOfPreTriggerSamples, numOfPostTriggerSamples int32,
-	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
+func (c Connection) RunBlock(numOfPreTriggerSamples, numOfPostTriggerSamples uint64,
+	timeBase uint64, overSample int16, segmentIndex uint64, lpBlockReadyGoPar BlockReady,
 	param any) (timeIndisposedMs int32, err error) {
 	msg := &RunBlockMsg{NumOfPreTriggerSamples: numOfPreTriggerSamples, NumOfPostTriggerSamples: numOfPostTriggerSamples,
 		TimeBase: timeBase, OverSample: overSample, SegmentIndex: segmentIndex, LpBlockReadyGoPar: lpBlockReadyGoPar, Param: param}
@@ -1231,7 +1234,7 @@ func (c Connection) SetChannel(channel ChannelId, enabled bool, couplingType Cou
 	err = rsp.Status()
 	return
 }
-func (c Connection) SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uint32,
+func (c Connection) SetDataBuffer(ch ChannelId, bufferIn []int16, segmentIndex uint64,
 	mode RatioMode) (err error) {
 	msg := &SetDataBufferMsg{Ch: ch, BufferIn: bufferIn, SegmentIndex: segmentIndex, Mode: mode}
 	msg.rsp = &SetDataBufferRsp{}

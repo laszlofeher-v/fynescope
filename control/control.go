@@ -168,10 +168,10 @@ type (
 		SamplingTimeInterval        float64
 		lastTriggerSamplingInterval float64
 		initialTriggerSet           bool
-		SampleCountRequired         int32
-		NPre, NPro                  int32
+		SampleCountRequired         uint64
+		NPre, NPro                  uint64
 		XRoundError                 float64
-		timeBase                    uint32
+		timeBase                    uint64
 		ipmode                      settings.InterpolationType
 		numOfSamplesAcquired        uint64
 		downSampleRatioMode         genericps.RatioMode
@@ -179,7 +179,7 @@ type (
 		maxValue                    int32
 		maxScreenTime               float64
 		scopeScreenWidth            float64
-		timeBaseDec                 uint32
+		timeBaseDec                 uint64
 		minValue                    int32
 		RefreshCallback             func(buffers [][]int16, startTimeOffset int64,
 			xRoundError, samplingTimeInterval float64)
@@ -341,7 +341,7 @@ func (psControl *PscDesc) SetMaxScreenTime(t float64) {
 	}
 }
 
-func (psControl *PscDesc) SuggestSampleCount(sc int32) {
+func (psControl *PscDesc) SuggestSampleCount(sc uint64) {
 	if psControl.SampleCountRequired != sc {
 		psControl.SampleCountRequired = sc
 		psControl.requestRestart()

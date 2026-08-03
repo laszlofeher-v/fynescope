@@ -103,10 +103,11 @@ func getValuesBulk(m *genericps.GetValuesBulkMsg) {
 		err          error
 		numOfSamples uint32
 	)
-	numOfSamples, err = simGetValuesBulk(m.Handle(), m.ReqNumOfSamples, m.FromSegmentIndex, m.ToSegmentIndex,
-		m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.Overflow)
+	numOfSamples, err = simGetValuesBulk(m.Handle(), uint32(m.ReqNumOfSamples),
+		uint32(m.FromSegmentIndex), uint32(m.ToSegmentIndex),
+		uint32(m.DownSampleRatio), RatioMode(m.DownSampleRatioMode), m.Overflow)
 	response := m.Rsp().(*genericps.GetValuesBulkRsp)
-	response.NumOfSamples = numOfSamples
+	response.NumOfSamples = uint64(numOfSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -188,7 +189,7 @@ func getMaxSegments(m *genericps.GetMaxSegmentsMsg) {
 func getNumberOfCaptures(m *genericps.GetNumOfCapturesMsg) {
 	numOfCaptures, err := simGetNoOfCaptures(m.Handle())
 	response := m.Rsp().(*genericps.GetNumOfCapturesRsp)
-	response.NCaptures = numOfCaptures
+	response.NCaptures = uint64(numOfCaptures)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -197,7 +198,7 @@ func getNumberOfProcessedCaptures(m *genericps.GetNumOfProcessedCapturesMsg) {
 	numOfCaptures, err := simGetNoOfProcessedCaptures(m.Handle())
 
 	response := m.Rsp().(*genericps.GetNumOfProcessedCapturesRsp)
-	response.NCaptures = numOfCaptures
+	response.NCaptures = uint64(numOfCaptures)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -214,21 +215,23 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 }
 
 func getTimebase(m *genericps.GetTimebaseMsg) {
-	timeIntervalNanoseconds, maxSamples, err := simGetTimebase(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := simGetTimebase(m.Handle(),
+		uint32(m.TimeBase), int32(m.NumOfSamples), m.OverSample, m.SegmentIndex)
 
 	response := m.Rsp().(*genericps.GetTimebaseRsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
 func getTimebase2(m *genericps.GetTimebase2Msg) {
-	timeIntervalNanoseconds, maxSamples, err := simGetTimebase2(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := simGetTimebase2(m.Handle(),
+		uint32(m.TimeBase), uint32(m.NumOfSamples), m.OverSample, uint32(m.SegmentIndex))
 
 	response := m.Rsp().(*genericps.GetTimebase2Rsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -267,7 +270,7 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 	var (
 		err error
 	)
-	err = simSetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, m.SegmentIndex, RatioMode(m.Mode))
+	err = simSetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, uint32(m.SegmentIndex), RatioMode(m.Mode))
 
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(err)
@@ -344,8 +347,9 @@ func runBlock(m *genericps.RunBlockMsg) {
 		err              error
 		timeIndisposedMs int32
 	)
-	timeIndisposedMs, err = simRunBlock(m.Handle(), m.NumOfPreTriggerSamples, m.NumOfPostTriggerSamples,
-		m.TimeBase, m.OverSample, m.SegmentIndex, BlockReady(m.LpBlockReadyGoPar), m.Param)
+	timeIndisposedMs, err = simRunBlock(m.Handle(), int32(m.NumOfPreTriggerSamples),
+		int32(m.NumOfPostTriggerSamples),
+		uint32(m.TimeBase), m.OverSample, uint32(m.SegmentIndex), BlockReady(m.LpBlockReadyGoPar), m.Param)
 
 	response := m.Rsp().(*genericps.RunBlockRsp)
 	response.TimeIndisposedMs = timeIndisposedMs
@@ -514,7 +518,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 		timeUpper, timeLower uint32
 		timeUnits            TimeUnits
 	)
-	timeUpper, timeLower, timeUnits, err = simGetTriggerTimeOffset(m.Handle(), m.SegmentIndex)
+	timeUpper, timeLower, timeUnits, err = simGetTriggerTimeOffset(m.Handle(), uint32(m.SegmentIndex))
 
 	response := m.Rsp().(*genericps.GetTriggerTimeOffsetRsp)
 	response.TimeLower = timeLower

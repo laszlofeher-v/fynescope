@@ -49,7 +49,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 
 		psControl.refreshTime = time.Now()
-		psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth))
+		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
 		slog.Debug("prepare", "psControl.scopeScreenWidth", psControl.scopeScreenWidth)
 
 		sampleCount, err := psControl.memorySegments(uint64(1))
@@ -57,8 +57,8 @@ func etsBlockMode(psControl *PscDesc) state {
 			slog.Error("ETS prepare: memorySegments failed", "error", err)
 			return err
 		}
-		if sampleCount < int64(psControl.SampleCountRequired) {
-			psControl.SampleCountRequired = int32(sampleCount)
+		if sampleCount < psControl.SampleCountRequired {
+			psControl.SampleCountRequired = sampleCount
 		}
 		etsDx := psControl.scopeScreenWidth / (psControl.maxScreenTime * 1e15)
 		slog.Debug("draw", "etsDx", etsDx)
@@ -82,7 +82,7 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		// Calculate valid timeBase for RunBlock
 		psControl.overSample = 1
-		tbInput := uint32(float64(psControl.maxScreenTime*1e9) / float64(psControl.SampleCountRequired))
+		tbInput := uint64(float64(psControl.maxScreenTime*1e9) / float64(psControl.SampleCountRequired))
 		switch psControl.MaxSamplingRate {
 		case MaxSampling100M:
 			psControl.timeBase = timeBase100M(tbInput)
@@ -124,20 +124,18 @@ func etsBlockMode(psControl *PscDesc) state {
 			return err
 		}
 
-		rawSampleCount := math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval)
+		rawSampleCount := uint64(math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval))
 
 		const maxEtsSamples = 250000
 		if rawSampleCount > maxEtsSamples {
 			slog.Debug("ETS sample count clamped to safe limit", "original", rawSampleCount, "max", maxEtsSamples)
 			rawSampleCount = maxEtsSamples
 		}
-		if rawSampleCount > float64(sampleCount) {
+		if rawSampleCount > sampleCount {
 			slog.Debug("ETS sample count clamped to memory segment limit", "original", rawSampleCount, "max", sampleCount)
-			rawSampleCount = float64(sampleCount)
+			rawSampleCount = sampleCount
 		}
-
-		psControl.SampleCountRequired = int32(rawSampleCount)
-
+		psControl.SampleCountRequired = rawSampleCount
 		if psControl.SampleCountRequired <= 0 {
 			err = fmt.Errorf("invalid sample count: %d (TimeInterval=%g, maxScreenTime=%g)",
 				psControl.SampleCountRequired, psControl.SamplingTimeInterval, psControl.maxScreenTime)
@@ -152,7 +150,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		// here we need the npre and npost values
 		// and have to modify triggerTimeOffset
 		// etscallback also needs triggerTimeOffset
-		psControl.NPre = int32(math.Round(psControl.triggerSetting.XOffset / psControl.SamplingTimeInterval))
+		psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset / psControl.SamplingTimeInterval))
 		psControl.NPro = psControl.SampleCountRequired - psControl.NPre
 		if psControl.NPro < 0 {
 			psControl.NPro = 0

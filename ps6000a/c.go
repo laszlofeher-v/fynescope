@@ -2,8 +2,6 @@
 
 package ps6000a
 
-// #cgo CFLAGS: -g -Wall -I/opt/picoscope/include/libps6000a
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps6000a
 // #include <stdlib.h>
 // #include "/opt/picoscope/include/libps6000a/PicoStatus.h"
 // #include "/opt/picoscope/include/libps6000a/ps6000aApi.h"
@@ -12,7 +10,7 @@ package ps6000a
 int ps6000aLpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);
 int ps6000aLpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter);
-int ps6000aLpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
+int lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t overflow, uint32_t triggerAt, int16_t triggered,
                 int16_t autoStop, void * pParameter);
 
@@ -213,13 +211,13 @@ func ps6000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 func ps6000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint64,
 	downSampleRatioMode RatioMode, segmentIndex uint64) (noOfSamples uint64, overflow int16, err error) {
 	slog.Debug("ps6000aGetValues", "handle", handle, "startIndex", startIndex, "reqNoOfSamples", reqNoOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "segmentIndex", segmentIndex)
-	stat := C.ps6000aGetValues((C.short)(handle),
+	stat := C.ps6000aGetValues((C.int16_t)(handle),
 		(C.uint64_t)(startIndex),
 		(*C.uint64_t)(&reqNoOfSamples),
 		(C.uint64_t)(downSampleRatio),
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
 		(C.uint64_t)(segmentIndex),
-		(*C.short)(&overflow))
+		(*C.int16_t)(&overflow))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValues:  %s", psc.StatStr(int(stat)))
 	}
@@ -227,49 +225,53 @@ func ps6000aGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio 
 	return
 }
 
-func ps6000aGetValuesBulk(handle int16, reqNoOfSamples uint32, fromSegmentIndex, toSegmentIndex, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, overflow []int16) (noSamples uint32, err error) {
-	slog.Debug("ps6000aGetValuesBulk", "handle", handle, "reqNoOfSamples", reqNoOfSamples, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "overflow", overflow)
-	stat := C.ps6000aGetValuesBulk((C.short)(handle),
-		(*C.uint)(&reqNoOfSamples),
-		(C.uint)(fromSegmentIndex),
-		(C.uint)(toSegmentIndex),
-		(C.uint)(downSampleRatio),
+func ps6000aGetValuesBulk(handle int16, noOfSamples, fromSegmentIndex, toSegmentIndex, downSampleRatio uint64,
+	downSampleRatioMode RatioMode, overflow []int16) (noSamples uint64, err error) {
+	slog.Debug("ps6000aGetValuesBulk", "handle", handle, "noOfSamples", noOfSamples, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "overflow", overflow)
+	stat := C.ps6000aGetValuesBulk((C.int16_t)(handle),
+		(C.uint64_t)(0), // startIndex
+		(*C.uint64_t)(&noOfSamples),
+		(C.uint64_t)(fromSegmentIndex),
+		(C.uint64_t)(toSegmentIndex),
+		(C.uint64_t)(downSampleRatio),
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
-		(*C.short)(&overflow[0]))
+		(*C.int16_t)(&overflow[0]))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesBulk:  %s", psc.StatStr(int(stat)))
 	}
-	noSamples = reqNoOfSamples
 	return
 }
 
 func ps6000aGetValuesOverlapped(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, segmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
 	slog.Debug("ps6000aGetValuesOverlapped", "handle", handle, "startIndex", startIndex, "reqNoOfSamples", reqNoOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "segmentIndex", segmentIndex, "overflow", overflow)
-	stat := C.ps6000aGetValuesOverlapped((C.short)(handle),
-		(C.uint)(startIndex),
-		(*C.uint)(&reqNoOfSamples),
-		(C.uint)(downSampleRatio),
+	reqNoOfSamples64 := C.uint64_t(reqNoOfSamples)
+	stat := C.ps6000aGetValuesOverlapped((C.int16_t)(handle),
+		(C.uint64_t)(startIndex),
+		(*C.uint64_t)(&reqNoOfSamples64),
+		(C.uint64_t)(downSampleRatio),
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
-		(C.uint)(segmentIndex),
-		(*C.short)(&overflow[0]))
+		(C.uint64_t)(segmentIndex), // fromSegmentIndex
+		(C.uint64_t)(segmentIndex), // toSegmentIndex
+		(*C.int16_t)(&overflow[0]))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesOverlapped:  %s", psc.StatStr(int(stat)))
 	}
-	noSamples = reqNoOfSamples
+	noSamples = uint32(reqNoOfSamples64)
 	return
 }
 
-func ps6000aGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
+func ps6000aGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples,
+	downSampleRatio uint32, downSampleRatioMode RatioMode, fromSegmentIndex,
+	toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
 	slog.Debug("ps6000aGetValuesOverlappedBulk", "handle", handle, "startIndex", startIndex, "reqNoOfSamples", reqNoOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex, "overflow", overflow)
-	return fmt.Errorf("Not supported on ps6000a")
+	err = fmt.Errorf("Not supported on ps6000a")
+	return
 }
 
 func ps6000aGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error) {
-	return fmt.Errorf("Not supported on ps6000a")
-
+	err = fmt.Errorf("Not supported on ps6000a")
+	return
 }
 
 func ps6000aGetChannelInformation(handle int16, info int16, probe int32, ranges []int32, channels ChannelId) (lengthOfRanges int32, err error) {
@@ -286,18 +288,18 @@ func ps6000aGetMaxSegments(handle int16) (maxSegments uint32, err error) {
 
 // ps6000aChangePowerSource
 // ps6000aCurrentPowerSource
-func ps6000aGetNumOfCaptures(handle int16) (nCaptures uint32, err error) {
+func ps6000aGetNumOfCaptures(handle int16) (nCaptures uint64, err error) {
 	slog.Debug("ps6000aGetNoOfCaptures", "handle", handle)
-	stat := C.ps6000aGetNoOfCaptures((C.short)(handle), (*C.uint)(&nCaptures))
+	stat := C.ps6000aGetNoOfCaptures((C.short)(handle), (*C.uint64_t)(&nCaptures))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetNoOfCaptures:  %s", psc.StatStr(int(stat)))
 	}
 	return
 }
 
-func ps6000aGetNumOfProcessedCaptures(handle int16) (nCaptures uint32, err error) {
+func ps6000aGetNumOfProcessedCaptures(handle int16) (nCaptures uint64, err error) {
 	slog.Debug("ps6000aGetNoOfProcessedCaptures", "handle", handle)
-	stat := C.ps6000aGetNoOfProcessedCaptures((C.short)(handle), (*C.uint)(&nCaptures))
+	stat := C.ps6000aGetNoOfProcessedCaptures((C.short)(handle), (*C.uint64_t)(&nCaptures))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetNoOfProcessedCaptures:  %s", psc.StatStr(int(stat)))
 	}
@@ -321,11 +323,13 @@ func ps6000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar Streami
 
 // ps6000aCheckForUpdate
 // ps6000aStartFirmwareUpdate
-func ps6000aGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
-	slog.Debug("ps6000aGetTimebase", "handle", handle, "timeBase", timeBase, "noOfSamples", noOfSamples, "overSample", overSample, "segmentIndex", segmentIndex)
-	stat := C.ps6000aGetTimebase((C.short)(handle), (C.uint)(timeBase), (C.int)(noOfSamples),
-		(*C.int)(&timeIntervalNanoseconds), (C.short)(overSample),
-		(*C.int)(&maxSamples), (C.uint)(segmentIndex))
+func ps6000aGetTimebase(handle int16, timeBase uint32, noOfSamples uint64,
+	segmentIndex uint32) (timeIntervalNanoseconds float64, maxSamples uint64, err error) {
+	slog.Debug("ps6000aGetTimebase", "handle", handle, "timeBase", timeBase,
+		"noOfSamples", noOfSamples, "segmentIndex", segmentIndex)
+	stat := C.ps6000aGetTimebase((C.short)(handle), (C.uint32_t)(timeBase), (C.uint64_t)(noOfSamples),
+		(*C.double)(&timeIntervalNanoseconds),
+		(*C.uint64_t)(&maxSamples), (C.uint64_t)(segmentIndex))
 	if stat != C.PICO_OK {
 		slog.Error("GetTimebase", "noOfSamples", noOfSamples, "stat", psc.StatStr(int(stat)))
 		err = fmt.Errorf("GetTimebase:  %s", psc.StatStr(int(stat)))
@@ -333,8 +337,8 @@ func ps6000aGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSa
 	return
 }
 
-func ps6000aGetTimebase2(handle int16, timeBase uint32, numOfSamples int32,
-	overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
+func ps6000aGetTimebase2(handle int16, timeBase uint64, numOfSamples uint64,
+	overSample int16, segmentIndex uint64) (timeIntervalNanoseconds float64, maxSamples uint64, err error) {
 	return 0, 0, fmt.Errorf("GetTimebase2 not supported on ps6000a")
 }
 
@@ -360,11 +364,10 @@ func ps6000aMaximumValue(handle int16) (value int32, err error) {
 
 func ps6000aMinimumValue(handle int16) (value int32, err error) {
 	slog.Debug("ps6000aMinimumValue", "handle", handle)
-	var val int16
 	var minValue, maxValue int16
 	stat := C.ps6000aGetAdcLimits((C.short)(handle), C.PICO_DR_8BIT, (*C.short)(&minValue), (*C.short)(&maxValue))
 	if stat != C.PICO_OK {
-		return -32767, nil
+		return -32767, fmt.Errorf("%s", psc.StatStr(int(stat)))
 	}
 	return int32(minValue), nil
 }
@@ -381,15 +384,16 @@ func ps6000aSetSimpleTrigger(handle int16, enable bool, source ChannelId, thresh
 	return
 }
 
-func ps6000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
+func ps6000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint64,
 	mode RatioMode) (err error) {
 	slog.Debug("ps6000aSetDataBuffer", "handle", handle, "ch", ch, "segmentIndex", segmentIndex, "mode", mode)
 	var pBuf unsafe.Pointer
 	if len(bufferIn) > 0 {
 		pBuf = unsafe.Pointer(&bufferIn[0])
 	}
-	stat := C.ps6000aSetDataBuffer((C.short)(handle), (C.PICO_CHANNEL)(ch), pBuf,
-		(C.int32_t)(len(bufferIn)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex), (C.PICO_RATIO_MODE)(mode), C.PICO_ADD)
+	stat := C.ps6000aSetDataBuffer((C.short)(handle), (C.PICO_CHANNEL)(ch), (C.PICO_POINTER)(pBuf),
+		(C.int32_t)(len(bufferIn)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex),
+		(C.PICO_RATIO_MODE)(mode), C.PICO_ADD)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffer:  %s", psc.StatStr(int(stat)))
 	}
@@ -405,7 +409,7 @@ func ps6000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []in
 	if len(bufferMin) > 0 {
 		pMin = unsafe.Pointer(&bufferMin[0])
 	}
-	stat := C.ps6000aSetDataBuffers((C.short)(handle), (C.PICO_CHANNEL)(ch), pMax, pMin,
+	stat := C.ps6000aSetDataBuffers((C.short)(handle), (C.PICO_CHANNEL)(ch), (C.PICO_POINTER)(pMax), (C.PICO_POINTER)(pMin),
 		(C.int32_t)(len(bufferMax)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex), (C.PICO_RATIO_MODE)(mode), C.PICO_ADD)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffers:  %s", psc.StatStr(int(stat)))
@@ -449,20 +453,20 @@ func ps6000aRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalT
 var regLpBlockReadyGo BlockReady
 
 //export ps6000aLpBlockReadyGo
-func ps6000aLpBlockReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func ps6000aLpBlockReadyGo(handle int16, status int, param unsafe.Pointer) {
 	if regLpBlockReadyGo != nil {
 		regLpBlockReadyGo(handle, status, param)
 	}
 }
 
-func ps6000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
-	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
+func ps6000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples uint64,
+	timeBase uint64, overSample int16, segmentIndex uint64, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	slog.Debug("ps6000aRunBlock", "handle", handle, "noOfPreTriggerSamples", noOfPreTriggerSamples, "noOfPostTriggerSamples", noOfPostTriggerSamples, "timeBase", timeBase, "segmentIndex", segmentIndex)
 	var timeMs float64
 	stat := C.ps6000aRunBlock((C.short)(handle), (C.uint64_t)(noOfPreTriggerSamples), (C.uint64_t)(noOfPostTriggerSamples),
-		(C.uint32_t)(timeBase), (*C.double)(&timeMs), (C.uint64_t)(segmentIndex), (C.ps6000aBlockReady)(C.ps6000aLpBlockReady), unsafe.Pointer(&param))
+		(C.uint32_t)(timeBase), (*C.double)(&timeMs), (C.uint64_t)(segmentIndex), (C.ps6000aBlockReady)(C.ps6000aLpBlockReady), nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("RunBlock: %s", psc.StatStr(int(stat)))
 	}
@@ -474,10 +478,10 @@ func ps6000aSetTriggerChannelProperties(handle int16, channelProperties []Trigge
 	slog.Debug("ps6000aSetTriggerChannelProperties", "handle", handle)
 	cProperties := make([]C.PICO_TRIGGER_CHANNEL_PROPERTIES, len(channelProperties))
 	for i := range channelProperties {
-		cProperties[i].thresholdUpper = (C.int16_t)(channelProperties[i].ThresholdMajor)
-		cProperties[i].thresholdUpperHysteresis = (C.uint16_t)(channelProperties[i].HysteresisMajor)
-		cProperties[i].thresholdLower = (C.int16_t)(channelProperties[i].ThresholdMinor)
-		cProperties[i].thresholdLowerHysteresis = (C.uint16_t)(channelProperties[i].HysteresisMinor)
+		cProperties[i].thresholdUpper = (C.int16_t)(channelProperties[i].ThresholdUpper)
+		cProperties[i].thresholdUpperHysteresis = (C.uint16_t)(channelProperties[i].ThresholdUpperHysteresis)
+		cProperties[i].thresholdLower = (C.int16_t)(channelProperties[i].ThresholdLower)
+		cProperties[i].thresholdLowerHysteresis = (C.uint16_t)(channelProperties[i].ThresholdLowerHysteresis)
 		cProperties[i].channel = (C.PICO_CHANNEL)(channelProperties[i].Channel)
 	}
 	var pProp *C.PICO_TRIGGER_CHANNEL_PROPERTIES
@@ -602,7 +606,7 @@ func ps6000aSetNoCaptures(handle int16, nCaptures uint32) (err error) {
 	return
 }
 
-func ps6000aGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
+func ps6000aGetTriggerTimeOffset(handle int16, segmentIndex uint64) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
 	var time int64
 	time, timeUnits, err = ps6000aGetTriggerTimeOffset64(handle, segmentIndex)
 	timeUpper = uint32(time >> 32)
@@ -658,14 +662,12 @@ func ps6000aTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, p
 	return 0, 0, fmt.Errorf("TriggerOrPulseWidthQualifierEnabled not supported on ps6000a")
 }
 
-func ps6000aMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
+func ps6000aMemorySegments(handle int16, nSegments uint64) (nMaxSamples uint64, err error) {
 	slog.Debug("ps6000aMemorySegments", "handle", handle, "nSegments", nSegments)
-	var maxSamples C.uint64_t
-	stat := C.ps6000aMemorySegments((C.short)(handle), (C.uint64_t)(nSegments), &maxSamples)
+	stat := C.ps6000aMemorySegments((C.short)(handle), (C.uint64_t)(nSegments), (*C.uint64_t)(&nMaxSamples))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MemorySegments:  %s", psc.StatStr(int(stat)))
 	}
-	nMaxSamples = int64(maxSamples)
 	return
 }
 
@@ -1041,7 +1043,8 @@ func ps6000aSetPulseWidthQualifierDirections(handle int16, channelA, channelB Th
 
 func ps6000aGetValuesBulkAsync(handle int16, startIndex, noOfSamples, fromSegmentIndex, toSegmentIndex, downSampleRatio uint64, downSampleRatioMode RatioMode, param interface{}) (err error) {
 	slog.Debug("ps6000aGetValuesBulkAsync", "handle", handle, "startIndex", startIndex, "noOfSamples", noOfSamples)
-	stat := C.wrap_ps6000aGetValuesBulkAsync((C.short)(handle), (C.uint64_t)(startIndex), (C.uint64_t)(noOfSamples), (C.uint64_t)(fromSegmentIndex), (C.uint64_t)(toSegmentIndex), (C.uint64_t)(downSampleRatio), (C.PICO_RATIO_MODE)(downSampleRatioMode), unsafe.Pointer(C.ps6000aLpDataReady), nil)
+	stat := C.wrap_ps6000aGetValuesBulkAsync((C.short)(handle), (C.uint64_t)(startIndex), (C.uint64_t)(noOfSamples), (C.uint64_t)(fromSegmentIndex), (C.uint64_t)(toSegmentIndex), (C.uint64_t)(downSampleRatio),
+		(C.PICO_RATIO_MODE)(downSampleRatioMode), unsafe.Pointer(C.ps6000aLpDataReady), nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesBulkAsync: %s", psc.StatStr(int(stat)))
 	}
