@@ -320,7 +320,7 @@ func ps6000GetTimebase2(handle int16, timeBase uint32, numOfSamples uint32,
 
 func ps6000SetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
 	slog.Debug("ps6000SetChannel", "handle", handle, "channel", channel, "enabled", enabled, "couplingType", couplingType, "voltageRange", voltageRange)
-	stat := C.ps6000SetChannel((C.short)(handle), (C.PS6000_CHANNEL)(channel), (C.short)(boolToint16(enabled)), (C.short)(couplingType), (C.PS6000_RANGE)(voltageRange))
+	stat := C.ps6000SetChannel((C.short)(handle), (C.PS6000_CHANNEL)(channel), (C.short)(boolToint16(enabled)), (C.PS6000_COUPLING)(couplingType), (C.PS6000_RANGE)(voltageRange), (C.float)(analogOffset), (C.PS6000_BANDWIDTH_LIMITER)(0))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetChannel:  %s", psc.StatStr(int(stat)))
 	}
@@ -352,8 +352,8 @@ func ps6000SetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIn
 	mode RatioMode) (err error) {
 
 	slog.Debug("ps6000SetDataBuffer", "handle", handle, "ch", ch, "segmentIndex", segmentIndex, "mode", mode)
-	stat := C.ps6000SetDataBuffer((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferIn[0]),
-		(C.int)(len(bufferIn)), (C.uint)(segmentIndex),
+	stat := C.ps6000SetDataBufferBulk((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferIn[0]),
+		(C.uint32_t)(len(bufferIn)), (C.uint32_t)(segmentIndex),
 		(C.PS6000_RATIO_MODE)(mode))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffer:  %s", psc.StatStr(int(stat)))
@@ -363,8 +363,8 @@ func ps6000SetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIn
 
 func ps6000SetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	slog.Debug("ps6000SetDataBuffers", "handle", handle, "ch", ch, "segmentIndex", segmentIndex, "mode", mode)
-	stat := C.ps6000SetDataBuffers((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
-		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
+	stat := C.ps6000SetDataBuffersBulk((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
+		(*C.short)(&bufferMin[0]), (C.uint32_t)(len(bufferMax)), (C.uint32_t)(segmentIndex),
 		(C.PS6000_RATIO_MODE)(mode))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffers:  %s", psc.StatStr(int(stat)))
@@ -374,8 +374,8 @@ func ps6000SetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int
 
 func ps6000SetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	slog.Debug("ps6000SetUnscaledDataBuffers", "handle", handle, "ch", ch, "segmentIndex", segmentIndex, "mode", mode)
-	stat := C.ps6000SetDataBuffers((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
-		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
+	stat := C.ps6000SetDataBuffersBulk((C.short)(handle), (C.PS6000_CHANNEL)(ch), (*C.short)(&bufferMax[0]),
+		(*C.short)(&bufferMin[0]), (C.uint32_t)(len(bufferMax)), (C.uint32_t)(segmentIndex),
 		(C.PS6000_RATIO_MODE)(mode))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetUnscaledDataBuffers:  %s", psc.StatStr(int(stat)))
@@ -444,8 +444,8 @@ func ps6000RunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples 
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	slog.Debug("ps6000RunBlock", "handle", handle, "noOfPreTriggerSamples", noOfPreTriggerSamples, "noOfPostTriggerSamples", noOfPostTriggerSamples, "timeBase", timeBase, "overSample", overSample, "segmentIndex", segmentIndex, "lpBlockReadyGoPar", lpBlockReadyGoPar, "param", param)
-	stat := C.ps6000RunBlock((C.short)(handle), (C.int)(noOfPreTriggerSamples),
-		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase), (C.short)(overSample),
+	stat := C.ps6000RunBlock((C.short)(handle), (C.uint32_t)(noOfPreTriggerSamples),
+		(C.uint32_t)(noOfPostTriggerSamples), (C.uint32_t)(timeBase), (C.short)(overSample),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps6000BlockReady)(C.ps6000LpBlockReady),
 		unsafe.Pointer(&param))
 	if stat != C.PICO_OK {
