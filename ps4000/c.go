@@ -72,7 +72,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	return
 }
 
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	slog.Debug("ps4000OpenUnit")
 	stat := C.ps4000OpenUnit((*C.short)(&handle))
 	if stat != C.PICO_OK {
@@ -82,7 +82,7 @@ func openUnit(serial string) (handle int16, err error) {
 	return
 }
 
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	slog.Debug("ps4000OpenUnitAsync")
 	stat := C.ps4000OpenUnitAsync((*C.short)(&status))
 	if stat != C.PICO_OK {
@@ -668,10 +668,10 @@ func ps4000TriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pu
 	return
 }
 
-func ps4000MemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
+func ps4000MemorySegments(handle int16, nSegments int16) (nMaxSamples int64, err error) {
 	slog.Debug("ps4000MemorySegments", "handle", handle, "nSegments", nSegments)
 	var maxSamples C.int32_t
-	stat := C.ps4000MemorySegments((C.short)(handle), (C.uint32_t)(nSegments), &maxSamples)
+	stat := C.ps4000MemorySegments((C.short)(handle), (C.uint16_t)(nSegments), &maxSamples)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MemorySegments:  %s", psc.StatStr(int(stat)))
 	}

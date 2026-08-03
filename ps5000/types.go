@@ -22,11 +22,11 @@ type (
 	}
 
 	ChannelDesc struct {
-		CoupleType Coupling
-		Range      RangeEnum
-		Enabled    bool
-		Inverted   bool
-		Offset     float32
+		Dc       bool
+		Range    RangeEnum
+		Enabled  bool
+		Inverted bool
+		Offset   float32
 	}
 
 	BlockReady     func(handle int16, status int, param any)
