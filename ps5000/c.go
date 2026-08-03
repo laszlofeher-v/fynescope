@@ -30,7 +30,6 @@ import (
 	"fynescope/genericps"
 	"fynescope/psc"
 	"log/slog"
-	"time"
 	"unsafe"
 )
 
@@ -541,13 +540,17 @@ func ps5000Stop(handle int16) (err error) {
 
 func ps5000SetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float32, sweepType SweepTypeEnum,
-	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
+	whiteNoise int16, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("ps5000SetSigGenBuiltIn", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK, "waveType", waveType, "startFrequency", startFrequency, "stopFrequency", stopFrequency, "increment", increment, "dwellTime", dwellTime, "sweepType", sweepType, "operation", operation, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
-	stat := C.ps5000SetSigGenBuiltIn((C.short)(handle), (C.int)(offsetVoltage),
-		(C.uint)(pkToPK), (C.short)(waveType), (C.float)(startFrequency),
+	slog.Debug("ps5000SetSigGenBuiltIn", "handle", handle, "offsetVoltage", offsetVoltage,
+		"pkToPK", pkToPK, "waveType", waveType, "startFrequency", startFrequency,
+		"stopFrequency", stopFrequency, "increment", increment, "dwellTime", dwellTime,
+		"sweepType", sweepType, "whiteNoise", whiteNoise, "shots", shots, "sweeps", sweeps,
+		"triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
+	stat := C.ps5000SetSigGenBuiltIn((C.short)(handle), (C.int32_t)(offsetVoltage),
+		(C.uint32_t)(pkToPK), (C.short)(waveType), (C.float)(startFrequency),
 		(C.float)(stopFrequency), (C.float)(increment), (C.float)(dwellTime),
-		(C.SWEEP_TYPE)(sweepType), (C.int)(operation),
+		(C.SWEEP_TYPE)(sweepType), (C.int16_t)(whiteNoise),
 		(C.uint)(shots), (C.uint)(sweeps), (C.SIGGEN_TRIG_TYPE)(triggerType),
 		(C.SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))
 
@@ -574,29 +577,29 @@ func ps5000SigGenFrequencyToPhase(handle int16, frequency float64, indexMode Ind
 	return
 }
 
-func ps5000SetNoCaptures(handle int16, nCaptures uint32) (err error) {
+func ps5000SetNoCaptures(handle int16, nCaptures uint16) (err error) {
 	slog.Debug("ps5000SetNoOfCaptures", "handle", handle, "nCaptures", nCaptures)
-	stat := C.ps5000SetNoOfCaptures((C.short)(handle), (C.uint)(nCaptures))
+	stat := C.ps5000SetNoOfCaptures((C.short)(handle), (C.uint16_t)(nCaptures))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetNoCaptures:  %s", psc.StatStr(int(stat)))
 	}
 	return
 }
 
-func ps5000GetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
+func ps5000GetTriggerTimeOffset(handle int16, segmentIndex uint16) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
 	slog.Debug("ps5000GetTriggerTimeOffset", "handle", handle, "segmentIndex", segmentIndex)
 	stat := C.ps5000GetTriggerTimeOffset((C.short)(handle), (*C.uint)(&timeUpper),
-		(*C.uint)(&timeLower), (*C.PS5000_TIME_UNITS)(&timeUnits), (C.uint)(segmentIndex))
+		(*C.uint)(&timeLower), (*C.PS5000_TIME_UNITS)(&timeUnits), (C.uint16_t)(segmentIndex))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetTriggerTimeOffset:  %s", psc.StatStr(int(stat)))
 	}
 	return
 }
 
-func ps5000GetTriggerTimeOffset64(handle int16, segmentIndex uint32) (time int64, timeUnits TimeUnits, err error) {
+func ps5000GetTriggerTimeOffset64(handle int16, segmentIndex uint16) (time int64, timeUnits TimeUnits, err error) {
 	slog.Debug("ps5000GetTriggerTimeOffset64", "handle", handle, "segmentIndex", segmentIndex)
 	stat := C.ps5000GetTriggerTimeOffset64((C.short)(handle), (*C.long)(&time),
-		(*C.PS5000_TIME_UNITS)(&timeUnits), (C.uint)(segmentIndex))
+		(*C.PS5000_TIME_UNITS)(&timeUnits), (C.uint16_t)(segmentIndex))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetTriggerTimeOffset64:  %s", psc.StatStr(int(stat)))
 	}
@@ -605,11 +608,11 @@ func ps5000GetTriggerTimeOffset64(handle int16, segmentIndex uint32) (time int64
 }
 
 func ps5000GetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower []uint32, timeUnits []TimeUnits,
-	fromSegmentIndex, toSegmentIndex uint32) (err error) {
+	fromSegmentIndex, toSegmentIndex uint16) (err error) {
 	slog.Debug("ps5000GetValuesTriggerTimeOffsetBulk", "handle", handle, "timesUpper", timesUpper, "timesLower", timesLower, "timeUnits", timeUnits, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
 	stat := C.ps5000GetValuesTriggerTimeOffsetBulk((C.short)(handle), (*C.uint)(&timesUpper[0]),
-		(*C.uint)(&timesLower[0]), (*C.PS5000_TIME_UNITS)(&timeUnits[0]), (C.uint)(fromSegmentIndex),
-		(C.uint)(toSegmentIndex))
+		(*C.uint)(&timesLower[0]), (*C.PS5000_TIME_UNITS)(&timeUnits[0]), (C.uint16_t)(fromSegmentIndex),
+		(C.uint16_t)(toSegmentIndex))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesTriggerTimeOffsetBulk:  %s", psc.StatStr(int(stat)))
 	}
@@ -618,11 +621,11 @@ func ps5000GetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower [
 }
 
 func ps5000GetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUnits []TimeUnits,
-	fromSegmentIndex, toSegmentIndex uint32) (err error) {
+	fromSegmentIndex, toSegmentIndex uint16) (err error) {
 	slog.Debug("ps5000GetValuesTriggerTimeOffsetBulk64", "handle", handle, "times", times, "timeUnits", timeUnits, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
 	stat := C.ps5000GetValuesTriggerTimeOffsetBulk64((C.short)(handle), (*C.long)(&times[0]),
-		(*C.PS5000_TIME_UNITS)(&timeUnits[0]), (C.uint)(fromSegmentIndex),
-		(C.uint)(toSegmentIndex))
+		(*C.PS5000_TIME_UNITS)(&timeUnits[0]), (C.uint16_t)(fromSegmentIndex),
+		(C.uint16_t)(toSegmentIndex))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesTriggerTimeOffsetBulk64:  %s", psc.StatStr(int(stat)))
 	}
@@ -631,7 +634,8 @@ func ps5000GetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUni
 
 func ps5000HoldOff(handle int16, holdOff uint64, holdOffType HoldOffType) (err error) {
 	slog.Debug("ps5000HoldOff", "handle", handle, "holdOff", holdOff, "holdOffType", holdOffType)
-	return 0, fmt.Errorf("ps5000HoldOff not supported on ps5000")
+	err = fmt.Errorf("ps5000HoldOff not supported on ps5000")
+	return
 }
 
 func ps5000LsReady(handle int16) (ready int16, err error) {
@@ -702,15 +706,21 @@ func ps5000SetPulseWidthDigitalPortProperties(handle int16, digitalDirections []
 
 func ps5000SetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPK uint32,
 	startDeltaPhase, stopDeltaPhase, deltaPhaseIncrement, dwellCount uint32,
-	arbitraryWaveform []int16, sweepType SweepTypeEnum, operation ExtraOperations,
+	arbitraryWaveform []int16, sweepType SweepTypeEnum, whiteNoise int16,
 	indexMode IndexMode, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("ps5000SetSigGenArbitrary", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK, "startDeltaPhase", startDeltaPhase, "stopDeltaPhase", stopDeltaPhase, "deltaPhaseIncrement", deltaPhaseIncrement, "dwellCount", dwellCount, "arbitraryWaveform", arbitraryWaveform, "sweepType", sweepType, "operation", operation, "indexMode", indexMode, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
+	slog.Debug("ps5000SetSigGenArbitrary", "handle", handle, "offsetVoltage", offsetVoltage,
+		"pkToPK", pkToPK, "startDeltaPhase", startDeltaPhase,
+		"stopDeltaPhase", stopDeltaPhase, "deltaPhaseIncrement", deltaPhaseIncrement,
+		"dwellCount", dwellCount, "arbitraryWaveform", arbitraryWaveform,
+		"sweepType", sweepType, "whiteNoise", whiteNoise, "indexMode", indexMode,
+		"shots", shots, "sweeps", sweeps, "triggerType", triggerType,
+		"triggerSource", triggerSource, "extInThreshold", extInThreshold)
 	stat := C.ps5000SetSigGenArbitrary((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.uint)(startDeltaPhase), (C.uint)(stopDeltaPhase),
 		(C.uint32_t)(deltaPhaseIncrement), (C.uint32_t)(dwellCount),
 		(*C.short)(&arbitraryWaveform[0]), (C.int32_t)(len(arbitraryWaveform)),
-		(C.SWEEP_TYPE)(sweepType), (C.int)(operation),
+		(C.SWEEP_TYPE)(sweepType), (C.int16_t)(whiteNoise),
 		(C.INDEX_MODE)(indexMode),
 		(C.uint)(shots), (C.uint)(sweeps), (C.SIGGEN_TRIG_TYPE)(triggerType),
 		(C.SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))

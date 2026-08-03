@@ -447,7 +447,7 @@ func setSigGenBuiltIn(m *genericps.SetSigGenBuiltInMsg) {
 	)
 	err = ps5000SetSigGenBuiltIn(m.Handle(), m.OffsetVoltage, m.PkToPK, WaveTypeEnum(m.WaveType), m.StartFrequency,
 		m.StopFrequency, m.Increment, m.DwellTime, SweepTypeEnum(m.SweepType),
-		ExtraOperations(m.Operation), m.Shots, m.Sweeps, SigGenTrigType(m.TriggerType),
+		m.WhiteNoise, m.Shots, m.Sweeps, SigGenTrigType(m.TriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
 	response := m.Rsp().(*genericps.SetSigGenBuiltInRsp)
 	response.SetStatus(err)
@@ -480,7 +480,7 @@ func sigGenFrequencyToPhase(m *genericps.SigGenFrequencyToPhasenMsg) {
 }
 
 func setNumOfCaptures(m *genericps.SetNumOfCapturesMsg) {
-	err := ps5000SetNoCaptures(m.Handle(), m.NCaptures)
+	err := ps5000SetNoCaptures(m.Handle(), uint16(m.NCaptures))
 	response := m.Rsp().(*genericps.SetNumOfCapturesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -493,7 +493,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 		timeUnits            TimeUnits
 	)
 	timeUpper, timeLower, timeUnits, err = ps5000GetTriggerTimeOffset(m.Handle(),
-		uint32(m.SegmentIndex))
+		uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTriggerTimeOffsetRsp)
 	response.TimeLower = timeLower
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -504,7 +504,7 @@ func getTriggerTimeOffset(m *genericps.GetTriggerTimeOffsetMsg) {
 
 func getTriggerTimeOffset64(m *genericps.GetTriggerTimeOffset64Msg) {
 	time, timeUnits, err := ps5000GetTriggerTimeOffset64(m.Handle(),
-		uint32(m.SegmentIndex))
+		uint16(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTriggerTimeOffset64Rsp)
 	response.Time = time
 	response.TimeUnits = genericps.TimeUnits(timeUnits)
@@ -520,7 +520,8 @@ func getValuesTriggerTimeOffsetBulk(m *genericps.GetValuesTriggerTimeOffsetBulkM
 	for i := range tu {
 		tu[i] = TimeUnits(m.TimeUnits[i])
 	}
-	err = ps5000GetValuesTriggerTimeOffsetBulk(m.Handle(), m.TimesUpper, m.TimesLower, tu, m.FromSegmentIndex, m.ToSegmentIndex)
+	err = ps5000GetValuesTriggerTimeOffsetBulk(m.Handle(), m.TimesUpper,
+		m.TimesLower, tu, uint16(m.FromSegmentIndex), uint16(m.ToSegmentIndex))
 	response := m.Rsp().(*genericps.GetValuesTriggerTimeOffsetBulkRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -534,7 +535,8 @@ func getValuesTriggerTimeOffsetBulk64(m *genericps.GetValuesTriggerTimeOffsetBul
 	for i := range tu {
 		tu[i] = TimeUnits(m.TimeUnits[i])
 	}
-	err = ps5000GetValuesTriggerTimeOffsetBulk64(m.Handle(), m.Times, tu, m.FromSegmentIndex, m.ToSegmentIndex)
+	err = ps5000GetValuesTriggerTimeOffsetBulk64(m.Handle(), m.Times, tu,
+		uint16(m.FromSegmentIndex), uint16(m.ToSegmentIndex))
 	response := m.Rsp().(*genericps.GetValuesTriggerTimeOffsetBulk64Rsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -639,8 +641,8 @@ func setSigGenArbitrary(m *genericps.SetSigGenArbitraryMsg) {
 		err error
 	)
 	err = ps5000SetSigGenArbitrary(m.Handle(), m.OffsetVoltage, m.PkToPK, m.StartDeltaPhase,
-		m.StopDeltaPhase, m.DeltaPhaseIncrement, m.DwellCount, m.ArbitraryWaveform,
-		SweepTypeEnum(m.SweepType), ExtraOperations(m.Operation),
+		m.StopDeltaPhase, m.DeltaPhaseIncrement, m.DwellCount, m.ArbitraryWaveform, SweepTypeEnum(m.SweepType),
+		m.WhiteNoise,
 		IndexMode(m.IndexMode), m.Shots, m.Sweeps,
 		SigGenTrigType(m.TtriggerType),
 		SigGenTrigSource(m.TriggerSource), m.ExtInThreshold)
