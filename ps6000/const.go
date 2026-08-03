@@ -21,8 +21,7 @@ import "C"
 const (
 	MaxChannelBuffers = C.PS6000_MAX_CHANNEL_BUFFERS
 	//	MaxDigitalPorts   = C.PS6000_MAX_DIGITAL_PORTS
-	MaxChannels       = C.PS6000_MAX_CHANNELS
-	ChannelInfoRanges = C.PS6000_CI_RANGES
+	MaxChannels = C.PS6000_MAX_CHANNELS
 )
 
 type NumOfChannelEnum int
@@ -85,8 +84,9 @@ const (
 type Coupling int
 
 const (
-	Ac Coupling = C.PS6000_AC
-	Dc Coupling = C.PS6000_DC
+	Ac    Coupling = C.PS6000_AC
+	Dc1M  Coupling = C.PS6000_DC_1M
+	Dc50R Coupling = C.PS6000_DC_50R
 )
 
 type ThresholdDirection int
@@ -148,10 +148,10 @@ const (
 type RatioMode int
 
 const (
-	RatioModeNone      RatioMode = C.RATIO_MODE_NONE
-	RatioModeAggregate RatioMode = C.RATIO_MODE_AGGREGATE
-	RatioModeDecimate  RatioMode = C.RATIO_MODE_DECIMATE
-	RatioModeAverage   RatioMode = C.RATIO_MODE_AVERAGE
+	RatioModeNone      RatioMode = C.PS6000_RATIO_MODE_NONE
+	RatioModeAggregate RatioMode = C.PS6000_RATIO_MODE_AGGREGATE
+	RatioModeDecimate  RatioMode = C.PS6000_RATIO_MODE_DECIMATE
+	RatioModeAverage   RatioMode = C.PS6000_RATIO_MODE_AVERAGE
 )
 
 const (
@@ -187,17 +187,15 @@ const (
 	EtsSlow EtsMode = C.PS6000_ETS_SLOW
 	EtsMax  EtsMode = C.PS6000_ETS_MODES_MAX
 )
-const (
-	Ps2207MaxEtsCyscles       = C.PS3207A_MAX_ETS_CYCLES
-	Ps2207MaxEtsMaxInterleave = C.PS3207A_MAX_INTERLEAVE
-)
 
 type DigitalChannel int
+
 const (
 	DchMax DigitalChannel = 0
 )
 
 type DigitalDirection int
+
 const (
 	DigitalMaxDirection DigitalDirection = 0
 )
@@ -216,7 +214,7 @@ const (
 	DcVoltage WaveTypeEnum = C.PS6000_DC_VOLTAGE
 )
 
-type SweepTypeEnum C.SWEEP_TYPE
+type SweepTypeEnum C.PS6000_SWEEP_TYPE
 
 const (
 	SweepUp       SweepTypeEnum = C.PS6000_UP
@@ -243,13 +241,12 @@ const (
 	HalfSineMaxFrequency = C.PS6000_HALF_SINE_MAX_FREQUENCY
 	GaussianMaxFrequency = C.PS6000_GAUSSIAN_MAX_FREQUENCY
 	PrbsMaxFrequency     = C.PS6000_PRBS_MAX_FREQUENCY
-	PrbsMinFrequency     = C.PS6000_PRBS_MIN_FREQUENCY
+	PrbsMinFrequency     = C.PS6000_MIN_FREQUENCY
 	MinFrequency         = C.PS6000_MIN_FREQUENCY
 )
 
 const (
-	MaxSweepShots              = C.MAX_SWEEPS_SHOTS
-	ShotSweepTriggerContinuous = C.PS6000_SHOT_SWEEP_TRIGGER_CONTINUOUS_RUN
+	MaxSweepShots = C.MAX_SWEEPS_SHOTS
 )
 
 type SigGenTrigType int
@@ -281,12 +278,14 @@ const (
 )
 
 type HoldOffType int
+
 const (
-	HofTime HoldOffType = 0
+	HofTime        HoldOffType = 0
 	MaxHoldOffTime HoldOffType = 1
 )
 
 type DigitalPort int
+
 const (
 	MaxDigitalPorts DigitalPort = 0
 )

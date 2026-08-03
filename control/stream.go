@@ -1,9 +1,9 @@
 package control
 
 import (
+	"fynescope/genericps"
 	"log/slog"
 	"math"
-	"fynescope/genericps"
 	"time"
 )
 
@@ -57,7 +57,7 @@ func streamMode(psControl *PscDesc) state {
 		}
 
 		psControl.refreshTime = time.Now()
-		psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth))
+		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
 		if psControl.SampleCountRequired <= 0 {
 			psControl.SampleCountRequired = 1000
 		}

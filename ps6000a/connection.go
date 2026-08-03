@@ -93,7 +93,7 @@ func getValuesAsync(m *genericps.GetValuesAsyncMsg) {
 func getValuesBulk(m *genericps.GetValuesBulkMsg) {
 	var (
 		err          error
-		numOfSamples uint32
+		numOfSamples uint64
 	)
 	numOfSamples, err = ps6000aGetValuesBulk(m.Handle(), m.ReqNumOfSamples, m.FromSegmentIndex, m.ToSegmentIndex,
 		m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.Overflow)
@@ -203,7 +203,8 @@ func getStreamingLatestValues(m *genericps.GetStreamingLatestValuesMsg) {
 }
 
 func getTimebase(m *genericps.GetTimebaseMsg) {
-	timeIntervalNanoseconds, maxSamples, err := ps6000aGetTimebase(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps6000aGetTimebase(m.Handle(),
+		m.TimeBase, m.NumOfSamples, m.SegmentIndex)
 	response := m.Rsp().(*genericps.GetTimebaseRsp)
 	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
 	response.MaxSamples = maxSamples
@@ -212,7 +213,8 @@ func getTimebase(m *genericps.GetTimebaseMsg) {
 }
 
 func getTimebase2(m *genericps.GetTimebase2Msg) {
-	timeIntervalNanoseconds, maxSamples, err := ps6000aGetTimebase2(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps6000aGetTimebase2(m.Handle(),
+		m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
 	response := m.Rsp().(*genericps.GetTimebase2Rsp)
 	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
 	response.MaxSamples = maxSamples
@@ -251,7 +253,8 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 	var (
 		err error
 	)
-	err = ps6000aSetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, m.SegmentIndex, RatioMode(m.Mode))
+	err = ps6000aSetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn,
+		m.SegmentIndex, RatioMode(m.Mode))
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -342,7 +345,7 @@ func setTriggerChannelProperties(m *genericps.SetTriggerChannelPropertiesMsg) {
 		tcp[i].ThresholdUpperHysteresis = m.ChannelProperties[i].ThresholdUpperHysteresis
 	}
 	slog.Debug("trigger", "tcp", tcp)
-	autoTriggerMicroSeconds := uint32(m.AutoTriggerMs)
+	autoTriggerMicroSeconds := uint32(m.AutoTriggerMs) * 1000
 	err = ps6000aSetTriggerChannelProperties(m.Handle(), tcp, m.AuxOutputEnable, autoTriggerMicroSeconds)
 	response := m.Rsp().(*genericps.SetTriggerChannelPropertiesRsp)
 	response.SetStatus(err)

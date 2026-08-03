@@ -14,10 +14,9 @@ import (
 	_ "fynescope/ps3000a"
 	_ "fynescope/ps4000"
 	_ "fynescope/ps4000a"
-
-	// _ "fynescope/ps5000"
-	// _ "fynescope/ps5000a"
-	// _ "fynescope/ps6000"
+	_ "fynescope/ps5000"
+	_ "fynescope/ps5000a"
+	_ "fynescope/ps6000"
 	_ "fynescope/ps6000a"
 	"fynescope/settings"
 	"fynescope/web"

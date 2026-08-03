@@ -788,7 +788,7 @@ func simGetTimeInterval2(timeBase uint32, nec int) (timeIntervalNanoseconds floa
 	return
 }
 
-func simGetTimebase2(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
+func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
 	// slog.Debug("simGetTimebase2")
 	nec := numberOfEnabledChannels()
 	if nec == 0 {
@@ -1212,7 +1212,7 @@ func simTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pulse
 	return
 }
 
-func simMemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
+func simMemorySegments(handle int16, nSegments uint64) (nMaxSamples uint64, err error) {
 	nMaxSamples = 64 * mega
 	return
 }

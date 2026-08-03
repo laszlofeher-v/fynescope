@@ -41,15 +41,15 @@ func blockMode(psControl *PscDesc) state {
 			return
 		}
 		psControl.refreshTime = time.Now()
-		psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth))
+		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
 		if psControl.ipmode == settings.Sinc {
-			psControl.SampleCountRequired = SincWMultiplier * int32(math.Round(psControl.scopeScreenWidth))
+			psControl.SampleCountRequired = SincWMultiplier * uint64(math.Round(psControl.scopeScreenWidth))
 		} else {
-			psControl.SampleCountRequired = int32(math.Round(psControl.scopeScreenWidth)) + LeftOut + RightOut
+			psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth)) + LeftOut + RightOut
 		}
 		sampleCount, err := psControl.memorySegments(uint64(1))
-		if sampleCount < int64(psControl.SampleCountRequired) {
-			psControl.SampleCountRequired = int32(sampleCount)
+		if sampleCount < psControl.SampleCountRequired {
+			psControl.SampleCountRequired = sampleCount
 		}
 		if err != nil {
 			slog.Error("runblock memorySegments", "err", err)
@@ -59,8 +59,8 @@ func blockMode(psControl *PscDesc) state {
 		psControl.downSampleRatio = 1
 		psControl.downSampleRatioMode = genericps.RatioModeNone
 
-
-		tbInput := uint32(float64(psControl.maxScreenTime*1e9) / float64(psControl.SampleCountRequired*int32(psControl.downSampleRatio)))
+		tbInput := uint64(float64(psControl.maxScreenTime*1e9) /
+			float64(psControl.SampleCountRequired*psControl.downSampleRatio))
 		switch psControl.MaxSamplingRate {
 		case MaxSampling100M:
 			psControl.timeBase = timeBase100M(tbInput)
@@ -77,33 +77,33 @@ func blockMode(psControl *PscDesc) state {
 			psControl.timeBase = 0
 		}
 
-		rawSampleCount := psControl.SampleCountRequired * int32(psControl.downSampleRatio)
+		rawSampleCount := psControl.SampleCountRequired * psControl.downSampleRatio
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(rawSampleCount)
-		
+
 		if rawSampleCount > maxSampleCount {
 			psControl.downSampleRatio = uint64(maxSampleCount / psControl.SampleCountRequired)
 			if psControl.downSampleRatio < 1 {
 				psControl.downSampleRatio = 1
 			}
-			rawSampleCount = psControl.SampleCountRequired * int32(psControl.downSampleRatio)
+			rawSampleCount = psControl.SampleCountRequired * psControl.downSampleRatio
 		}
 		if psControl.downSampleRatio <= 1 {
 			psControl.downSampleRatioMode = genericps.RatioModeNone
 			psControl.downSampleRatio = 1
 		}
 
-		psControl.SampleCountRequired = int32(math.Round(psControl.maxScreenTime/float64(timeIntervalNanoseconds*1e-9*float32(psControl.downSampleRatio)))) + 2
+		psControl.SampleCountRequired = uint64(math.Round(psControl.maxScreenTime/float64(timeIntervalNanoseconds*1e-9*float64(psControl.downSampleRatio)))) + 2
 		if psControl.ipmode == settings.Sinc {
 			psControl.SampleCountRequired = SincWMultiplier * psControl.SampleCountRequired
 		} else {
 			psControl.SampleCountRequired = 2 * psControl.SampleCountRequired
 		}
-		if psControl.SampleCountRequired > maxSampleCount/int32(psControl.downSampleRatio) || psControl.SampleCountRequired <= 0 {
-			slog.Debug("samplecount decreased:", "SampleCount", psControl.SampleCountRequired, " to :", maxSampleCount/int32(psControl.downSampleRatio))
-			psControl.SampleCountRequired = maxSampleCount / int32(psControl.downSampleRatio)
+		if psControl.SampleCountRequired > maxSampleCount/psControl.downSampleRatio || psControl.SampleCountRequired <= 0 {
+			slog.Debug("samplecount decreased:", "SampleCount", psControl.SampleCountRequired, " to :", maxSampleCount/psControl.downSampleRatio)
+			psControl.SampleCountRequired = maxSampleCount / psControl.downSampleRatio
 		}
 
-		minSampleCount := int32(math.Round(psControl.scopeScreenWidth))
+		minSampleCount := uint64(math.Round(psControl.scopeScreenWidth))
 		if minSampleCount < 1024 {
 			minSampleCount = 1024
 		}
@@ -130,16 +130,16 @@ func blockMode(psControl *PscDesc) state {
 		if psControl.ipmode == settings.Sinc {
 			displayRange := float64(psControl.SampleCountRequired) / SincWMultiplier
 			leftRightRange := (float64(psControl.SampleCountRequired) - displayRange) / 2
-			psControl.NPre = int32(math.Round(psControl.triggerSetting.XOffset/
+			psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset/
 				psControl.SamplingTimeInterval + leftRightRange))
 			psControl.NPro = psControl.SampleCountRequired - psControl.NPre
 			psControl.XRoundError = psControl.triggerSetting.XOffset -
 				psControl.SamplingTimeInterval*(float64(psControl.NPre)-
 					float64(leftRightRange))
 		} else {
-			psControl.NPre = int32(math.Round(psControl.triggerSetting.XOffset/psControl.SamplingTimeInterval))*int32(psControl.downSampleRatio) + LeftOut*int32(psControl.downSampleRatio)
-			psControl.NPro = psControl.SampleCountRequired*int32(psControl.downSampleRatio) - psControl.NPre
-			psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*float64(psControl.NPre/int32(psControl.downSampleRatio)-1-LeftOut)
+			psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset/psControl.SamplingTimeInterval))*psControl.downSampleRatio + LeftOut*psControl.downSampleRatio
+			psControl.NPro = psControl.SampleCountRequired*psControl.downSampleRatio - psControl.NPre
+			psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*float64(psControl.NPre/psControl.downSampleRatio-1-LeftOut)
 			slog.Debug("pre", "SampleCount", psControl.SampleCountRequired)
 			slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
 			slog.Debug("pre", "XOffset", psControl.triggerSetting.XOffset)

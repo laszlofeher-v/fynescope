@@ -6,8 +6,8 @@ import (
 
 func TestTimeBase500M(t *testing.T) {
 	tests := []struct {
-		timeInterval uint32
-		want         uint32
+		timeInterval uint64
+		want         uint64
 	}{
 		{0, 0},
 		{1, 0},
@@ -29,8 +29,8 @@ func TestTimeBase500M(t *testing.T) {
 
 func TestTimeInterval500M(t *testing.T) {
 	tests := []struct {
-		timeBase uint32
-		want     uint32
+		timeBase uint64
+		want     uint64
 	}{
 		{0, 2},
 		{1, 4},
@@ -47,8 +47,8 @@ func TestTimeInterval500M(t *testing.T) {
 
 func TestTimeBase200M(t *testing.T) {
 	tests := []struct {
-		timeInterval uint32
-		want         uint32
+		timeInterval uint64
+		want         uint64
 	}{
 		{0, 0},
 		{5, 0},
@@ -65,8 +65,8 @@ func TestTimeBase200M(t *testing.T) {
 
 func TestTimeInterval200M(t *testing.T) {
 	tests := []struct {
-		timeBase uint32
-		want     uint32
+		timeBase uint64
+		want     uint64
 	}{
 		{0, 5},
 		{1, 10},
@@ -82,8 +82,8 @@ func TestTimeInterval200M(t *testing.T) {
 
 func TestTimeBase100M(t *testing.T) {
 	tests := []struct {
-		timeInterval uint32
-		want         uint32
+		timeInterval uint64
+		want         uint64
 	}{
 		{0, 0},
 		{10, 0},

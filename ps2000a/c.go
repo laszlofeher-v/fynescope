@@ -3,7 +3,6 @@
 package ps2000a
 
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000/ps2000.h"
 // #include "/opt/picoscope/include/libps2000a/PicoStatus.h"
 // #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
 /*
@@ -14,7 +13,6 @@ int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 int lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t overflow, uint32_t triggerAt, int16_t triggered,
                 int16_t autoStop, void * pParameter);
-// #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
 */
 import "C"
 
@@ -341,11 +339,11 @@ func ps2000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar Streami
 	return
 }
 
-func ps2000aGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
+func ps2000aGetTimebase(handle int16, timeBase uint32, noOfSamples uint32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds int32, maxSamples int32, err error) {
 	slog.Debug("ps2000aGetTimebase", "handle", handle, "timeBase", timeBase, "noOfSamples", noOfSamples, "overSample", overSample, "segmentIndex", segmentIndex)
-	stat := C.ps2000aGetTimebase((C.short)(handle), (C.uint)(timeBase), (C.int)(noOfSamples),
-		(*C.int)(&timeIntervalNanoseconds), (C.short)(overSample),
-		(*C.int)(&maxSamples), (C.uint)(segmentIndex))
+	stat := C.ps2000aGetTimebase((C.short)(handle), (C.uint32_t)(timeBase), (C.int32_t)(noOfSamples),
+		(*C.int32_t)(&timeIntervalNanoseconds), (C.short)(overSample),
+		(*C.int32_t)(&maxSamples), (C.uint32_t)(segmentIndex))
 	if stat != C.PICO_OK {
 		slog.Error("GetTimebase", "noOfSamples", noOfSamples, "stat", psc.StatStr(int(stat)))
 		err = fmt.Errorf("GetTimebase:  %s", psc.StatStr(int(stat)))

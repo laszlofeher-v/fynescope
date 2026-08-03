@@ -5,7 +5,7 @@ import (
 	"log/slog"
 )
 
-func (psControl *PscDesc) setEtsBuffer(sampleCount int32, segmentIndex uint32) (err error) {
+func (psControl *PscDesc) setEtsBuffer(sampleCount uint64, segmentIndex uint64) (err error) {
 	err = psControl.setBuffers(sampleCount, segmentIndex) // set data buffers
 	if err != nil {
 		slog.Error("SetEtsBuffers", "error:", err)
@@ -30,7 +30,7 @@ func (psControl *PscDesc) setEtsBuffer(sampleCount int32, segmentIndex uint32) (
 	return
 }
 
-func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (err error) {
+func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (err error) {
 	for chIndex := range psControl.receiveBuffer {
 		if len(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
 			if cap(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
@@ -61,7 +61,7 @@ func (psControl *PscDesc) setBuffers(sampleCount int32, segmentIndex uint32) (er
 	return
 }
 
-func (psControl *PscDesc) memorySegments(numberOfSegments uint64) (sampleCount int64, err error) {
+func (psControl *PscDesc) memorySegments(numberOfSegments uint64) (sampleCount uint64, err error) {
 	sampleCount, err = psControl.Con.MemorySegments(numberOfSegments)
 	if err != nil {
 		slog.Error("memorySegments", "error:", err)
@@ -91,7 +91,7 @@ func (psControl *PscDesc) checkOverflow(overflow int16) {
 	}
 }
 
-func (psControl *PscDesc) getData(sampleCount int32, segmentIndex uint64, ets bool) (err error) {
+func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets bool) (err error) {
 	var overflow int16
 	downSampleRatio := psControl.downSampleRatio
 	if downSampleRatio < 1 {
