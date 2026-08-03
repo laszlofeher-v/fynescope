@@ -138,16 +138,17 @@ func blockMode(psControl *PscDesc) state {
 					float64(leftRightRange))
 		} else {
 			psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset/psControl.SamplingTimeInterval))*psControl.downSampleRatio + LeftOut*psControl.downSampleRatio
-			psControl.NPro = psControl.SampleCountRequired*psControl.downSampleRatio - psControl.NPre
-			psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*float64(psControl.NPre/psControl.downSampleRatio-1-LeftOut)
+			if psControl.SampleCountRequired*psControl.downSampleRatio > psControl.NPre {
+				psControl.NPro = psControl.SampleCountRequired*psControl.downSampleRatio - psControl.NPre
+			} else {
+				psControl.NPro = 0
+			}
+			psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*(float64(psControl.NPre/psControl.downSampleRatio)-1.0-float64(LeftOut))
 			slog.Debug("pre", "SampleCount", psControl.SampleCountRequired)
 			slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
 			slog.Debug("pre", "XOffset", psControl.triggerSetting.XOffset)
 			slog.Debug("pre", "NPre", psControl.NPre)
 			slog.Debug("pre", "NPro", psControl.NPro)
-		}
-		if psControl.NPro < 0 {
-			psControl.NPro = 0
 		}
 		slog.Debug("pre", "XRoundError", psControl.XRoundError)
 		callbackChannel = make(chan struct{}, 1)

@@ -491,10 +491,17 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					extra = 1 // Compensation for different XRoundError definition in non-Sinc mode
 				}
 
+				// Validate triggerTimeOffset to avoid disappearing signals if hardware returns extreme values
+				triggerOffsetSeconds := float64(sv.scp.controlTriggerTimeOffset) / 1e15
+				expectedOffset := leftPadding * sv.scp.controlSamplingTimeInterval
+				if math.Abs(triggerOffsetSeconds-expectedOffset) > 10*sv.scp.controlSamplingTimeInterval {
+					triggerOffsetSeconds = expectedOffset
+				}
+
 				// t0 is the pixel position of the first sample (index 0) relative to bounds.Min.X
 				t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
 					float64(sv.scp.controlXRoundError) +
-					float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
+					triggerOffsetSeconds) * unit
 
 				if !sv.isTimeZoom {
 					t0 -= sv.scp.timeZoomBoxOffset * unit

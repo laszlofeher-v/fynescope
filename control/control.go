@@ -412,6 +412,7 @@ func (psControl *PscDesc) Stop() (err error) {
 }
 
 func (psControl *PscDesc) SetETSMode() (err error) {
+	_ = psControl.Stop()
 	select {
 	case psControl.stateChannel <- etsBlockMode:
 	case <-time.After(startTimeout):
@@ -421,6 +422,7 @@ func (psControl *PscDesc) SetETSMode() (err error) {
 }
 
 func (psControl *PscDesc) SetBlockMode() (err error) {
+	_ = psControl.Stop()
 	select {
 	case psControl.stateChannel <- blockMode:
 	case <-time.After(startTimeout):
