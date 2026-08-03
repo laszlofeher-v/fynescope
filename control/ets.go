@@ -156,7 +156,7 @@ func etsBlockMode(psControl *PscDesc) state {
 			psControl.NPro = 0
 		}
 		slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
-		psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*float64(psControl.NPre-1)
+		psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*(float64(psControl.NPre)-1.0)
 		slog.Debug("ets pre", "XRoundError", psControl.XRoundError)
 
 		psControl.EtsBufferCallback(int(psControl.SampleCountRequired))

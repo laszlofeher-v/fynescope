@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"time"
 
+	"fynescope/genericps"
 	"fynescope/settings"
 
 	"fyne.io/fyne/v2/container"
@@ -140,7 +141,7 @@ const (
 	vchAcceptBtnId = "vchAcceptBtn"
 	vchDeleteBtnId = "vchDeleteBtn"
 	vchNewBtnId    = "vchNewBtn"
-	sleepTime      = 100 * time.Millisecond
+	sleepTime      = 1 * time.Second
 	timeout        = time.Duration(30) * time.Second
 )
 
@@ -524,8 +525,8 @@ func (scp *ScpDesc) Test() {
 	scroll(genMinFrqId, 5)
 	scroll(genMaxFrqId, 5)
 	scroll(genStepFreqId, 5)
-	for i := 0; i < 1; i++ {
-		randTap(runblockButtonId)
+	for i := 0; i < 10; i++ {
+		tap(runblockButtonId)
 		tap(themeChangeActionId)
 		drag(genFreqSetId, 100000)
 		tap(genCheckId)
@@ -552,7 +553,6 @@ func (scp *ScpDesc) Test() {
 		scroll(vRangeId+"C", -3)
 		scroll(genFreqSetId, -500)
 		tap(chEnableId + "A")
-		tap(genCheckId)
 		tap(runblockButtonId)
 		wait()
 		wait()
@@ -566,6 +566,20 @@ func (scp *ScpDesc) Test() {
 	}
 
 	fyne.Do(func() {
+		// Ensure Channels A and B are enabled and Signal Generator is ON for Bode plot sweep and signal drawing
+		scp.Settings.Channels[0].Enabled = true
+		scp.Settings.Channels[1].Enabled = true
+		scp.Settings.GenPanel.On = true
+		scp.Settings.FfGen.On = true
+		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+			scp.applyDemoGenSettings(0, &scp.Settings.DemoGenPanel[0])
+			scp.applyDemoGenSettings(1, &scp.Settings.DemoGenPanel[1])
+			scp.applyFfDemoGenSettings(true)
+		} else {
+			scp.applyInternalGenSettings(true)
+			scp.applyFfGenSettings(true)
+		}
+
 		// Set time division to 10 ms/div so that low frequency signals (10Hz-1000Hz) have enough periods on screen to measure frequency
 		scp.timeUnitSelect.SilentSetSelected("ms/div")
 		scp.timeSelect.SilentSetSelected("10")
@@ -577,8 +591,8 @@ func (scp *ScpDesc) Test() {
 	wait()
 
 	for !scp.running {
-		wait()
 		tap(runblockButtonId) // Start the sweep
+		wait()
 	}
 	// Wait for a few frequency steps to complete
 	for i := 0; i < 200 && len(scp.bodeBuffers[0]) == 0; i++ {

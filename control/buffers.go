@@ -111,10 +111,13 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 		triggerTimeOffset, timeUnits, err := psControl.Con.GetTriggerTimeOffset64(segmentIndex)
 		if err != nil {
 			slog.Error("getData trigger offset:", "error:", err)
-			return err
+			// Don't fail the data acquisition just because trigger offset could not be retrieved
+			// This happens if the scope auto-triggers or trigger point is at the very left.
+			psControl.triggerTimeOffset = int64(float64(psControl.NPre) * psControl.SamplingTimeInterval * 1e15)
+		} else {
+			psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
+				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
-		psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
-			(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		psControl.RefreshCallback(psControl.receiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return
