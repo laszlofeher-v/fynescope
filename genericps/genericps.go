@@ -516,6 +516,7 @@ type (
 		StartFrequency, StopFrequency, Increment, DwellTime float32
 		SweepType                                           SweepTypeEnum
 		Operation                                           ExtraOperations
+		WhiteNoise                                          int16
 		Shots, Sweeps                                       uint32
 		TriggerType                                         SigGenTrigType
 		TriggerSource                                       SigGenTrigSource
@@ -746,6 +747,7 @@ type (
 		StartDeltaPhase, StopDeltaPhase, DeltaPhaseIncrement, DwellCount uint32
 		ArbitraryWaveform                                                []int16
 		SweepType                                                        SweepTypeEnum
+		WhiteNoise                                                       int16
 		Operation                                                        ExtraOperations
 		IndexMode                                                        IndexMode
 		Shots, Sweeps                                                    uint32
