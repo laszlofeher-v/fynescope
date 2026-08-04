@@ -1397,7 +1397,11 @@ func (scp *ScpDesc) partitionFtScreen(w, h float32) {
 	scp.ftScopeSignalScreen = ip.SubImage(image.Rect(int(math.Round(float64(leftMargin))),
 		defaultTopMargin, int(math.Round(float64(w-rightMargin))),
 		int(math.Round(float64(h-defaultBottomMargin))))).(draw.RGBA64Image)
-	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx() - 1))
+	sampleMultiplier := 1.0
+	if scp.timeZoomWindow != nil && scp.timeZoomMaxScreenTime > scp.maxScreenTime && scp.maxScreenTime > 0 {
+		sampleMultiplier = scp.timeZoomMaxScreenTime / scp.maxScreenTime
+	}
+	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()-1) * sampleMultiplier)
 	scp.ftBottomLabelViewer = newTimelLabelViewer(scp.ftScopeFullScreen,
 		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
 			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, false)
