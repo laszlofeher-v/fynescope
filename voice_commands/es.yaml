@@ -14,9 +14,6 @@ trigger_commands:
     - disparador
     - gatillo
     - trigger
-x10_commands:
-    - x10
-    - por diez
 inv_commands:
     - invertir
     - inv

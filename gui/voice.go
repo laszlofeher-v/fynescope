@@ -17,7 +17,7 @@ type VoiceCommands struct {
 	EnableCommands  []string `yaml:"enable_commands"`
 	DisableCommands []string `yaml:"disable_commands"`
 	TriggerCommands []string `yaml:"trigger_commands"`
-	X10Commands     []string `yaml:"x10_commands"`
+
 	InvCommands     []string `yaml:"inv_commands"`
 	AcCommands      []string `yaml:"ac_commands"`
 	DcCommands      []string `yaml:"dc_commands"`
@@ -48,18 +48,7 @@ func InitVoiceCommands() {
 		return
 	}
 
-	var hasYaml bool
-	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".yaml" {
-			hasYaml = true
-			break
-		}
-	}
 
-	if !hasYaml {
-		writeDefaultVoiceCommands(dir)
-		entries, _ = os.ReadDir(dir)
-	}
 
 	// load and merge all
 	for _, entry := range entries {
@@ -88,7 +77,7 @@ func mergeVoiceCommands(dest, src *VoiceCommands) {
 	dest.EnableCommands = append(dest.EnableCommands, src.EnableCommands...)
 	dest.DisableCommands = append(dest.DisableCommands, src.DisableCommands...)
 	dest.TriggerCommands = append(dest.TriggerCommands, src.TriggerCommands...)
-	dest.X10Commands = append(dest.X10Commands, src.X10Commands...)
+
 	dest.InvCommands = append(dest.InvCommands, src.InvCommands...)
 	dest.AcCommands = append(dest.AcCommands, src.AcCommands...)
 	dest.DcCommands = append(dest.DcCommands, src.DcCommands...)
@@ -100,33 +89,7 @@ func mergeVoiceCommands(dest, src *VoiceCommands) {
 	dest.ChannelD = append(dest.ChannelD, src.ChannelD...)
 }
 
-func writeDefaultVoiceCommands(dir string) {
-	en := VoiceCommands{
-		RunCommands:     []string{"start", "run"},
-		StopCommands:    []string{"stop", "halt"},
-		EnableCommands:  []string{"enable", "turn on", "show"},
-		DisableCommands: []string{"disable", "turn off", "hide"},
-		TriggerCommands: []string{"trigger", "set trigger"},
-		X10Commands:     []string{"x10", "times 10", "times ten"},
-		InvCommands:     []string{"invert", "inv"},
-		AcCommands:      []string{"ac"},
-		DcCommands:      []string{"dc"},
-		RisingCommands:  []string{"rising", "rise"},
-		FallingCommands: []string{"falling", "fall"},
-		ChannelA:        []string{"channel a", "ch a"},
-		ChannelB:        []string{"channel b", "ch b"},
-		ChannelC:        []string{"channel c", "ch c"},
-		ChannelD:        []string{"channel d", "ch d"},
-	}
-	writeYaml(filepath.Join(dir, "en.yaml"), en)
-}
 
-func writeYaml(path string, cmds VoiceCommands) {
-	data, err := yaml.Marshal(cmds)
-	if err == nil {
-		os.WriteFile(path, data, 0644)
-	}
-}
 
 // ExecuteVoiceCommand processes natural language text commands
 // and executes the corresponding UI/backend logic.
@@ -166,7 +129,7 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 
 		// property commands
 		inv := containsAny(cmd, ActiveVoiceCommands.InvCommands)
-		x10 := containsAny(cmd, ActiveVoiceCommands.X10Commands)
+
 		ac := containsAny(cmd, ActiveVoiceCommands.AcCommands)
 		dc := containsAny(cmd, ActiveVoiceCommands.DcCommands)
 		rising := containsAny(cmd, ActiveVoiceCommands.RisingCommands)
@@ -202,18 +165,7 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 				}
 			}
 
-			if x10 {
-				handled = true
-				if disable {
-					scp.changeChannelX10(ch, false)
-				} else if enable {
-					scp.changeChannelX10(ch, true)
-				} else {
-					// Toggle
-					current := scp.Settings.Channels[ch].X10
-					scp.changeChannelX10(ch, !current)
-				}
-			}
+
 
 			if ac {
 				handled = true

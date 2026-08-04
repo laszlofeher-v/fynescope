@@ -15,10 +15,6 @@ disable_commands:
 trigger_commands:
     - trigger
     - set trigger
-x10_commands:
-    - x10
-    - times 10
-    - times ten
 inv_commands:
     - invert
     - inv

@@ -13,9 +13,6 @@ disable_commands:
 trigger_commands:
     - déclencheur
     - trigger
-x10_commands:
-    - x10
-    - fois dix
 inv_commands:
     - inverser
     - inv
