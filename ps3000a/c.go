@@ -72,7 +72,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	return
 }
 
-func openUnit(serial string) (handle int16, err error) {
+func openUnit(serial string, resolution int) (handle int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
@@ -89,7 +89,7 @@ func openUnit(serial string) (handle int16, err error) {
 	return
 }
 
-func openUnitAsync(serial string) (status int16, err error) {
+func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {

@@ -307,7 +307,7 @@ func ps6000GetTimebase(handle int16, timeBase uint32, noOfSamples uint32, overSa
 }
 
 func ps6000GetTimebase2(handle int16, timeBase uint32, numOfSamples uint32,
-	overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
+	overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples uint32, err error) {
 	slog.Debug("ps6000GetTimebase2", "handle", handle, "timeBase", timeBase, "numOfSamples", numOfSamples, "overSample", overSample, "segmentIndex", segmentIndex)
 	stat := C.ps6000GetTimebase2((C.short)(handle), (C.uint32_t)(timeBase), (C.uint32_t)(numOfSamples),
 		(*C.float)(&timeIntervalNanoseconds), (C.short)(overSample),
@@ -386,7 +386,7 @@ func ps6000SetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferM
 func ps6000SetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	slog.Debug("ps6000SetEtsTimeBuffer", "handle", handle, "buffer", buffer)
 	stat := C.ps6000SetEtsTimeBuffer((C.short)(handle), (*C.long)(&buffer[0]),
-		(C.int)(len(buffer)))
+		(C.uint32_t)(len(buffer)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetEtsTimeBuffer:  %s", psc.StatStr(int(stat)))
 	}
@@ -396,7 +396,7 @@ func ps6000SetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 func ps6000SetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err error) {
 	slog.Debug("ps6000SetEtsTimeBuffers", "handle", handle, "timeUpper", timeUpper, "timeLower", timeLower)
 	stat := C.ps6000SetEtsTimeBuffers((C.short)(handle), (*C.uint)(&timeUpper[0]),
-		(*C.uint)(&timeLower[0]), (C.int)(len(timeUpper)))
+		(*C.uint32_t)(&timeLower[0]), (C.uint32_t)(len(timeUpper)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetEtsTimeBuffer:  %s", psc.StatStr(int(stat)))
 	}
@@ -421,7 +421,7 @@ func ps6000RunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTi
 	stat := C.ps6000RunStreaming((C.short)(handle), (*C.uint)(&reqSampleInterval),
 		(C.PS6000_TIME_UNITS)(sampleIntervalTimeUnits), (C.uint)(maxPreTriggerSamples),
 		(C.uint)(maxPostTriggerSamples), (C.short)(boolToint16(autoStop)), (C.uint)(downSampleRatio),
-		(C.int16_t)(downSampleRatioMode), (C.uint)(overviewBufferSize))
+		(C.PS6000_RATIO_MODE)(downSampleRatioMode), (C.uint)(overviewBufferSize))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("RunStreaming:  %s", psc.StatStr(int(stat)))
 	}
@@ -461,9 +461,9 @@ func ps6000SetTriggerChannelProperties(handle int16, channelProperties []Trigger
 		cTriggerChannelProperties = make([]C.PS6000_TRIGGER_CHANNEL_PROPERTIES, len(channelProperties))
 		for i := range channelProperties {
 			cTriggerChannelProperties[i].channel = (C.PS6000_CHANNEL)(channelProperties[i].Channel)
-			cTriggerChannelProperties[i].thresholdLowerHysteresis = (C.ushort)(channelProperties[i].ThresholdLowerHysteresis)
+			cTriggerChannelProperties[i].hysteresisLower = (C.ushort)(channelProperties[i].ThresholdLowerHysteresis)
 			cTriggerChannelProperties[i].thresholdLower = (C.short)(channelProperties[i].ThresholdLower)
-			cTriggerChannelProperties[i].thresholdUpperHysteresis = (C.ushort)(channelProperties[i].ThresholdUpperHysteresis)
+			cTriggerChannelProperties[i].hysteresisUpper = (C.ushort)(channelProperties[i].ThresholdUpperHysteresis)
 			cTriggerChannelProperties[i].thresholdUpper = (C.short)(channelProperties[i].ThresholdUpper)
 		}
 	}
@@ -573,7 +573,7 @@ func ps6000SetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, wa
 	stat := C.ps6000SetSigGenBuiltIn((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.short)(waveType), (C.float)(startFrequency),
 		(C.float)(stopFrequency), (C.float)(increment), (C.float)(dwellTime),
-		(C.PS6000_SWEEP_TYPE)(sweepType), (C.int)(operation),
+		(C.PS6000_SWEEP_TYPE)(sweepType), (C.PS6000_EXTRA_OPERATIONS)(operation),
 		(C.uint)(shots), (C.uint)(sweeps), (C.PS6000_SIGGEN_TRIG_TYPE)(triggerType),
 		(C.PS6000_SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))
 
@@ -681,14 +681,12 @@ func ps6000TriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pu
 	return
 }
 
-func ps6000MemorySegments(handle int16, nSegments uint64) (nMaxSamples int64, err error) {
+func ps6000MemorySegments(handle int16, nSegments uint64) (nMaxSamples uint32, err error) {
 	slog.Debug("ps6000MemorySegments", "handle", handle, "nSegments", nSegments)
-	var maxSamples C.int
-	stat := C.ps6000MemorySegments((C.short)(handle), (C.uint)(nSegments), &maxSamples)
+	stat := C.ps6000MemorySegments((C.short)(handle), (C.uint)(nSegments), (*C.uint32_t)(&nMaxSamples))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("MemorySegments:  %s", psc.StatStr(int(stat)))
 	}
-	nMaxSamples = int64(maxSamples)
 	return
 }
 
@@ -738,7 +736,7 @@ func ps6000SetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPK uint32,
 		(C.uint)(pkToPK), (C.uint)(startDeltaPhase), (C.uint)(stopDeltaPhase),
 		(C.uint32_t)(deltaPhaseIncrement), (C.uint32_t)(dwellCount),
 		(*C.short)(&arbitraryWaveform[0]), (C.int32_t)(len(arbitraryWaveform)),
-		(C.PS6000_SWEEP_TYPE)(sweepType), (C.int)(operation),
+		(C.PS6000_SWEEP_TYPE)(sweepType), (C.PS6000_EXTRA_OPERATIONS)(operation),
 		(C.PS6000_INDEX_MODE)(indexMode),
 		(C.uint)(shots), (C.uint)(sweeps), (C.PS6000_SIGGEN_TRIG_TYPE)(triggerType),
 		(C.PS6000_SIGGEN_TRIG_SOURCE)(triggerSource), (C.short)(extInThreshold))
