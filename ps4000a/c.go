@@ -602,6 +602,9 @@ func ps4000aSetTriggerDelay(handle int16, delay uint32) (err error) {
 
 func ps4000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
 	pwType PulseWidthType) (err error) {
+	if len(conditions) == 0 {
+		return nil
+	}
 	return fmt.Errorf("SetPulseWidthQualifier not supported on ps4000a")
 }
 func ps4000aSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {

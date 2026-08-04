@@ -128,9 +128,65 @@ PICO_STATUS ps6000aRunBlock(int16_t handle, uint64_t noOfPreTriggerSamples, uint
     if (timeIndisposedMs) *timeIndisposedMs = indisposed;
     return status;
 }
+typedef enum {
+  PS2000A_CONDITION_DONT_CARE,
+  PS2000A_CONDITION_TRUE,
+  PS2000A_CONDITION_FALSE,
+  PS2000A_CONDITION_MAX
+} PS2000A_TRIGGER_STATE_LOCAL;
+
+typedef struct tPS2000ATriggerConditionsLocal
+{
+  PS2000A_TRIGGER_STATE_LOCAL channelA;
+  PS2000A_TRIGGER_STATE_LOCAL channelB;
+  PS2000A_TRIGGER_STATE_LOCAL channelC;
+  PS2000A_TRIGGER_STATE_LOCAL channelD;
+  PS2000A_TRIGGER_STATE_LOCAL external;
+  PS2000A_TRIGGER_STATE_LOCAL aux;
+  PS2000A_TRIGGER_STATE_LOCAL pulseWidthQualifier;
+  PS2000A_TRIGGER_STATE_LOCAL digital;
+} PS2000A_TRIGGER_CONDITIONS_LOCAL;
+
 PICO_STATUS ps6000aSetTriggerChannelProperties(int16_t handle, PICO_TRIGGER_CHANNEL_PROPERTIES *channelProperties, int16_t nChannelProperties, int16_t auxOutputEnable, uint32_t autoTriggerMicroSeconds) { return ps2000aSetTriggerChannelProperties(handle, (void*)channelProperties, nChannelProperties, auxOutputEnable, autoTriggerMicroSeconds/1000); }
-PICO_STATUS ps6000aSetTriggerChannelConditions(int16_t handle, PICO_CONDITION *conditions, int16_t nConditions, PICO_ACTION action) { return ps2000aSetTriggerChannelConditions(handle, (void*)conditions, nConditions); }
-PICO_STATUS ps6000aSetTriggerChannelDirections(int16_t handle, PICO_DIRECTION *directions, int16_t nDirections) { return 0; } // Too different
+
+PICO_STATUS ps6000aSetTriggerChannelConditions(int16_t handle, PICO_CONDITION *conditions, int16_t nConditions, PICO_ACTION action) {
+    PS2000A_TRIGGER_CONDITIONS_LOCAL tc;
+    tc.channelA = PS2000A_CONDITION_DONT_CARE;
+    tc.channelB = PS2000A_CONDITION_DONT_CARE;
+    tc.channelC = PS2000A_CONDITION_DONT_CARE;
+    tc.channelD = PS2000A_CONDITION_DONT_CARE;
+    tc.external = PS2000A_CONDITION_DONT_CARE;
+    tc.aux = PS2000A_CONDITION_DONT_CARE;
+    tc.pulseWidthQualifier = PS2000A_CONDITION_DONT_CARE;
+    tc.digital = PS2000A_CONDITION_DONT_CARE;
+
+    for (int16_t i = 0; i < nConditions; i++) {
+        switch (conditions[i].source) {
+            case PICO_CHANNEL_A: tc.channelA = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PICO_CHANNEL_B: tc.channelB = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PICO_CHANNEL_C: tc.channelC = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PICO_CHANNEL_D: tc.channelD = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PICO_EXTERNAL: tc.external = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PICO_TRIGGER_AUX: tc.aux = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+        }
+    }
+    return ps2000aSetTriggerChannelConditions(handle, (void*)&tc, 1);
+}
+
+PICO_STATUS ps6000aSetTriggerChannelDirections(int16_t handle, PICO_DIRECTION *directions, int16_t nDirections) {
+    uint32_t dirA = 2, dirB = 2, dirC = 2, dirD = 2, dirExt = 2, dirAux = 2;
+    for (int16_t i = 0; i < nDirections; i++) {
+        switch (directions[i].channel) {
+            case PICO_CHANNEL_A: dirA = (uint32_t)directions[i].direction; break;
+            case PICO_CHANNEL_B: dirB = (uint32_t)directions[i].direction; break;
+            case PICO_CHANNEL_C: dirC = (uint32_t)directions[i].direction; break;
+            case PICO_CHANNEL_D: dirD = (uint32_t)directions[i].direction; break;
+            case PICO_EXTERNAL: dirExt = (uint32_t)directions[i].direction; break;
+            case PICO_TRIGGER_AUX: dirAux = (uint32_t)directions[i].direction; break;
+        }
+    }
+    return ps2000aSetTriggerChannelDirections(handle, dirA, dirB, dirC, dirD, dirExt, dirAux);
+}
 PICO_STATUS ps6000aSetTriggerDelay(int16_t handle, uint64_t delay) { return ps2000aSetTriggerDelay(handle, (uint32_t)delay); }
 PICO_STATUS ps6000aSetTriggerDigitalPortProperties(int16_t handle, PICO_CHANNEL port, PICO_DIGITAL_CHANNEL_DIRECTIONS *directions, int16_t nDirections) { return 0; }
 PICO_STATUS ps6000aStop(int16_t handle) { return ps2000aStop(handle); }
