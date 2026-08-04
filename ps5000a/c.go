@@ -85,6 +85,7 @@ func openUnit(serial string, resolution int) (handle int16, err error) {
 		err = fmt.Errorf("OpenUnit:  %s", psc.StatStr(int(stat)))
 		return
 	}
+	loadConstants()
 	return
 }
 

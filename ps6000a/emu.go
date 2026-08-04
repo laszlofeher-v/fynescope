@@ -53,11 +53,7 @@ uint32_t ps2000aNoOfStreamingValues(int16_t handle, uint32_t *noOfValues);
 uint32_t ps2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t *nMaxSamples);
 
 PICO_STATUS ps6000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
-    uint32_t status = ps2000aEnumerateUnits(count, serials, serialLth);
-    if (status == 0 && serials != 0 && *serialLth > 0) {
-        strcpy((char *)serials, "66AEMU");
-    }
-    return status;
+    return ps2000aEnumerateUnits(count, serials, serialLth);
 }
 PICO_STATUS ps6000aOpenUnit(int16_t *handle, int8_t *serial, PICO_DEVICE_RESOLUTION resolution) { return ps2000aOpenUnit(handle, serial); }
 PICO_STATUS ps6000aOpenUnitAsync(int16_t *status, int8_t *serial, PICO_DEVICE_RESOLUTION resolution) { return ps2000aOpenUnitAsync(status, serial); }
@@ -66,7 +62,7 @@ PICO_STATUS ps6000aCloseUnit(int16_t handle) { return ps2000aCloseUnit(handle); 
 PICO_STATUS ps6000aGetUnitInfo(int16_t handle, int8_t *string, int16_t stringLength, int16_t *requiredSize, PICO_INFO info) {
     uint32_t status = ps2000aGetUnitInfo(handle, string, stringLength, requiredSize, (uint32_t)info);
     if (status == 0 && string != 0 && stringLength > 0) {
-        if (info == 3) strcpy((char *)string, "66AEMU");
+        if (info == 3) strcpy((char *)string, "64AEM");
     }
     return status;
 }

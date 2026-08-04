@@ -112,36 +112,32 @@ func getValuesOverlappedBulk(m *genericps.GetValuesOverlappedBulkMsg) {
 }
 
 func getAnalogueOffsetMsg(m *genericps.GetAnalogueOffsetMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.GetAnalogueOffsetRsp)
 	response.MinimumVoltage = 0
 	response.MaximumVoltage = 0
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func getChannelInformation(m *genericps.GetChannelInformationMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.GetChannelInformationRsp)
 	response.Ranges = m.Ranges
 	response.LengthOfRanges = 0
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func getMaxDownSampleRatio(m *genericps.GetMaxDownSampleRatioMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.GetMaxDownSampleRatioRsp)
 	response.MaxDownSampleRatio = 1
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func getMaxSegments(m *genericps.GetMaxSegmentsMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.GetMaxSegmentsRsp)
 	response.MaxSegments = 1
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
@@ -223,9 +219,15 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 }
 
 func setDataBuffers(m *genericps.SetDataBuffersMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
+	buffersMutex.Lock()
+	if scopeBuffers[m.Handle()] == nil {
+		scopeBuffers[m.Handle()] = make(map[genericps.ChannelId][]int16)
+	}
+	scopeBuffers[m.Handle()][m.Ch] = m.BufferMax
+	buffersMutex.Unlock()
+
 	response := m.Rsp().(*genericps.SetDataBuffersRsp)
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
@@ -278,30 +280,26 @@ func runBlock(m *genericps.RunBlockMsg) {
 }
 
 func setTriggerChannelProperties(m *genericps.SetTriggerChannelPropertiesMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.SetTriggerChannelPropertiesRsp)
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func setTriggerChannelConditions(m *genericps.SetTriggerChannelConditionsMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.SetTriggerChannelConditionsRsp)
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func setTriggerChannelDirections(m *genericps.SetTriggerChannelDirectionsMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.SetTriggerChannelDirectionsRsp)
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 
 func setTriggerDelay(m *genericps.SetTriggerDelayMsg) {
-	err := fmt.Errorf("Not Supported on ps3000")
 	response := m.Rsp().(*genericps.SetTriggerDelayRsp)
-	response.SetStatus(err)
+	response.SetStatus(nil)
 	m.RspCh() <- struct{}{}
 }
 

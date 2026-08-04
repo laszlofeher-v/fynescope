@@ -1373,6 +1373,14 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		slog.Warn("PS2407B via PS4000a driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
+	case "54AEM":
+		slog.Warn("PS2407B via PS5000a driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "64AEM":
+		slog.Warn("PS2407B via PS6000a driver")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	case "34AEM":
 		slog.Warn("PS2407B via PS3000a driver")
 		scp.maxSamplingRate = maxSampling1G

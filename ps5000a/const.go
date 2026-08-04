@@ -17,6 +17,7 @@ int lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t autoStop, void * pParameter);
 */
 import "C"
+import "fynescope/genericps"
 
 const (
 	// MaxChannelBuffers = C.PS5000A_MAX_CHANNEL_BUFFERS
@@ -335,4 +336,73 @@ func TimeUnitToVal(tu TimeUnits) float64 {
 		return 1
 	}
 	return 0
+}
+
+func loadConstants() {
+	genericps.ChA = genericps.ChannelId(ChA)
+	genericps.ChB = genericps.ChannelId(ChB)
+	genericps.ChC = genericps.ChannelId(ChC)
+	genericps.ChD = genericps.ChannelId(ChD)
+	genericps.RatioModeNone = genericps.RatioMode(RatioModeNone)
+	genericps.RatioModeAggregate = genericps.RatioMode(RatioModeAggregate)
+	genericps.RatioModeDecimate = genericps.RatioMode(RatioModeDecimate)
+	genericps.RatioModeAverage = genericps.RatioMode(RatioModeAverage)
+	genericps.Ac = genericps.Coupling(Ac)
+	genericps.Dc = genericps.Coupling(Dc)
+	genericps.Range_10mv = genericps.RangeEnum(Range_10mv)
+	genericps.Range_20mv = genericps.RangeEnum(Range_20mv)
+	genericps.Range_50mv = genericps.RangeEnum(Range_50mv)
+	genericps.Range_100mv = genericps.RangeEnum(Range_100mv)
+	genericps.Range_200mv = genericps.RangeEnum(Range_200mv)
+	genericps.Range_500mv = genericps.RangeEnum(Range_500mv)
+	genericps.Range_1v = genericps.RangeEnum(Range_1v)
+	genericps.Range_2v = genericps.RangeEnum(Range_2v)
+	genericps.Range_5v = genericps.RangeEnum(Range_5v)
+	genericps.Range_10v = genericps.RangeEnum(Range_10v)
+	genericps.Range_20v = genericps.RangeEnum(Range_20v)
+	genericps.Range_50v = genericps.RangeEnum(Range_50v)
+	genericps.Level = genericps.ThresholdModeId(Level)
+	genericps.Window = genericps.ThresholdModeId(Window)
+	genericps.CondDontCare = genericps.TriggerRespBase(CondDontCare)
+	genericps.CondTrue = genericps.TriggerRespBase(CondTrue)
+	genericps.CondFalse = genericps.TriggerRespBase(CondFalse)
+	genericps.CondMax = genericps.TriggerRespBase(CondMax)
+	genericps.TriggerAbove = genericps.ThresholdDirection(TriggerAbove)
+	genericps.TriggerBelow = genericps.ThresholdDirection(TriggerBelow)
+	genericps.TriggerRising = genericps.ThresholdDirection(TriggerRaising)
+	genericps.TriggerFalling = genericps.ThresholdDirection(TriggerFalling)
+	genericps.TriggerRisingOrFalling = genericps.ThresholdDirection(TriggerRisingOrFalling)
+	genericps.TriggerAboveLower = genericps.ThresholdDirection(TriggerAboveLower)
+	genericps.TriggerBelowLower = genericps.ThresholdDirection(TriggerBelowLower)
+	genericps.TriggerRisingLower = genericps.ThresholdDirection(TriggerRisingLower)
+	genericps.TriggerFallingLower = genericps.ThresholdDirection(TriggerFallingLower)
+	genericps.TriggerOutside = genericps.ThresholdDirection(TriggerOutside)
+	genericps.TriggerInside = genericps.ThresholdDirection(TriggerInside)
+	genericps.TriggerEnter = genericps.ThresholdDirection(TriggerEnter)
+	genericps.TriggerExit = genericps.ThresholdDirection(TriggerExit)
+	genericps.TriggerEnterOrExit = genericps.ThresholdDirection(TriggerEnterOrExit)
+	genericps.TriggerPositiveRunt = genericps.ThresholdDirection(TriggerPositiveRunt)
+	genericps.TriggerNegativeRunt = genericps.ThresholdDirection(TriggerNegativeRunt)
+	genericps.TriggerNone = genericps.ThresholdDirection(TriggerNone)
+	genericps.TuFs = genericps.TimeUnits(TuFs)
+	genericps.TuPs = genericps.TimeUnits(TuPs)
+	genericps.TuNs = genericps.TimeUnits(TuNs)
+	genericps.TuUs = genericps.TimeUnits(TuUs)
+	genericps.TuMs = genericps.TimeUnits(TuMs)
+	genericps.TuS = genericps.TimeUnits(TuS)
+	genericps.PicoDriverVersion = genericps.PicoInfo(PicoDriverVersion)
+	genericps.PicoUsbVersion = genericps.PicoInfo(PicoUsbVersion)
+	genericps.PicoHardwareVersion = genericps.PicoInfo(PicoHardwareVersion)
+	genericps.PicoVariantInfo = genericps.PicoInfo(PicoVariantInfo)
+	genericps.PicoBatchAndSerial = genericps.PicoInfo(PicoBatchAndSerial)
+	genericps.PicoCalDate = genericps.PicoInfo(PicoCalDate)
+	genericps.PicoKernelVersion = genericps.PicoInfo(PicoKernelVarsion)
+	genericps.PicoDigitalHardwareVersion = genericps.PicoInfo(PicoDigitalHardwareVersion)
+	genericps.PicoAnalogueHardwareVersion = genericps.PicoInfo(PicoAnalogueHardwareVersion)
+	genericps.PicoFirmwareVersion1 = genericps.PicoInfo(PicoFirmwareVersion1)
+	genericps.PicoFirmwareVersion2 = genericps.PicoInfo(PicoFirmwareVersion2)
+	genericps.PicoMacAddress = genericps.PicoInfo(PicoMacAddress)
+	genericps.PicoShadowCall = genericps.PicoInfo(PicoShadowCall)
+	genericps.PicoIppVersion = genericps.PicoInfo(PicoIppVersion)
+	genericps.PicoDriverPath = genericps.PicoInfo(PicoDriverPath)
 }
