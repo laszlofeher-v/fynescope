@@ -17,9 +17,6 @@ disable_commands:
 trigger_commands:
     - trigger
     - indítási feltétel
-x10_commands:
-    - x10
-    - szer tíz
 inv_commands:
     - invertálás
     - inv
