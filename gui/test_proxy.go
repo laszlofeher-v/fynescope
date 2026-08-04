@@ -596,9 +596,11 @@ func (scp *ScpDesc) Test() {
 	scroll(ffMinFreqId, 100)
 	wait()
 
-	for !scp.running {
+	if !scp.running {
 		tap(runblockButtonId) // Start the sweep
-		wait()
+		for !scp.running {
+			wait()
+		}
 	}
 	// Wait for a few frequency steps to complete
 	for i := 0; i < 200 && len(scp.bodeBuffers[0]) == 0; i++ {
