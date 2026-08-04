@@ -60,11 +60,7 @@ uint32_t ps2000aGetValuesTriggerTimeOffsetBulk64(int16_t handle, int64_t *times,
 uint32_t ps2000aIsReady(int16_t handle, int16_t *ready);
 
 PICO_STATUS ps5000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
-    uint32_t status = ps2000aEnumerateUnits(count, serials, serialLth);
-    if (status == 0 && serials != 0 && *serialLth > 0) {
-        strcpy((char *)serials, "55AEMU");
-    }
-    return status;
+    return ps2000aEnumerateUnits(count, serials, serialLth);
 }
 PICO_STATUS ps5000aOpenUnit(int16_t *handle, int8_t *serial, PS5000A_DEVICE_RESOLUTION resolution) { return ps2000aOpenUnit(handle, serial); }
 PICO_STATUS ps5000aOpenUnitAsync(int16_t *status, int8_t *serial, PS5000A_DEVICE_RESOLUTION resolution) { return ps2000aOpenUnitAsync(status, serial); }
@@ -73,7 +69,7 @@ PICO_STATUS ps5000aCloseUnit(int16_t handle) { return ps2000aCloseUnit(handle); 
 PICO_STATUS ps5000aGetUnitInfo(int16_t handle, int8_t *string, int16_t stringLength, int16_t *requiredSize, PICO_INFO info) {
     uint32_t status = ps2000aGetUnitInfo(handle, string, stringLength, requiredSize, (uint32_t)info);
     if (status == 0 && string != 0 && stringLength > 0) {
-        if (info == 3) strcpy((char *)string, "55AEMU");
+        if (info == 3) strcpy((char *)string, "54AEM");
     }
     return status;
 }
