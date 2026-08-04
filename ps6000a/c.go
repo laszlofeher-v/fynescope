@@ -360,7 +360,12 @@ func ps6000aSetChannel(handle int16, channel ChannelId, enabled bool, couplingTy
 
 func ps6000aMaximumValue(handle int16) (value int32, err error) {
 	slog.Debug("ps6000aMaximumValue", "handle", handle)
-	return 0, fmt.Errorf("ps6000aMaximumValue not supported on ps6000a")
+	var minValue, maxValue int16
+	stat := C.ps6000aGetAdcLimits((C.short)(handle), C.PICO_DR_8BIT, (*C.short)(&minValue), (*C.short)(&maxValue))
+	if stat != C.PICO_OK {
+		return 32767, fmt.Errorf("%s", psc.StatStr(int(stat)))
+	}
+	return int32(maxValue), nil
 }
 
 func ps6000aMinimumValue(handle int16) (value int32, err error) {
