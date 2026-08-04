@@ -10,7 +10,14 @@ package ps4000a
 #include "/opt/picoscope/include/libps4000a/PicoStatus.h"
 #include "/opt/picoscope/include/libps4000a/ps4000aApi.h"
 
-PICO_STATUS ps4000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) { return 0; }
+PICO_STATUS ps4000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
+    if (count) *count = 1;
+    if (serials && *serialLth > 6) {
+        strcpy((char *)serials, "44AEMU");
+        *serialLth = 7;
+    }
+    return 0;
+}
 PICO_STATUS ps4000aOpenUnit(int16_t *handle, int8_t *serial) { return 0; }
 PICO_STATUS ps4000aOpenUnitAsync(int16_t *status, int8_t *serial) { return 0; }
 PICO_STATUS ps4000aOpenUnitProgress(int16_t *handle, int16_t *progressPercent, int16_t *complete) { return 0; }
