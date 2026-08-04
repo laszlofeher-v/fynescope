@@ -214,10 +214,11 @@ func getTimebase(m *genericps.GetTimebaseMsg) {
 }
 
 func getTimebase2(m *genericps.GetTimebase2Msg) {
-	timeIntervalNanoseconds, maxSamples, err := ps6000GetTimebase2(m.Handle(), m.TimeBase, m.NumOfSamples, m.OverSample, m.SegmentIndex)
+	timeIntervalNanoseconds, maxSamples, err := ps6000GetTimebase2(m.Handle(),
+		uint32(m.TimeBase), uint32(m.NumOfSamples), m.OverSample, uint32(m.SegmentIndex))
 	response := m.Rsp().(*genericps.GetTimebase2Rsp)
-	response.TimeIntervalNanoseconds = timeIntervalNanoseconds
-	response.MaxSamples = maxSamples
+	response.TimeIntervalNanoseconds = float64(timeIntervalNanoseconds)
+	response.MaxSamples = uint64(maxSamples)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -253,7 +254,8 @@ func setDataBuffer(m *genericps.SetDataBufferMsg) {
 	var (
 		err error
 	)
-	err = ps6000SetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn, m.SegmentIndex, RatioMode(m.Mode))
+	err = ps6000SetDataBuffer(m.Handle(), ChannelId(m.Ch), m.BufferIn,
+		uint32(m.SegmentIndex), RatioMode(m.Mode))
 	response := m.Rsp().(*genericps.SetDataBufferRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -322,8 +324,9 @@ func runBlock(m *genericps.RunBlockMsg) {
 		err              error
 		timeIndisposedMs int32
 	)
-	timeIndisposedMs, err = ps6000RunBlock(m.Handle(), m.NumOfPreTriggerSamples, m.NumOfPostTriggerSamples,
-		m.TimeBase, m.OverSample, m.SegmentIndex, BlockReady(m.LpBlockReadyGoPar), m.Param)
+	timeIndisposedMs, err = ps6000RunBlock(m.Handle(), int32(m.NumOfPreTriggerSamples),
+		int32(m.NumOfPostTriggerSamples), uint32(m.TimeBase),
+		m.OverSample, uint32(m.SegmentIndex), BlockReady(m.LpBlockReadyGoPar), m.Param)
 	response := m.Rsp().(*genericps.RunBlockRsp)
 	response.TimeIndisposedMs = timeIndisposedMs
 	response.SetStatus(err)
@@ -556,7 +559,7 @@ func memorySegments(m *genericps.MemorySegmentsMsg) {
 	nMaxSamples, err := ps6000MemorySegments(m.Handle(), m.NSegments)
 	response := m.Rsp().(*genericps.MemorySegmentsRsp)
 	response.SetStatus(err)
-	response.NMaxSamples = nMaxSamples
+	response.NMaxSamples = uint64(nMaxSamples)
 	m.RspCh() <- struct{}{}
 }
 
