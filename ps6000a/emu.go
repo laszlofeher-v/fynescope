@@ -9,7 +9,14 @@ package ps6000a
 #include <string.h>
 #include "/opt/picoscope/include/libps6000a/ps6000aApi.h"
 
-PICO_STATUS ps6000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) { return 0; }
+PICO_STATUS ps6000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
+    if (count) *count = 1;
+    if (serials && *serialLth > 6) {
+        strcpy((char *)serials, "66AEMU");
+        *serialLth = 7;
+    }
+    return 0;
+}
 PICO_STATUS ps6000aOpenUnit(int16_t *handle, int8_t *serial, PICO_DEVICE_RESOLUTION resolution) { return 0; }
 PICO_STATUS ps6000aOpenUnitAsync(int16_t *status, int8_t *serial, PICO_DEVICE_RESOLUTION resolution) { return 0; }
 PICO_STATUS ps6000aOpenUnitProgress(int16_t *handle, int16_t *progressPercent, int16_t *complete) { return 0; }
