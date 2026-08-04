@@ -58,6 +58,8 @@ uint32_t ps2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, void *time
 uint32_t ps2000aGetValuesTriggerTimeOffsetBulk(int16_t handle, uint32_t *timesUpper, uint32_t *timesLower, void *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex);
 uint32_t ps2000aGetValuesTriggerTimeOffsetBulk64(int16_t handle, int64_t *times, void *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex);
 uint32_t ps2000aIsReady(int16_t handle, int16_t *ready);
+uint32_t ps2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t *nMaxSamples);
+uint32_t ps2000aPingUnit(int16_t handle);
 
 PICO_STATUS ps4000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
     return ps2000aEnumerateUnits(count, serials, serialLth);
@@ -99,9 +101,65 @@ PICO_STATUS ps4000aSetEtsTimeBuffers(int16_t handle, uint32_t *timeUpper, uint32
 PICO_STATUS ps4000aSetEts(int16_t handle, PS4000A_ETS_MODE mode, int16_t etsCycles, int16_t etsInterleave, int32_t *sampleTimePicoseconds) { return ps2000aSetEts(handle, (uint32_t)mode, etsCycles, etsInterleave, sampleTimePicoseconds); }
 PICO_STATUS ps4000aRunStreaming(int16_t handle, uint32_t *sampleInterval, PS4000A_TIME_UNITS sampleIntervalTimeUnits, uint32_t maxPreTriggerSamples, uint32_t maxPostTriggerSamples, int16_t autoStop, uint32_t downSampleRatio, PS4000A_RATIO_MODE downSampleRatioMode, uint32_t overviewBufferSize) { return ps2000aRunStreaming(handle, sampleInterval, (uint32_t)sampleIntervalTimeUnits, maxPreTriggerSamples, maxPostTriggerSamples, autoStop, downSampleRatio, (uint32_t)downSampleRatioMode, overviewBufferSize); }
 PICO_STATUS ps4000aRunBlock(int16_t handle, int32_t noOfPreTriggerSamples, int32_t noOfPostTriggerSamples, uint32_t timebase, int32_t *timeIndisposedMs, uint32_t segmentIndex, ps4000aBlockReady lpReady, void *pParameter) { return ps2000aRunBlock(handle, noOfPreTriggerSamples, noOfPostTriggerSamples, timebase, 0, timeIndisposedMs, segmentIndex, (void*)lpReady, pParameter); }
+typedef enum {
+  PS2000A_CONDITION_DONT_CARE,
+  PS2000A_CONDITION_TRUE,
+  PS2000A_CONDITION_FALSE,
+  PS2000A_CONDITION_MAX
+} PS2000A_TRIGGER_STATE_LOCAL;
+
+typedef struct tPS2000ATriggerConditionsLocal
+{
+  PS2000A_TRIGGER_STATE_LOCAL channelA;
+  PS2000A_TRIGGER_STATE_LOCAL channelB;
+  PS2000A_TRIGGER_STATE_LOCAL channelC;
+  PS2000A_TRIGGER_STATE_LOCAL channelD;
+  PS2000A_TRIGGER_STATE_LOCAL external;
+  PS2000A_TRIGGER_STATE_LOCAL aux;
+  PS2000A_TRIGGER_STATE_LOCAL pulseWidthQualifier;
+  PS2000A_TRIGGER_STATE_LOCAL digital;
+} PS2000A_TRIGGER_CONDITIONS_LOCAL;
+
 PICO_STATUS ps4000aSetTriggerChannelProperties(int16_t handle, PS4000A_TRIGGER_CHANNEL_PROPERTIES *channelProperties, int16_t nChannelProperties, int16_t auxOutputEnable, int32_t autoTriggerMilliseconds) { return ps2000aSetTriggerChannelProperties(handle, (void*)channelProperties, nChannelProperties, auxOutputEnable, autoTriggerMilliseconds); }
-PICO_STATUS ps4000aSetTriggerChannelConditions(int16_t handle, PS4000A_CONDITION *conditions, int16_t nConditions, PS4000A_CONDITIONS_INFO info) { return ps2000aSetTriggerChannelConditions(handle, (void*)conditions, nConditions); }
-PICO_STATUS ps4000aSetTriggerChannelDirections(int16_t handle, PS4000A_DIRECTION *directions, int16_t nDirections) { return 0; } // Too different, ignore directions array for now
+
+PICO_STATUS ps4000aSetTriggerChannelConditions(int16_t handle, PS4000A_CONDITION *conditions, int16_t nConditions, PS4000A_CONDITIONS_INFO info) {
+    PS2000A_TRIGGER_CONDITIONS_LOCAL tc;
+    tc.channelA = PS2000A_CONDITION_DONT_CARE;
+    tc.channelB = PS2000A_CONDITION_DONT_CARE;
+    tc.channelC = PS2000A_CONDITION_DONT_CARE;
+    tc.channelD = PS2000A_CONDITION_DONT_CARE;
+    tc.external = PS2000A_CONDITION_DONT_CARE;
+    tc.aux = PS2000A_CONDITION_DONT_CARE;
+    tc.pulseWidthQualifier = PS2000A_CONDITION_DONT_CARE;
+    tc.digital = PS2000A_CONDITION_DONT_CARE;
+
+    for (int16_t i = 0; i < nConditions; i++) {
+        switch (conditions[i].source) {
+            case PS4000A_CHANNEL_A: tc.channelA = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS4000A_CHANNEL_B: tc.channelB = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS4000A_CHANNEL_C: tc.channelC = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS4000A_CHANNEL_D: tc.channelD = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS4000A_EXTERNAL: tc.external = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS4000A_TRIGGER_AUX: tc.aux = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+        }
+    }
+    return ps2000aSetTriggerChannelConditions(handle, (void*)&tc, 1);
+}
+
+PICO_STATUS ps4000aSetTriggerChannelDirections(int16_t handle, PS4000A_DIRECTION *directions, int16_t nDirections) {
+    uint32_t dirA = 2, dirB = 2, dirC = 2, dirD = 2, dirExt = 2, dirAux = 2;
+    for (int16_t i = 0; i < nDirections; i++) {
+        switch (directions[i].channel) {
+            case PS4000A_CHANNEL_A: dirA = (uint32_t)directions[i].direction; break;
+            case PS4000A_CHANNEL_B: dirB = (uint32_t)directions[i].direction; break;
+            case PS4000A_CHANNEL_C: dirC = (uint32_t)directions[i].direction; break;
+            case PS4000A_CHANNEL_D: dirD = (uint32_t)directions[i].direction; break;
+            case PS4000A_EXTERNAL: dirExt = (uint32_t)directions[i].direction; break;
+            case PS4000A_TRIGGER_AUX: dirAux = (uint32_t)directions[i].direction; break;
+        }
+    }
+    return ps2000aSetTriggerChannelDirections(handle, dirA, dirB, dirC, dirD, dirExt, dirAux);
+}
 PICO_STATUS ps4000aSetTriggerDelay(int16_t handle, uint32_t delay) { return ps2000aSetTriggerDelay(handle, delay); }
 PICO_STATUS ps4000aStop(int16_t handle) { return ps2000aStop(handle); }
 PICO_STATUS ps4000aSetSigGenBuiltIn(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, PS4000A_WAVE_TYPE waveType, double startFrequency, double stopFrequency, double increment, double dwellTime, PS4000A_SWEEP_TYPE sweepType, PS4000A_EXTRA_OPERATIONS operation, uint32_t shots, uint32_t sweeps, PS4000A_SIGGEN_TRIG_TYPE triggerType, PS4000A_SIGGEN_TRIG_SOURCE triggerSource, int16_t extInThreshold) { return ps2000aSetSigGenBuiltInV2(handle, offsetVoltage, pkToPk, (int16_t)waveType, startFrequency, stopFrequency, increment, dwellTime, (uint32_t)sweepType, (uint32_t)operation, shots, sweeps, (uint32_t)triggerType, (uint32_t)triggerSource, extInThreshold); }
@@ -113,5 +171,7 @@ PICO_STATUS ps4000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, PS4000A
 PICO_STATUS ps4000aGetValuesTriggerTimeOffsetBulk(int16_t handle, uint32_t *timesUpper, uint32_t *timesLower, PS4000A_TIME_UNITS *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex) { return ps2000aGetValuesTriggerTimeOffsetBulk(handle, timesUpper, timesLower, (void*)timeUnits, fromSegmentIndex, toSegmentIndex); }
 PICO_STATUS ps4000aGetValuesTriggerTimeOffsetBulk64(int16_t handle, int64_t *times, PS4000A_TIME_UNITS *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex) { return ps2000aGetValuesTriggerTimeOffsetBulk64(handle, times, (void*)timeUnits, fromSegmentIndex, toSegmentIndex); }
 PICO_STATUS ps4000aIsReady(int16_t handle, int16_t *ready) { return ps2000aIsReady(handle, ready); }
+PICO_STATUS ps4000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t *nMaxSamples) { return ps2000aMemorySegments(handle, nSegments, nMaxSamples); }
+PICO_STATUS ps4000aPingUnit(int16_t handle) { return ps2000aPingUnit(handle); }
 */
 import "C"

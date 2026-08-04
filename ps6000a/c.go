@@ -550,6 +550,9 @@ func ps6000aSetTriggerDelay(handle int16, delay uint64) (err error) {
 }
 
 func ps6000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32, pwType PulseWidthType) (err error) {
+	if len(conditions) == 0 {
+		return nil
+	}
 	return fmt.Errorf("Not supported on ps6000a")
 }
 

@@ -335,6 +335,7 @@ func TimeUnitToVal(tu TimeUnits) float64 {
 }
 
 func loadConstants() {
+	genericps.InputRanges = inputRanges
 	genericps.ChA = genericps.ChannelId(ChA)
 	genericps.ChB = genericps.ChannelId(ChB)
 	genericps.ChC = genericps.ChannelId(ChC)
@@ -401,4 +402,24 @@ func loadConstants() {
 	genericps.PicoShadowCall = genericps.PicoInfo(PicoShadowCall)
 	genericps.PicoIppVersion = genericps.PicoInfo(PicoIppVersion)
 	genericps.PicoDriverPath = genericps.PicoInfo(PicoDriverPath)
+	genericps.Sine = genericps.WaveTypeEnum(Sine)
+	genericps.Square = genericps.WaveTypeEnum(Square)
+	genericps.Triangle = genericps.WaveTypeEnum(Triangle)
+	genericps.RampUp = genericps.WaveTypeEnum(RampUp)
+	genericps.RampDown = genericps.WaveTypeEnum(RampDown)
+	genericps.SinC = genericps.WaveTypeEnum(SinC)
+	genericps.Gaussian = genericps.WaveTypeEnum(Gaussian)
+	genericps.HalfSine = genericps.WaveTypeEnum(HalfSine)
+	genericps.DcVoltage = genericps.WaveTypeEnum(DcVoltage)
+	genericps.SineMaxFrequency = float64(SineMaxFrequency)
+	genericps.SquareMaxFrequency = float64(SquareMaxFrequency)
+	genericps.TriangleMaxFrequency = float64(TriangleMaxFrequency)
+	genericps.SinCMaxFrequency = float64(SinCMaxFrequency)
+	genericps.RampMaxFrequency = float64(RampMaxFrequency)
+	genericps.HalfSineMaxFrequency = float64(HalfSineMaxFrequency)
+	genericps.GaussianMaxFrequency = float64(GaussianMaxFrequency)
+	genericps.MinFrequency = float64(MinFrequency)
+	genericps.AwgMinSigGenBufferSize = AwgMinSigGenBufferSize
+	genericps.AwgMaxSigGenBufferSize = AwgMaxSigGenBufferSize
+	genericps.MinThresholdDiff = MinThresholdDiff
 }

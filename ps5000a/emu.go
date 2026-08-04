@@ -58,6 +58,8 @@ uint32_t ps2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, void *time
 uint32_t ps2000aGetValuesTriggerTimeOffsetBulk(int16_t handle, uint32_t *timesUpper, uint32_t *timesLower, void *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex);
 uint32_t ps2000aGetValuesTriggerTimeOffsetBulk64(int16_t handle, int64_t *times, void *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex);
 uint32_t ps2000aIsReady(int16_t handle, int16_t *ready);
+uint32_t ps2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t *nMaxSamples);
+uint32_t ps2000aPingUnit(int16_t handle);
 
 PICO_STATUS ps5000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) {
     return ps2000aEnumerateUnits(count, serials, serialLth);
@@ -99,8 +101,52 @@ PICO_STATUS ps5000aSetEtsTimeBuffers(int16_t handle, uint32_t *timeUpper, uint32
 PICO_STATUS ps5000aSetEts(int16_t handle, PS5000A_ETS_MODE mode, int16_t etsCycles, int16_t etsInterleave, int32_t *sampleTimePicoseconds) { return ps2000aSetEts(handle, (uint32_t)mode, etsCycles, etsInterleave, sampleTimePicoseconds); }
 PICO_STATUS ps5000aRunStreaming(int16_t handle, uint32_t *sampleInterval, PS5000A_TIME_UNITS sampleIntervalTimeUnits, uint32_t maxPreTriggerSamples, uint32_t maxPostTriggerSamples, int16_t autoStop, uint32_t downSampleRatio, PS5000A_RATIO_MODE downSampleRatioMode, uint32_t overviewBufferSize) { return ps2000aRunStreaming(handle, sampleInterval, (uint32_t)sampleIntervalTimeUnits, maxPreTriggerSamples, maxPostTriggerSamples, autoStop, downSampleRatio, (uint32_t)downSampleRatioMode, overviewBufferSize); }
 PICO_STATUS ps5000aRunBlock(int16_t handle, int32_t noOfPreTriggerSamples, int32_t noOfPostTriggerSamples, uint32_t timebase, int32_t *timeIndisposedMs, uint32_t segmentIndex, ps5000aBlockReady lpReady, void *pParameter) { return ps2000aRunBlock(handle, noOfPreTriggerSamples, noOfPostTriggerSamples, timebase, 0, timeIndisposedMs, segmentIndex, (void*)lpReady, pParameter); }
+typedef enum {
+  PS2000A_CONDITION_DONT_CARE,
+  PS2000A_CONDITION_TRUE,
+  PS2000A_CONDITION_FALSE,
+  PS2000A_CONDITION_MAX
+} PS2000A_TRIGGER_STATE_LOCAL;
+
+typedef struct tPS2000ATriggerConditionsLocal
+{
+  PS2000A_TRIGGER_STATE_LOCAL channelA;
+  PS2000A_TRIGGER_STATE_LOCAL channelB;
+  PS2000A_TRIGGER_STATE_LOCAL channelC;
+  PS2000A_TRIGGER_STATE_LOCAL channelD;
+  PS2000A_TRIGGER_STATE_LOCAL external;
+  PS2000A_TRIGGER_STATE_LOCAL aux;
+  PS2000A_TRIGGER_STATE_LOCAL pulseWidthQualifier;
+  PS2000A_TRIGGER_STATE_LOCAL digital;
+} PS2000A_TRIGGER_CONDITIONS_LOCAL;
+
 PICO_STATUS ps5000aSetTriggerChannelProperties(int16_t handle, PS5000A_TRIGGER_CHANNEL_PROPERTIES *channelProperties, int16_t nChannelProperties, int16_t auxOutputEnable, int32_t autoTriggerMilliseconds) { return ps2000aSetTriggerChannelProperties(handle, (void*)channelProperties, nChannelProperties, auxOutputEnable, autoTriggerMilliseconds); }
+
 PICO_STATUS ps5000aSetTriggerChannelConditions(int16_t handle, PS5000A_TRIGGER_CONDITIONS *conditions, int16_t nConditions) { return ps2000aSetTriggerChannelConditions(handle, (void*)conditions, nConditions); }
+PICO_STATUS ps5000aSetTriggerChannelConditionsV2(int16_t handle, PS5000A_CONDITION *conditions, int16_t nConditions, PS5000A_CONDITIONS_INFO info) {
+    PS2000A_TRIGGER_CONDITIONS_LOCAL tc;
+    tc.channelA = PS2000A_CONDITION_DONT_CARE;
+    tc.channelB = PS2000A_CONDITION_DONT_CARE;
+    tc.channelC = PS2000A_CONDITION_DONT_CARE;
+    tc.channelD = PS2000A_CONDITION_DONT_CARE;
+    tc.external = PS2000A_CONDITION_DONT_CARE;
+    tc.aux = PS2000A_CONDITION_DONT_CARE;
+    tc.pulseWidthQualifier = PS2000A_CONDITION_DONT_CARE;
+    tc.digital = PS2000A_CONDITION_DONT_CARE;
+
+    for (int16_t i = 0; i < nConditions; i++) {
+        switch (conditions[i].source) {
+            case PS5000A_CHANNEL_A: tc.channelA = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS5000A_CHANNEL_B: tc.channelB = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS5000A_CHANNEL_C: tc.channelC = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS5000A_CHANNEL_D: tc.channelD = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS5000A_EXTERNAL: tc.external = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+            case PS5000A_TRIGGER_AUX: tc.aux = (PS2000A_TRIGGER_STATE_LOCAL)conditions[i].condition; break;
+        }
+    }
+    return ps2000aSetTriggerChannelConditions(handle, (void*)&tc, 1);
+}
+
 PICO_STATUS ps5000aSetTriggerChannelDirections(int16_t handle, PS5000A_THRESHOLD_DIRECTION channelA, PS5000A_THRESHOLD_DIRECTION channelB, PS5000A_THRESHOLD_DIRECTION channelC, PS5000A_THRESHOLD_DIRECTION channelD, PS5000A_THRESHOLD_DIRECTION ext, PS5000A_THRESHOLD_DIRECTION aux) { return ps2000aSetTriggerChannelDirections(handle, (uint32_t)channelA, (uint32_t)channelB, (uint32_t)channelC, (uint32_t)channelD, (uint32_t)ext, (uint32_t)aux); }
 PICO_STATUS ps5000aSetTriggerDelay(int16_t handle, uint32_t delay) { return ps2000aSetTriggerDelay(handle, delay); }
 PICO_STATUS ps5000aStop(int16_t handle) { return ps2000aStop(handle); }
@@ -113,5 +159,7 @@ PICO_STATUS ps5000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, PS5000A
 PICO_STATUS ps5000aGetValuesTriggerTimeOffsetBulk(int16_t handle, uint32_t *timesUpper, uint32_t *timesLower, PS5000A_TIME_UNITS *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex) { return ps2000aGetValuesTriggerTimeOffsetBulk(handle, timesUpper, timesLower, (void*)timeUnits, fromSegmentIndex, toSegmentIndex); }
 PICO_STATUS ps5000aGetValuesTriggerTimeOffsetBulk64(int16_t handle, int64_t *times, PS5000A_TIME_UNITS *timeUnits, uint32_t fromSegmentIndex, uint32_t toSegmentIndex) { return ps2000aGetValuesTriggerTimeOffsetBulk64(handle, times, (void*)timeUnits, fromSegmentIndex, toSegmentIndex); }
 PICO_STATUS ps5000aIsReady(int16_t handle, int16_t *ready) { return ps2000aIsReady(handle, ready); }
+PICO_STATUS ps5000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t *nMaxSamples) { return ps2000aMemorySegments(handle, nSegments, nMaxSamples); }
+PICO_STATUS ps5000aPingUnit(int16_t handle) { return ps2000aPingUnit(handle); }
 */
 import "C"
