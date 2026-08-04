@@ -256,8 +256,16 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			scp.Settings.GenPanel.Operation = operationMap[option]
 			scp.applyInternalGenSettings(check.Checked)
 		}
-		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
-		waveType.SetSelected(waveTypeOptions[scp.Settings.GenPanel.WaveType])
+		getWaveTypeString := func(wt genericps.WaveTypeEnum) string {
+			for k, v := range waveTypeMap {
+				if v == wt {
+					return k
+				}
+			}
+			return "DcVoltage"
+		}
+		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, getWaveTypeString(genericps.DcVoltage))
+		waveType.SetSelected(getWaveTypeString(scp.Settings.GenPanel.WaveType))
 		if undockable {
 			undockButton = widget.NewButtonWithIcon(undock, theme.ViewFullScreenIcon(), func() {
 				// Errors logged with Fyne 2.6.0, 2.6.1 2.7.0
@@ -421,8 +429,22 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		sweepBox = container.New(layout.NewVBoxLayout(), startFrqDisp, stopFrqDisp,
 			stepFreq, dwellTime)
 		frqBox = container.New(layout.NewVBoxLayout(), frequency)
+		getSweepString := func(st genericps.SweepTypeEnum) string {
+			switch st {
+			case genericps.SweepDown:
+				return sweepDown
+			case genericps.SweepDownUp:
+				return sweepDownUp
+			case genericps.SweepUp:
+				return sweepUp
+			case genericps.SweepUpDown:
+				return sweepUpDown
+			default:
+				return sweepOff
+			}
+		}
 		sweepMenu := selectscroll.NewSelectScroll(sweepOptions, sweepChanged, sweepDownUp)
-		sweepMenu.SetSelected(sweepOptions[scp.Settings.GenPanel.Sweep+1])
+		sweepMenu.SetSelected(getSweepString(scp.Settings.GenPanel.Sweep))
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), show, check,
 				container.New(layout.NewVBoxLayout(), waveType), undockButton)

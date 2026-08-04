@@ -369,6 +369,16 @@ func (psControl *PscDesc) ChannelRanges(chIndex genericps.ChannelId) (ranges []i
 	length, err := psControl.Con.GetChannelInformation(genericps.ChannelInfoRanges,
 		0, allowedRanges, chIndex)
 	if err != nil {
+		if strings.Contains(err.Error(), "Not supported") {
+			if strings.Contains(psControl.Info, "6000a") || strings.Contains(psControl.Info, "64AEM") || strings.Contains(psControl.Info, "ps6000a") {
+				return []int32{
+					int32(genericps.Range_10mv), int32(genericps.Range_20mv), int32(genericps.Range_50mv),
+					int32(genericps.Range_100mv), int32(genericps.Range_200mv), int32(genericps.Range_500mv),
+					int32(genericps.Range_1v), int32(genericps.Range_2v), int32(genericps.Range_5v),
+					int32(genericps.Range_10v), int32(genericps.Range_20v),
+				}, nil
+			}
+		}
 		slog.Error("Get ch info", "err", err)
 		return
 	}

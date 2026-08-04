@@ -5,6 +5,7 @@ import (
 	"fynescope/settings"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -32,7 +33,7 @@ func blockMode(psControl *PscDesc) state {
 		// The SDK raises PICO_TRIGGER_ERROR if trigger properties are set
 		// while ETS is still active (e.g. after returning from ETS mode).
 		_, err = psControl.Con.SetEts(genericps.EtsOff, 40, 4)
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "Not supported") {
 			slog.Error("Set Ets off", "err", err)
 			return
 		}
