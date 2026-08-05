@@ -399,7 +399,7 @@ func ps6000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentI
 	}
 	stat := C.ps6000aSetDataBuffer((C.short)(handle), (C.PICO_CHANNEL)(ch), (C.PICO_POINTER)(pBuf),
 		(C.int32_t)(len(bufferIn)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex),
-		(C.PICO_RATIO_MODE)(mode), C.PICO_ADD)
+		(C.PICO_RATIO_MODE)(mode), C.PICO_CLEAR_ALL|C.PICO_ADD)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffer:  %s", psc.StatStr(int(stat)))
 	}
@@ -416,7 +416,7 @@ func ps6000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []in
 		pMin = unsafe.Pointer(&bufferMin[0])
 	}
 	stat := C.ps6000aSetDataBuffers((C.short)(handle), (C.PICO_CHANNEL)(ch), (C.PICO_POINTER)(pMax), (C.PICO_POINTER)(pMin),
-		(C.int32_t)(len(bufferMax)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex), (C.PICO_RATIO_MODE)(mode), C.PICO_ADD)
+		(C.int32_t)(len(bufferMax)), C.PICO_INT16_T, (C.uint64_t)(segmentIndex), (C.PICO_RATIO_MODE)(mode), C.PICO_CLEAR_ALL|C.PICO_ADD)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDataBuffers:  %s", psc.StatStr(int(stat)))
 	}
