@@ -519,11 +519,11 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 	scp.clearAllDftPersistentLayers()
 	scp.timeSelect.Refresh()
 	scp.timeUnitSelect.Refresh()
-	scp.refreshRasters()
 	mul := math.Pow(10, float64(scp.timeUnit)) / math.Pow(10, float64(prevTimeUnit))
 	scp.Settings.Time.TriggerTimeOffset *= mul
 	scp.setTriggerTime(scp.Settings.Time.TriggerTimeOffset)
 	scp.updateIntervalTimeGUI()
+	scp.refreshRasters()
 	scp.SaveSettings()
 }
 
@@ -569,13 +569,13 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
 	scp.timeSelect.Refresh()
-	scp.refreshRasters()
 	mul *= float64(scp.timeDiv) / float64(prevTime)
 	scp.Settings.Time.TriggerTimeOffset *= mul
 	scp.setTriggerTime(scp.Settings.Time.TriggerTimeOffset)
 	if triggerTypes[scp.Settings.Trigger.Type] == control.Interval || triggerTypes[scp.Settings.Trigger.Type] == control.PulseWidth {
 		scp.updateIntervalTimeGUI()
 	}
+	scp.refreshRasters()
 	scp.SaveSettings()
 }
 
