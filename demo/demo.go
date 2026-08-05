@@ -286,11 +286,9 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 
 	if genChDesc.genOn {
 		// Amplitude scaling
-		// Note: integer division for genPkToPk/2000 is intentional to match original behavior
-		a = float64(genChDesc.genPkToPk/2000) / rangeMv
+		a = float64(genChDesc.genPkToPk) / 2000.0 / rangeMv
 		// Offset calculation
-		// Note: integer division for genOffsetVoltage/1000 is intentional to match original behavior
-		genOffset = float64(genChDesc.genOffsetVoltage/1000) / rangeMv
+		genOffset = float64(genChDesc.genOffsetVoltage) / 1000.0 / rangeMv
 	}
 
 	chOffset := (chDesc.offset * 1000.0) / rangeMv
