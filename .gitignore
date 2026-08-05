@@ -28,12 +28,4 @@ window_*.png
 fuzzer_report_*.tar.gz
 fynescope-sim-linux-amd64
 fynescope-linux-amd64
-ps3000a/build_emu.sh
-ps3000a/emu.c
-ps3000a/emu.o
-ps3000a/libemu3000a.a
-ps3000a/libemu3000a.so
-ps3000a/emu.ccc
-ps2000/emu.ccc
-ps2000/libemu2000.a
-ps2000/build_emu.sh
+github_wiki/*.md
