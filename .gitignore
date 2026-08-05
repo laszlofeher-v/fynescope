@@ -29,3 +29,4 @@ fuzzer_report_*.tar.gz
 fynescope-sim-linux-amd64
 fynescope-linux-amd64
 github_wiki/*.md
+scratch/*

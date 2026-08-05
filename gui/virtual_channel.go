@@ -88,6 +88,11 @@ func (e *VirtualChannelEngine) Evaluate(A, B, C, D float32) float32 {
 	default:
 		res = 0
 	}
+
+	if math.IsNaN(float64(res)) || math.IsInf(float64(res), 0) {
+		return 0
+	}
+
 	return res * 1000.0
 }
 
