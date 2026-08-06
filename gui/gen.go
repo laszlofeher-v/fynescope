@@ -448,7 +448,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		sweepMenu := selectscroll.NewSelectScroll(sweepOptions, sweepChanged, sweepDownUp)
 		sweepMenu.SetSelected(getSweepString(scp.Settings.GenPanel.Sweep))
 		awgEditorBtn := widget.NewButton("Open Waveform Editor", func() {
-			scp.showAwgEditor()
+			scp.showAwgEditor(func(wf []int16) {
+				scp.Settings.GenPanel.ArbitraryWaveform = wf
+				scp.Settings.GenPanel.WaveType = genericps.Arbitrary
+				scp.applyInternalGenSettings(scp.Settings.GenPanel.On)
+			})
 		})
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), show, check,
