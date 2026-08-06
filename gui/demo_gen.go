@@ -126,6 +126,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			"Gaussian":  genericps.Gaussian,
 			"HalfSine":  genericps.HalfSine,
 			"DcVoltage": genericps.DcVoltage,
+			"Arbitrary": genericps.Arbitrary,
 		}
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
@@ -540,12 +541,20 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		frqBox = container.New(layout.NewVBoxLayout(), frequency)
 		sweepMenu := selectscroll.NewSelectScroll(sweepOptions, sweepChanged, sweepDownUp)
 		sweepMenu.SetSelected(sweepOptions[genSettings.Sweep+1])
+		awgEditorBtn := widget.NewButton("Open Waveform Editor", func() {
+			scp.showAwgEditor(func(wf []int16) {
+				genSettings.ArbitraryWaveform = wf
+				genSettings.WaveType = genericps.Arbitrary
+				scp.applyDemoGenSettings(ch, genSettings)
+			})
+		})
+		
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), nameLabel, show, check,
-				container.New(layout.NewVBoxLayout(), waveType), undockButton)
+				container.New(layout.NewVBoxLayout(), waveType), awgEditorBtn, undockButton)
 		} else {
 			top = container.New(layout.NewHBoxLayout(), nameLabel, show, check,
-				container.New(layout.NewVBoxLayout(), waveType))
+				container.New(layout.NewVBoxLayout(), waveType), awgEditorBtn)
 		}
 
 		addToTest(sweepMenu, genSweepId, genTabIndex)

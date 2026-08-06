@@ -43,6 +43,29 @@ func NewWaveformGenerator(waveType WaveTypeEnum) WaveformGenerator {
 	}
 }
 
+// NewArbitraryWaveformGenerator creates a waveform generator that plays back a custom []int16 buffer.
+// The data values are expected to be signed 16-bit integers and are scaled to the range [-1.0, 1.0].
+func NewArbitraryWaveformGenerator(data []int16) WaveformGenerator {
+	if len(data) == 0 {
+		return dcVoltageWave
+	}
+	// To avoid capturing the slice and allocating, we make a copy of the slice header or data.
+	// We'll just capture the slice since it is passed from the control message.
+	return func(t float64, freq float64) float64 {
+		// Wrap phase t (in radians) into [0, 2π)
+		phase := math.Mod(t, 2*math.Pi)
+		if phase < 0 {
+			phase += 2 * math.Pi
+		}
+		// Map the phase to an array index
+		idx := int((phase / (2 * math.Pi)) * float64(len(data)))
+		if idx >= len(data) {
+			idx = len(data) - 1
+		}
+		return float64(data[idx]) / 32767.0
+	}
+}
+
 var prbsBlockOffset uint64
 
 // AdvancePRBS randomizes the PRBS sequence offset for the next simulation block.

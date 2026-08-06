@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"fynescope/control"
 	"fynescope/disp7"
-	"fynescope/genericps"
 	"image"
 	"image/color"
 	"math"
@@ -319,7 +318,7 @@ func (w *awgEditorWidget) drawImage(width, height int) image.Image {
 						} else if t > 1 {
 							t = 1
 						}
-						interpY := w.lastY + (w.currentY - w.lastY)*t
+						interpY := w.lastY + (w.currentY-w.lastY)*t
 						val = 1.0 - (float64(interpY) / float64(height) * 2.0)
 					} else {
 						val = 1.0 - (float64(w.currentY) / float64(height) * 2.0)
@@ -393,7 +392,7 @@ func drawLineBresenham(img *image.NRGBA, x0, y0, x1, y1 int, col color.NRGBA) {
 	}
 }
 
-func (scp *ScpDesc) showAwgEditor() {
+func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	if scp.awgWindow != nil {
 		scp.awgWindow.Show()
 		return
@@ -555,10 +554,9 @@ func (scp *ScpDesc) showAwgEditor() {
 		for i, v := range editor.values {
 			waveform[i] = int16(v * 32767.0)
 		}
-
-		scp.Settings.GenPanel.ArbitraryWaveform = waveform
-		scp.Settings.GenPanel.WaveType = genericps.Arbitrary
-		scp.applyInternalGenSettings(scp.Settings.GenPanel.On)
+		if applyCb != nil {
+			applyCb(waveform)
+		}
 
 		scp.psControl.DisplayStatus(fmt.Sprintf("AWG Waveform Applied (%d samples)", len(waveform)), control.Info)
 	})

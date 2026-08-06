@@ -558,6 +558,7 @@ type (
 		TriggerSource                                       SigGenTrigSource
 		ExtInThreshold                                      int16
 		Phase                                               float64
+		ArbitraryWaveform                                   []int16
 	}
 	SetDemoGenRsp struct {
 		RespBase
@@ -1397,11 +1398,11 @@ func (c Connection) SetSigGenBuiltInV2(offsetVoltage int32, pkToPK uint32, waveT
 func (c Connection) SetDemoGen(channel ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
-	triggerSource SigGenTrigSource, extInThreshold int16, phase float64) (err error) {
+	triggerSource SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16) (err error) {
 	msg := &SetDemoGenMsg{Channel: channel, On: on, OffsetVoltage: offsetVoltage, PkToPK: pkToPK, WaveType: waveType,
 		StartFrequency: startFrequency, StopFrequency: stopFrequency, Increment: increment, DwellTime: dwellTime,
 		SweepType: sweepType, Operation: operation, Shots: shots, Sweeps: sweeps, TriggerType: triggerType,
-		TriggerSource: triggerSource, ExtInThreshold: extInThreshold, Phase: phase}
+		TriggerSource: triggerSource, ExtInThreshold: extInThreshold, Phase: phase, ArbitraryWaveform: arbitraryWaveform}
 	msg.rsp = &SetDemoGenRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetDemoGenRsp)

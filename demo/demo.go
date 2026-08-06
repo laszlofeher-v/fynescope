@@ -1094,7 +1094,7 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
-	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64) (err error) {
+	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16) (err error) {
 
 	ch := int(channel)
 	if ch < 0 || ch >= numberOfChannels {
@@ -1107,7 +1107,11 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 	case genericps.Prbs:
 		channels[ch].genWaveFunction = NewPrbsGenerator()
 	default:
-		channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
+		if waveType == genericps.Arbitrary {
+			channels[ch].genWaveFunction = NewArbitraryWaveformGenerator(arbitraryWaveform)
+		} else {
+			channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
+		}
 	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
 	channels[ch].sweepController = NewSweepController(startFrequency, stopFrequency, increment, SweepTypeEnum(sweepType), dwellDuration)
