@@ -9,7 +9,6 @@ import (
 	"image/color"
 	"math"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"fynescope/selectscroll"
@@ -415,7 +414,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 
 	options := []string{"Sine", "Square", "Triangle", "RampUp", "RampDown", "SinC", "Gaussian", "HalfSine", "DC"}
 
-	waveformFile := filepath.Join(filepath.Dir(scp.SettingFileName), "waveform.bin")
+	waveformFile := settings.WaveformFileName(scp.SettingFileName)
 	if _, err := os.Stat(waveformFile); err == nil {
 		options = append(options, "Last Waveform")
 	}

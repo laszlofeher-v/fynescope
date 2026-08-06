@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -379,7 +380,7 @@ func Load(fileName string) (*PsSettings, error) {
 		settings.ScreenSize = ScreenSize1920x1080
 	}
 
-	waveformFile := filepath.Join(filepath.Dir(fileName), "waveform.bin")
+	waveformFile := WaveformFileName(fileName)
 	if wfData, err := os.ReadFile(waveformFile); err == nil {
 		wfLen := len(wfData) / 2
 		wf := make([]int16, wfLen)
@@ -411,7 +412,7 @@ func Save(fileName string, settings *PsSettings) error {
 		return fmt.Errorf("write settings file: %w", err)
 	}
 
-	waveformFile := filepath.Join(filepath.Dir(fileName), "waveform.bin")
+	waveformFile := WaveformFileName(fileName)
 	if len(settings.GenPanel.ArbitraryWaveform) > 0 {
 		wfData := make([]byte, len(settings.GenPanel.ArbitraryWaveform)*2)
 		for i, v := range settings.GenPanel.ArbitraryWaveform {
@@ -425,4 +426,15 @@ func Save(fileName string, settings *PsSettings) error {
 	}
 
 	return nil
+}
+
+func WaveformFileName(settingFileName string) string {
+	base := filepath.Base(settingFileName)
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	if strings.HasPrefix(base, "scopesettings") {
+		base = strings.Replace(base, "scopesettings", "waveform", 1)
+	} else {
+		base = "waveform_" + base
+	}
+	return filepath.Join(filepath.Dir(settingFileName), base+".bin")
 }

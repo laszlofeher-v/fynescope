@@ -10,10 +10,10 @@ import (
 
 	"fyne.io/fyne/v2/theme"
 
+	"fynescope/demo"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
 	"fynescope/settings"
-	"fynescope/demo"
 	"fynescope/sliderscroll"
 	"sort"
 
@@ -67,13 +67,13 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
 	msg.Phase = genSettings.Phase
-	
+
 	if genSettings.On {
 		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
 		demo.SetPhaseNoiseDegree(int(ch), genSettings.PhaseNoiseDegree)
 		demo.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 	}
-	
+
 	if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
 		msgCopy := msg
 		go func() { scp.psControl.SetDemoGenCh <- msgCopy }()
@@ -139,6 +139,15 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		for i, kv := range keyVal {
 			waveTypeOptions[i] = kv.key
 		}
+	}
+
+	getWaveTypeString := func(wt genericps.WaveTypeEnum) string {
+		for k, v := range waveTypeMap {
+			if v == wt {
+				return k
+			}
+		}
+		return "Sine"
 	}
 
 	onTriggerCalculationModeChange := func(option string, ex selectscroll.Exception) {
@@ -252,7 +261,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		}
 		raiseFallTimeDisp.OnChanged = func(v float64) {
 			genSettings.RaiseFallTimePercent = v / 100.0 // Value comes back in % * 100, e.g. 159 for 1.59%
-			demo.SetRaiseFallTimePercent(v / 10000.0)     // 1.59% -> 0.0159
+			demo.SetRaiseFallTimePercent(v / 10000.0)    // 1.59% -> 0.0159
 			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
@@ -368,8 +377,8 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			}
 			scp.applyDemoGenSettings(ch, genSettings)
 		}
-		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, waveTypeOptions[genericps.DcVoltage])
-		waveType.SetSelected(waveTypeOptions[genSettings.WaveType])
+		waveType := selectscroll.NewSelectScroll(waveTypeOptions, waveTypeChanged, getWaveTypeString(genericps.DcVoltage))
+		waveType.SetSelected(getWaveTypeString(genSettings.WaveType))
 		addToTest(waveType, genWaveTypeId, genTabIndex)
 		if undockable {
 			undockButton = widget.NewButtonWithIcon(undock, theme.ViewFullScreenIcon(), func() {
@@ -545,16 +554,17 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			scp.showAwgEditor(func(wf []int16) {
 				genSettings.ArbitraryWaveform = wf
 				genSettings.WaveType = genericps.Arbitrary
+				waveType.SetSelected("Arbitrary")
 				scp.applyDemoGenSettings(ch, genSettings)
 			})
 		})
-		
+
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), nameLabel, show, check,
-				container.New(layout.NewVBoxLayout(), waveType), awgEditorBtn, undockButton)
+				container.New(layout.NewVBoxLayout(), waveType), undockButton)
 		} else {
 			top = container.New(layout.NewHBoxLayout(), nameLabel, show, check,
-				container.New(layout.NewVBoxLayout(), waveType), awgEditorBtn)
+				container.New(layout.NewVBoxLayout(), waveType))
 		}
 
 		addToTest(sweepMenu, genSweepId, genTabIndex)
@@ -581,7 +591,8 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp /*triggerTimeOffsetDisp,*/, noiseAmplitudeDisp, phaseNoiseDisp, operationBox, calcBox)
+			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp, /*triggerTimeOffsetDisp,*/
+			noiseAmplitudeDisp, phaseNoiseDisp, operationBox, calcBox, awgEditorBtn)
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)
 		show.SetChecked(genSettings.Digital)
 		showChanged(genSettings.Digital)

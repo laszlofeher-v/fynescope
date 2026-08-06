@@ -451,6 +451,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			scp.showAwgEditor(func(wf []int16) {
 				scp.Settings.GenPanel.ArbitraryWaveform = wf
 				scp.Settings.GenPanel.WaveType = genericps.Arbitrary
+				waveType.SetSelected(getWaveTypeString(genericps.Arbitrary))
 				scp.applyInternalGenSettings(scp.Settings.GenPanel.On)
 			})
 		})
