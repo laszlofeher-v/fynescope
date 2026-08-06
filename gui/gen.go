@@ -63,6 +63,7 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 		msg.WaveType = scp.Settings.GenPanel.WaveType
 		msg.OffsetVoltage = scp.Settings.GenPanel.OffsetVoltage
 		msg.PkToPK = scp.Settings.GenPanel.Amplitude * 2
+		msg.ArbitraryWaveform = scp.Settings.GenPanel.ArbitraryWaveform
 	} else {
 		msg.DwellTime = 0
 		msg.OffsetVoltage = 0
@@ -122,6 +123,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			"Gaussian":  genericps.Gaussian,
 			"HalfSine":  genericps.HalfSine,
 			"DcVoltage": genericps.DcVoltage,
+			"Arbitrary": genericps.Arbitrary,
 		}
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
@@ -445,6 +447,9 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		}
 		sweepMenu := selectscroll.NewSelectScroll(sweepOptions, sweepChanged, sweepDownUp)
 		sweepMenu.SetSelected(getSweepString(scp.Settings.GenPanel.Sweep))
+		awgEditorBtn := widget.NewButton("Open Waveform Editor", func() {
+			scp.showAwgEditor()
+		})
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), show, check,
 				container.New(layout.NewVBoxLayout(), waveType), undockButton)
@@ -467,7 +472,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			widget.NewLabel("Operation:"), operationSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset, operationBox)
+			sweepBox, amp, offset, operationBox, awgEditorBtn)
 		// }
 
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)

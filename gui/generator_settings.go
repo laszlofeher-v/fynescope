@@ -105,6 +105,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					WaveType:       scp.Settings.DemoGenPanel[i].WaveType,
 					OffsetVoltage:  scp.Settings.DemoGenPanel[i].OffsetVoltage,
 					PkToPK:         scp.Settings.DemoGenPanel[i].Amplitude * 2,
+					ArbitraryWaveform: scp.Settings.DemoGenPanel[i].ArbitraryWaveform,
 					Channel:        genericps.ChannelId(i),
 					On:             true,
 				},
@@ -124,6 +125,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 			WaveType:       scp.Settings.GenPanel.WaveType,
 			OffsetVoltage:  scp.Settings.GenPanel.OffsetVoltage,
 			PkToPK:         scp.Settings.GenPanel.Amplitude * 2,
+			ArbitraryWaveform: scp.Settings.GenPanel.ArbitraryWaveform,
 		},
 	}
 	scp.psControl.SetGeneratorCh <- msg

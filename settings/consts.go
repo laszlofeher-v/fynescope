@@ -33,7 +33,8 @@ const (
 	TriggerTypeWindow   = "Window"
 	TriggerTypeInterval = "Interval"
 	TriggerTypePulseWidth = "Pulse Width"
-	TriggerTypeComplex  = "Complex"
+	TriggerTypeComplex    = "Complex"
+	TriggerTypeDropout    = "Dropout"
 )
 
 // Trigger mode name constants (stored as strings in settings YAML).

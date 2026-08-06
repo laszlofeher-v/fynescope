@@ -114,7 +114,13 @@ type (
 		Phase                                               float64
 		Channel                                             genericps.ChannelId
 		On                                                  bool
+		ArbitraryWaveform                                   []int16
+		StartDeltaPhase                                     uint32
+		StopDeltaPhase                                      uint32
+		DeltaPhaseIncrement                                 uint32
+		IndexMode                                           genericps.IndexMode
 	}
+
 	GeneratorDescMsg struct {
 		GeneratorDesc
 		Done chan struct{}
@@ -194,6 +200,30 @@ type (
 	}
 )
 
+func (g *GeneratorDesc) Equals(other *GeneratorDesc) bool {
+	if g.OffsetVoltage != other.OffsetVoltage || g.PkToPK != other.PkToPK ||
+		g.WaveType != other.WaveType || g.StartFrequency != other.StartFrequency ||
+		g.StopFrequency != other.StopFrequency || g.Increment != other.Increment ||
+		g.DwellTime != other.DwellTime || g.SweepType != other.SweepType ||
+		g.Operation != other.Operation || g.Shots != other.Shots ||
+		g.Sweeps != other.Sweeps || g.TriggerType != other.TriggerType ||
+		g.TriggerSource != other.TriggerSource || g.ExtInThreshold != other.ExtInThreshold ||
+		g.Phase != other.Phase || g.Channel != other.Channel || g.On != other.On ||
+		g.StartDeltaPhase != other.StartDeltaPhase || g.StopDeltaPhase != other.StopDeltaPhase ||
+		g.DeltaPhaseIncrement != other.DeltaPhaseIncrement || g.IndexMode != other.IndexMode {
+		return false
+	}
+	if len(g.ArbitraryWaveform) != len(other.ArbitraryWaveform) {
+		return false
+	}
+	for i, v := range g.ArbitraryWaveform {
+		if v != other.ArbitraryWaveform[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // Shutdown signals all monitor goroutines launched by NewControl to exit.
 // It is safe to call multiple times.
 func (psControl *PscDesc) Shutdown() {
@@ -268,7 +298,7 @@ func (psControl *PscDesc) setTrigger() (err error) {
 	newSettings := <-psControl.getTrigger.newSettings // wait for data
 
 	samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
-	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth
+	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout
 
 	if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
 		err = psControl.sendTrigger() // 			   send to the scope
@@ -321,6 +351,8 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 	case Interval:
 		err = psControl.sendIntervalTrigger()
 	case PulseWidth:
+		err = psControl.sendPulseWidthTrigger()
+	case Dropout:
 		err = psControl.sendPulseWidthTrigger()
 	}
 

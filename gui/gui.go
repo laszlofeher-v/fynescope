@@ -198,7 +198,9 @@ type (
 		rlcLayout                    *fyne.Container
 		filterLayout                 *fyne.Container
 		extgenLayout                 *fyne.Container
+		statusCheckCount             int
 		extgenWindow                 fyne.Window
+		awgWindow                    fyne.Window
 		virtualChWindow              fyne.Window
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
@@ -873,7 +875,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 		if scp.running {
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
-				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth) {
+				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout) {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
 			}
@@ -992,7 +994,7 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
-				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth {
+				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
 				if scp.Settings.Ff.PtsDec <= 0 {
