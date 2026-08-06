@@ -419,6 +419,13 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		options = append(options, "Last Waveform")
 	}
 
+	for i := range scp.Settings.DemoGenPanel {
+		demoWfFile := settings.WaveformDemoFileName(scp.SettingFileName, i)
+		if _, err := os.Stat(demoWfFile); err == nil {
+			options = append(options, fmt.Sprintf("Last Demo Waveform %d", i+1))
+		}
+	}
+
 	chNames := []string{"Ch A", "Ch B", "Ch C", "Ch D"}
 	for i, ch := range scp.Settings.Channels {
 		if ch.Enabled {
@@ -441,6 +448,25 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 					}
 				}
 				editor.Refresh()
+			}
+		} else if strings.HasPrefix(selected, "Last Demo Waveform") {
+			var ch int
+			if _, err := fmt.Sscanf(selected, "Last Demo Waveform %d", &ch); err == nil {
+				demoWfFile := settings.WaveformDemoFileName(scp.SettingFileName, ch-1)
+				if wfData, err := os.ReadFile(demoWfFile); err == nil {
+					wfLen := len(wfData) / 2
+					if pointsDisp != nil {
+						pointsDisp.SetValue(wfLen)
+					}
+					editor.resizeValues(wfLen)
+					for i := 0; i < wfLen; i++ {
+						v := int16(binary.LittleEndian.Uint16(wfData[i*2 : i*2+2]))
+						if i < len(editor.values) {
+							editor.values[i] = float64(v) / 32767.0
+						}
+					}
+					editor.Refresh()
+				}
 			}
 		} else if strings.HasPrefix(selected, "Ch ") {
 			chIdx := -1

@@ -390,6 +390,18 @@ func Load(fileName string) (*PsSettings, error) {
 		settings.GenPanel.ArbitraryWaveform = wf
 	}
 
+	for ch := range settings.DemoGenPanel {
+		wfFile := WaveformDemoFileName(fileName, ch)
+		if wfData, err := os.ReadFile(wfFile); err == nil {
+			wfLen := len(wfData) / 2
+			wf := make([]int16, wfLen)
+			for i := 0; i < wfLen; i++ {
+				wf[i] = int16(binary.LittleEndian.Uint16(wfData[i*2 : i*2+2]))
+			}
+			settings.DemoGenPanel[ch].ArbitraryWaveform = wf
+		}
+	}
+
 	return settings, nil
 }
 
@@ -425,7 +437,32 @@ func Save(fileName string, settings *PsSettings) error {
 		os.Remove(waveformFile)
 	}
 
+	for ch, dgen := range settings.DemoGenPanel {
+		wfFile := WaveformDemoFileName(fileName, ch)
+		if len(dgen.ArbitraryWaveform) > 0 {
+			wfData := make([]byte, len(dgen.ArbitraryWaveform)*2)
+			for i, v := range dgen.ArbitraryWaveform {
+				binary.LittleEndian.PutUint16(wfData[i*2:], uint16(v))
+			}
+			if err := os.WriteFile(wfFile, wfData, 0644); err != nil {
+				slog.Debug("os.WriteFile waveform_demo", "err", err)
+			}
+		} else {
+			os.Remove(wfFile)
+		}
+	}
+
 	return nil
+}
+
+func WaveformDemoFileName(settingFileName string, channel int) string {
+	base := filepath.Base(settingFileName)
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	if strings.HasPrefix(base, "scopesettings") {
+		base = strings.Replace(base, "scopesettings", fmt.Sprintf("waveform_demo%d", channel), 1)
+		return filepath.Join(filepath.Dir(settingFileName), base)
+	}
+	return filepath.Join(filepath.Dir(settingFileName), fmt.Sprintf("waveform_demo%d.bin", channel))
 }
 
 func WaveformFileName(settingFileName string) string {
