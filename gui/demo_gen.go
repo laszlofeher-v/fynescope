@@ -51,6 +51,7 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 		msg.WaveType = genSettings.WaveType
 		msg.OffsetVoltage = genSettings.OffsetVoltage
 		msg.PkToPK = genSettings.Amplitude * 2
+		msg.ArbitraryWaveform = genSettings.ArbitraryWaveform
 	} else {
 		msg.DwellTime = 0
 		msg.OffsetVoltage = 0

@@ -42,7 +42,7 @@ import (
 var (
 	settingFileName = "scopesettings.yaml"
 	GitUUID         = ""
-	Version         = "1.1.0"
+	Version         = "1.2.0"
 	BuildDate       = ""
 )
 

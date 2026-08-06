@@ -870,6 +870,7 @@ var (
 	PwTypeInRange, PwTypeOutOfRange PulseWidthType
 	Sine, Square, Triangle, RampUp, RampDown,
 	SinC, Gaussian, HalfSine, DcVoltage WaveTypeEnum
+	Arbitrary WaveTypeEnum = 999
 	InputRanges       []int32
 	ChannelInfoRanges int16
 	RangeValuesMv     map[RangeEnum]float64

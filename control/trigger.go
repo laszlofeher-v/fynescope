@@ -27,6 +27,7 @@ const (
 	Window
 	Interval
 	PulseWidth
+	Dropout
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -543,6 +544,11 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 		}
 	}
 
+	intervalType := psControl.triggerSetting.IntervalType
+	if psControl.triggerSetting.Type == Dropout {
+		intervalType = genericps.PwTypeGreaterThan
+	}
+
 	if lowerSamples > 16777215 {
 		lowerSamples = 16777215
 	}
@@ -550,7 +556,7 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 		upperSamples = 16777215
 	}
 
-	if psControl.triggerSetting.IntervalType == genericps.PwTypeInRange || psControl.triggerSetting.IntervalType == genericps.PwTypeOutOfRange {
+	if intervalType == genericps.PwTypeInRange || intervalType == genericps.PwTypeOutOfRange {
 		if lowerSamples >= upperSamples {
 			upperSamples = lowerSamples + 1
 			if upperSamples > 16777215 {
@@ -566,20 +572,20 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 		pwqDir = genericps.TriggerFallingLower
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
-	if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
+	if intervalType == genericps.PwTypeLessThan {
 		lowerSamples = upperSamples
 		upperSamples = 0
-	} else if psControl.triggerSetting.IntervalType == genericps.PwTypeGreaterThan {
+	} else if intervalType == genericps.PwTypeGreaterThan {
 		upperSamples = 0
 	}
 
 	slog.Debug("isIntervalActive", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
-		"intervalType", psControl.triggerSetting.IntervalType,
+		"intervalType", intervalType,
 		"lowerSamples", lowerSamples, "upperSamples", upperSamples,
 		"rawTimeLower", psControl.triggerSetting.IntervalTimeLower,
 		"rawTimeUpper", psControl.triggerSetting.IntervalTimeUpper,
 		"samplingInterval", psControl.SamplingTimeInterval)
-	err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, psControl.triggerSetting.IntervalType)
+	err = psControl.Con.SetPulseWidthQualifier(pwqConditions, pwqDir, lowerSamples, upperSamples, intervalType)
 	if err != nil {
 		slog.Error("SetPulseWidthQualifier:", "error:", err)
 		return

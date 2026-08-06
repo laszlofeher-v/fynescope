@@ -2,11 +2,13 @@ package settings
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"fynescope/genericps"
 	"image/color"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -146,6 +148,7 @@ type (
 		Phase                float64                   `yaml:"phase"`
 		ImpedanceMode        string                    `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
 		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
+		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`
@@ -375,6 +378,17 @@ func Load(fileName string) (*PsSettings, error) {
 	if settings.ScreenSize == "" {
 		settings.ScreenSize = ScreenSize1920x1080
 	}
+
+	waveformFile := filepath.Join(filepath.Dir(fileName), "waveform.bin")
+	if wfData, err := os.ReadFile(waveformFile); err == nil {
+		wfLen := len(wfData) / 2
+		wf := make([]int16, wfLen)
+		for i := 0; i < wfLen; i++ {
+			wf[i] = int16(binary.LittleEndian.Uint16(wfData[i*2 : i*2+2]))
+		}
+		settings.GenPanel.ArbitraryWaveform = wf
+	}
+
 	return settings, nil
 }
 
@@ -396,5 +410,19 @@ func Save(fileName string, settings *PsSettings) error {
 		slog.Debug("os.WriteFile 0644", "filename", fileName, "err", err)
 		return fmt.Errorf("write settings file: %w", err)
 	}
+
+	waveformFile := filepath.Join(filepath.Dir(fileName), "waveform.bin")
+	if len(settings.GenPanel.ArbitraryWaveform) > 0 {
+		wfData := make([]byte, len(settings.GenPanel.ArbitraryWaveform)*2)
+		for i, v := range settings.GenPanel.ArbitraryWaveform {
+			binary.LittleEndian.PutUint16(wfData[i*2:], uint16(v))
+		}
+		if err := os.WriteFile(waveformFile, wfData, 0644); err != nil {
+			slog.Debug("os.WriteFile waveform.bin", "err", err)
+		}
+	} else {
+		os.Remove(waveformFile)
+	}
+
 	return nil
 }
