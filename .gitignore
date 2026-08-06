@@ -30,3 +30,4 @@ fynescope-sim-linux-amd64
 fynescope-linux-amd64
 github_wiki/*.md
 scratch/*
+waveform*.bin
