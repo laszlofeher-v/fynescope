@@ -58,38 +58,37 @@ type (
 	}
 
 	VirtualChSettings struct {
-		Name           string              `yaml:"name"`
-		Expression     string              `yaml:"expression"`
-		Inverted       bool                `yaml:"inverted"`
-		DisplayVOffset int                 `yaml:"displayvoffset"`
-		FfDisplayVOffset int               `yaml:"ffdisplayvoffset"`
-		DftDisplayVOffset int              `yaml:"dftdisplayvoffset"`
-		Col            [2]color.NRGBA      `yaml:"color"`
-		VRange         genericps.RangeEnum `yaml:"range"`
-		Enabled        bool                `yaml:"enabled"`
+		Name              string              `yaml:"name"`
+		Expression        string              `yaml:"expression"`
+		Inverted          bool                `yaml:"inverted"`
+		DisplayVOffset    int                 `yaml:"displayvoffset"`
+		FfDisplayVOffset  int                 `yaml:"ffdisplayvoffset"`
+		DftDisplayVOffset int                 `yaml:"dftdisplayvoffset"`
+		Col               [2]color.NRGBA      `yaml:"color"`
+		VRange            genericps.RangeEnum `yaml:"range"`
+		Enabled           bool                `yaml:"enabled"`
 	}
 
 	ChSettings struct {
-		ID                 genericps.ChannelId   `yaml:"id"`
-		Inverted           bool                  `yaml:"inverted"`
-		X10                bool                  `yaml:"x10"`
-		DisplayVOffset     int                   `yaml:"displayvoffset"`
-		DftDisplayVOffset  int                   `yaml:"dftdisplayvoffset"`
-		Col                [2]color.NRGBA        `yaml:"color"`
-		VRange             genericps.RangeEnum   `yaml:"range"`
-		CoupleType         genericps.Coupling    `yaml:"couple"`
-		Enabled            bool                  `yaml:"enabled"`
-		Offset             float32               `yaml:"offset"`
-		FvMode             FvMode                `yaml:"fvmode"`
-		TriggerSource      bool                  `yaml:"triggersource"`
-		Persistence        bool                  `yaml:"persistence"`
-		DftPersistence     bool                  `yaml:"dftpersistence"`
-		Trigger            ChTriggerSettings     `yaml:"triggersettings"`
-		FfAmplitudeEnabled bool                  `yaml:"ffamplitudeenabled"`
-		FfPhaseEnabled     bool                  `yaml:"ffphaseenabled"`
-		FfDisplayVOffset   int                   `yaml:"ffdisplayvoffset"`
-		RlcFilter          RlcFilterSettings     `yaml:"rlcfilter"`
-		DigitalFilter      DigitalFilterSettings `yaml:"digitalfilter"`
+		ID                genericps.ChannelId   `yaml:"id"`
+		Inverted          bool                  `yaml:"inverted"`
+		X10               bool                  `yaml:"x10"`
+		DisplayVOffset    int                   `yaml:"displayvoffset"`
+		DftDisplayVOffset int                   `yaml:"dftdisplayvoffset"`
+		Col               [2]color.NRGBA        `yaml:"color"`
+		VRange            genericps.RangeEnum   `yaml:"range"`
+		CoupleType        genericps.Coupling    `yaml:"couple"`
+		Enabled           bool                  `yaml:"enabled"`
+		Offset            float32               `yaml:"offset"`
+		FvMode            FvMode                `yaml:"fvmode"`
+		TriggerSource     bool                  `yaml:"triggersource"`
+		Persistence       bool                  `yaml:"persistence"`
+		DftPersistence    bool                  `yaml:"dftpersistence"`
+		Trigger           ChTriggerSettings     `yaml:"triggersettings"`
+		FfPhaseEnabled    bool                  `yaml:"ffphaseenabled"`
+		FfDisplayVOffset  int                   `yaml:"ffdisplayvoffset"`
+		RlcFilter         RlcFilterSettings     `yaml:"rlcfilter"`
+		DigitalFilter     DigitalFilterSettings `yaml:"digitalfilter"`
 	}
 	DigitalFilterSettings struct {
 		ZeroPhaseEnabled bool    `yaml:"zerophaseenabled"`
