@@ -460,7 +460,7 @@ func WaveformDemoFileName(settingFileName string, channel int) string {
 	base = strings.TrimSuffix(base, filepath.Ext(base))
 	if strings.HasPrefix(base, "scopesettings") {
 		base = strings.Replace(base, "scopesettings", fmt.Sprintf("waveform_demo%d", channel), 1)
-		return filepath.Join(filepath.Dir(settingFileName), base)
+		return filepath.Join(filepath.Dir(settingFileName), base+".bin")
 	}
 	return filepath.Join(filepath.Dir(settingFileName), fmt.Sprintf("waveform_demo%d.bin", channel))
 }

@@ -2,6 +2,7 @@ package gui
 
 import (
 	"encoding/binary"
+	"encoding/csv"
 	"fmt"
 	"fynescope/control"
 	"fynescope/disp7"
@@ -9,6 +10,7 @@ import (
 	"image/color"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 
 	"fynescope/selectscroll"
@@ -17,6 +19,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -561,6 +565,231 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		waveformSelect.ClearSelected()
 	})
 
+	importCsvBtn := widget.NewButton("Import CSV", func() {
+		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+			if err != nil || reader == nil {
+				return
+			}
+			defer reader.Close()
+
+			csvReader := csv.NewReader(reader)
+			// Handle potentially varying number of fields per record
+			csvReader.FieldsPerRecord = -1
+			records, err := csvReader.ReadAll()
+			if err != nil {
+				dialog.ShowError(err, scp.awgWindow)
+				return
+			}
+
+			var newValues []float64
+			for _, row := range records {
+				for _, col := range row {
+					val, err := strconv.ParseFloat(strings.TrimSpace(col), 64)
+					if err == nil {
+						newValues = append(newValues, val)
+						break
+					}
+				}
+			}
+
+			if len(newValues) > 0 {
+				minVal := newValues[0]
+				maxVal := newValues[0]
+				for _, v := range newValues {
+					if v < minVal {
+						minVal = v
+					}
+					if v > maxVal {
+						maxVal = v
+					}
+				}
+
+				if pointsDisp != nil {
+					pointsDisp.SetValue(len(newValues))
+				}
+				editor.values = make([]float64, len(newValues))
+
+				if maxVal > minVal {
+					diff := maxVal - minVal
+					for i, v := range newValues {
+						editor.values[i] = (v-minVal)/diff*2.0 - 1.0
+					}
+				} else {
+					for i := range newValues {
+						editor.values[i] = 0
+					}
+				}
+				editor.Refresh()
+			}
+		}, scp.awgWindow)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
+		if cwd, err := os.Getwd(); err == nil {
+			if lister, err := storage.ListerForURI(storage.NewFileURI(cwd)); err == nil {
+				fd.SetLocation(lister)
+			}
+		}
+		fd.Show()
+	})
+
+	exportCsvBtn := widget.NewButton("Export CSV", func() {
+		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+			if err != nil || writer == nil {
+				return
+			}
+			defer writer.Close()
+
+			csvWriter := csv.NewWriter(writer)
+			for _, val := range editor.values {
+				strVal := strconv.FormatFloat(val, 'f', -1, 64)
+				err := csvWriter.Write([]string{strVal})
+				if err != nil {
+					dialog.ShowError(err, scp.awgWindow)
+					return
+				}
+			}
+			csvWriter.Flush()
+			if err := csvWriter.Error(); err != nil {
+				dialog.ShowError(err, scp.awgWindow)
+			}
+		}, scp.awgWindow)
+		fd.SetFilter(storage.NewExtensionFileFilter([]string{".csv"}))
+		fd.SetFileName("waveform.csv")
+		if cwd, err := os.Getwd(); err == nil {
+			if lister, err := storage.ListerForURI(storage.NewFileURI(cwd)); err == nil {
+				fd.SetLocation(lister)
+			}
+		}
+		fd.Show()
+	})
+
+	patternGenBtn := widget.NewButton("Pattern Gen", func() {
+		binEntry := widget.NewEntry()
+		hexEntry := widget.NewEntry()
+		highEntry := widget.NewEntry()
+		highEntry.SetText("100")
+		lowEntry := widget.NewEntry()
+		lowEntry.SetText("-100")
+
+		updatingBin := false
+		updatingHex := false
+
+		binToHex := func(bin string) string {
+			cleanBin := ""
+			for _, c := range bin {
+				if c == '0' || c == '1' {
+					cleanBin += string(c)
+				}
+			}
+			if len(cleanBin) == 0 {
+				return ""
+			}
+			pad := len(cleanBin) % 4
+			if pad != 0 {
+				cleanBin = strings.Repeat("0", 4-pad) + cleanBin
+			}
+			var hexBuilder strings.Builder
+			for i := 0; i < len(cleanBin); i += 4 {
+				chunk := cleanBin[i : i+4]
+				val, _ := strconv.ParseUint(chunk, 2, 8)
+				hexBuilder.WriteString(fmt.Sprintf("%X", val))
+			}
+			return hexBuilder.String()
+		}
+
+		hexToBin := func(hexStr string) string {
+			cleanHex := ""
+			for _, c := range hexStr {
+				if (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') {
+					cleanHex += string(c)
+				}
+			}
+			var binBuilder strings.Builder
+			for _, c := range cleanHex {
+				val, _ := strconv.ParseUint(string(c), 16, 8)
+				binBuilder.WriteString(fmt.Sprintf("%04b", val))
+			}
+			return binBuilder.String()
+		}
+
+		binEntry.OnChanged = func(s string) {
+			if updatingHex || updatingBin {
+				return
+			}
+			updatingBin = true
+			cleanBin := ""
+			for _, c := range s {
+				if c == '0' || c == '1' {
+					cleanBin += string(c)
+				}
+			}
+			if s != cleanBin {
+				binEntry.SetText(cleanBin)
+			}
+			hexEntry.SetText(binToHex(cleanBin))
+			updatingBin = false
+		}
+
+		hexEntry.OnChanged = func(s string) {
+			if updatingBin || updatingHex {
+				return
+			}
+			updatingHex = true
+			cleanHex := ""
+			for _, c := range s {
+				if (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') {
+					cleanHex += string(c)
+				}
+			}
+			if s != cleanHex {
+				hexEntry.SetText(cleanHex)
+			}
+			binEntry.SetText(hexToBin(cleanHex))
+			updatingHex = false
+		}
+
+		form := widget.NewForm(
+			widget.NewFormItem("Binary Input", binEntry),
+			widget.NewFormItem("Hex Input", hexEntry),
+			widget.NewFormItem("High Level (%)", highEntry),
+			widget.NewFormItem("Low Level (%)", lowEntry),
+		)
+
+		dialog.ShowCustomConfirm("Pattern Generator", "Generate", "Cancel", form, func(b bool) {
+			if !b {
+				return
+			}
+			binStr := ""
+			for _, c := range binEntry.Text {
+				if c == '0' || c == '1' {
+					binStr += string(c)
+				}
+			}
+			if len(binStr) == 0 {
+				return
+			}
+
+			hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
+			llPct, errL := strconv.ParseFloat(lowEntry.Text, 64)
+			if errH != nil || errL != nil {
+				return
+			}
+			hl := hlPct / 100.0
+			ll := llPct / 100.0
+
+			N := len(editor.values)
+			L := len(binStr)
+			for i := 0; i < N; i++ {
+				bitIdx := (i * L) / N
+				if binStr[bitIdx] == '1' {
+					editor.values[i] = hl
+				} else {
+					editor.values[i] = ll
+				}
+			}
+			editor.Refresh()
+		}, scp.awgWindow)
+	})
+
 	var err error
 	pointsDisp, err = disp7.NewCustomDisp7Array(5, 0, 32768, 10,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.awgWindow,
@@ -582,8 +811,6 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		if applyCb != nil {
 			applyCb(waveform)
 		}
-
-		scp.psControl.DisplayStatus(fmt.Sprintf("AWG Waveform Applied (%d samples)", len(waveform)), control.Info)
 	})
 	applyBtn.Importance = widget.HighImportance
 
@@ -593,6 +820,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		widget.NewLabel("Waveform:"),
 		waveformSelect,
 		clearBtn,
+		importCsvBtn,
+		exportCsvBtn,
+		patternGenBtn,
 		pointsDisp,
 	)
 
