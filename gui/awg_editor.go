@@ -20,6 +20,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
@@ -663,15 +664,55 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	})
 
 	patternGenBtn := widget.NewButton("Pattern Gen", func() {
+		if scp.patternWindow != nil {
+			scp.patternWindow.Show()
+			return
+		}
+
+		scp.patternWindow = scp.App.NewWindow("Pattern Generator")
+		scp.patternWindow.Resize(fyne.NewSize(500, 250))
+
 		binEntry := widget.NewEntry()
 		hexEntry := widget.NewEntry()
 		highEntry := widget.NewEntry()
 		highEntry.SetText("100")
 		lowEntry := widget.NewEntry()
-		lowEntry.SetText("-100")
+		lowEntry.SetText("0")
 
 		updatingBin := false
 		updatingHex := false
+
+		updateWaveform := func() {
+			binStr := ""
+			for _, c := range binEntry.Text {
+				if c == '0' || c == '1' {
+					binStr += string(c)
+				}
+			}
+			if len(binStr) == 0 {
+				return
+			}
+
+			hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
+			llPct, errL := strconv.ParseFloat(lowEntry.Text, 64)
+			if errH != nil || errL != nil {
+				return
+			}
+			hl := hlPct / 100.0
+			ll := llPct / 100.0
+
+			N := len(editor.values)
+			L := len(binStr)
+			for i := 0; i < N; i++ {
+				bitIdx := (i * L) / N
+				if binStr[bitIdx] == '1' {
+					editor.values[i] = hl
+				} else {
+					editor.values[i] = ll
+				}
+			}
+			editor.Refresh()
+		}
 
 		binToHex := func(bin string) string {
 			cleanBin := ""
@@ -727,6 +768,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			}
 			hexEntry.SetText(binToHex(cleanBin))
 			updatingBin = false
+			updateWaveform()
 		}
 
 		hexEntry.OnChanged = func(s string) {
@@ -745,6 +787,15 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			}
 			binEntry.SetText(hexToBin(cleanHex))
 			updatingHex = false
+			updateWaveform()
+		}
+
+		highEntry.OnChanged = func(s string) {
+			updateWaveform()
+		}
+
+		lowEntry.OnChanged = func(s string) {
+			updateWaveform()
 		}
 
 		form := widget.NewForm(
@@ -754,40 +805,16 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			widget.NewFormItem("Low Level (%)", lowEntry),
 		)
 
-		dialog.ShowCustomConfirm("Pattern Generator", "Generate", "Cancel", form, func(b bool) {
-			if !b {
-				return
-			}
-			binStr := ""
-			for _, c := range binEntry.Text {
-				if c == '0' || c == '1' {
-					binStr += string(c)
-				}
-			}
-			if len(binStr) == 0 {
-				return
-			}
+		closeBtn := widget.NewButton("Close", func() {
+			scp.patternWindow.Close()
+		})
 
-			hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
-			llPct, errL := strconv.ParseFloat(lowEntry.Text, 64)
-			if errH != nil || errL != nil {
-				return
-			}
-			hl := hlPct / 100.0
-			ll := llPct / 100.0
-
-			N := len(editor.values)
-			L := len(binStr)
-			for i := 0; i < N; i++ {
-				bitIdx := (i * L) / N
-				if binStr[bitIdx] == '1' {
-					editor.values[i] = hl
-				} else {
-					editor.values[i] = ll
-				}
-			}
-			editor.Refresh()
-		}, scp.awgWindow)
+		content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
+		scp.patternWindow.SetContent(content)
+		scp.patternWindow.SetOnClosed(func() {
+			scp.patternWindow = nil
+		})
+		scp.patternWindow.Show()
 	})
 
 	var err error
@@ -835,6 +862,10 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 
 	scp.awgWindow.SetOnClosed(func() {
 		scp.awgWindow = nil
+		if scp.patternWindow != nil {
+			scp.patternWindow.Close()
+			scp.patternWindow = nil
+		}
 	})
 
 	scp.awgWindow.Show()

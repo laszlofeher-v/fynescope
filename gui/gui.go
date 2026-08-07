@@ -201,6 +201,7 @@ type (
 		statusCheckCount             int
 		extgenWindow                 fyne.Window
 		awgWindow                    fyne.Window
+		patternWindow                fyne.Window
 		virtualChWindow              fyne.Window
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
