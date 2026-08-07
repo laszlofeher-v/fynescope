@@ -518,7 +518,7 @@ func main() {
 				return nil
 			}
 			return scp.Window.Canvas().Capture()
-		}, scp.ExecuteVoiceCommand)
+		}, scp)
 	}
 
 	if *webPortNoVoice > 0 {

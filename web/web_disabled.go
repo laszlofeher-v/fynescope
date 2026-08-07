@@ -9,7 +9,7 @@ import (
 )
 
 // StartServer is a stub for when the web tag is not provided during compilation.
-func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) {
+func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, controller ScopeController) {
 	slog.Warn("Web server requested, but 'web' build tag was not provided during compilation. Web server will not start.")
 }
 
