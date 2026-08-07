@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"image"
@@ -72,7 +73,7 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 // newServerMux builds the HTTP handler mux for the full server (stream + voice control).
 // It is intentionally separated from StartServer so it can be exercised directly
 // in tests using net/http/httptest without needing a live TLS listener or CLI flags.
-func newServerMux(authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) *http.ServeMux {
+func newServerMux(authAdmin, authView string, getCapture func() image.Image, controller ScopeController) *http.ServeMux {
 	adminUser, adminPass := parseAuth(authAdmin)
 	viewUser, viewPass := parseAuth(authView)
 
@@ -268,11 +269,90 @@ func newServerMux(authAdmin, authView string, getCapture func() image.Image, onC
 			body, _ := io.ReadAll(r.Body)
 			cmd := string(body)
 			slog.Info("Web Voice Command Received", "cmd", cmd)
-			if onCommand != nil {
-				onCommand(cmd)
+			if controller != nil {
+				controller.ExecuteVoiceCommand(cmd)
 			}
 		}
 		w.WriteHeader(http.StatusOK)
+	})
+
+	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
+		authOk, _ := checkAuth(r)
+		if !authOk {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if controller == nil {
+			http.Error(w, "Not implemented", http.StatusNotImplemented)
+			return
+		}
+		
+		status := controller.GetStatus()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": status})
+	})
+
+	mux.HandleFunc("/api/settings", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if controller == nil {
+			http.Error(w, "Not implemented", http.StatusNotImplemented)
+			return
+		}
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(controller.GetSettings())
+		} else if r.Method == http.MethodPost {
+			if !isAdmin {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			body, _ := io.ReadAll(r.Body)
+			if err := controller.ApplySettingsJSON(body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}
+	})
+
+	mux.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk || !isAdmin {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.Method == http.MethodPost && controller != nil {
+			controller.RunScope()
+			w.WriteHeader(http.StatusOK)
+		}
+	})
+
+	mux.HandleFunc("/api/stop", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk || !isAdmin {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.Method == http.MethodPost && controller != nil {
+			controller.StopScope()
+			w.WriteHeader(http.StatusOK)
+		}
+	})
+
+	mux.HandleFunc("/api/autorange", func(w http.ResponseWriter, r *http.Request) {
+		authOk, isAdmin := checkAuth(r)
+		if !authOk || !isAdmin {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.Method == http.MethodPost && controller != nil {
+			controller.AutoRange()
+			w.WriteHeader(http.StatusOK)
+		}
 	})
 
 	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
@@ -321,8 +401,8 @@ func newServerMux(authAdmin, authView string, getCapture func() image.Image, onC
 }
 
 // StartServer launches an HTTPS server providing a read-only MJPEG view of the GUI
-// and a voice command interface.
-func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, onCommand func(string)) {
+// and a REST API/voice command interface.
+func StartServer(port int, authAdmin, authView string, getCapture func() image.Image, controller ScopeController) {
 	if port <= 0 {
 		return
 	}
@@ -336,7 +416,7 @@ func StartServer(port int, authAdmin, authView string, getCapture func() image.I
 	}
 	server := &http.Server{
 		Addr:    addr,
-		Handler: newServerMux(authAdmin, authView, getCapture, onCommand),
+		Handler: newServerMux(authAdmin, authView, getCapture, controller),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		},
