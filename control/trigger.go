@@ -28,6 +28,7 @@ const (
 	Interval
 	PulseWidth
 	Dropout
+	WindowPulseWidth
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -447,8 +448,10 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
-	for i := range channelProperties {
-		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+	if psControl.triggerSetting.Type != WindowPulseWidth {
+		for i := range channelProperties {
+			channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+		}
 	}
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
@@ -459,6 +462,9 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 
 	pwqCond := genericps.CondTrue
 	condMain := genericps.CondTrue
+	if psControl.triggerSetting.Type == WindowPulseWidth {
+		condMain = genericps.CondDontCare
+	}
 	var triggerConditions []genericps.TriggerConditions
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
@@ -488,15 +494,19 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := psControl.triggerSetting.ThresholdDirection
+	if psControl.triggerSetting.Type == Dropout {
+		dir = genericps.TriggerRisingOrFalling
+	}
+	mainDir := dir
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-		channelA = dir
+		channelA = mainDir
 	case genericps.ChB:
-		channelB = dir
+		channelB = mainDir
 	case genericps.ChC:
-		channelC = dir
+		channelC = mainDir
 	case genericps.ChD:
-		channelD = dir
+		channelD = mainDir
 	}
 	err = psControl.Con.SetTriggerChannelDirections(channelA,
 		channelB,
@@ -559,10 +569,18 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	}
 	pwqDir := dir
 	// pwqDir := genericps.TriggerRisingOrFalling
-	if dir == genericps.TriggerRising {
-		pwqDir = genericps.TriggerFallingLower
-	} else if dir == genericps.TriggerFalling {
-		pwqDir = genericps.TriggerRisingLower
+	if psControl.triggerSetting.Type != WindowPulseWidth {
+		if dir == genericps.TriggerRising {
+			pwqDir = genericps.TriggerFallingLower
+		} else if dir == genericps.TriggerFalling {
+			pwqDir = genericps.TriggerRisingLower
+		}
+	} else {
+		if dir == genericps.TriggerEnter || dir == genericps.TriggerEnterOrExit {
+			pwqDir = genericps.TriggerInside
+		} else if dir == genericps.TriggerExit {
+			pwqDir = genericps.TriggerOutside
+		}
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
