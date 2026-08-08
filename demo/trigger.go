@@ -57,11 +57,13 @@ func NewTriggerDetector(enabled bool, threshold int16, hysteresis uint16, direct
 	// Setup simple trigger in channels array
 	if enabled && source >= 0 && int(source) < len(td.channels) {
 		td.channels[source] = TriggerChannelConfig{
-			Enabled:    true,
-			Threshold:  threshold,
-			Hysteresis: hysteresis,
-			Direction:  direction,
-			Condition:  CondTrue,
+			Enabled:                  true,
+			Threshold:                threshold,
+			Hysteresis:               hysteresis,
+			ThresholdLower:           threshold,
+			ThresholdLowerHysteresis: hysteresis,
+			Direction:                direction,
+			Condition:                CondTrue,
 		}
 	}
 	return td
@@ -164,9 +166,16 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					pwqDir = TriggerFalling
 				}
 
+				thresh := cfg.Threshold
+				hyst := cfg.Hysteresis
+				if td.pwqConfig.Direction == TriggerFallingLower || td.pwqConfig.Direction == TriggerRisingLower {
+					thresh = cfg.ThresholdLower
+					hyst = cfg.ThresholdLowerHysteresis
+				}
+
 				pwqCfg := TriggerChannelConfig{
-					Threshold:  cfg.Threshold,
-					Hysteresis: cfg.Hysteresis,
+					Threshold:  thresh,
+					Hysteresis: hyst,
 					Direction:  pwqDir,
 				}
 
