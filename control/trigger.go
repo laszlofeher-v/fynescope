@@ -488,22 +488,15 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := psControl.triggerSetting.ThresholdDirection
-	mainDir := dir
-	if dir == genericps.TriggerRising {
-		mainDir = genericps.TriggerFalling
-	} else if dir == genericps.TriggerFalling {
-		mainDir = genericps.TriggerRising
-	}
-
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-		channelA = mainDir
+		channelA = dir
 	case genericps.ChB:
-		channelB = mainDir
+		channelB = dir
 	case genericps.ChC:
-		channelC = mainDir
+		channelC = dir
 	case genericps.ChD:
-		channelD = mainDir
+		channelD = dir
 	}
 	err = psControl.Con.SetTriggerChannelDirections(channelA,
 		channelB,
@@ -567,9 +560,9 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	pwqDir := dir
 	// pwqDir := genericps.TriggerRisingOrFalling
 	if dir == genericps.TriggerRising {
-		pwqDir = genericps.TriggerRisingLower
-	} else if dir == genericps.TriggerFalling {
 		pwqDir = genericps.TriggerFallingLower
+	} else if dir == genericps.TriggerFalling {
+		pwqDir = genericps.TriggerRisingLower
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
