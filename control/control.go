@@ -352,6 +352,8 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 		err = psControl.sendIntervalTrigger()
 	case PulseWidth:
 		err = psControl.sendPulseWidthTrigger()
+	case WindowPulseWidth:
+		err = psControl.sendPulseWidthTrigger()
 	case Dropout:
 		err = psControl.sendPulseWidthTrigger()
 	}

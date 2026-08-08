@@ -1532,9 +1532,11 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Window:
 			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.WindowPulseWidth:
+			scp.triggerPoint = newWindowIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
-		case control.Interval, control.PulseWidth:
+		case control.Interval, control.PulseWidth, control.Dropout:
 			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		default:
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
@@ -1556,9 +1558,11 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 			scp.triggerPoint = newAdvTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Window:
 			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+		case control.WindowPulseWidth:
+			scp.triggerPoint = newWindowIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
-		case control.Interval, control.PulseWidth:
+		case control.Interval, control.PulseWidth, control.Dropout:
 			scp.triggerPoint = newIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		default:
 			scp.triggerPoint = newTriggerPointViewer(scp.ftScopeFullScreen, scp, false)

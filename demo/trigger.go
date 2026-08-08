@@ -135,7 +135,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		return
 	}
 
-	pwqStates := [4]TriggerArmedState{}
+	pwqStates := [4]ChannelTriggerState{}
 	states := [4]ChannelTriggerState{}
 
 	intervalActive := false
@@ -164,6 +164,10 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				pwqDir := TriggerRising
 				if td.pwqConfig.Direction == TriggerFallingLower || td.pwqConfig.Direction == TriggerFalling {
 					pwqDir = TriggerFalling
+				} else if td.pwqConfig.Direction == TriggerRisingOrFalling {
+					pwqDir = TriggerRisingOrFalling
+				} else if td.pwqConfig.Direction == TriggerInside || td.pwqConfig.Direction == TriggerOutside || td.pwqConfig.Direction == TriggerEnter || td.pwqConfig.Direction == TriggerExit {
+					pwqDir = td.pwqConfig.Direction
 				}
 
 				thresh := cfg.Threshold
@@ -174,12 +178,19 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				}
 
 				pwqCfg := TriggerChannelConfig{
-					Threshold:  thresh,
-					Hysteresis: hyst,
-					Direction:  pwqDir,
+					Threshold:                thresh,
+					Hysteresis:               hyst,
+					ThresholdLower:           cfg.ThresholdLower,
+					ThresholdLowerHysteresis: cfg.ThresholdLowerHysteresis,
+					Direction:                pwqDir,
 				}
 
-				_, fired := td.evaluateLevelTrigger(pwqCfg, &pwqStates[i], level)
+				var fired bool
+				if cfg.ThresholdMode == Window {
+					_, fired = td.evaluateWindowTrigger(pwqCfg, &pwqStates[i], level, signalFunc, t, dt, ChannelId(i))
+				} else {
+					_, fired = td.evaluateLevelTrigger(pwqCfg, &pwqStates[i].LowerState, level)
+				}
 				if fired {
 					pwqEdgeFired = true
 				}
@@ -225,6 +236,16 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		if td.pwqConfig.Enabled {
 			if intervalActive {
 				intervalDuration += dt
+
+				if td.pwqConfig.Type == PwTypeGreaterThan {
+					lowerTime := float64(td.pwqConfig.Lower) * dt
+					if intervalDuration >= lowerTime && allConditionsMet {
+						SetTriggerTimeOffset(0)
+						found = true
+						triggerTime = t
+						return
+					}
+				}
 			}
 
 			if mainEdgeFired && intervalActive {
@@ -235,10 +256,6 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				switch td.pwqConfig.Type {
 				case PwTypeLessThan:
 					if intervalDuration < lowerTime {
-						intervalSatisfied = true
-					}
-				case PwTypeGreaterThan:
-					if intervalDuration > lowerTime {
 						intervalSatisfied = true
 					}
 				case PwTypeInRange:

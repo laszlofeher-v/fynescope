@@ -33,6 +33,7 @@ const (
 	TriggerTypeWindow   = "Window"
 	TriggerTypeInterval = "Interval"
 	TriggerTypePulseWidth = "Pulse Width"
+	TriggerTypeWindowPulseWidth = "Window PW"
 	TriggerTypeComplex    = "Complex"
 	TriggerTypeDropout    = "Dropout"
 )

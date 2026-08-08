@@ -71,14 +71,15 @@ var (
 		triggerModeOptions[2]: control.Repeat,
 		triggerModeOptions[3]: control.Single,
 	}
-	triggerTypeOptions = []string{"Simple", "Advanced", "Window", "Interval", "Pulse Width", "Dropout"}
+	triggerTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeDropout}
 	triggerTypes       = map[string]control.TriggerTypes{
 		triggerTypeOptions[0]: control.Simple,
 		triggerTypeOptions[1]: control.Advanced,
 		triggerTypeOptions[2]: control.Window,
 		triggerTypeOptions[3]: control.Interval,
 		triggerTypeOptions[4]: control.PulseWidth,
-		triggerTypeOptions[5]: control.Dropout,
+		triggerTypeOptions[5]: control.WindowPulseWidth,
+		triggerTypeOptions[6]: control.Dropout,
 	}
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
@@ -676,7 +677,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
 			if scp.triggerTypeSelect != nil {
-				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeDropout})
+				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeDropout})
 				scp.triggerTypeSelect.Refresh()
 			}
 			for i := range scp.channelViewers {
@@ -727,7 +728,7 @@ func (scp *ScpDesc) updateTriggerSourceState(option string) {
 	scp.Settings.Channels[scp.triggerSource].Trigger.Type = option
 	if scp.channelViewers[scp.triggerSource].triggerDirectionSelect != nil {
 		var activeOpts []string
-		if option == settings.TriggerTypeWindow {
+		if option == settings.TriggerTypeWindow || option == settings.TriggerTypeWindowPulseWidth {
 			activeOpts = triggerWindowDirectionOptions
 		} else {
 			activeOpts = triggerDirectionOptions
@@ -808,7 +809,19 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
 		}
-	case control.Interval, control.PulseWidth:
+	case control.WindowPulseWidth:
+		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerLowerThresholdDisp != nil {
+			scp.triggerLowerThresholdDisp.Show()
+		}
+		if scp.triggerLowerHysteresisDisp != nil {
+			scp.triggerLowerHysteresisDisp.Show()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Show()
+		}
+		scp.updateIntervalTimeGUI()
+	case control.Interval, control.PulseWidth, control.Dropout:
 		scp.boxTriggerHysteresisDisp.Show()
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
@@ -831,7 +844,7 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
 	}
 
-	if scp.triggerSettingMsg.Type == control.Window {
+	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -872,7 +885,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 		scp.triggerSettingMsg.Type = triggerTypes[option]
 	}
 
-	if scp.triggerSettingMsg.Type == control.Window {
+	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1356,7 +1369,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeDropout}
+	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeDropout}
 	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
 		activeTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced}
 		if scp.Settings.Trigger.Type != settings.TriggerTypeSimple && scp.Settings.Trigger.Type != settings.TriggerTypeAdvanced {

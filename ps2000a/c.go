@@ -65,7 +65,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	case res := <-c:
 		fmt.Println(res)
 	case <-time.After(10 * time.Second):
-		fmt.Errorf("EnumerateUnits:timeout")
+		err = fmt.Errorf("EnumerateUnits:timeout")
 	}
 	return
 }
