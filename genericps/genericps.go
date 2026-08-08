@@ -871,7 +871,7 @@ var (
 	PwTypeInRange, PwTypeOutOfRange PulseWidthType
 	Sine, Square, Triangle, RampUp, RampDown,
 	SinC, Gaussian, HalfSine, DcVoltage WaveTypeEnum
-	Arbitrary WaveTypeEnum = 999
+	Arbitrary         WaveTypeEnum = 999
 	InputRanges       []int32
 	ChannelInfoRanges int16
 	RangeValuesMv     map[RangeEnum]float64
@@ -901,8 +901,12 @@ func OpenUnitProgress() (retHandle int16, progressPercent, complete int16, err e
 func (c Connection) Send(msg Message) {
 	// sends msg to the scope and receives the response
 	// handles timeout
+	// Use a per-call channel to avoid a race where a stale signal in the
+	// shared c.RspCh (capacity 1) could unblock Send() before the worker
+	// has populated the response fields.
+	rspCh := make(chan struct{})
 	msg.SetHandle(c.Handle)
-	msg.SetRspCh(c.RspCh)
+	msg.SetRspCh(rspCh)
 	select {
 	case c.MsgCh <- msg:
 	case <-time.After(cmdSendTimeout):
@@ -910,7 +914,7 @@ func (c Connection) Send(msg Message) {
 		return
 	}
 	select {
-	case <-c.RspCh:
+	case <-rspCh:
 		// slog.Debug("response received", "c", c)
 	case <-time.After(responseReceiveTimeout):
 		msg.SetStatus(fmt.Errorf("Timeout. Could not receive response of %t\n", msg))
@@ -1169,8 +1173,8 @@ func (c Connection) MemorySegments(nSegments uint64) (nMaxSamples uint64, err er
 	msg.rsp = &MemorySegmentsRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*MemorySegmentsRsp)
-	nMaxSamples = rsp.NMaxSamples
 	err = rsp.Status()
+	nMaxSamples = rsp.NMaxSamples
 	return
 }
 func (c Connection) MinimumValue() (value int32, err error) {
