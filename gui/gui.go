@@ -928,6 +928,7 @@ func (scp *ScpDesc) build2000Gui() {
 	addToTest(scp.controlTab, extgenFuncId, -1)
 	scp.newChannelPanels(ftLayout)
 	scp.newSetTimeDivPanel(ftLayout)
+	scp.updateTriggerUIForType()
 
 	scp.newFvPanel(fvControls)
 	scp.newDftPanel(dftLayout)

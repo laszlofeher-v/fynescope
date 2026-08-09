@@ -137,9 +137,11 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 	pwqStates := [4]ChannelTriggerState{}
 	states := [4]ChannelTriggerState{}
+	insideStates := [4]ChannelTriggerState{} // for isInsideWindow checks
 
 	intervalActive := false
 	var intervalDuration float64 = 0
+	var intervalSourceCh int = -1
 
 	t := float64(0)
 	for t < maxTime {
@@ -203,18 +205,26 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				continue
 			}
 
-			// For interval triggers, the PWQ start edge and main end edge
-			// should be of the same direction.
-			if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
-				// We no longer flip the direction here.
-			}
-
 			level := signalFunc(t, ChannelId(i))
 			conditionMet := false
 			fired := false
 
 			if cfg.ThresholdMode == Window {
-				conditionMet, fired = td.evaluateWindowTrigger(cfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
+				if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
+					// In Window PW mode, the main trigger fires on the EXIT edge (opposite of PWQ).
+					exitCfg := cfg
+					switch cfg.Direction {
+					case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
+						exitCfg.Direction = TriggerExit
+					case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
+						exitCfg.Direction = TriggerEnter
+					}
+					conditionMet, fired = td.evaluateWindowTrigger(exitCfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
+				} else {
+					conditionMet, fired = td.evaluateWindowTrigger(cfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
+				}
+				// Also maintain inside-window state for GreaterThan checks.
+				td.updateInsideWindow(&insideStates[i], cfg, level)
 			} else {
 				conditionMet, fired = td.evaluateLevelTrigger(cfg, &states[i].LevelState, level)
 			}
@@ -238,12 +248,21 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				intervalDuration += dt
 
 				if td.pwqConfig.Type == PwTypeGreaterThan {
-					lowerTime := float64(td.pwqConfig.Lower) * dt
-					if intervalDuration >= lowerTime && allConditionsMet {
-						SetTriggerTimeOffset(0)
-						found = true
-						triggerTime = t
-						return
+					// For Window PW GreaterThan: fire immediately when timer expires while
+					// the signal is still inside the window. For regular PW GreaterThan
+					// this is handled in the mainEdgeFired path below.
+					if intervalSourceCh >= 0 && td.channels[intervalSourceCh].ThresholdMode == Window {
+						lowerTime := float64(td.pwqConfig.Lower) * dt
+						if intervalDuration >= lowerTime {
+							isInside := insideStates[intervalSourceCh].UpperState == TriggerStateArmedFalling &&
+								insideStates[intervalSourceCh].LowerState == TriggerStateArmedRising
+							if isInside {
+								SetTriggerTimeOffset(0)
+								found = true
+								triggerTime = t
+								return
+							}
+						}
 					}
 				}
 			}
@@ -256,6 +275,10 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				switch td.pwqConfig.Type {
 				case PwTypeLessThan:
 					if intervalDuration < lowerTime {
+						intervalSatisfied = true
+					}
+				case PwTypeGreaterThan:
+					if intervalDuration > lowerTime {
 						intervalSatisfied = true
 					}
 				case PwTypeInRange:
@@ -280,6 +303,13 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			if pwqEdgeFired {
 				intervalActive = true
 				intervalDuration = 0
+				// Record which channel started the interval for Window PW GreaterThan checks.
+				for i, cond := range td.pwqConfig.Condition {
+					if cond != CondDontCare {
+						intervalSourceCh = i
+						break
+					}
+				}
 			}
 		} else {
 			if allConditionsMet {
@@ -341,6 +371,32 @@ func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state 
 	}
 
 	return false, false
+}
+
+// updateInsideWindow tracks whether the signal is currently inside the window by
+// maintaining an armed state for both upper and lower thresholds. This is used
+// for the GreaterThan Window PW check, where we need to know if the signal is
+// still within the window without consuming the edge state machines used by the
+// main trigger.
+func (td *TriggerDetector) updateInsideWindow(state *ChannelTriggerState, cfg TriggerChannelConfig, level float64) {
+	upper := float64(cfg.Threshold)
+	lower := float64(cfg.ThresholdLower)
+	upperHyst := float64(cfg.Hysteresis)
+	lowerHyst := float64(cfg.ThresholdLowerHysteresis)
+
+	// Upper threshold: arm falling (above window) → fire falling into window
+	if state.UpperState == TriggerStateIdle && level >= (upper+upperHyst) {
+		state.UpperState = TriggerStateArmedFalling
+	} else if state.UpperState == TriggerStateArmedFalling && level <= upper {
+		state.UpperState = TriggerStateIdle
+	}
+
+	// Lower threshold: arm rising (below window) → fire rising into window
+	if state.LowerState == TriggerStateIdle && level <= (lower-lowerHyst) {
+		state.LowerState = TriggerStateArmedRising
+	} else if state.LowerState == TriggerStateArmedRising && level >= lower {
+		state.LowerState = TriggerStateIdle
+	}
 }
 
 func (td *TriggerDetector) evaluateWindowTrigger(

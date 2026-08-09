@@ -17,6 +17,8 @@ type (
 		triggerPointViewer
 		uhImgRect  image.Rectangle
 		uhSelected bool
+		lhImgRect  image.Rectangle
+		lhSelected bool
 	}
 )
 
@@ -44,7 +46,7 @@ func (tp *advTriggerPointViewer) cursor(x, y float32) (desktop.Cursor, bool) {
 
 func (tp *advTriggerPointViewer) mouseAtHysteresisPoint(x, y float32) bool {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
-	if p.In(tp.uhImgRect) {
+	if p.In(tp.uhImgRect) || p.In(tp.lhImgRect) {
 		return true
 	}
 	return false
@@ -79,7 +81,9 @@ func (tp *advTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier 
 	}
 	tp.triggerPointViewer.mouseDown(button, modifier, x, y)
 	if !tp.selected {
-		tp.uhSelected = tp.mouseAtHysteresisPoint(x, y)
+		p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
+		tp.uhSelected = p.In(tp.uhImgRect)
+		tp.lhSelected = p.In(tp.lhImgRect)
 	}
 }
 
@@ -88,8 +92,9 @@ func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fy
 		return
 	}
 	tp.triggerPointViewer.mouseUp(button, modifier, x, y)
-	prev := tp.uhSelected
+	prev := tp.uhSelected || tp.lhSelected
 	tp.uhSelected = false
+	tp.lhSelected = false
 	if prev {
 		if !tp.mouseAtHysteresisPoint(x, y) {
 			tp.mouseAt = false
@@ -113,6 +118,19 @@ func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 	}
 }
 
+func (scp *ScpDesc) SetTriggerLowerHysteresis(mv int32) {
+	if scp.triggerSettingMsg.LowerHysteresis != mv {
+		scp.triggerSettingMsg.LowerHysteresis = mv
+		scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}(triggerCopy)
+	}
+}
+
 func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
 	bounds := tp.signalScreen().Bounds()
 	h := float64(bounds.Dy())
@@ -126,10 +144,48 @@ func (tp *advTriggerPointViewer) setHysteresisDispOffset(dyh float32) {
 		yScale = 1
 	}
 	d := int32(math.Round(yScale * float64(dyh)))
-	if d > 0 || channel.Trigger.Hysteresis > 0 {
-		channel.Trigger.Hysteresis += d
+	if tp.scp.triggerSettingMsg.Type == control.Dropout {
+		if d > 0 || channel.Trigger.DropoutHysteresis > 0 {
+			channel.Trigger.DropoutHysteresis += d
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.DropoutHysteresis)
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.DropoutHysteresis)
+		}
+	} else {
+		if d > 0 || channel.Trigger.Hysteresis > 0 {
+			channel.Trigger.Hysteresis += d
+		}
+		tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 	}
-	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+	tp.enableRefresh()
+	if tp.raster() != nil {
+		tp.raster().Refresh()
+	}
+}
+
+func (tp *advTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
+	bounds := tp.signalScreen().Bounds()
+	h := float64(bounds.Dy())
+	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {
+		return
+	}
+	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
+	yScale := 2 * genericps.RangeValuesMv[channel.VRange] / h
+	if yScale < 1 {
+		yScale = 1
+	}
+	d := int32(math.Round(yScale * float64(dyh)))
+	if tp.scp.triggerSettingMsg.Type == control.Dropout {
+		if d > 0 || channel.Trigger.DropoutHysteresis > 0 {
+			channel.Trigger.DropoutHysteresis += d
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.DropoutHysteresis)
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.DropoutHysteresis)
+		}
+	} else {
+		if d > 0 || channel.Trigger.LowerHysteresis > 0 {
+			channel.Trigger.LowerHysteresis += d
+		}
+		tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
+	}
 	tp.enableRefresh()
 	if tp.raster() != nil {
 		tp.raster().Refresh()
@@ -144,37 +200,56 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		return
 	}
 	tp.triggerPointViewer.dragged(dx, dy, x, y) // call base class method
-	if !tp.uhSelected {                         // mouse down/up set it
+	if !tp.uhSelected && !tp.lhSelected {                         // mouse down/up set it
 		return // 								   cursor is somewhere else
 	}
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	newH := int32(math.Round(tp.y2mv(float64(y))))
-	switch {
-	case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth:
-		switch channel.Trigger.TriggerDirection {
-		case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
-			if newH >= channel.Trigger.Mv {
-				channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
+	
+	if tp.uhSelected {
+		switch {
+		case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth:
+			switch channel.Trigger.TriggerDirection {
+			case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+				if newH >= channel.Trigger.Mv {
+					channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
+				}
+			case genericps.TriggerFalling, genericps.TriggerExit:
+				if newH <= channel.Trigger.Mv {
+					channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+				}
+			default:
+				slog.Error("advTrigger WindowPulseWidth", "TriggerDirection", channel.Trigger.TriggerDirection)
 			}
-		case genericps.TriggerFalling, genericps.TriggerExit:
+		case channel.Trigger.TriggerDirection == genericps.TriggerRising, tp.scp.triggerSettingMsg.Type == control.Dropout:
 			if newH <= channel.Trigger.Mv {
 				channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
 			}
+		case channel.Trigger.TriggerDirection == genericps.TriggerFalling:
+			if newH >= channel.Trigger.Mv {
+				channel.Trigger.Hysteresis = -channel.Trigger.Mv + newH
+			}
 		default:
-			slog.Error("advTrigger WindowPulseWidth", "TriggerDirection", channel.Trigger.TriggerDirection)
+			slog.Error("advTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 		}
-	case channel.Trigger.TriggerDirection == genericps.TriggerRising:
-		if newH <= channel.Trigger.Mv {
-			channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+		tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			channel.Trigger.LowerHysteresis = channel.Trigger.Hysteresis
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
 		}
-	case channel.Trigger.TriggerDirection == genericps.TriggerFalling:
-		if newH >= channel.Trigger.Mv {
-			channel.Trigger.Hysteresis = -channel.Trigger.Mv + newH
-		}
-	default:
-		slog.Error("advTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 	}
-	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+
+	if tp.lhSelected {
+		if newH >= channel.Trigger.Mv {
+			channel.Trigger.LowerHysteresis = newH - channel.Trigger.Mv
+		}
+		tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			channel.Trigger.Hysteresis = channel.Trigger.LowerHysteresis
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+		}
+	}
+
 	tp.enableRefresh()
 	if tp.raster() != nil {
 		tp.raster().Refresh()
@@ -186,7 +261,7 @@ func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {
 		return
 	}
 	tp.mouseDown(desktop.MouseButtonTertiary, 0, x, y)
-	if tp.selected {
+	if tp.selected || tp.uhSelected {
 		switch {
 		case delta > 0:
 			tp.setHysteresisDispOffset(1)
@@ -199,9 +274,23 @@ func (tp *advTriggerPointViewer) scrolled(delta, x, y float32) {
 		if tp.raster() != nil {
 			tp.raster().Refresh()
 		}
+	} else if tp.lhSelected {
+		switch {
+		case delta > 0:
+			tp.setLowerHysteresisDispOffset(1)
+		case delta < 0:
+			tp.setLowerHysteresisDispOffset(-1)
+		default:
+			return
+		}
+		tp.enableRefresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
 	}
 	tp.selected = false
 	tp.uhSelected = false
+	tp.lhSelected = false
 }
 
 func (tp *advTriggerPointViewer) draw() {
@@ -236,7 +325,7 @@ func (tp *advTriggerPointViewer) draw() {
 			}
 		} else {
 			_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
-			if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
+			if channel.Trigger.TriggerDirection == genericps.TriggerFalling && tp.scp.triggerSettingMsg.Type != control.Dropout {
 				_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
 			}
 		}
@@ -251,17 +340,46 @@ func (tp *advTriggerPointViewer) draw() {
 			int(math.Round(float64( /*y-*/ yh-rectSize2))),
 			int(math.Round(float64(x+rectSize2))),
 			int(math.Round(float64( /*y+*/ rectSize2+yh))))
+			
+		// Lower Hysteresis (for Dropout)
+		var lyh float32
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			_, lyh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.LowerHysteresis)
+			switch {
+			case lyh > maxY:
+				lyh = maxY
+			case lyh < minY:
+				lyh = minY
+			}
+			tp.lhImgRect = image.Rect(int(math.Round(float64(x-rectSize2))),
+				int(math.Round(float64(lyh-rectSize2))),
+				int(math.Round(float64(x+rectSize2))),
+				int(math.Round(float64(rectSize2+lyh))))
+		} else {
+			tp.lhImgRect = image.Rect(0, 0, 0, 0)
+		}
+		
 		col := theme.ForegroundColor()
 		if tp.selected || tp.triggerPointViewer.mouseAt {
 			col = theme.SelectionColor()
 		}
 		drawCircle(tp.signalScreen(), x, y, triggerPointR, col)
 		col = theme.ForegroundColor()
-		if tp.uhSelected || tp.mouseAt {
+		if tp.uhSelected || (tp.mouseAt && tp.mouseAtHysteresisPoint(x, yh)) {
 			col = theme.SelectionColor()
 		}
 		drawLine(tp.signalScreen(), x, y, x, yh, col)
 		drawLine(tp.signalScreen(), x-halfRectSize, yh, x+halfRectSize, yh, col)
+		
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			col = theme.ForegroundColor()
+			if tp.lhSelected || (tp.mouseAt && tp.mouseAtHysteresisPoint(x, lyh)) {
+				col = theme.SelectionColor()
+			}
+			drawLine(tp.signalScreen(), x, y, x, lyh, col)
+			drawLine(tp.signalScreen(), x-halfRectSize, lyh, x+halfRectSize, lyh, col)
+		}
+		
 		if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 			tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 			tp.scp.triggerThresholdDisp.Refresh()
@@ -269,6 +387,12 @@ func (tp *advTriggerPointViewer) draw() {
 		if tp.scp.triggerHysteresisDisp.Value != int(channel.Trigger.Hysteresis) {
 			tp.scp.triggerHysteresisDisp.SilentSetValue(int(channel.Trigger.Hysteresis))
 			tp.scp.triggerHysteresisDisp.Refresh()
+		}
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			if tp.scp.triggerLowerHysteresisDisp != nil && tp.scp.triggerLowerHysteresisDisp.Value != int(channel.Trigger.LowerHysteresis) {
+				tp.scp.triggerLowerHysteresisDisp.SilentSetValue(int(channel.Trigger.LowerHysteresis))
+				tp.scp.triggerLowerHysteresisDisp.Refresh()
+			}
 		}
 	}
 }
@@ -282,6 +406,7 @@ func newAdvTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool) *a
 		int(math.Round(triggerPointR)+100.0),
 		int(math.Round(triggerPointR)),
 		int(math.Round(triggerPointR+100.0)))
-	tp := &advTriggerPointViewer{uhImgRect: uhImgRect, triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp, isTimeZoom: isTimeZoom}}
+	lhImgRect := image.Rect(0, 0, 0, 0)
+	tp := &advTriggerPointViewer{uhImgRect: uhImgRect, lhImgRect: lhImgRect, triggerPointViewer: triggerPointViewer{rasterPartition: rasterPartition{img: img, imgRect: imgRect}, scp: scp, isTimeZoom: isTimeZoom}}
 	return tp
 }

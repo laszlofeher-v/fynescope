@@ -517,8 +517,17 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			}
 			scp.triggerThresholdDisp.Refresh()
 
-			if scp.triggerHysteresisDisp.Value != int(channel.Trigger.Hysteresis) {
-				scp.triggerHysteresisDisp.SilentSetValue(int(channel.Trigger.Hysteresis))
+			var currentHysteresis, currentLowerHysteresis int
+			if scp.Settings.Trigger.Type == settings.TriggerTypeDropout {
+				currentHysteresis = int(channel.Trigger.DropoutHysteresis)
+				currentLowerHysteresis = int(channel.Trigger.DropoutHysteresis)
+			} else {
+				currentHysteresis = int(channel.Trigger.Hysteresis)
+				currentLowerHysteresis = int(channel.Trigger.LowerHysteresis)
+			}
+
+			if scp.triggerHysteresisDisp.Value != currentHysteresis {
+				scp.triggerHysteresisDisp.SilentSetValue(currentHysteresis)
 			}
 			scp.triggerHysteresisDisp.Refresh()
 
@@ -530,8 +539,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 			}
 
 			if scp.triggerLowerHysteresisDisp != nil {
-				if scp.triggerLowerHysteresisDisp.Value != int(channel.Trigger.LowerHysteresis) {
-					scp.triggerLowerHysteresisDisp.SilentSetValue(int(channel.Trigger.LowerHysteresis))
+				if scp.triggerLowerHysteresisDisp.Value != currentLowerHysteresis {
+					scp.triggerLowerHysteresisDisp.SilentSetValue(currentLowerHysteresis)
 				}
 				scp.triggerLowerHysteresisDisp.Refresh()
 			}

@@ -319,6 +319,10 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
+	for i := range channelProperties {
+		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+		channelProperties[i].ThresholdLowerHysteresis = 0
+	}
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
@@ -422,6 +426,11 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 		}
 	}
 	pwqDir := dir
+	if dir == genericps.TriggerRising {
+		pwqDir = genericps.TriggerRisingLower
+	} else if dir == genericps.TriggerFalling {
+		pwqDir = genericps.TriggerFallingLower
+	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if psControl.triggerSetting.IntervalType == genericps.PwTypeLessThan {
 		lowerSamples = upperSamples
@@ -632,9 +641,6 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := psControl.triggerSetting.ThresholdDirection
-	if psControl.triggerSetting.Type == Dropout {
-		dir = genericps.TriggerRisingOrFalling
-	}
 	mainDir := dir
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
@@ -686,9 +692,6 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 	}
 
 	intervalType := psControl.triggerSetting.IntervalType
-	if psControl.triggerSetting.Type == Dropout {
-		intervalType = genericps.PwTypeGreaterThan
-	}
 
 	if lowerSamples > 16777215 {
 		lowerSamples = 16777215
@@ -707,18 +710,10 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 	}
 	pwqDir := dir
 	// pwqDir := genericps.TriggerRisingOrFalling
-	if psControl.triggerSetting.Type != WindowPulseWidth {
-		if dir == genericps.TriggerRising {
-			pwqDir = genericps.TriggerFallingLower
-		} else if dir == genericps.TriggerFalling {
-			pwqDir = genericps.TriggerRisingLower
-		}
-	} else {
-		if dir == genericps.TriggerEnter || dir == genericps.TriggerEnterOrExit {
-			pwqDir = genericps.TriggerInside
-		} else if dir == genericps.TriggerExit {
-			pwqDir = genericps.TriggerOutside
-		}
+	if dir == genericps.TriggerEnter || dir == genericps.TriggerEnterOrExit {
+		pwqDir = genericps.TriggerInside
+	} else if dir == genericps.TriggerExit {
+		pwqDir = genericps.TriggerOutside
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
@@ -754,6 +749,7 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
 	}
+
 	pwqCond := genericps.CondTrue
 	condMain := genericps.CondTrue
 	var triggerConditions []genericps.TriggerConditions
@@ -785,16 +781,15 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
 	dir := genericps.TriggerRisingOrFalling
-	mainDir := dir
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-		channelA = mainDir
+		channelA = dir
 	case genericps.ChB:
-		channelB = mainDir
+		channelB = dir
 	case genericps.ChC:
-		channelC = mainDir
+		channelC = dir
 	case genericps.ChD:
-		channelD = mainDir
+		channelD = dir
 	}
 	err = psControl.Con.SetTriggerChannelDirections(channelA,
 		channelB,
@@ -835,7 +830,8 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 		}
 	}
 
-	intervalType := genericps.PwTypeGreaterThan
+	intervalType := psControl.triggerSetting.IntervalType
+
 	if lowerSamples > 16777215 {
 		lowerSamples = 16777215
 	}
@@ -843,6 +839,14 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 		upperSamples = 16777215
 	}
 
+	if intervalType == genericps.PwTypeInRange || intervalType == genericps.PwTypeOutOfRange {
+		if lowerSamples >= upperSamples {
+			upperSamples = lowerSamples + 1
+			if upperSamples > 16777215 {
+				lowerSamples = 16777214
+			}
+		}
+	}
 	pwqDir := dir
 	// pwqDir := genericps.TriggerRisingOrFalling
 	if dir == genericps.TriggerRising {
