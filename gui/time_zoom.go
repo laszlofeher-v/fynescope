@@ -25,7 +25,7 @@ func (scp *ScpDesc) timeZoomGenerator(wInt int, hInt int) image.Image {
 		case control.Window:
 			scp.timeZoomTriggerPoint = newWindowTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.WindowPulseWidth:
-			scp.timeZoomTriggerPoint = newWindowIntervalTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+			scp.timeZoomTriggerPoint = newWindowPulseWidthTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.Complex:
 			scp.timeZoomTriggerPoint = newComplexTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.Interval, control.PulseWidth, control.Dropout:
@@ -46,7 +46,7 @@ func (scp *ScpDesc) timeZoomGenerator(wInt int, hInt int) image.Image {
 		case control.Window:
 			scp.timeZoomTriggerPoint = newWindowTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.WindowPulseWidth:
-			scp.timeZoomTriggerPoint = newWindowIntervalTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
+			scp.timeZoomTriggerPoint = newWindowPulseWidthTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.Complex:
 			scp.timeZoomTriggerPoint = newComplexTriggerPointViewer(scp.timeZoomScopeFullScreen, scp, true)
 		case control.Interval, control.PulseWidth, control.Dropout:
