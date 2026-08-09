@@ -50,6 +50,7 @@ type (
 		ThresholdMode     genericps.ThresholdModeId    `yaml:"thresholdmode"`
 		Mv                int32                        `yaml:"mv"`
 		Hysteresis        int32                        `yaml:"hysteresis"`
+		DropoutHysteresis int32                        `yaml:"dropouthysteresis"`
 		LowerMv           int32                        `yaml:"lowermv"`
 		LowerHysteresis   int32                        `yaml:"lowerhysteresis"`
 		IntervalType      genericps.PulseWidthType     `yaml:"intervaltype"`

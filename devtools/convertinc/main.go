@@ -21,7 +21,7 @@ func main() {
 	}
 	lines := strings.Split(string(data), "\n")
 	
-	fmt.Println("package psc\n")
+	fmt.Println("package psc")
 	fmt.Println("// Auto-generated from PicoStatus.h. Do not edit manually.")
 	fmt.Println("// This file contains pure Go constants decoupled from any specific PicoScope driver.")
 	fmt.Println("\nconst (")

@@ -374,9 +374,14 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 
 	if source != dontCare && int(source) < len(scp.Settings.Channels) {
 		trig := scp.Settings.Channels[source].Trigger
-		upperHysteresis = trig.Hysteresis
+		if scp.Settings.Trigger.Type == settings.TriggerTypeDropout {
+			upperHysteresis = trig.DropoutHysteresis
+			lowerHysteresis = trig.DropoutHysteresis
+		} else {
+			upperHysteresis = trig.Hysteresis
+			lowerHysteresis = trig.LowerHysteresis
+		}
 		lowerMv = trig.LowerMv
-		lowerHysteresis = trig.LowerHysteresis
 		thresholdMode = trig.ThresholdMode
 	} else {
 		upperHysteresis = scp.triggerSettingMsg.UpperHysteresis
@@ -765,12 +770,20 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 
 	// Show/hide channel condition selectors for complex trigger
 	isComplex := scp.triggerSettingMsg.Type == control.Complex
+	isDropout := scp.triggerSettingMsg.Type == control.Dropout
 	for i := range scp.channelViewers {
 		if scp.channelViewers[i].triggerConditionSelect != nil {
 			if isComplex {
 				scp.channelViewers[i].triggerConditionSelect.Show()
 			} else {
 				scp.channelViewers[i].triggerConditionSelect.Hide()
+			}
+		}
+		if scp.channelViewers[i].triggerDirectionSelect != nil {
+			if isDropout {
+				scp.channelViewers[i].triggerDirectionSelect.Hide()
+			} else {
+				scp.channelViewers[i].triggerDirectionSelect.Show()
 			}
 		}
 	}
@@ -821,13 +834,25 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 			scp.boxTriggerIntervalDisp.Show()
 		}
 		scp.updateIntervalTimeGUI()
-	case control.Interval, control.PulseWidth, control.Dropout:
+	case control.Interval, control.PulseWidth:
 		scp.boxTriggerHysteresisDisp.Show()
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
 		if scp.triggerLowerHysteresisDisp != nil {
 			scp.triggerLowerHysteresisDisp.Hide()
+		}
+		if scp.boxTriggerIntervalDisp != nil {
+			scp.boxTriggerIntervalDisp.Show()
+		}
+		scp.updateIntervalTimeGUI()
+	case control.Dropout:
+		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerLowerThresholdDisp != nil {
+			scp.triggerLowerThresholdDisp.Hide()
+		}
+		if scp.triggerLowerHysteresisDisp != nil {
+			scp.triggerLowerHysteresisDisp.Show()
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
@@ -948,8 +973,21 @@ func (scp *ScpDesc) onHysteresisChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	scp.Settings.Channels[scp.triggerSource].Trigger.Hysteresis = intV
-	scp.SetTriggerUpperHysteresis(intV)
+	
+	if scp.triggerSettingMsg.Type == control.Dropout {
+		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV
+		scp.SetTriggerUpperHysteresis(intV)
+		scp.SetTriggerLowerHysteresis(intV)
+		fyne.Do(func() {
+			if scp.triggerLowerHysteresisDisp != nil {
+				scp.triggerLowerHysteresisDisp.SilentSetValue(int(intV))
+				scp.triggerLowerHysteresisDisp.Refresh()
+			}
+		})
+	} else {
+		scp.Settings.Channels[scp.triggerSource].Trigger.Hysteresis = intV
+		scp.SetTriggerUpperHysteresis(intV)
+	}
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
@@ -994,15 +1032,21 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	scp.Settings.Channels[scp.triggerSource].Trigger.LowerHysteresis = intV
-	scp.triggerSettingMsg.LowerHysteresis = intV
-	scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(intV, scp.Settings.Channels[scp.triggerSource].VRange))
-	triggerCopy := scp.triggerSettingMsg
-	triggerCopy.Done = make(chan struct{}, 1)
-	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
-		<-t.Done
-	}(triggerCopy)
+	
+	if scp.triggerSettingMsg.Type == control.Dropout {
+		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV
+		scp.SetTriggerLowerHysteresis(intV)
+		scp.SetTriggerUpperHysteresis(intV)
+		fyne.Do(func() {
+			if scp.triggerHysteresisDisp != nil {
+				scp.triggerHysteresisDisp.SilentSetValue(int(intV))
+				scp.triggerHysteresisDisp.Refresh()
+			}
+		})
+	} else {
+		scp.Settings.Channels[scp.triggerSource].Trigger.LowerHysteresis = intV
+		scp.SetTriggerLowerHysteresis(intV)
+	}
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
