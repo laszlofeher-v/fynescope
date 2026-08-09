@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
+	"fynescope/control"
 )
 
 type complexHandleType int
@@ -34,10 +35,10 @@ type complexTriggerPointViewer struct {
 	hoveredHit  complexHit
 	selectedHit complexHit
 
-	mainRects map[int]image.Rectangle
-	uhRects   map[int]image.Rectangle
-	lRects    map[int]image.Rectangle
-	lhRects   map[int]image.Rectangle
+	mainRects  map[int]image.Rectangle
+	uhRects    map[int]image.Rectangle
+	lRects     map[int]image.Rectangle
+	lhRects    map[int]image.Rectangle
 	isTimeZoom bool
 }
 
@@ -576,13 +577,20 @@ func (tp *complexTriggerPointViewer) draw() {
 						tp.scp.triggerLowerThresholdDisp.Refresh()
 					}
 				}
-				if tp.scp.triggerHysteresisDisp.Value != int(chCfg.Hysteresis) {
-					tp.scp.triggerHysteresisDisp.SilentSetValue(int(chCfg.Hysteresis))
+				currentHysteresis := int(chCfg.Hysteresis)
+				currentLowerHysteresis := int(chCfg.LowerHysteresis)
+				if tp.scp.triggerSettingMsg.Type == control.Dropout {
+					currentHysteresis = int(chCfg.DropoutHysteresis)
+					currentLowerHysteresis = int(chCfg.DropoutHysteresis)
+				}
+
+				if tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
+					tp.scp.triggerHysteresisDisp.SilentSetValue(currentHysteresis)
 					tp.scp.triggerHysteresisDisp.Refresh()
 				}
 				if tp.scp.triggerLowerHysteresisDisp != nil {
-					if tp.scp.triggerLowerHysteresisDisp.Value != int(chCfg.LowerHysteresis) {
-						tp.scp.triggerLowerHysteresisDisp.SilentSetValue(int(chCfg.LowerHysteresis))
+					if tp.scp.triggerLowerHysteresisDisp.Value != currentLowerHysteresis {
+						tp.scp.triggerLowerHysteresisDisp.SilentSetValue(currentLowerHysteresis)
 						tp.scp.triggerLowerHysteresisDisp.Refresh()
 					}
 				}

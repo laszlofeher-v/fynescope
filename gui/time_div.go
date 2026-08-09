@@ -682,7 +682,10 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
 			if scp.triggerTypeSelect != nil {
-				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeDropout})
+				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple,
+					settings.TriggerTypeAdvanced, settings.TriggerTypeWindow,
+					settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeInterval,
+					settings.TriggerTypePulseWidth, settings.TriggerTypeDropout})
 				scp.triggerTypeSelect.Refresh()
 			}
 			for i := range scp.channelViewers {
@@ -896,7 +899,8 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 }
 
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
-	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval || option == settings.TriggerTypePulseWidth || option == settings.TriggerTypeDropout) {
+	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval ||
+		option == settings.TriggerTypePulseWidth || option == settings.TriggerTypeDropout) {
 		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 	} else if scp.status != nil && scp.status.Code() == StatusWrongFfTrigger {
 		scp.psControl.DisplayStatus("", control.Info)
@@ -910,13 +914,43 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 		scp.triggerSettingMsg.Type = triggerTypes[option]
 	}
 
-	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth {
+	if scp.triggerSettingMsg.Type == control.Window ||
+		scp.triggerSettingMsg.Type == control.WindowPulseWidth {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
 	}
 
 	scp.updateTriggerSourceState(option)
+
+	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
+		trig := scp.Settings.Channels[scp.triggerSource].Trigger
+		var upperHyst, lowerHyst int32
+		if option == settings.TriggerTypeDropout {
+			upperHyst = trig.DropoutHysteresis
+			lowerHyst = trig.DropoutHysteresis
+		} else {
+			upperHyst = trig.Hysteresis
+			lowerHyst = trig.LowerHysteresis
+		}
+		slog.Debug("onTriggerTypeChange", "upperHyst", upperHyst, "lowerHyst", lowerHyst)
+		// Use the proper setters so HysteresisADC / LowerHysteresisADC are also updated.
+		scp.SetTriggerUpperHysteresis(upperHyst)
+		scp.SetTriggerLowerHysteresis(lowerHyst)
+		// Update display widgets synchronously – we are already on the main goroutine
+		// (UI callback), so fyne.Do would defer the update until after updateTriggerUIForType
+		// shows the widgets, causing the old stale value to flash.
+		if scp.triggerHysteresisDisp != nil {
+			slog.Debug("scp.triggerHysteresisDisp != nil")
+			scp.triggerHysteresisDisp.SilentSetValue(int(upperHyst))
+			scp.triggerHysteresisDisp.Refresh()
+		}
+		if scp.triggerLowerHysteresisDisp != nil {
+			slog.Debug("scp.triggerLowerHysteresisDisp != nil")
+			scp.triggerLowerHysteresisDisp.SilentSetValue(int(lowerHyst))
+			scp.triggerLowerHysteresisDisp.Refresh()
+		}
+	}
 
 	if scp.Settings.Trigger.ComplexEnabled {
 		scp.buildComplexTriggerMessage()
@@ -973,7 +1007,7 @@ func (scp *ScpDesc) onHysteresisChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	
+
 	if scp.triggerSettingMsg.Type == control.Dropout {
 		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV
 		scp.SetTriggerUpperHysteresis(intV)
@@ -1032,7 +1066,7 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	
+
 	if scp.triggerSettingMsg.Type == control.Dropout {
 		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV
 		scp.SetTriggerLowerHysteresis(intV)
