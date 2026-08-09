@@ -40,16 +40,22 @@ func newWindowPulseWidthTriggerPointViewer(img rasterImage, scp *ScpDesc, isTime
 	return tp
 }
 
+// mouseAtLowerPoint checks if the provided (x, y) coordinates fall within the
+// hit-test rectangle of the lower voltage threshold circle.
 func (tp *windowPulseWidthTriggerPointViewer) mouseAtLowerPoint(x, y float32) bool {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
 	return p.In(tp.lImgRect)
 }
 
+// mouseAtLowerHysteresisPoint checks if the provided (x, y) coordinates fall within
+// the hit-test rectangle of the lower hysteresis handle.
 func (tp *windowPulseWidthTriggerPointViewer) mouseAtLowerHysteresisPoint(x, y float32) bool {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
 	return p.In(tp.lhImgRect)
 }
 
+// cursor determines the appropriate mouse cursor to display based on the current
+// pointer position. It returns a pointer cursor if hovering over an interactive element.
 func (tp *windowPulseWidthTriggerPointViewer) cursor(x, y float32) (desktop.Cursor, bool) {
 	if tp.scp.inStreamMode() {
 		return desktop.DefaultCursor, false
@@ -64,6 +70,8 @@ func (tp *windowPulseWidthTriggerPointViewer) cursor(x, y float32) (desktop.Curs
 	return desktop.DefaultCursor, false
 }
 
+// mouseMoved tracks the pointer's movement to update hover states for the lower
+// threshold and hysteresis handles, triggering a UI refresh when the state changes.
 func (tp *windowPulseWidthTriggerPointViewer) mouseMoved(x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
@@ -83,6 +91,8 @@ func (tp *windowPulseWidthTriggerPointViewer) mouseMoved(x, y float32) {
 	}
 }
 
+// mouseDown handles click events. It registers selection on the lower threshold or
+// lower hysteresis handle if the click is within their bounds and no upper handles are claimed.
 func (tp *windowPulseWidthTriggerPointViewer) mouseDown(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
@@ -95,6 +105,8 @@ func (tp *windowPulseWidthTriggerPointViewer) mouseDown(button desktop.MouseButt
 	}
 }
 
+// mouseUp handles the release of a click event. It clears selection states for
+// the lower handles and triggers a settings save and UI refresh if any were selected.
 func (tp *windowPulseWidthTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fyne.KeyModifier, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
@@ -126,7 +138,9 @@ func (tp *windowPulseWidthTriggerPointViewer) mouseUp(button desktop.MouseButton
 	}
 }
 
-// setLowerDispOffset moves the lower voltage threshold (window bottom boundary).
+// setLowerDispOffset translates vertical dragging of the lower threshold circle
+// into a voltage change (LowerMv), updates the oscilloscope settings, and sends
+// the new configuration to the device.
 func (tp *windowPulseWidthTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	bounds := tp.signalScreen().Bounds()
 	if int(x) < bounds.Min.X || int(x) > bounds.Max.X ||
@@ -162,7 +176,9 @@ func (tp *windowPulseWidthTriggerPointViewer) setLowerDispOffset(dx, x, y float3
 	}
 }
 
-// setLowerHysteresisDispOffset adjusts lower threshold hysteresis by scroll steps.
+// setLowerHysteresisDispOffset adjusts the lower threshold hysteresis in response
+// to a scroll event. It calculates a step size based on the current voltage range
+// and pushes the updated hysteresis to the device.
 func (tp *windowPulseWidthTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
 	bounds := tp.signalScreen().Bounds()
 	h := float64(bounds.Dy())
@@ -194,6 +210,9 @@ func (tp *windowPulseWidthTriggerPointViewer) setLowerHysteresisDispOffset(dyh f
 	}
 }
 
+// dragged handles pointer drag events. It delegates to the appropriate update
+// function for the lower threshold/hysteresis if they are selected; otherwise,
+// it falls back to the embedded interval viewer for upper/time handle dragging.
 func (tp *windowPulseWidthTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
@@ -243,6 +262,9 @@ func (tp *windowPulseWidthTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	tp.intervalTriggerPointViewer.dragged(dx, dy, x, y)
 }
 
+// scrolled handles mouse scroll events. Scrolling while hovering over the lower
+// threshold or lower hysteresis elements adjusts the hysteresis value; otherwise,
+// it delegates the event to the interval viewer.
 func (tp *windowPulseWidthTriggerPointViewer) scrolled(delta, x, y float32) {
 	if tp.scp.inStreamMode() {
 		return
@@ -271,6 +293,10 @@ func (tp *windowPulseWidthTriggerPointViewer) scrolled(delta, x, y float32) {
 	}
 }
 
+// draw renders the window pulse width trigger UI onto the signal screen.
+// It relies on the embedded intervalTriggerPointViewer to draw the upper
+// threshold, upper hysteresis, and time handles, then calculates hit-test
+// rectangles and draws the lower threshold circle and hysteresis indicator.
 func (tp *windowPulseWidthTriggerPointViewer) draw() {
 	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
