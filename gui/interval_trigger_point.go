@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/control"
 	"fynescope/genericps"
 	"image"
 	"math"
@@ -200,6 +201,25 @@ func (tp *intervalTriggerPointViewer) draw() {
 			return
 		}
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
+		// For Window Pulse Width, the arrows should originate from the voltage
+		// threshold that the signal actually crosses to fire the trigger, not
+		// always from the upper threshold.
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth {
+			dir := channel.Trigger.TriggerDirection
+			switch dir {
+			case genericps.TriggerRising, genericps.TriggerEnter:
+				// Signal enters the window from below → crosses the lower threshold
+				_, y = tp.timeMv2xy(channel.Trigger.LowerMv)
+			case genericps.TriggerFalling, genericps.TriggerExit:
+				// Signal enters from above or exits through top → crosses upper threshold
+				// y stays at Mv (already computed)
+			default:
+				// EnterOrExit / Inside / Outside: use midpoint between the two thresholds
+				_, yUpper := tp.timeMv2xy(channel.Trigger.Mv)
+				_, yLower := tp.timeMv2xy(channel.Trigger.LowerMv)
+				y = (yUpper + yLower) / 2
+			}
+		}
 		bounds := tp.signalScreen().Bounds()
 
 		w := float64(bounds.Dx() - 1)

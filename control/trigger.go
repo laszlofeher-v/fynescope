@@ -450,6 +450,7 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	channelProperties := psControl.getValidTriggerProperties()
 	for i := range channelProperties {
 		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+		channelProperties[i].ThresholdLowerHysteresis = 0
 	}
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
@@ -539,9 +540,6 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 	}
 
 	intervalType := psControl.triggerSetting.IntervalType
-	if psControl.triggerSetting.Type == Dropout {
-		intervalType = genericps.PwTypeGreaterThan
-	}
 
 	if lowerSamples > 16777215 {
 		lowerSamples = 16777215
