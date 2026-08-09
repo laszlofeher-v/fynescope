@@ -398,7 +398,8 @@ func ps2000aMinimumValue(handle int16) (value int32, err error) {
 
 func ps2000aSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold int16,
 	direction ThresholdDirection, delay uint32, autoTriggerMs int16) (err error) {
-	slog.Debug("ps2000aSetSimpleTrigger", "handle", handle, "enable", enable, "src", source, "threshold", threshold, "direction", direction, "delay", delay, "autoTriggerMs", autoTriggerMs)
+	slog.Debug("ps2000aSetSimpleTrigger", "handle", handle, "enable", enable, "src", source,
+		"threshold", threshold, "direction", direction, "delay", delay, "autoTriggerMs", autoTriggerMs)
 	stat := C.ps2000aSetSimpleTrigger((C.short)(handle), (C.short)(boolToint16(enable)),
 		(C.PS2000A_CHANNEL)(source), (C.short)(threshold),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint)(delay),
@@ -433,8 +434,10 @@ func ps2000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []in
 	return
 }
 
-func ps2000aSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	slog.Debug("ps2000aSetDataBuffers", "handle", handle, "ch", ch, "bufferMax", bufferMax, "bufferMin", bufferMin, "segmentIndex", segmentIndex, "mode", mode)
+func ps2000aSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16,
+	segmentIndex uint32, mode RatioMode) (err error) {
+	slog.Debug("ps2000aSetDataBuffers", "handle", handle, "ch", ch, "bufferMax", bufferMax,
+		"bufferMin", bufferMin, "segmentIndex", segmentIndex, "mode", mode)
 	stat := C.ps2000aSetDataBuffers((C.short)(handle), (C.int)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS2000A_RATIO_MODE)(mode))
@@ -478,7 +481,10 @@ func ps2000aRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalT
 	maxPreTriggerSamples, maxPostTriggerSamples uint32,
 	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 	overviewBufferSize uint32) (sampleInterval uint32, err error) {
-	slog.Debug("ps2000aRunStreaming", "handle", handle, "reqSampleInterval", reqSampleInterval, "sampleIntervalTimeUnits", sampleIntervalTimeUnits, "maxPreTriggerSamples", maxPreTriggerSamples, "maxPostTriggerSamples", maxPostTriggerSamples, "autoStop", autoStop, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "overviewBufferSize", overviewBufferSize)
+	slog.Debug("ps2000aRunStreaming", "handle", handle, "reqSampleInterval", reqSampleInterval,
+		"sampleIntervalTimeUnits", sampleIntervalTimeUnits, "maxPreTriggerSamples", maxPreTriggerSamples,
+		"maxPostTriggerSamples", maxPostTriggerSamples, "autoStop", autoStop, "downSampleRatio",
+		downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "overviewBufferSize", overviewBufferSize)
 	stat := C.ps2000aRunStreaming((C.short)(handle), (*C.uint)(&reqSampleInterval),
 		(C.PS2000A_TIME_UNITS)(sampleIntervalTimeUnits), (C.uint)(maxPreTriggerSamples),
 		(C.uint)(maxPostTriggerSamples), (C.short)(boolToint16(autoStop)), (C.uint)(downSampleRatio),
@@ -518,7 +524,9 @@ func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 		err = fmt.Errorf("RunBlock:  too many required samples %d", nSamples)
 		return
 	}
-	slog.Debug("ps2000aRunBlock", "handle", handle, "noOfPreTriggerSamples", noOfPreTriggerSamples, "noOfPostTriggerSamples", noOfPostTriggerSamples, "timeBase", timeBase, "overSample", overSample, "segmentIndex", segmentIndex, "lpBlockReadyGoPar", lpBlockReadyGoPar, "param", param)
+	slog.Debug("ps2000aRunBlock", "handle", handle, "noOfPreTriggerSamples",
+		noOfPreTriggerSamples, "noOfPostTriggerSamples", noOfPostTriggerSamples, "timeBase", timeBase,
+		"overSample", overSample, "segmentIndex", segmentIndex, "lpBlockReadyGoPar", lpBlockReadyGoPar, "param", param)
 	stat := C.ps2000aRunBlock((C.short)(handle), (C.int)(noOfPreTriggerSamples),
 		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase), (C.short)(overSample),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps2000aBlockReady)(C.lpBlockReady),
@@ -547,7 +555,8 @@ func ps2000aSetTriggerChannelProperties(handle int16, channelProperties []Trigge
 	if len(channelProperties) > 0 {
 		pcTriggerChannelProperties = &cTriggerChannelProperties[0]
 	}
-	slog.Debug("ps2000aSetTriggerChannelProperties", "handle", handle, "channelProperties", channelProperties, "auxOutputEnable", auxOutputEnable, "autoTriggerMs", autoTriggerMs)
+	slog.Debug("ps2000aSetTriggerChannelProperties", "handle", handle, "channelProperties",
+		channelProperties, "auxOutputEnable", auxOutputEnable, "autoTriggerMs", autoTriggerMs)
 	stat := C.ps2000aSetTriggerChannelProperties((C.short)(handle),
 		(*C.PS2000A_TRIGGER_CHANNEL_PROPERTIES)(pcTriggerChannelProperties),
 		(C.short)(len(channelProperties)), (C.short)(boolToint16(auxOutputEnable)), (C.int)(autoTriggerMs))
@@ -611,7 +620,8 @@ func ps2000aSetTriggerDelay(handle int16, delay uint32) (err error) {
 	return
 }
 
-func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
+func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection,
+	lower, upper uint32,
 	pwType PulseWidthType) (err error) {
 	cPwqConditions := make([]C.PS2000A_PWQ_CONDITIONS, len(conditions))
 	for i := range conditions {
@@ -627,7 +637,8 @@ func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, dir
 	if len(conditions) > 0 {
 		pcPwqConditions = &cPwqConditions[0]
 	}
-	slog.Debug("ps2000aSetPulseWidthQualifier", "handle", handle, "conditions", conditions, "direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
+	slog.Debug("ps2000aSetPulseWidthQualifier", "handle", handle, "conditions", conditions,
+		"direction", direction, "lower", lower, "upper", upper, "pwType", pwType)
 	stat := C.ps2000aSetPulseWidthQualifier((C.short)(handle),
 		pcPwqConditions, (C.short)(len(conditions)),
 		(C.PS2000A_THRESHOLD_DIRECTION)(direction), (C.uint32_t)(lower), (C.uint32_t)(upper),
@@ -673,7 +684,10 @@ func ps2000aSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, w
 	startFrequency, stopFrequency, increment, dwellTime float32, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("ps2000aSetSigGenBuiltIn", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK, "waveType", waveType, "startFrequency", startFrequency, "stopFrequency", stopFrequency, "increment", increment, "dwellTime", dwellTime, "sweepType", sweepType, "operation", operation, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
+	slog.Debug("ps2000aSetSigGenBuiltIn", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK,
+		"waveType", waveType, "startFrequency", startFrequency, "stopFrequency", stopFrequency, "increment", increment,
+		"dwellTime", dwellTime, "sweepType", sweepType, "operation", operation, "shots", shots, "sweeps", sweeps,
+		"triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
 	stat := C.ps2000aSetSigGenBuiltIn((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.short)(waveType), (C.float)(startFrequency),
 		(C.float)(stopFrequency), (C.float)(increment), (C.float)(dwellTime),
@@ -691,7 +705,10 @@ func ps2000aSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("ps2000aSetSigGenBuiltInV2", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK, "waveType", waveType, "startFrequency", startFrequency, "stopFrequency", stopFrequency, "increment", increment, "dwellTime", dwellTime, "sweepType", sweepType, "operation", operation, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
+	slog.Debug("ps2000aSetSigGenBuiltInV2", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK,
+		"waveType", waveType, "startFrequency", startFrequency, "stopFrequency", stopFrequency, "increment", increment,
+		"dwellTime", dwellTime, "sweepType", sweepType, "operation", operation, "shots", shots, "sweeps", sweeps,
+		"triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
 	stat := C.ps2000aSetSigGenBuiltInV2((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.short)(waveType), (C.double)(startFrequency),
 		(C.double)(stopFrequency), (C.double)(increment), (C.double)(dwellTime),
@@ -706,7 +723,8 @@ func ps2000aSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32,
 }
 
 func ps2000aSigGenFrequencyToPhase(handle int16, frequency float64, indexMode IndexMode, bufferLength uint32) (phase uint32, err error) {
-	slog.Debug("ps2000aSigGenFrequencyToPhase", "handle", handle, "frequency", frequency, "indexMode", indexMode, "bufferLength", bufferLength)
+	slog.Debug("ps2000aSigGenFrequencyToPhase", "handle", handle, "frequency", frequency, "indexMode", indexMode,
+		"bufferLength", bufferLength)
 	stat := C.ps2000aSigGenFrequencyToPhase((C.short)(handle), (C.double)(frequency),
 		(C.PS2000A_INDEX_MODE)(indexMode), (C.uint)(bufferLength), (*C.uint)(&phase))
 	if stat != C.PICO_OK {
@@ -747,7 +765,9 @@ func ps2000aGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (time int6
 
 func ps2000aGetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower []uint32, timeUnits []TimeUnits,
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
-	slog.Debug("ps2000aGetValuesTriggerTimeOffsetBulk", "handle", handle, "timesUpper", timesUpper, "timesLower", timesLower, "timeUnits", timeUnits, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
+	slog.Debug("ps2000aGetValuesTriggerTimeOffsetBulk", "handle", handle, "timesUpper", timesUpper,
+		"timesLower", timesLower, "timeUnits", timeUnits, "fromSegmentIndex", fromSegmentIndex,
+		"toSegmentIndex", toSegmentIndex)
 	stat := C.ps2000aGetValuesTriggerTimeOffsetBulk((C.short)(handle), (*C.uint)(&timesUpper[0]),
 		(*C.uint)(&timesLower[0]), (*C.PS2000A_TIME_UNITS)(&timeUnits[0]), (C.uint)(fromSegmentIndex),
 		(C.uint)(toSegmentIndex))
@@ -760,7 +780,8 @@ func ps2000aGetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower 
 
 func ps2000aGetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUnits []TimeUnits,
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
-	slog.Debug("ps2000aGetValuesTriggerTimeOffsetBulk64", "handle", handle, "times", times, "timeUnits", timeUnits, "fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
+	slog.Debug("ps2000aGetValuesTriggerTimeOffsetBulk64", "handle", handle, "times", times, "timeUnits", timeUnits,
+		"fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
 	stat := C.ps2000aGetValuesTriggerTimeOffsetBulk64((C.short)(handle), (*C.long)(&times[0]),
 		(*C.PS2000A_TIME_UNITS)(&timeUnits[0]), (C.uint)(fromSegmentIndex),
 		(C.uint)(toSegmentIndex))
@@ -899,7 +920,11 @@ func ps2000aSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPK uint32,
 	arbitraryWaveform []int16, sweepType SweepTypeEnum, operation ExtraOperations,
 	indexMode IndexMode, shots, sweeps uint32, triggerType SigGenTrigType,
 	triggerSource SigGenTrigSource, extInThreshold int16) (err error) {
-	slog.Debug("ps2000aSetSigGenArbitrary", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK, "startDeltaPhase", startDeltaPhase, "stopDeltaPhase", stopDeltaPhase, "deltaPhaseIncrement", deltaPhaseIncrement, "dwellCount", dwellCount, "arbitraryWaveform", arbitraryWaveform, "sweepType", sweepType, "operation", operation, "indexMode", indexMode, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource, "extInThreshold", extInThreshold)
+	slog.Debug("ps2000aSetSigGenArbitrary", "handle", handle, "offsetVoltage", offsetVoltage, "pkToPK", pkToPK,
+		"startDeltaPhase", startDeltaPhase, "stopDeltaPhase", stopDeltaPhase, "deltaPhaseIncrement", deltaPhaseIncrement,
+		"dwellCount", dwellCount, "arbitraryWaveform", arbitraryWaveform, "sweepType", sweepType, "operation", operation,
+		"indexMode", indexMode, "shots", shots, "sweeps", sweeps, "triggerType", triggerType, "triggerSource", triggerSource,
+		"extInThreshold", extInThreshold)
 	stat := C.ps2000aSetSigGenArbitrary((C.short)(handle), (C.int)(offsetVoltage),
 		(C.uint)(pkToPK), (C.uint)(startDeltaPhase), (C.uint)(stopDeltaPhase),
 		(C.uint32_t)(deltaPhaseIncrement), (C.uint32_t)(dwellCount),

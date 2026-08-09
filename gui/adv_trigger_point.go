@@ -200,12 +200,12 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		return
 	}
 	tp.triggerPointViewer.dragged(dx, dy, x, y) // call base class method
-	if !tp.uhSelected && !tp.lhSelected {                         // mouse down/up set it
+	if !tp.uhSelected && !tp.lhSelected {       // mouse down/up set it
 		return // 								   cursor is somewhere else
 	}
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	newH := int32(math.Round(tp.y2mv(float64(y))))
-	
+
 	if tp.uhSelected {
 		switch {
 		case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth:
@@ -223,7 +223,11 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			}
 		case channel.Trigger.TriggerDirection == genericps.TriggerRising, tp.scp.triggerSettingMsg.Type == control.Dropout:
 			if newH <= channel.Trigger.Mv {
-				channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+				if tp.scp.triggerSettingMsg.Type == control.Dropout {
+					channel.Trigger.DropoutHysteresis = channel.Trigger.Mv - newH
+				} else {
+					channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+				}
 			}
 		case channel.Trigger.TriggerDirection == genericps.TriggerFalling:
 			if newH >= channel.Trigger.Mv {
@@ -232,21 +236,27 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		default:
 			slog.Error("advTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 		}
-		tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 		if tp.scp.triggerSettingMsg.Type == control.Dropout {
-			channel.Trigger.LowerHysteresis = channel.Trigger.Hysteresis
-			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.DropoutHysteresis)
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.DropoutHysteresis)
+		} else {
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 		}
 	}
 
 	if tp.lhSelected {
 		if newH >= channel.Trigger.Mv {
-			channel.Trigger.LowerHysteresis = newH - channel.Trigger.Mv
+			if tp.scp.triggerSettingMsg.Type == control.Dropout {
+				channel.Trigger.DropoutHysteresis = newH - channel.Trigger.Mv
+			} else {
+				channel.Trigger.LowerHysteresis = newH - channel.Trigger.Mv
+			}
 		}
-		tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
 		if tp.scp.triggerSettingMsg.Type == control.Dropout {
-			channel.Trigger.Hysteresis = channel.Trigger.LowerHysteresis
-			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.DropoutHysteresis)
+			tp.scp.SetTriggerUpperHysteresis(channel.Trigger.DropoutHysteresis)
+		} else {
+			tp.scp.SetTriggerLowerHysteresis(channel.Trigger.LowerHysteresis)
 		}
 	}
 
@@ -323,9 +333,11 @@ func (tp *advTriggerPointViewer) draw() {
 			if channel.Trigger.TriggerDirection == genericps.TriggerFalling || channel.Trigger.TriggerDirection == genericps.TriggerExit {
 				_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
 			}
+		} else if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.DropoutHysteresis)
 		} else {
 			_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
-			if channel.Trigger.TriggerDirection == genericps.TriggerFalling && tp.scp.triggerSettingMsg.Type != control.Dropout {
+			if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
 				_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
 			}
 		}
@@ -340,11 +352,11 @@ func (tp *advTriggerPointViewer) draw() {
 			int(math.Round(float64( /*y-*/ yh-rectSize2))),
 			int(math.Round(float64(x+rectSize2))),
 			int(math.Round(float64( /*y+*/ rectSize2+yh))))
-			
+
 		// Lower Hysteresis (for Dropout)
 		var lyh float32
 		if tp.scp.triggerSettingMsg.Type == control.Dropout {
-			_, lyh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.LowerHysteresis)
+			_, lyh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.DropoutHysteresis)
 			switch {
 			case lyh > maxY:
 				lyh = maxY
@@ -358,7 +370,7 @@ func (tp *advTriggerPointViewer) draw() {
 		} else {
 			tp.lhImgRect = image.Rect(0, 0, 0, 0)
 		}
-		
+
 		col := theme.ForegroundColor()
 		if tp.selected || tp.triggerPointViewer.mouseAt {
 			col = theme.SelectionColor()
@@ -370,7 +382,7 @@ func (tp *advTriggerPointViewer) draw() {
 		}
 		drawLine(tp.signalScreen(), x, y, x, yh, col)
 		drawLine(tp.signalScreen(), x-halfRectSize, yh, x+halfRectSize, yh, col)
-		
+
 		if tp.scp.triggerSettingMsg.Type == control.Dropout {
 			col = theme.ForegroundColor()
 			if tp.lhSelected || (tp.mouseAt && tp.mouseAtHysteresisPoint(x, lyh)) {
@@ -379,18 +391,25 @@ func (tp *advTriggerPointViewer) draw() {
 			drawLine(tp.signalScreen(), x, y, x, lyh, col)
 			drawLine(tp.signalScreen(), x-halfRectSize, lyh, x+halfRectSize, lyh, col)
 		}
-		
+
 		if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 			tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 			tp.scp.triggerThresholdDisp.Refresh()
 		}
-		if tp.scp.triggerHysteresisDisp.Value != int(channel.Trigger.Hysteresis) {
-			tp.scp.triggerHysteresisDisp.SilentSetValue(int(channel.Trigger.Hysteresis))
+		currentHysteresis := int(channel.Trigger.Hysteresis)
+		currentLowerHysteresis := int(channel.Trigger.LowerHysteresis)
+		if tp.scp.triggerSettingMsg.Type == control.Dropout {
+			currentHysteresis = int(channel.Trigger.DropoutHysteresis)
+			currentLowerHysteresis = int(channel.Trigger.DropoutHysteresis)
+		}
+
+		if tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
+			tp.scp.triggerHysteresisDisp.SilentSetValue(currentHysteresis)
 			tp.scp.triggerHysteresisDisp.Refresh()
 		}
 		if tp.scp.triggerSettingMsg.Type == control.Dropout {
-			if tp.scp.triggerLowerHysteresisDisp != nil && tp.scp.triggerLowerHysteresisDisp.Value != int(channel.Trigger.LowerHysteresis) {
-				tp.scp.triggerLowerHysteresisDisp.SilentSetValue(int(channel.Trigger.LowerHysteresis))
+			if tp.scp.triggerLowerHysteresisDisp != nil && tp.scp.triggerLowerHysteresisDisp.Value != currentLowerHysteresis {
+				tp.scp.triggerLowerHysteresisDisp.SilentSetValue(currentLowerHysteresis)
 				tp.scp.triggerLowerHysteresisDisp.Refresh()
 			}
 		}
