@@ -836,6 +836,10 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
 		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.SetOptions(intervalTypeOptions)
+			scp.intervalTypeSelect.Refresh()
+		}
 		scp.updateIntervalTimeGUI()
 	case control.Interval, control.PulseWidth:
 		scp.boxTriggerHysteresisDisp.Show()
@@ -848,6 +852,10 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
 		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.SetOptions(intervalTypeOptions)
+			scp.intervalTypeSelect.Refresh()
+		}
 		scp.updateIntervalTimeGUI()
 	case control.Dropout:
 		scp.boxTriggerHysteresisDisp.Show()
@@ -859,6 +867,13 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
+		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.SetOptions([]string{IntervalTypeGreaterThan})
+			if scp.intervalTypeSelect.Selected != IntervalTypeGreaterThan {
+				scp.intervalTypeSelect.SetSelected(IntervalTypeGreaterThan)
+			}
+			scp.intervalTypeSelect.Refresh()
 		}
 		scp.updateIntervalTimeGUI()
 	}
