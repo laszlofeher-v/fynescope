@@ -1533,7 +1533,7 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 		case control.Window:
 			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.WindowPulseWidth:
-			scp.triggerPoint = newWindowIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+			scp.triggerPoint = newWindowPulseWidthTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Interval, control.PulseWidth, control.Dropout:
@@ -1559,7 +1559,7 @@ func (scp *ScpDesc) ftRasterGenerator(wInt int, hInt int) image.Image {
 		case control.Window:
 			scp.triggerPoint = newWindowTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.WindowPulseWidth:
-			scp.triggerPoint = newWindowIntervalTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
+			scp.triggerPoint = newWindowPulseWidthTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Complex:
 			scp.triggerPoint = newComplexTriggerPointViewer(scp.ftScopeFullScreen, scp, false)
 		case control.Interval, control.PulseWidth, control.Dropout:
