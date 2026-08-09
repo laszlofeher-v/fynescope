@@ -150,6 +150,19 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
 	newH := int32(math.Round(tp.y2mv(float64(y))))
 	switch {
+	case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth:
+		switch channel.Trigger.TriggerDirection {
+		case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
+			if newH >= channel.Trigger.Mv {
+				channel.Trigger.Hysteresis = newH - channel.Trigger.Mv
+			}
+		case genericps.TriggerFalling, genericps.TriggerExit:
+			if newH <= channel.Trigger.Mv {
+				channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
+			}
+		default:
+			slog.Error("advTrigger WindowPulseWidth", "TriggerDirection", channel.Trigger.TriggerDirection)
+		}
 	case channel.Trigger.TriggerDirection == genericps.TriggerRising:
 		if newH <= channel.Trigger.Mv {
 			channel.Trigger.Hysteresis = channel.Trigger.Mv - newH
@@ -216,9 +229,16 @@ func (tp *advTriggerPointViewer) draw() {
 			int(math.Round(float64(x+halfRectSize))),
 			int(math.Round(float64(y+halfRectSize))))
 		var yh float32
-		_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
-		if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth {
 			_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
+			if channel.Trigger.TriggerDirection == genericps.TriggerFalling || channel.Trigger.TriggerDirection == genericps.TriggerExit {
+				_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
+			}
+		} else {
+			_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
+			if channel.Trigger.TriggerDirection == genericps.TriggerFalling {
+				_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
+			}
 		}
 		switch {
 		case yh > maxY:

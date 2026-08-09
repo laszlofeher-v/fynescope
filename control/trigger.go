@@ -605,9 +605,6 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 
 	pwqCond := genericps.CondTrue
 	condMain := genericps.CondTrue
-	if psControl.triggerSetting.Type == WindowPulseWidth {
-		condMain = genericps.CondDontCare
-	}
 	var triggerConditions []genericps.TriggerConditions
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
