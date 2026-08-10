@@ -357,6 +357,8 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 		err = psControl.sendDropOutTrigger()
 	case WindowDropout:
 		err = psControl.sendWindowDropoutTrigger()
+	case Runt:
+		err = psControl.sendRuntTrigger()
 	}
 
 	return

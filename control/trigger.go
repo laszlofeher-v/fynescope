@@ -30,6 +30,7 @@ const (
 	Dropout
 	WindowPulseWidth
 	WindowDropout
+	Runt
 )
 
 func (psControl *PscDesc) triggerMonitor() {
@@ -307,6 +308,87 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 
 	pwqDir := genericps.TriggerRising
 	if dir == genericps.TriggerFalling {
+		pwqDir = genericps.TriggerFalling
+	}
+	err = psControl.Con.SetPulseWidthQualifier(nil, pwqDir, 0, 0, genericps.PwTypeNone)
+	if err != nil {
+		slog.Error("SetPulseWidthQualifier disable:", "error:", err)
+	}
+	return
+}
+
+func (psControl *PscDesc) sendRuntTrigger() (err error) {
+	at := int32(0)
+	if psControl.triggerSetting.Mode == Auto {
+		at = autoTriggerMs
+	}
+	var triggerConditions []genericps.TriggerConditions
+	pwqCond := genericps.CondDontCare
+	condMain := genericps.CondTrue
+
+	switch psControl.triggerSetting.Source {
+	case genericps.ChA:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChB:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChC:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain,
+			ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	case genericps.ChD:
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare,
+			ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+	}
+
+	channelProperties := psControl.getValidTriggerProperties()
+
+	slog.Debug("Prop", "prop", channelProperties)
+	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
+		return
+	}
+
+	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
+	if err != nil {
+		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
+		return
+	}
+
+	channelA := genericps.TriggerNone
+	channelB := genericps.TriggerNone
+	channelC := genericps.TriggerNone
+	channelD := genericps.TriggerNone
+	ext := genericps.TriggerNone
+	aux := genericps.TriggerNone
+	dir := psControl.triggerSetting.ThresholdDirection
+
+	switch psControl.triggerSetting.Source {
+	case genericps.ChA:
+		channelA = dir
+	case genericps.ChB:
+		channelB = dir
+	case genericps.ChC:
+		channelC = dir
+	case genericps.ChD:
+		channelD = dir
+	}
+
+	err = psControl.Con.SetTriggerChannelDirections(channelA,
+		channelB,
+		channelC,
+		channelD,
+		ext,
+		aux)
+
+	if err != nil {
+		slog.Error("SetTriggerChannelDirections:", "error:", err)
+		return
+	}
+
+	pwqDir := genericps.TriggerRising
+	if dir == genericps.TriggerNegativeRunt {
 		pwqDir = genericps.TriggerFalling
 	}
 	err = psControl.Con.SetPulseWidthQualifier(nil, pwqDir, 0, 0, genericps.PwTypeNone)
