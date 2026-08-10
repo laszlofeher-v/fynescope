@@ -692,8 +692,11 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	channelViewer.acdcSelect = acdc
 	addToTest(acdc, acdcId+chId, ftTabIndex)
 	var activeTriggerDirectionOptions []string
-	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow {
+	tType := scp.Settings.Trigger.Type
+	if tType == settings.TriggerTypeWindow || tType == settings.TriggerTypeWindowPulseWidth || tType == settings.TriggerTypeWindowDropout {
 		activeTriggerDirectionOptions = triggerWindowDirectionOptions
+	} else if tType == settings.TriggerTypeRunt {
+		activeTriggerDirectionOptions = triggerRuntDirectionOptions
 	} else {
 		activeTriggerDirectionOptions = triggerDirectionOptions
 	}
