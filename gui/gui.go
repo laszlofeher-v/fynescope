@@ -876,7 +876,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 		if scp.running {
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
-				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout) {
+				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout) {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
 			}
@@ -996,7 +996,7 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
 			if scp.controlTab.SelectedIndex() == ffTabIndex {
-				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout {
+				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
 				if scp.Settings.Ff.PtsDec <= 0 {

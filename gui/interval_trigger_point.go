@@ -204,7 +204,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 		// For Window Pulse Width, the arrows should originate from the voltage
 		// threshold that the signal actually crosses to fire the trigger, not
 		// always from the upper threshold.
-		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth {
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout {
 			dir := channel.Trigger.TriggerDirection
 			switch dir {
 			case genericps.TriggerRising, genericps.TriggerEnter:
