@@ -56,6 +56,8 @@ var (
 	timeIntervalPicoSeconds float64
 	nOfPreTrSamples         int32
 	nOfPostTrSamples        int32
+	buffers                 [MaxChannels][]int16
+	buffersMin              [MaxChannels][]int16
 	triggerDetector         *TriggerDetector
 	// triggerDelay            uint32
 	TtToPercent float64
@@ -501,42 +503,88 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				noOfSamples = uint32(len(buffers[ch]))
 			}
 			for t := range buffers[ch] {
-				// Calculate real time for this sample
+				// Calculate real time for this output sample block
 				dt := timeIntervalNanoseconds / 1e9
-				rt := (float64(t)-float64(nOfPreTrSamples))*dt + triggerTime
+
+				var aggSum float64
+				var aggMin float64 = math.MaxFloat64
+				var aggMax float64 = -math.MaxFloat64
+				var decimateVal float64
+
+				if downSampleRatio < 1 {
+					downSampleRatio = 1
+				}
+
+				for r := uint32(0); r < downSampleRatio; r++ {
+					rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)*float64(downSampleRatio)
+					rt := rawSampleIndex*dt + triggerTime
+
+					levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
+
+					if filters[ch] != nil {
+						levelFloat = filters[ch].Step(levelFloat)
+					}
+					if acFilters[ch] != nil {
+						levelFloat = acFilters[ch].Step(levelFloat)
+					}
+
+					aggSum += levelFloat
+					if levelFloat < aggMin {
+						aggMin = levelFloat
+					}
+					if levelFloat > aggMax {
+						aggMax = levelFloat
+					}
+					if r == 0 {
+						decimateVal = levelFloat
+					}
+				}
+
+				var finalMaxFloat, finalMinFloat float64
+				switch downSampleRatioMode {
+				case RatioModeAverage:
+					finalMaxFloat = aggSum / float64(downSampleRatio)
+					finalMinFloat = finalMaxFloat
+				case RatioModeAggregate:
+					finalMaxFloat = aggMax
+					finalMinFloat = aggMin
+				default:
+					finalMaxFloat = decimateVal
+					finalMinFloat = decimateVal
+				}
+
+				var levelMax int16
+				if finalMaxFloat > maxValue {
+					overflow |= int16(1 << ch)
+					levelMax = maxValue
+				} else if finalMaxFloat < -maxValue {
+					overflow |= int16(1 << ch)
+					levelMax = -maxValue
+				} else {
+					levelMax = int16(math.Round(finalMaxFloat))
+				}
+				buffers[ch][t] = levelMax
+
+				if buffersMin[ch] != nil && len(buffersMin[ch]) > t {
+					var levelMin int16
+					if finalMinFloat > maxValue {
+						overflow |= int16(1 << ch)
+						levelMin = maxValue
+					} else if finalMinFloat < -maxValue {
+						overflow |= int16(1 << ch)
+						levelMin = -maxValue
+					} else {
+						levelMin = int16(math.Round(finalMinFloat))
+					}
+					buffersMin[ch][t] = levelMin
+				}
+
 				// Store ETS time if enabled (fs)
 				if etsEnbaled && ch == int(ChA) {
 					t0Fs := 1e15 * float64(nOfPreTrSamples) * timeIntervalNanoseconds / 1e9
-					rteFs := (float64(t) * timeIntervalNanoseconds) / 1e9 * 1e15
+					rteFs := (float64(t) * timeIntervalNanoseconds * float64(downSampleRatio)) / 1e9 * 1e15
 					etsTimeBuffer[t] = int64(rteFs - t0Fs)
-					// slog.Debug("sim", "b", etsTimeBuffer[t], "rteFs", rteFs, "t0Fs", t0Fs)
 				}
-
-				// Calculate sample level for this channel
-				levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
-
-				// Apply RLC Filter if enabled
-				if filters[ch] != nil {
-					levelFloat = filters[ch].Step(levelFloat)
-				}
-
-				// Apply AC coupling filter (analogue 1 Hz highpass) if channel is AC-coupled
-				if acFilters[ch] != nil {
-					levelFloat = acFilters[ch].Step(levelFloat)
-				}
-
-				// Clamp to valid range and detect overflow
-				var level int16
-				if levelFloat > maxValue {
-					overflow |= int16(1 << ch)
-					level = maxValue
-				} else if levelFloat < -maxValue {
-					overflow |= int16(1 << ch)
-					level = -maxValue
-				} else {
-					level = int16(math.Round(levelFloat))
-				}
-				buffers[ch][t] = level
 			}
 		}
 
@@ -843,7 +891,6 @@ func simMinimumValue(handle int16) (value int32, err error) {
 	return
 }
 
-var buffers [4][]int16
 
 func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
@@ -857,8 +904,14 @@ func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex
 func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
+		return
 	}
-	err = fmt.Errorf("%w; %s", err, notImplemented)
+	if ch < 0 || ch >= MaxChannels {
+		err = fmt.Errorf("invalid parameter")
+		return
+	}
+	buffers[ch] = bufferMax
+	buffersMin[ch] = bufferMin
 	return
 }
 

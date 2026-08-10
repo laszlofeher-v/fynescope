@@ -57,8 +57,11 @@ func blockMode(psControl *PscDesc) state {
 			return
 		}
 		psControl.overSample = 1 // not used
+		psControl.downSampleRatioMode = genericps.RatioMode(psControl.ResolutionMode.Load())
 		psControl.downSampleRatio = 1
-		psControl.downSampleRatioMode = genericps.RatioModeNone
+		if psControl.downSampleRatioMode != genericps.RatioModeNone {
+			psControl.downSampleRatio = 256
+		}
 
 		tbInput := uint64(float64(psControl.maxScreenTime*1e9) /
 			float64(psControl.SampleCountRequired*psControl.downSampleRatio))

@@ -98,7 +98,14 @@ var (
 		interpolationModeOptions[settings.Raw]:    settings.Raw,
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
-	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
+	resolutionModeOptions = []string{"Normal", "High-Res", "ED", "Decimate"}
+	resolutionModes       = map[string]genericps.RatioMode{
+		"Normal":   genericps.RatioModeNone,
+		"High-Res": genericps.RatioModeAverage,
+		"ED":       genericps.RatioModeAggregate,
+		"Decimate": genericps.RatioModeDecimate,
+	}
+	intervalTypeOptions   = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
 		IntervalTypeInRange, IntervalTypeOutOfRange}
 	intervalTypes      map[string]genericps.PulseWidthType
 	intervalTypeRevMap map[genericps.PulseWidthType]string
@@ -608,8 +615,21 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 func (scp *ScpDesc) onInterpolationModeChange(option string, e selectscroll.Exception) {
 	scp.psControl.SetInterpolationModeCh <- interpolationModes[option]
 	scp.Settings.Time.Interpolation = interpolationModes[option]
+	setFlag(scp.repartition)
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
 	scp.refreshRasters()
 	scp.SaveSettings()
+}
+
+func (scp *ScpDesc) onResolutionModeChange(option string, e selectscroll.Exception) {
+	scp.Settings.Time.ResolutionMode = option
+	mode := resolutionModes[option]
+	scp.psControl.ResolutionMode.Store(int32(mode))
+	scp.SaveSettings()
+	if scp.running {
+		scp.psControl.RequestRestart()
+	}
 }
 
 func (scp *ScpDesc) sampleUnitUp() {
@@ -1441,7 +1461,10 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.ipmSelect.SetSelected(interpolationModeOptions[scp.Settings.Time.Interpolation])
 	addToTest(scp.ipmSelect, ipmId, -1)
 
-	hbox := container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
+	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")
+	scp.resSelect.SetSelected(scp.Settings.Time.ResolutionMode)
+
+	hbox := container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect, scp.resSelect)
 
 	return hbox
 }

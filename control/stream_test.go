@@ -42,7 +42,8 @@ func TestStreamModeTransition(t *testing.T) {
 		getGeneratorCh:         make(chan *getGeneratorMsg, 1),
 		SetTriggerCh:           make(chan *TriggerDescMsg, 1),
 		getTriggerCh:           make(chan *getTriggerMsg, 1),
-		RefreshCallback:        func(buffers [][]int16, triggerTimeOffset int64, xRoundError, samplingTimeInterval float64) {},
+		RefreshCallback: func(buffers [][]int16, buffersMin [][]int16, triggerTimeOffset int64,
+			xRoundError, samplingTimeInterval float64) {},
 		BufferCallback:         func(size int) {},
 		DisplayStatus:          func(status string, level ScopeError) {},
 	}

@@ -40,7 +40,7 @@ func streamMode(psControl *PscDesc) state {
 			}
 
 			psControl.checkOverflow(overflow)
-			psControl.RefreshCallback(psControl.receiveBuffer, 0, 0, psControl.SamplingTimeInterval)
+			psControl.RefreshCallback(psControl.receiveBuffer, nil, 0, 0, psControl.SamplingTimeInterval)
 		}
 
 		select {

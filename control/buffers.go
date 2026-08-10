@@ -50,11 +50,28 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 		} else {
 			psControl.displayBuffer[chIndex] = psControl.displayBuffer[chIndex][:sampleCount]
 		}
-		err = psControl.Con.SetDataBuffer(genericps.ChannelId(chIndex),
-			psControl.receiveBuffer[chIndex][:sampleCount], segmentIndex,
-			psControl.downSampleRatioMode)
+		if psControl.downSampleRatioMode == genericps.RatioModeAggregate {
+			if len(psControl.receiveBufferMin[chIndex]) < int(sampleCount) {
+				if cap(psControl.receiveBufferMin[chIndex]) < int(sampleCount) {
+					psControl.receiveBufferMin[chIndex] = make([]int16, sampleCount)
+				} else {
+					psControl.receiveBufferMin[chIndex] = psControl.receiveBufferMin[chIndex][:sampleCount]
+				}
+			} else {
+				psControl.receiveBufferMin[chIndex] = psControl.receiveBufferMin[chIndex][:sampleCount]
+			}
+			err = psControl.Con.SetDataBuffers(genericps.ChannelId(chIndex),
+				psControl.receiveBuffer[chIndex][:sampleCount],
+				psControl.receiveBufferMin[chIndex][:sampleCount],
+				uint32(segmentIndex),
+				psControl.downSampleRatioMode)
+		} else {
+			err = psControl.Con.SetDataBuffer(genericps.ChannelId(chIndex),
+				psControl.receiveBuffer[chIndex][:sampleCount], segmentIndex,
+				psControl.downSampleRatioMode)
+		}
 		if err != nil {
-			slog.Error("SetDataBuffers", "buffers:", psControl.receiveBuffer[chIndex], "error:", err)
+			slog.Error("SetDataBuffer(s)", "buffers:", psControl.receiveBuffer[chIndex], "error:", err)
 			return
 		}
 	}
@@ -118,7 +135,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 			psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
 				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
-		psControl.RefreshCallback(psControl.receiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
+		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return
 }

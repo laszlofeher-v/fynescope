@@ -211,6 +211,7 @@ type (
 		fvViewer                     *fvViewer
 		ffViewer                     drawer // actually *ffViewer but drawer interface helps compilation here if not yet defined
 		ipmSelect                    *selectscroll.SelectScroll
+		resSelect                    *selectscroll.SelectScroll
 		sampleRateSelect             *selectscroll.SelectScroll
 		sampleUnitSelect             *selectscroll.SelectScroll
 		timeSelect                   *selectscroll.SelectScroll
@@ -227,6 +228,8 @@ type (
 
 		triggerCheck               []*widget.Check
 		displayBuffers             [][]float32 // signal stored in mv
+		displayBuffersMin          [][]float32 // min signal stored in mv for ED mode
+		etsBuffer                  []int64
 		channelViewers             []channelViewerDesc
 		dftDrawers                 []drawer
 		ftDrawers                  []drawer
@@ -237,7 +240,6 @@ type (
 		ftBottomLabelViewer        drawer
 		dftBottomLabelViewer       drawer
 		triggerPoint               drawer
-		etsBuffer                  []int64
 		triggerSources             []string
 		dftDivsX                   []float32
 		dftDivsY                   [numberOfDivs + 1]float32
@@ -1088,6 +1090,13 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.Settings.Window.Fullscreen = false
 		scp.Window.SetFullScreen(false)
 	}
+
+	mode, ok := resolutionModes[scp.Settings.Time.ResolutionMode]
+	if !ok {
+		mode = genericps.RatioModeNone
+	}
+	scp.psControl.ResolutionMode.Store(int32(mode))
+
 	scp.initStatus()
 	var saveRasterButton, saveWindowButton *widget.Button
 	changeSideFunc := func() {
@@ -1205,6 +1214,15 @@ func (scp *ScpDesc) build2000Gui() {
 					scp.displayBuffers[i] = make([]float32, size)
 				}
 			}
+			if len(scp.displayBuffersMin) > i {
+				if size != len(scp.displayBuffersMin[i]) {
+					if cap(scp.displayBuffersMin[i]) >= size {
+						scp.displayBuffersMin[i] = scp.displayBuffersMin[i][:size]
+					} else {
+						scp.displayBuffersMin[i] = make([]float32, size)
+					}
+				}
+			}
 		}
 	}
 
@@ -1223,17 +1241,17 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64) {
 		copy(scp.etsBuffer, etsInBuffer)
-		scp.psControl.RefreshCallback(buffers, 0, xRoundError, 0)
+		scp.psControl.RefreshCallback(buffers, nil, 0, xRoundError, 0)
 	}
 
-	scp.psControl.RefreshCallback = func(buffers [][]int16, triggerTimeOffset int64,
+	scp.psControl.RefreshCallback = func(buffers [][]int16, buffersMin [][]int16, triggerTimeOffset int64,
 		xRoundError, samplingTimeInterval float64) {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
 		scp.controlSamplingTimeInterval = samplingTimeInterval
 
 		fyne.Do(func() {
-			scp.UpdateMeasurements(buffers, samplingTimeInterval)
+			scp.UpdateMeasurements(buffers, buffersMin, samplingTimeInterval)
 			scp.updateBinWidth()
 			scp.updateDftDataCollectionTime()
 			scp.refreshRasters() // it calls draw method in signalviewer
@@ -1312,6 +1330,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		return
 	}
 	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
+	scp.displayBuffersMin = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.bodeBuffers = make([][]bodePoint, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
