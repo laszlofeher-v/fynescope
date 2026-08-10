@@ -120,6 +120,9 @@ type ChannelTriggerState struct {
 //   - triggerTime: Time offset in seconds where trigger occurred
 func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch ChannelId) float64,
 	reqSamples uint32, maxTime float64, dt float64) (found bool, triggerTime float64) {
+	
+	DisablePhaseNoise(true)
+	defer DisablePhaseNoise(false)
 
 	// Check if any channels are enabled
 	found = false

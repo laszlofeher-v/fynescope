@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"math/rand"
+	"sync/atomic"
+	"time"
 
 	"fynescope/genericps"
-	"math/rand"
-	"time"
 )
 
 const (
@@ -48,6 +49,7 @@ type (
 // Singleton simulator
 var (
 	// handle                  int16
+	triggerPhaseNoiseDisabled atomic.Bool
 	channels                [MaxChannels]channelDesc
 	behaviour               returnStatus
 	timeBaseSet             uint32
@@ -267,7 +269,7 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	phase := (t*freq + genChDesc.phase/360.0) * math.Pi * 2
 
 	// Add phase noise (read atomically — written by GUI goroutine)
-	if pnd := GetPhaseNoiseDegree(int(genSrc)); pnd > 0 {
+	if pnd := GetPhaseNoiseDegree(int(genSrc)); pnd > 0 && !triggerPhaseNoiseDisabled.Load() {
 		phase += (rand.Float64()*2 - 1) * pnd * math.Pi / 180.0
 	}
 
@@ -1490,4 +1492,8 @@ func SetChannelCount(n int, explicit bool) error {
 	scopeVariantInfo = fmt.Sprintf("2%d07SIM", n)
 	scopeBathAndSerialInfo = fmt.Sprintf("SIM/CH%d", n)
 	return nil
+}
+
+func DisablePhaseNoise(disable bool) {
+	triggerPhaseNoiseDisabled.Store(disable)
 }
