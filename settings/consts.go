@@ -37,6 +37,7 @@ const (
 	TriggerTypeComplex          = "Complex"
 	TriggerTypeDropout          = "Dropout"
 	TriggerTypeWindowDropout    = "Window Dropout"
+	TriggerTypeRunt             = "Runt"
 )
 
 // Trigger mode name constants (stored as strings in settings YAML).

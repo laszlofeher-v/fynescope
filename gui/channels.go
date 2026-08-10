@@ -90,6 +90,7 @@ var (
 	channelNames                  = []string{"A", "B", "C", "D"}
 	triggerDirectionOptions       = []string{rising, failing}
 	triggerWindowDirectionOptions = []string{enter, exit, either}
+	triggerRuntDirectionOptions   = []string{"Positive Runt", "Negative Runt"}
 	triggerDirections             map[string]genericps.ThresholdDirection
 	triggerDirectionNames         map[genericps.ThresholdDirection]string
 	coupleTypeNames               = []string{ac, dc}
@@ -111,12 +112,16 @@ func initMaps() {
 	triggerDirectionNames[genericps.TriggerEnter] = enter
 	triggerDirectionNames[genericps.TriggerExit] = exit
 	triggerDirectionNames[genericps.TriggerEnterOrExit] = either
+	triggerDirectionNames[genericps.TriggerPositiveRunt] = "Positive Runt"
+	triggerDirectionNames[genericps.TriggerNegativeRunt] = "Negative Runt"
 	triggerDirections = make(map[string]genericps.ThresholdDirection)
 	triggerDirections[failing] = genericps.TriggerFalling
 	triggerDirections[rising] = genericps.TriggerRising
 	triggerDirections[enter] = genericps.TriggerEnter
 	triggerDirections[exit] = genericps.TriggerExit
 	triggerDirections[either] = genericps.TriggerEnterOrExit
+	triggerDirections["Positive Runt"] = genericps.TriggerPositiveRunt
+	triggerDirections["Negative Runt"] = genericps.TriggerNegativeRunt
 }
 func sortInputRanges() {
 	vRanges = map[string]genericps.RangeEnum{
