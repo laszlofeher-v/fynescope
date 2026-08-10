@@ -633,6 +633,9 @@ func (dv *dftViewer) draw() {
 		if minBinIdx < 0 {
 			minBinIdx = 0
 		}
+		if len(magnitudes) > 0 && minBinIdx >= len(magnitudes) {
+			minBinIdx = len(magnitudes) - 1
+		}
 
 		var targetImg rasterImage = dv.scp.dftScopeSignalScreen
 		if dftPersistence {
