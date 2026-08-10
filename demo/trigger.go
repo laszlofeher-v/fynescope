@@ -99,9 +99,11 @@ const (
 )
 
 type ChannelTriggerState struct {
-	LevelState TriggerArmedState
-	UpperState TriggerArmedState
-	LowerState TriggerArmedState
+	LevelState    TriggerArmedState
+	UpperState    TriggerArmedState
+	LowerState    TriggerArmedState
+	RuntPending   bool
+	RuntStartTime float64
 }
 
 // FindTriggerPoint searches for a trigger point in the signal.
@@ -189,12 +191,14 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 				var fired bool
 				if cfg.ThresholdMode == Window {
-					_, fired = td.evaluateWindowTrigger(pwqCfg, &pwqStates[i], level, signalFunc, t, dt, ChannelId(i))
+					_, fired, _ = td.evaluateWindowTrigger(pwqCfg, &pwqStates[i], level, signalFunc, t, dt, ChannelId(i))
 				} else {
 					_, fired = td.evaluateLevelTrigger(pwqCfg, &pwqStates[i].LowerState, level)
 				}
 				if fired {
 					pwqEdgeFired = true
+					// pwqEdgeTimeOffset not strictly needed unless PWQ relies on edgeTriggerTime,
+					// but PWQ usually doesn't dictate the main trigger time directly.
 				}
 			}
 		}
@@ -209,6 +213,8 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			conditionMet := false
 			fired := false
 
+			var timeOffset float64
+
 			if cfg.ThresholdMode == Window {
 				if td.pwqConfig.Enabled && td.pwqConfig.Condition[i] != CondDontCare {
 					// In Window PW mode, the main trigger fires on the EXIT edge (opposite of PWQ).
@@ -219,9 +225,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
 						exitCfg.Direction = TriggerEnter
 					}
-					conditionMet, fired = td.evaluateWindowTrigger(exitCfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
+					conditionMet, fired, timeOffset = td.evaluateWindowTrigger(exitCfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
 				} else {
-					conditionMet, fired = td.evaluateWindowTrigger(cfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
+					conditionMet, fired, timeOffset = td.evaluateWindowTrigger(cfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
 				}
 				// Also maintain inside-window state for GreaterThan checks.
 				td.updateInsideWindow(&insideStates[i], cfg, level)
@@ -230,7 +236,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 
 			if fired {
-				edgeTriggerTime = t - dt
+				edgeTriggerTime = t - dt + timeOffset
 				if td.pwqConfig.Condition[i] != CondDontCare {
 					mainEdgeFired = true
 				}
@@ -407,7 +413,7 @@ func (td *TriggerDetector) evaluateWindowTrigger(
 	t float64,
 	dt float64,
 	ch ChannelId,
-) (conditionMet bool, fired bool) {
+) (conditionMet bool, fired bool, timeOffset float64) {
 
 	upperCfg := TriggerChannelConfig{
 		Threshold:  cfg.Threshold,
@@ -418,64 +424,92 @@ func (td *TriggerDetector) evaluateWindowTrigger(
 		Hysteresis: cfg.ThresholdLowerHysteresis,
 	}
 
-	switch cfg.Direction {
-	case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
-		upperCfg.Direction = TriggerFalling
-		lowerCfg.Direction = TriggerRising
-	case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
+	isRunt := cfg.Direction == TriggerPositiveRunt || cfg.Direction == TriggerNegativeRunt
+
+	if !isRunt {
+		switch cfg.Direction {
+		case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
+			upperCfg.Direction = TriggerFalling
+			lowerCfg.Direction = TriggerRising
+		case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
+			upperCfg.Direction = TriggerRising
+			lowerCfg.Direction = TriggerFalling
+		case TriggerEnterOrExit, TriggerRisingOrFalling:
+			upperCfg.Direction = TriggerRisingOrFalling
+			lowerCfg.Direction = TriggerRisingOrFalling
+		}
+
+		_, upperFired := td.evaluateLevelTrigger(upperCfg, &state.UpperState, level)
+		_, lowerFired := td.evaluateLevelTrigger(lowerCfg, &state.LowerState, level)
+
+		if upperFired && lowerFired {
+			// Jumped over the entire window in one step (full swing). Not a window trigger event.
+			return false, false, 0
+		}
+		if upperFired || lowerFired {
+			return true, true, 0
+		}
+		return false, false, 0
+	}
+
+	// State-machine based Runt trigger
+	if cfg.Direction == TriggerPositiveRunt {
+		// Positive Runt looks for rising across lower threshold initially,
+		// and rejects if it rises across upper threshold.
 		upperCfg.Direction = TriggerRising
+		lowerCfg.Direction = TriggerRising
+	} else {
+		// Negative Runt looks for falling across upper threshold initially,
+		// and rejects if it falls across lower threshold.
+		upperCfg.Direction = TriggerFalling
 		lowerCfg.Direction = TriggerFalling
-	case TriggerEnterOrExit, TriggerRisingOrFalling:
-		upperCfg.Direction = TriggerRisingOrFalling
-		lowerCfg.Direction = TriggerRisingOrFalling
 	}
 
 	_, upperFired := td.evaluateLevelTrigger(upperCfg, &state.UpperState, level)
 	_, lowerFired := td.evaluateLevelTrigger(lowerCfg, &state.LowerState, level)
 
 	if upperFired && lowerFired {
-		// Jumped over the entire window in one step (full swing). Not a window trigger event.
-		return false, false
+		// Full swing in one step, ignore
+		state.RuntPending = false
+		return false, false, 0
 	}
 
-	if upperFired || lowerFired {
-		// One of the boundaries was crossed. Look ahead to see if it's a runt pulse!
-		// Runt pulse: The same trigger fires again BEFORE the other trigger fires.
-		// Full swing: The OTHER trigger fires before this trigger fires again.
-		tempUpperState := state.UpperState
-		tempLowerState := state.LowerState
-
-		t_future := t
-		limit := 100000 // Safely cap lookahead
-		for i := 0; i < limit; i++ {
-			t_future += dt
-			futureLevel := signalFunc(t_future, ch)
-
-			_, futureUpperFired := td.evaluateLevelTrigger(upperCfg, &tempUpperState, futureLevel)
-			_, futureLowerFired := td.evaluateLevelTrigger(lowerCfg, &tempLowerState, futureLevel)
-
+	if state.RuntPending {
+		if cfg.Direction == TriggerPositiveRunt {
 			if upperFired {
-				if futureLowerFired {
-					return false, false // Other trigger fired first! Full swing, reject.
-				}
-				if futureUpperFired {
-					return true, true // Same trigger fired again! Runt pulse, accept.
-				}
-			} else if lowerFired {
-				if futureUpperFired {
-					return false, false // Other trigger fired first! Full swing, reject.
-				}
-				if futureLowerFired {
-					return true, true // Same trigger fired again! Runt pulse, accept.
-				}
+				// Reached upper threshold -> Full swing, not a runt.
+				state.RuntPending = false
+			} else if level < float64(cfg.ThresholdLower) {
+				// Fell back below lower threshold without crossing upper -> Confirmed runt!
+				state.RuntPending = false
+				return true, true, state.RuntStartTime - t
+			}
+		} else { // TriggerNegativeRunt
+			if lowerFired {
+				// Reached lower threshold -> Full swing, not a runt.
+				state.RuntPending = false
+			} else if level > float64(cfg.Threshold) {
+				// Rose back above upper threshold without crossing lower -> Confirmed runt!
+				state.RuntPending = false
+				return true, true, state.RuntStartTime - t
 			}
 		}
-
-		// If we exhausted the lookahead without crossing either boundary, assume valid
-		return true, true
+	} else {
+		// Not pending. Look for the initial crossing to start a runt pulse.
+		if cfg.Direction == TriggerPositiveRunt {
+			if lowerFired {
+				state.RuntPending = true
+				state.RuntStartTime = t
+			}
+		} else { // TriggerNegativeRunt
+			if upperFired {
+				state.RuntPending = true
+				state.RuntStartTime = t
+			}
+		}
 	}
 
-	return false, false
+	return false, false, 0
 }
 
 // SetMaxIterations sets the maximum number of iterations to search for a trigger.

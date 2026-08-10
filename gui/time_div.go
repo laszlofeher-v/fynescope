@@ -1509,7 +1509,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	tType := triggerTypes[scp.Settings.Trigger.Type]
-	if tType != control.Window && tType != control.Interval {
+	if tType != control.Window && tType != control.Interval && tType != control.WindowPulseWidth && tType != control.WindowDropout && tType != control.Runt {
 		scp.triggerLowerThresholdDisp.Hide()
 		scp.triggerLowerHysteresisDisp.Hide()
 	}
@@ -1540,6 +1540,15 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
 	}
 
+	if scp.triggerSettingMsg.Type == control.Window ||
+		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
+		scp.triggerSettingMsg.Type == control.WindowDropout ||
+		scp.triggerSettingMsg.Type == control.Runt {
+		scp.triggerSettingMsg.ThresholdMode = genericps.Window
+	} else {
+		scp.triggerSettingMsg.ThresholdMode = genericps.Level
+	}
+
 	scp.complexTriggerCheck = widget.NewCheck("Cmpx", scp.onComplexTriggerChange)
 	scp.complexTriggerCheck.SetChecked(scp.Settings.Trigger.ComplexEnabled)
 
@@ -1560,9 +1569,27 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.intervalTypeSelect.SilentSetSelected(pwTypeStr)
 	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
-		scp.triggerSettingMsg.IntervalType = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
-		scp.triggerSettingMsg.IntervalTimeLower = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower
-		scp.triggerSettingMsg.IntervalTimeUpper = scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper
+		trig := scp.Settings.Channels[scp.triggerSource].Trigger
+		scp.triggerSettingMsg.IntervalType = trig.IntervalType
+		scp.triggerSettingMsg.IntervalTimeLower = trig.IntervalTimeLower
+		scp.triggerSettingMsg.IntervalTimeUpper = trig.IntervalTimeUpper
+		
+		// Full trigger initialization for startup
+		scp.triggerSettingMsg.ThresholdDirection = trig.TriggerDirection
+		scp.triggerSettingMsg.UpperHysteresis = trig.Hysteresis
+		scp.triggerSettingMsg.LowerMv = trig.LowerMv
+		scp.triggerSettingMsg.LowerHysteresis = trig.LowerHysteresis
+		scp.triggerSettingMsg.Mv = trig.Mv
+		scp.triggerSettingMsg.XOffset = scp.Settings.Time.TriggerTimeOffset
+		scp.triggerSettingMsg.Source = scp.triggerSource
+		scp.triggerSettingMsg.Enabled = scp.Settings.Channels[scp.triggerSource].TriggerSource
+		scp.triggerSettingMsg.AutoTriggerMs = 1000
+
+		vRange := scp.Settings.Channels[scp.triggerSource].VRange
+		scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(trig.Hysteresis, vRange))
+		scp.triggerSettingMsg.TriggerADC = int16(scp.mvToAdc(trig.Mv, vRange))
+		scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(trig.LowerHysteresis, vRange))
+		scp.triggerSettingMsg.LowerTriggerADC = int16(scp.mvToAdc(trig.LowerMv, vRange))
 	}
 
 	unitStr := getBaseTimeUnit(scp.Settings.Time.Unit)

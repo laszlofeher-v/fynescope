@@ -369,22 +369,30 @@ func drawFakeCursor(img draw.Image, cx, cy int) {
 	}
 	cOut := color.RGBA{0, 0, 0, 255}
 	cIn := color.RGBA{255, 255, 255, 255}
+	// Larger cursor with a 2-pixel thick black outline for visibility.
+	// '1' = outer border, '2' = inner fill, ' ' = transparent (skip).
+	// Each row is rendered offset from (cx, cy).
 	pattern := []string{
-		"1",
 		"11",
-		"121",
+		"111",
 		"1221",
 		"12221",
 		"122221",
 		"1222221",
 		"12222221",
 		"122222221",
-		"122211111",
-		"12121",
-		"11 121",
-		"1  121",
-		"    121",
-		"    111",
+		"1222222221",
+		"12222222221",
+		"122222222221",
+		"1222222111111",
+		"122221221",
+		"12221 1221",
+		"1221  1221",
+		"121   1221",
+		"11     1221",
+		"1      1221",
+		"        1221",
+		"        1111",
 	}
 	for y, row := range pattern {
 		for x, char := range row {
