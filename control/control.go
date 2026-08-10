@@ -155,6 +155,8 @@ type (
 		getInterpolationModeCh chan *getInterpolationModeMsg
 		getInterpolationMode   getInterpolationModeMsg
 
+		ResolutionMode atomic.Int32 // genericps.RatioMode
+
 		SetGeneratorCh chan *GeneratorDescMsg
 		SetDemoGenCh   chan *GeneratorDescMsg
 		getGeneratorCh chan *getGeneratorMsg
@@ -168,6 +170,7 @@ type (
 		chEnabled                   []atomic.Bool
 		triggerTimeOffset           int64
 		receiveBuffer               [][]int16   // raw data buffer, only for real channel
+		receiveBufferMin            [][]int16   // raw data buffer for min values when in ED mode
 		displayBuffer               [][]float32 // signal stored in mv
 		EtsInBuffer                 []int64
 		overSample                  int16
@@ -187,7 +190,7 @@ type (
 		scopeScreenWidth            float64
 		timeBaseDec                 uint64
 		minValue                    int32
-		RefreshCallback             func(buffers [][]int16, startTimeOffset int64,
+		RefreshCallback             func(buffers [][]int16, buffersMin [][]int16, startTimeOffset int64,
 			xRoundError, samplingTimeInterval float64)
 		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64)
 		BufferCallback     func(size int)
@@ -393,9 +396,11 @@ func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 func (psControl *PscDesc) NewChannels(numberOfChannels int) {
 	go psControl.channelStateMachine(numberOfChannels)
 	psControl.receiveBuffer = make([][]int16, numberOfChannels)
+	psControl.receiveBufferMin = make([][]int16, numberOfChannels)
 	psControl.displayBuffer = make([][]float32, numberOfChannels)
 	for i := 0; i < numberOfChannels; i++ {
 		psControl.receiveBuffer[i] = make([]int16, initialBufferSize)
+		psControl.receiveBufferMin[i] = make([]int16, initialBufferSize)
 		psControl.displayBuffer[i] = make([]float32, initialBufferSize)
 	}
 }

@@ -467,7 +467,7 @@ func (scp *ScpDesc) numOfMeasurements() (numberOfMeasurements int) {
 	return
 }
 
-func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval float64) {
+func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, samplingTimeInterval float64) {
 	numberOfMeasurements := scp.numOfMeasurements()
 	for channelIndex := range buffers {
 		channel := &scp.Settings.Channels[channelIndex]
@@ -490,7 +490,22 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, samplingTimeInterval f
 				displayBuffer[i] = float32(receiveBuffer[i]) * scale
 			}
 
+			if buffersMin != nil && len(buffersMin) > channelIndex && buffersMin[channelIndex] != nil {
+				receiveBufferMin := buffersMin[channelIndex]
+				displayBufferMin := scp.displayBuffersMin[channelIndex]
+				if len(displayBufferMin) > 0 {
+					nMin := len(receiveBufferMin)
+					if nMin > len(displayBufferMin) {
+						nMin = len(displayBufferMin)
+					}
+					for i := 0; i < nMin; i++ {
+						displayBufferMin[i] = float32(receiveBufferMin[i]) * scale
+					}
+				}
+			}
+
 			scp.applyDigitalFilters(channelIndex, displayBuffer, samplingTimeInterval)
+			// TODO: Should digital filters apply to min buffer? Probably not for now.
 
 			for i := range displayBuffer {
 				v := displayBuffer[i]
