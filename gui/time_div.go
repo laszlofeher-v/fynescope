@@ -105,7 +105,7 @@ var (
 		"ED":       genericps.RatioModeAggregate,
 		"Decimate": genericps.RatioModeDecimate,
 	}
-	intervalTypeOptions   = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
+	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
 		IntervalTypeInRange, IntervalTypeOutOfRange}
 	intervalTypes      map[string]genericps.PulseWidthType
 	intervalTypeRevMap map[genericps.PulseWidthType]string
@@ -1464,7 +1464,7 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")
 	scp.resSelect.SetSelected(scp.Settings.Time.ResolutionMode)
 
-	hbox := container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect, scp.resSelect)
+	hbox := container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
 
 	return hbox
 }
@@ -1596,7 +1596,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.triggerSettingMsg.IntervalType = trig.IntervalType
 		scp.triggerSettingMsg.IntervalTimeLower = trig.IntervalTimeLower
 		scp.triggerSettingMsg.IntervalTimeUpper = trig.IntervalTimeUpper
-		
+
 		// Full trigger initialization for startup
 		scp.triggerSettingMsg.ThresholdDirection = trig.TriggerDirection
 		scp.triggerSettingMsg.UpperHysteresis = trig.Hysteresis
@@ -1687,11 +1687,18 @@ func (scp *ScpDesc) newTimeDivSettings() (box *fyne.Container, err error) {
 	return box, nil
 }
 
-func (scp *ScpDesc) newSetTimeDivPanel(container *fyne.Container) (err error) {
-	container.Add(layout.NewSpacer())
+func (scp *ScpDesc) newSetTimeDivPanel(cnt *fyne.Container) (err error) {
+	cnt.Add(layout.NewSpacer())
 	var timeDivPanel *fyne.Container
 	timeDivPanel, err = scp.newTimeDivSettings()
-	container.Add(timeDivPanel)
+	
+	overlay := container.New(layout.NewVBoxLayout(),
+		layout.NewSpacer(),
+		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), scp.resSelect),
+	)
+	timeDivPanelWithOverlay := container.NewMax(timeDivPanel, overlay)
+
+	cnt.Add(timeDivPanelWithOverlay)
 	return
 }
 
