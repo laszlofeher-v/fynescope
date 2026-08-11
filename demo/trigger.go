@@ -194,22 +194,23 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				}
 
 				var fired bool
-				if cfg.ThresholdMode == Window {
+				if cfg.ThresholdMode == Window && (td.pwqConfig.Direction == TriggerInside || td.pwqConfig.Direction == TriggerOutside || td.pwqConfig.Direction == TriggerEnter || td.pwqConfig.Direction == TriggerExit) {
 					_, fired, _ = td.evaluateWindowTrigger(pwqCfg, &pwqStates[i], level, signalFunc, t, dt, ChannelId(i))
 				} else {
 					_, fired = td.evaluateLevelTrigger(pwqCfg, &pwqStates[i].LowerState, level)
 				}
 				if fired {
 					pwqEdgeFired = true
-					// pwqEdgeTimeOffset not strictly needed unless PWQ relies on edgeTriggerTime,
-					// but PWQ usually doesn't dictate the main trigger time directly.
 				}
 			}
 		}
 
 		// 2. Evaluate main channel triggers
 		for i, cfg := range td.channels {
-			if !cfg.Enabled || cfg.Condition == CondDontCare {
+			if !cfg.Enabled {
+				continue
+			}
+			if cfg.Condition == CondDontCare && (!td.pwqConfig.Enabled || td.pwqConfig.Condition[i] == CondDontCare) {
 				continue
 			}
 
@@ -224,9 +225,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					// In Window PW mode, the main trigger fires on the EXIT edge (opposite of PWQ).
 					exitCfg := cfg
 					switch cfg.Direction {
-					case TriggerEnter, TriggerOutside, TriggerAbove, TriggerRising:
+					case TriggerEnter, TriggerOutside, TriggerAbove, TriggerRising, TriggerInside:
 						exitCfg.Direction = TriggerExit
-					case TriggerExit, TriggerInside, TriggerBelow, TriggerFalling:
+					case TriggerExit, TriggerBelow, TriggerFalling:
 						exitCfg.Direction = TriggerEnter
 					}
 					conditionMet, fired, timeOffset = td.evaluateWindowTrigger(exitCfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
@@ -246,9 +247,11 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				}
 			}
 
-			if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
-				allConditionsMet = false
-				break
+			if cfg.Condition != CondDontCare {
+				if (cfg.Condition == CondTrue && !conditionMet) || (cfg.Condition == CondFalse && conditionMet) {
+					allConditionsMet = false
+					break
+				}
 			}
 		}
 
@@ -256,15 +259,18 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		if td.pwqConfig.Enabled {
 			if mainEdgeFired && pwqEdgeFired {
 				isWindowFullSwing := false
-				for i, cfg := range td.channels {
-					if cfg.Enabled && cfg.ThresholdMode == Window && td.pwqConfig.Condition[i] != CondDontCare {
-						isWindowFullSwing = true
-						break
+				isRiseFall := td.pwqConfig.Direction == TriggerRisingLower || td.pwqConfig.Direction == TriggerFalling || td.pwqConfig.Direction == TriggerFallingLower
+				if !isRiseFall {
+					for i, cfg := range td.channels {
+						if cfg.Enabled && cfg.ThresholdMode == Window && td.pwqConfig.Condition[i] != CondDontCare {
+							isWindowFullSwing = true
+							break
+						}
 					}
-				}
-				if isWindowFullSwing {
-					mainEdgeFired = false
-					pwqEdgeFired = false
+					if isWindowFullSwing {
+						mainEdgeFired = false
+						pwqEdgeFired = false
+					}
 				}
 			}
 
@@ -294,19 +300,22 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			if mainEdgeFired && intervalActive {
 				ignore := false
 				if intervalSourceCh >= 0 && td.channels[intervalSourceCh].ThresholdMode == Window {
-					exitLevel := signalFunc(t, ChannelId(intervalSourceCh))
-					lower := float64(td.channels[intervalSourceCh].ThresholdLower)
-					upper := float64(td.channels[intervalSourceCh].Threshold)
-					
-					enteredFromBelow := intervalEntryLevel < lower
-					enteredFromAbove := intervalEntryLevel > upper
-					exitedToBelow := exitLevel < lower
-					exitedToAbove := exitLevel > upper
-					
-					if (enteredFromBelow && exitedToAbove) || (enteredFromAbove && exitedToBelow) {
-						// Ignored! The signal crossed the entire window (full swing).
-						intervalActive = false
-						ignore = true
+					isRiseFall := td.pwqConfig.Direction == TriggerRisingLower || td.pwqConfig.Direction == TriggerFalling || td.pwqConfig.Direction == TriggerFallingLower
+					if !isRiseFall {
+						exitLevel := signalFunc(t, ChannelId(intervalSourceCh))
+						lower := float64(td.channels[intervalSourceCh].ThresholdLower)
+						upper := float64(td.channels[intervalSourceCh].Threshold)
+						
+						enteredFromBelow := intervalEntryLevel < lower
+						enteredFromAbove := intervalEntryLevel > upper
+						exitedToBelow := exitLevel < lower
+						exitedToAbove := exitLevel > upper
+						
+						if (enteredFromBelow && exitedToAbove) || (enteredFromAbove && exitedToBelow) {
+							// Ignored! The signal crossed the entire window (full swing).
+							intervalActive = false
+							ignore = true
+						}
 					}
 				}
 
@@ -380,6 +389,11 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state *TriggerArmedState, level float64) (conditionMet bool, fired bool) {
 	thresh := float64(cfg.Threshold)
 	hyst := float64(cfg.Hysteresis)
+
+	if cfg.Direction == TriggerAboveLower || cfg.Direction == TriggerBelowLower || cfg.Direction == TriggerRisingLower || cfg.Direction == TriggerFallingLower {
+		thresh = float64(cfg.ThresholdLower)
+		hyst = float64(cfg.ThresholdLowerHysteresis)
+	}
 
 	if cfg.Direction == TriggerNone {
 		// Treat TriggerNone as simple level > thresh

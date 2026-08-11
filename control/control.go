@@ -301,7 +301,7 @@ func (psControl *PscDesc) setTrigger() (err error) {
 	newSettings := <-psControl.getTrigger.newSettings // wait for data
 
 	samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
-	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout
+	timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout || psControl.triggerSetting.Type == WindowPulseWidth || psControl.triggerSetting.Type == RiseFall
 	if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
 		err = psControl.sendTrigger() // 			   send to the scope
 		if err != nil {
@@ -362,6 +362,8 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 		err = psControl.sendWindowDropoutTrigger()
 	case Runt:
 		err = psControl.sendRuntTrigger()
+	case RiseFall:
+		err = psControl.sendRiseFallTrigger()
 	}
 
 	return
