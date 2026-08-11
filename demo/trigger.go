@@ -223,9 +223,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					// In Window PW mode, the main trigger fires on the EXIT edge (opposite of PWQ).
 					exitCfg := cfg
 					switch cfg.Direction {
-					case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
+					case TriggerEnter, TriggerOutside, TriggerAbove, TriggerRising:
 						exitCfg.Direction = TriggerExit
-					case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
+					case TriggerExit, TriggerInside, TriggerBelow, TriggerFalling:
 						exitCfg.Direction = TriggerEnter
 					}
 					conditionMet, fired, timeOffset = td.evaluateWindowTrigger(exitCfg, &states[i], level, signalFunc, t, dt, ChannelId(i))
@@ -431,10 +431,10 @@ func (td *TriggerDetector) evaluateWindowTrigger(
 
 	if !isRunt {
 		switch cfg.Direction {
-		case TriggerEnter, TriggerInside, TriggerAbove, TriggerRising:
+		case TriggerEnter, TriggerOutside, TriggerAbove, TriggerRising:
 			upperCfg.Direction = TriggerFalling
 			lowerCfg.Direction = TriggerRising
-		case TriggerExit, TriggerOutside, TriggerBelow, TriggerFalling:
+		case TriggerExit, TriggerInside, TriggerBelow, TriggerFalling:
 			upperCfg.Direction = TriggerRising
 			lowerCfg.Direction = TriggerFalling
 		case TriggerEnterOrExit, TriggerRisingOrFalling:

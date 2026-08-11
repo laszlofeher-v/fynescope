@@ -726,9 +726,9 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 	dir := psControl.triggerSetting.ThresholdDirection
 	mainDir := dir
 	if mainDir == genericps.TriggerEnter || mainDir == genericps.TriggerEnterOrExit {
-		mainDir = genericps.TriggerInside
-	} else if mainDir == genericps.TriggerExit {
 		mainDir = genericps.TriggerOutside
+	} else if mainDir == genericps.TriggerExit {
+		mainDir = genericps.TriggerInside
 	}
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
@@ -798,9 +798,9 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 	}
 	pwqDir := dir
 	if pwqDir == genericps.TriggerEnter || pwqDir == genericps.TriggerEnterOrExit {
-		pwqDir = genericps.TriggerInside
-	} else if pwqDir == genericps.TriggerExit {
 		pwqDir = genericps.TriggerOutside
+	} else if pwqDir == genericps.TriggerExit {
+		pwqDir = genericps.TriggerInside
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
@@ -1041,9 +1041,9 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 	dir := psControl.triggerSetting.ThresholdDirection
 	mainDir := dir
 	if mainDir == genericps.TriggerEnter || mainDir == genericps.TriggerEnterOrExit {
-		mainDir = genericps.TriggerInside
-	} else if mainDir == genericps.TriggerExit {
 		mainDir = genericps.TriggerOutside
+	} else if mainDir == genericps.TriggerExit {
+		mainDir = genericps.TriggerInside
 	}
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
@@ -1113,9 +1113,9 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 	}
 	pwqDir := dir
 	if pwqDir == genericps.TriggerEnter || pwqDir == genericps.TriggerEnterOrExit {
-		pwqDir = genericps.TriggerInside
-	} else if pwqDir == genericps.TriggerExit {
 		pwqDir = genericps.TriggerOutside
+	} else if pwqDir == genericps.TriggerExit {
+		pwqDir = genericps.TriggerInside
 	}
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
