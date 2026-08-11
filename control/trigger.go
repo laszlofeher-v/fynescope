@@ -992,11 +992,11 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
-	if psControl.triggerSetting.Type != WindowDropout {
-		for i := range channelProperties {
-			channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
-		}
-	}
+	// if psControl.triggerSetting.Type != WindowDropout {
+	// 	for i := range channelProperties {
+	// 		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
+	// 	}
+	// }
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
@@ -1034,7 +1034,7 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 	channelD := genericps.TriggerNone
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
-	dir := psControl.triggerSetting.ThresholdDirection
+	dir := genericps.TriggerRisingOrFalling
 	mainDir := dir
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
@@ -1103,11 +1103,11 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 		}
 	}
 	pwqDir := dir
-	if dir == genericps.TriggerEnter || dir == genericps.TriggerEnterOrExit {
-		pwqDir = genericps.TriggerInside
-	} else if dir == genericps.TriggerExit {
-		pwqDir = genericps.TriggerOutside
-	}
+	// if dir == genericps.TriggerEnter || dir == genericps.TriggerEnterOrExit {
+	// 	pwqDir = genericps.TriggerInside
+	// } else if dir == genericps.TriggerExit {
+	// 	pwqDir = genericps.TriggerOutside
+	// }
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
 		lowerSamples = upperSamples
