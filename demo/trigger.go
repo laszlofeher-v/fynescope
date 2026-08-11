@@ -147,6 +147,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	intervalActive := false
 	var intervalDuration float64 = 0
 	var intervalSourceCh int = -1
+	var intervalEntryLevel float64 = 0
 
 	t := float64(0)
 	for t < maxTime {
@@ -275,8 +276,37 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					}
 				}
 			}
+			if pwqEdgeFired {
+				intervalActive = true
+				intervalDuration = 0
+				// Record which channel started the interval for Window PW GreaterThan checks.
+				for i, cond := range td.pwqConfig.Condition {
+					if cond != CondDontCare {
+						intervalSourceCh = i
+						intervalEntryLevel = signalFunc(t-dt, ChannelId(i))
+						break
+					}
+				}
+			}
 
 			if mainEdgeFired && intervalActive {
+				if intervalSourceCh >= 0 && td.channels[intervalSourceCh].ThresholdMode == Window {
+					exitLevel := signalFunc(t, ChannelId(intervalSourceCh))
+					lower := float64(td.channels[intervalSourceCh].ThresholdLower)
+					upper := float64(td.channels[intervalSourceCh].Threshold)
+					
+					enteredFromBelow := intervalEntryLevel < lower
+					enteredFromAbove := intervalEntryLevel > upper
+					exitedToBelow := exitLevel < lower
+					exitedToAbove := exitLevel > upper
+					
+					if (enteredFromBelow && exitedToAbove) || (enteredFromAbove && exitedToBelow) {
+						// Ignored! The signal crossed the entire window (full swing).
+						intervalActive = false
+						continue
+					}
+				}
+
 				lowerTime := float64(td.pwqConfig.Lower) * dt
 				upperTime := float64(td.pwqConfig.Upper) * dt
 
@@ -309,17 +339,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				intervalActive = false
 			}
 
-			if pwqEdgeFired {
-				intervalActive = true
-				intervalDuration = 0
-				// Record which channel started the interval for Window PW GreaterThan checks.
-				for i, cond := range td.pwqConfig.Condition {
-					if cond != CondDontCare {
-						intervalSourceCh = i
-						break
-					}
-				}
-			}
+
 		} else {
 			if allConditionsMet {
 				SetTriggerTimeOffset(0)
