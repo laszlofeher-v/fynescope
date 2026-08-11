@@ -1229,12 +1229,15 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 	if scp.triggerSource == dontCare {
 		return
 	}
-	// Interval mode only uses one voltage threshold, so always hide the lower threshold widgets
-	if scp.triggerLowerThresholdDisp != nil {
-		scp.triggerLowerThresholdDisp.Hide()
-	}
-	if scp.triggerLowerHysteresisDisp != nil {
-		scp.triggerLowerHysteresisDisp.Hide()
+	// Interval and PulseWidth modes only use one voltage threshold.
+	// WindowPulseWidth and WindowDropout use two, so don't hide them here.
+	if scp.Settings.Trigger.Type != settings.TriggerTypeWindowPulseWidth && scp.Settings.Trigger.Type != settings.TriggerTypeWindowDropout {
+		if scp.triggerLowerThresholdDisp != nil {
+			scp.triggerLowerThresholdDisp.Hide()
+		}
+		if scp.triggerLowerHysteresisDisp != nil {
+			scp.triggerLowerHysteresisDisp.Hide()
+		}
 	}
 
 	pwType := scp.Settings.Channels[scp.triggerSource].Trigger.IntervalType
