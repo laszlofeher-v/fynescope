@@ -254,6 +254,20 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 		// 3. Track Interval and Trigger
 		if td.pwqConfig.Enabled {
+			if mainEdgeFired && pwqEdgeFired {
+				isWindowFullSwing := false
+				for i, cfg := range td.channels {
+					if cfg.Enabled && cfg.ThresholdMode == Window && td.pwqConfig.Condition[i] != CondDontCare {
+						isWindowFullSwing = true
+						break
+					}
+				}
+				if isWindowFullSwing {
+					mainEdgeFired = false
+					pwqEdgeFired = false
+				}
+			}
+
 			if intervalActive {
 				intervalDuration += dt
 
@@ -276,20 +290,9 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					}
 				}
 			}
-			if pwqEdgeFired {
-				intervalActive = true
-				intervalDuration = 0
-				// Record which channel started the interval for Window PW GreaterThan checks.
-				for i, cond := range td.pwqConfig.Condition {
-					if cond != CondDontCare {
-						intervalSourceCh = i
-						intervalEntryLevel = signalFunc(t-dt, ChannelId(i))
-						break
-					}
-				}
-			}
 
 			if mainEdgeFired && intervalActive {
+				ignore := false
 				if intervalSourceCh >= 0 && td.channels[intervalSourceCh].ThresholdMode == Window {
 					exitLevel := signalFunc(t, ChannelId(intervalSourceCh))
 					lower := float64(td.channels[intervalSourceCh].ThresholdLower)
@@ -303,40 +306,55 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					if (enteredFromBelow && exitedToAbove) || (enteredFromAbove && exitedToBelow) {
 						// Ignored! The signal crossed the entire window (full swing).
 						intervalActive = false
-						continue
+						ignore = true
 					}
 				}
 
-				lowerTime := float64(td.pwqConfig.Lower) * dt
-				upperTime := float64(td.pwqConfig.Upper) * dt
+				if !ignore {
+					lowerTime := float64(td.pwqConfig.Lower) * dt
+					upperTime := float64(td.pwqConfig.Upper) * dt
 
-				intervalSatisfied := false
-				switch td.pwqConfig.Type {
-				case PwTypeLessThan:
-					if intervalDuration < lowerTime {
-						intervalSatisfied = true
+					intervalSatisfied := false
+					switch td.pwqConfig.Type {
+					case PwTypeLessThan:
+						if intervalDuration < lowerTime {
+							intervalSatisfied = true
+						}
+					case PwTypeGreaterThan:
+						if intervalDuration > lowerTime {
+							intervalSatisfied = true
+						}
+					case PwTypeInRange:
+						if intervalDuration >= lowerTime && intervalDuration <= upperTime {
+							intervalSatisfied = true
+						}
+					case PwTypeOutOfRange:
+						if intervalDuration < lowerTime || intervalDuration > upperTime {
+							intervalSatisfied = true
+						}
 					}
-				case PwTypeGreaterThan:
-					if intervalDuration > lowerTime {
-						intervalSatisfied = true
+
+					if intervalSatisfied && allConditionsMet {
+						SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
+						found = true
+						triggerTime = edgeTriggerTime
+						return
 					}
-				case PwTypeInRange:
-					if intervalDuration >= lowerTime && intervalDuration <= upperTime {
-						intervalSatisfied = true
-					}
-				case PwTypeOutOfRange:
-					if intervalDuration < lowerTime || intervalDuration > upperTime {
-						intervalSatisfied = true
+					intervalActive = false
+				}
+			}
+
+			if pwqEdgeFired {
+				intervalActive = true
+				intervalDuration = 0
+				// Record which channel started the interval for Window PW GreaterThan checks.
+				for i, cond := range td.pwqConfig.Condition {
+					if cond != CondDontCare {
+						intervalSourceCh = i
+						intervalEntryLevel = signalFunc(t-dt, ChannelId(i))
+						break
 					}
 				}
-
-				if intervalSatisfied && allConditionsMet {
-					SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
-					found = true
-					triggerTime = edgeTriggerTime
-					return
-				}
-				intervalActive = false
 			}
 
 
