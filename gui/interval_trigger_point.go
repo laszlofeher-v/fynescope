@@ -13,10 +13,10 @@ import (
 
 type intervalTriggerPointViewer struct {
 	advTriggerPointViewer
-	lowerHImgRect image.Rectangle
-	upperHImgRect image.Rectangle
-	lowerSelected bool
-	upperSelected bool
+	lowerHImgRects []image.Rectangle
+	upperHImgRects []image.Rectangle
+	lowerSelected  bool
+	upperSelected  bool
 }
 
 var (
@@ -50,8 +50,15 @@ func (tp *intervalTriggerPointViewer) cursor(x, y float32) (desktop.Cursor, bool
 
 func (tp *intervalTriggerPointViewer) mouseAtIntervalPoint(x, y float32) bool {
 	p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
-	if p.In(tp.lowerHImgRect) || p.In(tp.upperHImgRect) {
-		return true
+	for _, rect := range tp.lowerHImgRects {
+		if p.In(rect) {
+			return true
+		}
+	}
+	for _, rect := range tp.upperHImgRects {
+		if p.In(rect) {
+			return true
+		}
 	}
 	return false
 }
@@ -86,8 +93,20 @@ func (tp *intervalTriggerPointViewer) mouseDown(button desktop.MouseButton, modi
 	tp.advTriggerPointViewer.mouseDown(button, modifier, x, y)
 	if !tp.selected && !tp.uhSelected {
 		p := image.Point{X: int(math.Round(float64(x))), Y: int(math.Round(float64(y)))}
-		tp.lowerSelected = p.In(tp.lowerHImgRect)
-		tp.upperSelected = p.In(tp.upperHImgRect)
+		tp.lowerSelected = false
+		tp.upperSelected = false
+		for _, rect := range tp.lowerHImgRects {
+			if p.In(rect) {
+				tp.lowerSelected = true
+				break
+			}
+		}
+		for _, rect := range tp.upperHImgRects {
+			if p.In(rect) {
+				tp.upperSelected = true
+				break
+			}
+		}
 	}
 }
 
@@ -201,27 +220,18 @@ func (tp *intervalTriggerPointViewer) draw() {
 			return
 		}
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
-		// For Window Pulse Width, the arrows should originate from the voltage
-		// threshold that the signal actually crosses to fire the trigger, not
-		// always from the upper threshold.
-		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout {
-			dir := channel.Trigger.TriggerDirection
-			switch dir {
-			case genericps.TriggerRising, genericps.TriggerEnter:
-				// Signal enters the window from below → crosses the lower threshold
-				_, y = tp.timeMv2xy(channel.Trigger.LowerMv)
-			case genericps.TriggerFalling, genericps.TriggerExit:
-				// Signal enters from above or exits through top → crosses upper threshold
-				// y stays at Mv (already computed)
-			default:
-				// EnterOrExit / Inside / Outside: use midpoint between the two thresholds
-				_, yUpper := tp.timeMv2xy(channel.Trigger.Mv)
-				_, yLower := tp.timeMv2xy(channel.Trigger.LowerMv)
-				y = (yUpper + yLower) / 2
-			}
-		}
-		bounds := tp.signalScreen().Bounds()
 
+		yList := []float32{}
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout {
+			// For Window Pulse Width, the user wants arrows at BOTH thresholds
+			_, yUpper := tp.timeMv2xy(channel.Trigger.Mv)
+			_, yLower := tp.timeMv2xy(channel.Trigger.LowerMv)
+			yList = []float32{yUpper, yLower}
+		} else {
+			yList = []float32{y}
+		}
+
+		bounds := tp.signalScreen().Bounds()
 		w := float64(bounds.Dx() - 1)
 
 		if w <= 0 || tp.maxScreenTime() <= 0 {
@@ -234,49 +244,119 @@ func (tp *intervalTriggerPointViewer) draw() {
 		halfRectSize := float32(triggerPointR * 2)
 		rectSize2 := 2 * halfRectSize
 
-		if isSingle {
-			// Single handle mode: show only one horizontal handle for the single ΔT
-			var singleTime float64
-			if pwType == genericps.PwTypeLessThan {
-				singleTime = channel.Trigger.IntervalTimeUpper
-			} else { // GreaterThan
-				singleTime = channel.Trigger.IntervalTimeLower
-			}
-			singleDx := float32((singleTime / tp.maxScreenTime()) * w)
-			xSingle := x - singleDx
+		tp.lowerHImgRects = nil
+		tp.upperHImgRects = nil
 
-			// Use lowerHImgRect for the single handle's hit-test area
-			tp.lowerHImgRect = image.Rect(
-				int(math.Round(float64(xSingle-rectSize2))),
-				int(math.Round(float64(y-rectSize2))),
-				int(math.Round(float64(xSingle+rectSize2))),
-				int(math.Round(float64(y+rectSize2))))
-			// Make upperHImgRect empty so it is not hit-testable
-			tp.upperHImgRect = image.Rect(0, 0, 0, 0)
+		for _, currY := range yList {
+			if isSingle {
+				// Single handle mode: show only one horizontal handle for the single ΔT
+				var singleTime float64
+				if pwType == genericps.PwTypeLessThan {
+					singleTime = channel.Trigger.IntervalTimeUpper
+				} else { // GreaterThan
+					singleTime = channel.Trigger.IntervalTimeLower
+				}
+				singleDx := float32((singleTime / tp.maxScreenTime()) * w)
+				xSingle := x - singleDx
 
-			colSingle := theme.ForegroundColor()
-			if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.lowerHImgRect.Min.X+tp.lowerHImgRect.Dx()/2), y)) {
-				colSingle = theme.SelectionColor()
-			}
+				// Add to lowerHImgRects for hit-testing
+				rect := image.Rect(
+					int(math.Round(float64(xSingle-rectSize2))),
+					int(math.Round(float64(currY-rectSize2))),
+					int(math.Round(float64(xSingle+rectSize2))),
+					int(math.Round(float64(currY+rectSize2))))
+				tp.lowerHImgRects = append(tp.lowerHImgRects, rect)
 
-			// Draw horizontal line from trigger point to the single handle
-			drawLine(tp.signalScreen(), x, y, xSingle, y, colSingle)
-			if pwType == genericps.PwTypeLessThan {
-				// Point RIGHT (towards origin, meaning smaller time/less than)
-				// Tip is at xSingle. Base is at xSingle - halfRectSize.
-				drawLine(tp.signalScreen(), xSingle-halfRectSize, y-halfRectSize, xSingle-halfRectSize, y+halfRectSize, colSingle)
-				drawLine(tp.signalScreen(), xSingle-halfRectSize, y-halfRectSize, xSingle, y, colSingle)
-				drawLine(tp.signalScreen(), xSingle-halfRectSize, y+halfRectSize, xSingle, y, colSingle)
+				colSingle := theme.ForegroundColor()
+				if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(xSingle, currY)) {
+					colSingle = theme.SelectionColor()
+				}
+
+				// Draw horizontal line from trigger point to the single handle
+				drawLine(tp.signalScreen(), x, currY, xSingle, currY, colSingle)
+				if pwType == genericps.PwTypeLessThan {
+					// Point RIGHT (towards origin, meaning smaller time/less than)
+					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle-halfRectSize, currY+halfRectSize, colSingle)
+					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
+					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+				} else {
+					// Point LEFT (away from origin, meaning larger time/greater than)
+					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle+halfRectSize, currY+halfRectSize, colSingle)
+					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
+					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+				}
+
 			} else {
-				// Point LEFT (away from origin, meaning larger time/greater than)
-				// Tip is at xSingle. Base is at xSingle + halfRectSize.
-				drawLine(tp.signalScreen(), xSingle+halfRectSize, y-halfRectSize, xSingle+halfRectSize, y+halfRectSize, colSingle)
-				drawLine(tp.signalScreen(), xSingle+halfRectSize, y-halfRectSize, xSingle, y, colSingle)
-				drawLine(tp.signalScreen(), xSingle+halfRectSize, y+halfRectSize, xSingle, y, colSingle)
-			}
+				// Range mode: two time handles + single trigger point
+				lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.maxScreenTime()) * w)
+				upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.maxScreenTime()) * w)
 
-			// Update single ΔT disp
+				xLower := x - lowerDx
+				xUpper := x - upperDx
+
+				lRect := image.Rect(
+					int(math.Round(float64(xLower-rectSize2))),
+					int(math.Round(float64(currY-rectSize2))),
+					int(math.Round(float64(xLower+rectSize2))),
+					int(math.Round(float64(currY+rectSize2))))
+				tp.lowerHImgRects = append(tp.lowerHImgRects, lRect)
+
+				uRect := image.Rect(
+					int(math.Round(float64(xUpper-rectSize2))),
+					int(math.Round(float64(currY-rectSize2))),
+					int(math.Round(float64(xUpper+rectSize2))),
+					int(math.Round(float64(currY+rectSize2))))
+				tp.upperHImgRects = append(tp.upperHImgRects, uRect)
+
+				colLower := theme.ForegroundColor()
+				if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(xLower, currY)) {
+					colLower = theme.SelectionColor()
+				}
+
+				colUpper := theme.ForegroundColor()
+				if tp.upperSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(xUpper, currY)) {
+					colUpper = theme.SelectionColor()
+				}
+
+				// Draw horizontal line from trigger point to xLower
+				drawLine(tp.signalScreen(), x, currY, xLower, currY, colLower)
+				// Draw horizontal line from trigger point to xUpper
+				drawLine(tp.signalScreen(), x, currY, xUpper, currY, colUpper)
+
+				switch pwType {
+				case genericps.PwTypeInRange:
+					// xLower points LEFT (inside)
+					drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower+halfRectSize, currY+halfRectSize, colLower)
+					drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower, currY, colLower)
+					drawLine(tp.signalScreen(), xLower+halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+					
+					// xUpper points RIGHT (inside)
+					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper-halfRectSize, currY+halfRectSize, colUpper)
+					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
+					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+				case genericps.PwTypeOutOfRange:
+					// xLower points RIGHT (outside)
+					drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower-halfRectSize, currY+halfRectSize, colLower)
+					drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower, currY, colLower)
+					drawLine(tp.signalScreen(), xLower-halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+					
+					// xUpper points LEFT (outside)
+					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper+halfRectSize, currY+halfRectSize, colUpper)
+					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
+					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+				}
+			}
+		}
+
+		// Update time displays once per draw call
+		if isSingle {
 			if tp.scp.intervalTimeSingleDisp != nil {
+				var singleTime float64
+				if pwType == genericps.PwTypeLessThan {
+					singleTime = channel.Trigger.IntervalTimeUpper
+				} else { // GreaterThan
+					singleTime = channel.Trigger.IntervalTimeLower
+				}
 				unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
 				val := int(math.Round(singleTime / multiplier))
@@ -286,69 +366,6 @@ func (tp *intervalTriggerPointViewer) draw() {
 				}
 			}
 		} else {
-			// Range mode: two time handles + single trigger point
-			// Time handles
-			lowerDx := float32((channel.Trigger.IntervalTimeLower / tp.maxScreenTime()) * w)
-			upperDx := float32((channel.Trigger.IntervalTimeUpper / tp.maxScreenTime()) * w)
-
-			xLower := x - lowerDx
-			xUpper := x - upperDx
-
-			tp.lowerHImgRect = image.Rect(
-				int(math.Round(float64(xLower-rectSize2))),
-				int(math.Round(float64(y-rectSize2))),
-				int(math.Round(float64(xLower+rectSize2))),
-				int(math.Round(float64(y+rectSize2))))
-
-			tp.upperHImgRect = image.Rect(
-				int(math.Round(float64(xUpper-rectSize2))),
-				int(math.Round(float64(y-rectSize2))),
-				int(math.Round(float64(xUpper+rectSize2))),
-				int(math.Round(float64(y+rectSize2))))
-
-			colLower := theme.ForegroundColor()
-			if tp.lowerSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.lowerHImgRect.Min.X+tp.lowerHImgRect.Dx()/2), y)) {
-				colLower = theme.SelectionColor()
-			}
-
-			colUpper := theme.ForegroundColor()
-			if tp.upperSelected || (tp.mouseAt && tp.mouseAtIntervalPoint(float32(tp.upperHImgRect.Min.X+tp.upperHImgRect.Dx()/2), y)) {
-				colUpper = theme.SelectionColor()
-			}
-
-			// Draw horizontal line from trigger point to xLower
-			drawLine(tp.signalScreen(), x, y, xLower, y, colLower)
-			// Draw horizontal line from trigger point to xUpper
-			drawLine(tp.signalScreen(), x, y, xUpper, y, colUpper)
-
-			switch pwType {
-			case genericps.PwTypeInRange:
-				// xLower points LEFT (inside)
-				// Tip is at xLower. Base is at xLower + halfRectSize.
-				drawLine(tp.signalScreen(), xLower+halfRectSize, y-halfRectSize, xLower+halfRectSize, y+halfRectSize, colLower)
-				drawLine(tp.signalScreen(), xLower+halfRectSize, y-halfRectSize, xLower, y, colLower)
-				drawLine(tp.signalScreen(), xLower+halfRectSize, y+halfRectSize, xLower, y, colLower)
-				
-				// xUpper points RIGHT (inside)
-				// Tip is at xUpper. Base is at xUpper - halfRectSize.
-				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper-halfRectSize, y+halfRectSize, colUpper)
-				drawLine(tp.signalScreen(), xUpper-halfRectSize, y-halfRectSize, xUpper, y, colUpper)
-				drawLine(tp.signalScreen(), xUpper-halfRectSize, y+halfRectSize, xUpper, y, colUpper)
-			case genericps.PwTypeOutOfRange:
-				// xLower points RIGHT (outside)
-				// Tip is at xLower. Base is at xLower - halfRectSize.
-				drawLine(tp.signalScreen(), xLower-halfRectSize, y-halfRectSize, xLower-halfRectSize, y+halfRectSize, colLower)
-				drawLine(tp.signalScreen(), xLower-halfRectSize, y-halfRectSize, xLower, y, colLower)
-				drawLine(tp.signalScreen(), xLower-halfRectSize, y+halfRectSize, xLower, y, colLower)
-				
-				// xUpper points LEFT (outside)
-				// Tip is at xUpper. Base is at xUpper + halfRectSize.
-				drawLine(tp.signalScreen(), xUpper+halfRectSize, y-halfRectSize, xUpper+halfRectSize, y+halfRectSize, colUpper)
-				drawLine(tp.signalScreen(), xUpper+halfRectSize, y-halfRectSize, xUpper, y, colUpper)
-				drawLine(tp.signalScreen(), xUpper+halfRectSize, y+halfRectSize, xUpper, y, colUpper)
-			}
-
-			// Update time disp7s
 			if tp.scp.intervalTimeLowerDisp != nil {
 				unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
 				multiplier := getIntervalUnitMultiplier(unit)
@@ -369,6 +386,7 @@ func (tp *intervalTriggerPointViewer) draw() {
 				}
 			}
 		}
+
 	}
 }
 
