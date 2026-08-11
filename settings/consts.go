@@ -38,6 +38,7 @@ const (
 	TriggerTypeDropout          = "Dropout"
 	TriggerTypeWindowDropout    = "Window Dropout"
 	TriggerTypeRunt             = "Runt"
+	TriggerTypeRiseFall         = "Rise/Fall"
 )
 
 // Trigger mode name constants (stored as strings in settings YAML).

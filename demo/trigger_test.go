@@ -165,3 +165,99 @@ func TestTriggerDetector_FindTriggerPoint_TrueInterval(t *testing.T) {
 	}
 }
 
+func TestTriggerDetector_FindTriggerPoint_RiseTime(t *testing.T) {
+	td := NewTriggerDetector(true, 80, 5, TriggerRising, ChA)
+	props := []TriggerChannelProperties{{
+		ThresholdUpper:           80,
+		ThresholdUpperHysteresis: 5,
+		ThresholdLower:           20,
+		ThresholdLowerHysteresis: 5,
+		Channel:                  ChA,
+		ThresholdMode:            Level,
+	}}
+	td.SetChannelProperties(props)
+	td.SetChannelConditions([]TriggerConditions{{ChannelA: CondTrue, PulseWidthQualifier: CondTrue}})
+	td.SetChannelDirections(TriggerRising, TriggerNone, TriggerNone, TriggerNone)
+
+	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
+	// Rise time must be Less Than 50 units
+	td.SetPulseWidthQualifier(conds, TriggerRisingLower, 50, 0, PwTypeLessThan)
+
+	signalFunc := func(time float64, ch ChannelId) float64 {
+		if ch != ChA {
+			return 0
+		}
+		// Signal starts at 0.
+		// At t=100 starts rising, reaches 20 at t=104, reaches 80 at t=120, tops at 100.
+		// Transition time from 20 to 80 is 16 units (< 50).
+		if time < 100 {
+			return 0
+		}
+		if time >= 100 && time < 125 {
+			return (time - 100) * 4.0 // at t=105: 20, at t=120: 80
+		}
+		return 100
+	}
+
+	dt := 1.0
+	maxTime := 300.0
+	found, triggerTime := td.FindTriggerPoint(signalFunc, 1000, maxTime, dt)
+	if !found {
+		t.Errorf("Expected Rise Time trigger to be found")
+	}
+
+	// Trigger should occur when crossing upper threshold around t=120
+	if math.Abs(triggerTime-119.0) > 2.0 {
+		t.Errorf("Expected trigger near t=119, got %v", triggerTime)
+	}
+}
+
+func TestTriggerDetector_FindTriggerPoint_FallTime(t *testing.T) {
+	td := NewTriggerDetector(true, 80, 5, TriggerFallingLower, ChA)
+	props := []TriggerChannelProperties{{
+		ThresholdUpper:           80,
+		ThresholdUpperHysteresis: 5,
+		ThresholdLower:           20,
+		ThresholdLowerHysteresis: 5,
+		Channel:                  ChA,
+		ThresholdMode:            Level,
+	}}
+	td.SetChannelProperties(props)
+	td.SetChannelConditions([]TriggerConditions{{ChannelA: CondTrue, PulseWidthQualifier: CondTrue}})
+	td.SetChannelDirections(TriggerFallingLower, TriggerNone, TriggerNone, TriggerNone)
+
+	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
+	// Fall time must be Less Than 50 units
+	td.SetPulseWidthQualifier(conds, TriggerFalling, 50, 0, PwTypeLessThan)
+
+	signalFunc := func(time float64, ch ChannelId) float64 {
+		if ch != ChA {
+			return 0
+		}
+		// Signal starts at 100.
+		// At t=100 starts falling, reaches 80 at t=105, reaches 20 at t=120, bottoms at 0.
+		// Transition time from 80 to 20 is 15 units (< 50).
+		if time < 100 {
+			return 100
+		}
+		if time >= 100 && time < 125 {
+			return 100.0 - (time-100)*4.0 // at t=105: 80, at t=120: 20
+		}
+		return 0
+	}
+
+	dt := 1.0
+	maxTime := 300.0
+	found, triggerTime := td.FindTriggerPoint(signalFunc, 1000, maxTime, dt)
+	if !found {
+		t.Errorf("Expected Fall Time trigger to be found")
+	}
+
+	// Trigger should occur when crossing lower threshold around t=120
+	if math.Abs(triggerTime-119.0) > 2.0 {
+		t.Errorf("Expected trigger near t=119, got %v", triggerTime)
+	}
+}
+
+
+

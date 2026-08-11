@@ -222,8 +222,8 @@ func (tp *intervalTriggerPointViewer) draw() {
 		x, y := tp.timeMv2xy(channel.Trigger.Mv)
 
 		yList := []float32{}
-		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout {
-			// For Window Pulse Width, the user wants arrows at BOTH thresholds
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout || tp.scp.triggerSettingMsg.Type == control.RiseFall {
+			// For Window Pulse Width and Rise/Fall, the user wants arrows at BOTH thresholds
 			_, yUpper := tp.timeMv2xy(channel.Trigger.Mv)
 			_, yLower := tp.timeMv2xy(channel.Trigger.LowerMv)
 			yList = []float32{yUpper, yLower}

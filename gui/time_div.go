@@ -74,7 +74,7 @@ var (
 	triggerTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced,
 		settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth,
 		settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeDropout,
-		settings.TriggerTypeWindowDropout, settings.TriggerTypeRunt}
+		settings.TriggerTypeWindowDropout, settings.TriggerTypeRunt, settings.TriggerTypeRiseFall}
 	triggerTypes = map[string]control.TriggerTypes{
 		triggerTypeOptions[0]: control.Simple,
 		triggerTypeOptions[1]: control.Advanced,
@@ -85,6 +85,7 @@ var (
 		triggerTypeOptions[6]: control.Dropout,
 		triggerTypeOptions[7]: control.WindowDropout,
 		triggerTypeOptions[8]: control.Runt,
+		triggerTypeOptions[9]: control.RiseFall,
 	}
 	sampleRates = []string{"900", "800", "700", "600", "500", "400", "300", "200", "100",
 		"90", "80", "70", "60", "50", "40", "30", "20", "10",
@@ -728,7 +729,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 					settings.TriggerTypeAdvanced, settings.TriggerTypeWindow,
 					settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeWindowDropout,
 					settings.TriggerTypeInterval,
-					settings.TriggerTypePulseWidth, settings.TriggerTypeDropout, settings.TriggerTypeRunt})
+					settings.TriggerTypePulseWidth, settings.TriggerTypeDropout, settings.TriggerTypeRunt, settings.TriggerTypeRiseFall})
 				scp.triggerTypeSelect.Refresh()
 			}
 			for i := range scp.channelViewers {
@@ -871,7 +872,7 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
 		}
-	case control.WindowPulseWidth:
+	case control.WindowPulseWidth, control.RiseFall:
 		scp.boxTriggerHysteresisDisp.Show()
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Show()
@@ -1068,7 +1069,7 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow || scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout || scp.Settings.Trigger.Type == settings.TriggerTypeRunt {
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow || scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout || scp.Settings.Trigger.Type == settings.TriggerTypeRunt || scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
 		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
 		if intV < lowerMv+genericps.MinThresholdDiff {
 			intV = lowerMv + genericps.MinThresholdDiff
@@ -1127,7 +1128,7 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
-	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow || scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout || scp.Settings.Trigger.Type == settings.TriggerTypeRunt {
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow || scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout || scp.Settings.Trigger.Type == settings.TriggerTypeRunt || scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
 		if intV > upperMv-genericps.MinThresholdDiff {
 			intV = upperMv - genericps.MinThresholdDiff
@@ -1231,7 +1232,7 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 	}
 	// Interval and PulseWidth modes only use one voltage threshold.
 	// WindowPulseWidth and WindowDropout use two, so don't hide them here.
-	if scp.Settings.Trigger.Type != settings.TriggerTypeWindowPulseWidth && scp.Settings.Trigger.Type != settings.TriggerTypeWindowDropout {
+	if scp.Settings.Trigger.Type != settings.TriggerTypeWindowPulseWidth && scp.Settings.Trigger.Type != settings.TriggerTypeWindowDropout && scp.Settings.Trigger.Type != settings.TriggerTypeRiseFall {
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
@@ -1535,7 +1536,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 
 	tType := triggerTypes[scp.Settings.Trigger.Type]
-	if tType != control.Window && tType != control.Interval && tType != control.WindowPulseWidth && tType != control.WindowDropout && tType != control.Runt {
+	if tType != control.Window && tType != control.Interval && tType != control.WindowPulseWidth && tType != control.WindowDropout && tType != control.Runt && tType != control.RiseFall {
 		scp.triggerLowerThresholdDisp.Hide()
 		scp.triggerLowerHysteresisDisp.Hide()
 	}
@@ -1546,7 +1547,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 
 	// Build trigger type options
-	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeDropout, settings.TriggerTypeWindowDropout, settings.TriggerTypeRunt}
+	activeTypeOptions := []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced, settings.TriggerTypeWindow, settings.TriggerTypeInterval, settings.TriggerTypePulseWidth, settings.TriggerTypeWindowPulseWidth, settings.TriggerTypeDropout, settings.TriggerTypeWindowDropout, settings.TriggerTypeRunt, settings.TriggerTypeRiseFall}
 	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
 		activeTypeOptions = []string{settings.TriggerTypeSimple, settings.TriggerTypeAdvanced}
 		if scp.Settings.Trigger.Type != settings.TriggerTypeSimple && scp.Settings.Trigger.Type != settings.TriggerTypeAdvanced {
