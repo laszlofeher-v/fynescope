@@ -179,6 +179,20 @@ type (
 		ArbitraryDbRefV   float64 `yaml:"arbitrary_db_ref_v"`
 		XAxisLog          bool    `yaml:"x_axis_log"`
 	}
+	DecodeSettings struct {
+		Enabled       bool   `yaml:"enabled"`
+		Protocol      string `yaml:"protocol"` // "UART" or "SPI"
+		Channel1      int    `yaml:"channel1"` // UART Rx or SPI CLK
+		Channel2      int    `yaml:"channel2"` // SPI MOSI (Data)
+		BaudRate      int    `yaml:"baudrate"`
+		DataBits      int    `yaml:"databits"`
+		StopBits      string `yaml:"stopbits"`
+		Parity        string `yaml:"parity"`
+		Invert        bool   `yaml:"invert"`
+		Threshold     int16  `yaml:"threshold"`
+		Hysteresis    int32  `yaml:"hysteresis"`
+		ShowBitstarts bool   `yaml:"showbitstarts"`
+	}
 	PsSettings struct {
 		Theme             ThemeType             `yaml:"theme"`
 		ChannelColorIndex ChannelColorIndexType `yaml:"channelcolorindex"`
@@ -194,6 +208,7 @@ type (
 		Dft               DftSettings           `yaml:"dft"`
 		Ff                FfSettings            `yaml:"ff"`
 		VirtualChannels   []VirtualChSettings   `yaml:"virtualchannels"`
+		Decode            DecodeSettings        `yaml:"decode"`
 		StreamEnabled     *bool                 `yaml:"streamenabled,omitempty"`
 	}
 )
@@ -296,7 +311,19 @@ func NewDefaultSettings() *PsSettings {
 				Amplitude: defaultAmplitude, RaiseFallTimePercent: defaultRaiseFallTimePercent,
 				TriggerTimeOffset: 0, NoiseAmplitude: 0, PhaseNoiseDegree: 0, Phase: 0},
 		},
-
+		Decode: DecodeSettings{
+			Enabled:    false,
+			Protocol:   "UART",
+			Channel1:   int(genericps.ChA),
+			Channel2:   int(genericps.ChB),
+			BaudRate:   115200,
+			DataBits:   8,
+			StopBits:   "1",
+			Parity:     "None",
+			Invert:     false,
+			Threshold:  0,
+			Hysteresis: 100,
+		},
 		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
 		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Theme:         DarkTheme,
@@ -380,6 +407,16 @@ func Load(fileName string) (*PsSettings, error) {
 
 	if settings.ScreenSize == "" {
 		settings.ScreenSize = ScreenSize1920x1080
+	}
+
+	if settings.Decode.DataBits == 0 {
+		settings.Decode.DataBits = 8
+	}
+	if settings.Decode.StopBits == "" {
+		settings.Decode.StopBits = "1"
+	}
+	if settings.Decode.Parity == "" {
+		settings.Decode.Parity = "None"
 	}
 
 	waveformFile := WaveformFileName(fileName)

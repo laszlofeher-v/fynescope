@@ -72,10 +72,11 @@ const (
 	genTabIndex
 	extgenTabIndex
 	vchTabIndex
+	decodeTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "vch"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "vch", "Decode"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -173,7 +174,10 @@ type (
 		filterTab                    *container.TabItem
 		extgenTab                    *container.TabItem
 		vchTab                       *container.TabItem
+		decodeTab                    *container.TabItem
+		decodeLayout                 *fyne.Container
 		setTab                       *container.TabItem
+		DecodeState                  control.DecoderState
 		psControl                    *control.PscDesc
 		virtualChannelEngines        []*VirtualChannelEngine
 		vchMeasureIndex              int // index of selected virtual channel in the tab (-1 = none)
@@ -203,6 +207,7 @@ type (
 		awgWindow                    fyne.Window
 		patternWindow                fyne.Window
 		virtualChWindow              fyne.Window
+		decodeWindow                 fyne.Window
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
 		ftRaster                     *screenRaster
@@ -805,8 +810,11 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.extgenLayout)
 	scp.vchMeasureIndex = -1
 	scp.vchTab = container.NewTabItem(tabNames[vchTabIndex], scp.buildVirtualChannelContent(true))
+	scp.decodeLayout = container.NewMax()
+	scp.refreshDecodeTab()
+	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab, scp.decodeTab)
 
 	if scp.psControl != nil && scp.psControl.Con.ID != genericps.DemoId {
 		scp.controlTab.Remove(scp.rlcTab)
@@ -1250,10 +1258,32 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.controlTriggerTimeOffset = triggerTimeOffset
 		scp.controlSamplingTimeInterval = samplingTimeInterval
 
+		var newDecodeState control.DecoderState
+		if scp.Settings.Decode.Enabled {
+			ch1 := scp.Settings.Decode.Channel1
+			ch2 := scp.Settings.Decode.Channel2
+			if scp.Settings.Decode.Protocol == "UART" {
+				if ch1 >= 0 && ch1 < len(buffers) {
+					newDecodeState = control.DecodeUART(buffers[ch1], samplingTimeInterval,
+						triggerTimeOffset, scp.Settings.Decode.BaudRate, scp.Settings.Decode.DataBits,
+						scp.Settings.Decode.StopBits, scp.Settings.Decode.Parity,
+						scp.Settings.Decode.Threshold, scp.Settings.Decode.Hysteresis, scp.Settings.Decode.Invert)
+				}
+			} else if scp.Settings.Decode.Protocol == "SPI" {
+				if ch1 >= 0 && ch1 < len(buffers) && ch2 >= 0 && ch2 < len(buffers) {
+					newDecodeState = control.DecodeSPI(buffers[ch1], buffers[ch2],
+						samplingTimeInterval, triggerTimeOffset, scp.Settings.Decode.Threshold,
+						scp.Settings.Decode.Hysteresis, scp.Settings.Decode.Invert)
+				}
+			}
+		}
+
 		fyne.Do(func() {
+			scp.DecodeState = newDecodeState
+
 			scp.UpdateMeasurements(buffers, buffersMin, samplingTimeInterval)
-			scp.updateBinWidth()
-			scp.updateDftDataCollectionTime()
+			// scp.updateBinWidth()
+			// scp.updateDftDataCollectionTime()
 			scp.refreshRasters() // it calls draw method in signalviewer
 		})
 	}

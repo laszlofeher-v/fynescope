@@ -246,14 +246,16 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		}
 
 		const (
-			operationNormal = "Normal"
-			operationPrbs   = "PRBS"
+			operationNormal     = "Normal"
+			operationPrbs       = "PRBS"
+			operationWhiteNoise = "White Noise"
 		)
 		operationMap := map[string]genericps.ExtraOperations{
-			operationNormal: genericps.EsOff,
-			operationPrbs:   genericps.Prbs,
+			operationNormal:     genericps.EsOff,
+			operationPrbs:       genericps.Prbs,
+			operationWhiteNoise: genericps.WhiteNoise,
 		}
-		operationOptions := []string{operationNormal, operationPrbs}
+		operationOptions := []string{operationNormal, operationPrbs, operationWhiteNoise}
 		operationChanged := func(option string, e selectscroll.Exception) {
 			scp.Settings.GenPanel.Operation = operationMap[option]
 			scp.applyInternalGenSettings(check.Checked)
@@ -470,6 +472,8 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		operationSelect := selectscroll.NewSelectScroll(operationOptions, operationChanged, operationNormal)
 		if scp.Settings.GenPanel.Operation == genericps.Prbs {
 			operationSelect.SetSelected(operationPrbs)
+		} else if scp.Settings.GenPanel.Operation == genericps.WhiteNoise {
+			operationSelect.SetSelected(operationWhiteNoise)
 		} else {
 			operationSelect.SetSelected(operationNormal)
 		}

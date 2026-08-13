@@ -282,6 +282,7 @@ func (sv *signalViewer) draw() {
 			drawLine(sv.scp.timeZoomScopeSignalScreen.(draw.Image), float32(rightEdge), float32(bounds.Min.Y), float32(rightEdge), float32(bounds.Max.Y), c)
 		}
 	}
+	sv.scp.drawDecode(sv.img, bounds, w, zeroOffset, sv.isTimeZoom)
 }
 
 func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset int, etsDx float64) {

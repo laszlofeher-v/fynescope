@@ -38,6 +38,9 @@ type awgEditorWidget struct {
 	currentX, currentY float32
 	drawing            bool
 	raster             *canvas.Raster
+	uartMode           bool
+	samplesPerBit      float64
+	pointColors        []color.NRGBA
 }
 
 func newAwgEditorWidget() *awgEditorWidget {
@@ -184,6 +187,8 @@ func (w *awgEditorWidget) clear() {
 }
 
 func (w *awgEditorWidget) generateWaveform(waveType string) {
+	w.uartMode = false
+	w.pointColors = nil
 	n := len(w.values)
 	if n == 0 {
 		return
@@ -284,12 +289,32 @@ func (w *awgEditorWidget) drawImage(width, height int) image.Image {
 		}
 	}
 
-	// Draw vertical grid lines (10 divisions)
-	for i := 1; i < 10; i++ {
-		x := (width * i) / 10
-		for y := 0; y < height; y++ {
-			if y%4 < 2 {
-				img.SetNRGBA(x, y, gridColor)
+	// Draw vertical grid lines or bit divisions
+	if w.uartMode && w.samplesPerBit > 0 {
+		bitDivColor := color.NRGBA{R: 80, G: 80, B: 150, A: 255}
+		numBits := int(float64(len(w.values)) / w.samplesPerBit)
+		pixelPerBit := (w.samplesPerBit / float64(len(w.values))) * float64(width)
+
+		if pixelPerBit >= 4.0 {
+			for b := 0; b <= numBits; b++ {
+				sampleIdx := float64(b) * w.samplesPerBit
+				x := int(sampleIdx / float64(len(w.values)) * float64(width))
+				if x >= 0 && x < width {
+					for y := 0; y < height; y++ {
+						if y%4 < 2 {
+							img.SetNRGBA(x, y, bitDivColor)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		for i := 1; i < 10; i++ {
+			x := (width * i) / 10
+			for y := 0; y < height; y++ {
+				if y%4 < 2 {
+					img.SetNRGBA(x, y, gridColor)
+				}
 			}
 		}
 	}
@@ -305,6 +330,10 @@ func (w *awgEditorWidget) drawImage(width, height int) image.Image {
 			}
 			val := w.values[idx]
 			segmentColor := waveColor
+
+			if len(w.pointColors) == n {
+				segmentColor = w.pointColors[idx]
+			}
 
 			if w.mode == awgModeLine && w.drawing {
 				minX, maxX := w.lastX, w.currentX
@@ -417,7 +446,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 
 	var pointsDisp *disp7.DigitArray
 
-	options := []string{"Sine", "Square", "Triangle", "RampUp", "RampDown", "SinC", "Gaussian", "HalfSine", "DC"}
+	options := []string{"Sine", "Square", "Triangle", "RampUp", "RampDown", "SinC", "Gaussian", "HalfSine", "DC", "UART"}
 
 	waveformFile := settings.WaveformFileName(scp.SettingFileName)
 	if _, err := os.Stat(waveformFile); err == nil {
@@ -438,7 +467,10 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		}
 	}
 
+	var selectedWaveformType string
+
 	waveformSelect := selectscroll.NewSelectScroll(options, func(selected string, ex selectscroll.Exception) {
+		selectedWaveformType = selected
 		if selected == "Last Waveform" {
 			if wfData, err := os.ReadFile(waveformFile); err == nil {
 				wfLen := len(wfData) / 2
@@ -556,6 +588,8 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 					}
 				}
 			}
+		} else if selected == "UART" {
+			editor.clear()
 		} else {
 			editor.generateWaveform(selected)
 		}
@@ -666,6 +700,11 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	patternGenBtn := widget.NewButton("Pattern Gen", func() {
 		if scp.patternWindow != nil {
 			scp.patternWindow.Show()
+			return
+		}
+
+		if selectedWaveformType == "UART" {
+			scp.showUartPatternGenerator(editor)
 			return
 		}
 
@@ -869,4 +908,207 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	})
 
 	scp.awgWindow.Show()
+}
+
+func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
+	scp.patternWindow = scp.App.NewWindow("UART Pattern Generator")
+	scp.patternWindow.Resize(fyne.NewSize(500, 400))
+
+	textEntry := widget.NewEntry()
+	textEntry.MultiLine = true
+	highEntry := widget.NewEntry()
+	highEntry.SetText("100")
+	lowEntry := widget.NewEntry()
+	lowEntry.SetText("0")
+	suggestedFreqLabel := widget.NewLabel("N/A")
+	var updateWaveform func()
+
+	baudrates := []string{"300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "38400", "57600", "115200", "128000", "256000"}
+	baudrateSelect := selectscroll.NewSelectScroll(baudrates, func(s string, ex selectscroll.Exception) {
+		if updateWaveform != nil {
+			updateWaveform()
+		}
+	}, "Select Baudrate")
+	baudrateSelect.SetSelected("115200")
+
+	bitNumsSelect := selectscroll.NewSelectScroll([]string{"5", "6", "7", "8", "9"}, func(s string, ex selectscroll.Exception) {
+		if updateWaveform != nil {
+			updateWaveform()
+		}
+	}, "Data Bits")
+	bitNumsSelect.SetSelected("8")
+	paritySelect := selectscroll.NewSelectScroll([]string{"None", "Even", "Odd", "Mark", "Space"}, func(s string, ex selectscroll.Exception) {
+		if updateWaveform != nil {
+			updateWaveform()
+		}
+	}, "Parity")
+	paritySelect.SetSelected("None")
+	stopBitsSelect := selectscroll.NewSelectScroll([]string{"1", "1.5", "2"}, func(s string, ex selectscroll.Exception) {
+		if updateWaveform != nil {
+			updateWaveform()
+		}
+	}, "Stop Bits")
+	stopBitsSelect.SetSelected("1")
+
+	updateWaveform = func() {
+		hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
+		llPct, errL := strconv.ParseFloat(lowEntry.Text, 64)
+		if errH != nil || errL != nil {
+			return
+		}
+		hl := hlPct / 100.0
+		ll := llPct / 100.0
+
+		bitrate, errB := strconv.ParseFloat(baudrateSelect.Selected, 64)
+		if errB != nil || bitrate <= 0 {
+			return
+		}
+
+		dataBits, _ := strconv.Atoi(bitNumsSelect.Selected)
+		if dataBits == 0 {
+			dataBits = 8
+		}
+
+		stopBits := 1.0
+		switch stopBitsSelect.Selected {
+		case "1.5":
+			stopBits = 1.5
+		case "2":
+			stopBits = 2.0
+		}
+
+		parity := paritySelect.Selected
+		text := textEntry.Text
+		N := len(editor.values)
+
+		editor.pointColors = make([]color.NRGBA, N)
+		defaultColor := color.NRGBA{R: 0, G: 220, B: 255, A: 255}
+		stopBitColor := color.NRGBA{R: 255, G: 100, B: 100, A: 255}
+
+		for i := 0; i < N; i++ {
+			editor.values[i] = hl // Idle state is high
+			editor.pointColors[i] = defaultColor
+		}
+
+		if len(text) == 0 {
+			editor.Refresh()
+			return
+		}
+
+		parityBits := 0.0
+		if parity != "None" {
+			parityBits = 1.0
+		}
+		charBits := 1.0 + float64(dataBits) + parityBits + stopBits
+		totalBits := float64(len(text)) * charBits
+
+		var samplesPerBit float64
+		if totalBits > 0 {
+			// Ensure at least 50% idle time or 20 bits of idle time so the oscilloscope can trigger cleanly between sequences
+			paddedBits := totalBits * 2.0
+			if paddedBits < totalBits+20.0 {
+				paddedBits = totalBits + 20.0
+			}
+			S := int(float64(N) / paddedBits)
+			if S >= 1 {
+				suggestedFreq := (float64(S) * bitrate) / float64(N)
+				suggestedFreqLabel.SetText(fmt.Sprintf("%.4f Hz", suggestedFreq))
+				samplesPerBit = float64(S)
+			} else {
+				suggestedFreqLabel.SetText("Text too long")
+				samplesPerBit = 1.0
+			}
+		} else {
+			suggestedFreqLabel.SetText("N/A")
+			samplesPerBit = 1.0
+		}
+
+		for i := 0; i < N; i++ {
+			bitIdxFloat := float64(i) / samplesPerBit
+
+			charIdx := int(bitIdxFloat / charBits)
+			if charIdx >= len(text) {
+				continue // Idle high
+			}
+
+			intraCharBit := bitIdxFloat - float64(charIdx)*charBits
+			c := text[charIdx]
+			val := hl
+			ptColor := defaultColor
+
+			if intraCharBit < 1.0 {
+				// Start bit
+				val = ll
+			} else if intraCharBit < 1.0+float64(dataBits) {
+				// Data bit (LSB first)
+				bitPos := int(intraCharBit - 1.0)
+				bitVal := (c >> bitPos) & 1
+				if bitVal == 1 {
+					val = hl
+				} else {
+					val = ll
+				}
+			} else if intraCharBit < 1.0+float64(dataBits)+parityBits {
+				// Parity bit
+				onesCount := 0
+				for b := 0; b < dataBits; b++ {
+					if (c>>b)&1 == 1 {
+						onesCount++
+					}
+				}
+				parityBit := false
+				switch parity {
+				case "Even":
+					parityBit = (onesCount%2 != 0)
+				case "Odd":
+					parityBit = (onesCount%2 == 0)
+				case "Mark":
+					parityBit = true
+				case "Space":
+					parityBit = false
+				}
+				if parityBit {
+					val = hl
+				} else {
+					val = ll
+				}
+			} else {
+				// Stop bits
+				val = hl
+				ptColor = stopBitColor
+			}
+
+			editor.values[i] = val
+			editor.pointColors[i] = ptColor
+		}
+		editor.uartMode = true
+		editor.samplesPerBit = samplesPerBit
+		editor.Refresh()
+	}
+
+	textEntry.OnChanged = func(s string) { updateWaveform() }
+	highEntry.OnChanged = func(s string) { updateWaveform() }
+	lowEntry.OnChanged = func(s string) { updateWaveform() }
+
+	form := widget.NewForm(
+		widget.NewFormItem("Text", textEntry),
+		widget.NewFormItem("High Level (%)", highEntry),
+		widget.NewFormItem("Low Level (%)", lowEntry),
+		widget.NewFormItem("Baudrate", baudrateSelect),
+		widget.NewFormItem("Data Bits", bitNumsSelect),
+		widget.NewFormItem("Parity", paritySelect),
+		widget.NewFormItem("Stop Bits", stopBitsSelect),
+		widget.NewFormItem("Suggested AWG Freq", suggestedFreqLabel),
+	)
+
+	closeBtn := widget.NewButton("Close", func() {
+		scp.patternWindow.Close()
+	})
+
+	content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
+	scp.patternWindow.SetContent(content)
+	scp.patternWindow.SetOnClosed(func() {
+		scp.patternWindow = nil
+	})
+	scp.patternWindow.Show()
 }
