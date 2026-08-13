@@ -616,43 +616,19 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 				return
 			}
 
-			var newValues []float64
+			editor.values = nil
 			for _, row := range records {
 				for _, col := range row {
 					val, err := strconv.ParseFloat(strings.TrimSpace(col), 64)
 					if err == nil {
-						newValues = append(newValues, val)
+						editor.values = append(editor.values, val)
 						break
 					}
 				}
 			}
-
-			if len(newValues) > 0 {
-				minVal := newValues[0]
-				maxVal := newValues[0]
-				for _, v := range newValues {
-					if v < minVal {
-						minVal = v
-					}
-					if v > maxVal {
-						maxVal = v
-					}
-				}
-
+			if len(editor.values) > 0 {
 				if pointsDisp != nil {
-					pointsDisp.SetValue(len(newValues))
-				}
-				editor.values = make([]float64, len(newValues))
-
-				if maxVal > minVal {
-					diff := maxVal - minVal
-					for i, v := range newValues {
-						editor.values[i] = (v-minVal)/diff*2.0 - 1.0
-					}
-				} else {
-					for i := range newValues {
-						editor.values[i] = 0
-					}
+					pointsDisp.SetValue(len(editor.values))
 				}
 				editor.Refresh()
 			}
