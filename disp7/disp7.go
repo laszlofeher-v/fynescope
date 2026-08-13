@@ -185,19 +185,21 @@ func (d7 *DigitArray) SetNumOfFractionDigits(numOfFractionDigits int) {
 }
 
 func (d7 *DigitArray) SetMinMax(minValue, maxValue int) {
-	d7.lock.Lock()
-	d7.maxValue = maxValue
-	d7.minValue = minValue
-	
-	needsRefresh := false
-	if d7.Value < d7.minValue {
-		d7.silentSetValue(d7.minValue)
-		needsRefresh = true
-	} else if d7.Value > d7.maxValue {
-		d7.silentSetValue(d7.maxValue)
-		needsRefresh = true
-	}
-	d7.lock.Unlock()
+	needsRefresh := func() bool {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		d7.maxValue = maxValue
+		d7.minValue = minValue
+		
+		if d7.Value < d7.minValue {
+			d7.silentSetValue(d7.minValue)
+			return true
+		} else if d7.Value > d7.maxValue {
+			d7.silentSetValue(d7.maxValue)
+			return true
+		}
+		return false
+	}()
 	
 	if needsRefresh {
 		d7.Refresh()
@@ -205,15 +207,17 @@ func (d7 *DigitArray) SetMinMax(minValue, maxValue int) {
 }
 
 func (d7 *DigitArray) SetOncolor(col color.Color) {
-	d7.lock.Lock()
-	d7.onColor = col
-	if d7.label != nil {
-		d7.label.Color = col
-	}
-	if d7.unit != nil {
-		d7.unit.Color = col
-	}
-	d7.lock.Unlock()
+	func() {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		d7.onColor = col
+		if d7.label != nil {
+			d7.label.Color = col
+		}
+		if d7.unit != nil {
+			d7.unit.Color = col
+		}
+	}()
 	d7.Refresh()
 }
 
@@ -250,11 +254,12 @@ func (d7 *DigitArray) silentSetValue(v int) {
 }
 
 func (d7 *DigitArray) SetValue(v int) {
-	d7.lock.Lock()
-	d7.silentSetValue(v)
-	val := float64(d7.Value)
-	onChanged := d7.OnChanged
-	d7.lock.Unlock()
+	val, onChanged := func() (float64, func(v float64)) {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		d7.silentSetValue(v)
+		return float64(d7.Value), d7.OnChanged
+	}()
 	
 	if onChanged != nil {
 		onChanged(val)
@@ -262,20 +267,24 @@ func (d7 *DigitArray) SetValue(v int) {
 }
 
 func (d7 *DigitArray) SetUnit(unitName string) {
-	d7.lock.Lock()
-	d7.unit = canvas.NewText(unitName, d7.onColor)
-	d7.unit.TextStyle = fyne.TextStyle{Monospace: true}
-	d7.unit.TextSize = d7.size.Height / 2
-	d7.lock.Unlock()
+	func() {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		d7.unit = canvas.NewText(unitName, d7.onColor)
+		d7.unit.TextStyle = fyne.TextStyle{Monospace: true}
+		d7.unit.TextSize = d7.size.Height / 2
+	}()
 	d7.Refresh()
 }
 func (d7 *DigitArray) SetLabel(label string) {
-	d7.lock.Lock()
-	slog.Debug("set label", "label", label)
-	d7.label = canvas.NewText(label, d7.onColor)
-	d7.label.TextStyle = fyne.TextStyle{Monospace: true}
-	d7.label.TextSize = d7.size.Height / 2
-	d7.lock.Unlock()
+	func() {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		slog.Debug("set label", "label", label)
+		d7.label = canvas.NewText(label, d7.onColor)
+		d7.label.TextStyle = fyne.TextStyle{Monospace: true}
+		d7.label.TextSize = d7.size.Height / 2
+	}()
 	d7.Refresh()
 }
 
@@ -299,16 +308,19 @@ func (d7 *DigitArray) silentSetFloatValue(v float64, dpPos int) {
 }
 
 func (d7 *DigitArray) SetFloatValue(v float64, dpPos int) {
-	d7.lock.Lock()
-	if dpPos < 0 || dpPos >= len(d7.digits) {
-		d7.lock.Unlock()
+	valid, val, onChanged := func() (bool, float64, func(v float64)) {
+		d7.lock.Lock()
+		defer d7.lock.Unlock()
+		if dpPos < 0 || dpPos >= len(d7.digits) {
+			return false, 0, nil
+		}
+		d7.silentSetFloatValue(v, dpPos)
+		return true, float64(d7.Value), d7.OnChanged
+	}()
+	
+	if !valid {
 		return
 	}
-	d7.silentSetFloatValue(v, dpPos)
-	val := float64(d7.Value)
-	onChanged := d7.OnChanged
-	d7.lock.Unlock()
-	
 	if onChanged != nil {
 		onChanged(val)
 	}

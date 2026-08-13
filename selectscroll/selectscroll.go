@@ -55,18 +55,24 @@ func NewSelectScroll(options []string, changed func(option string, exception Exc
 	return selScr
 }
 
+func (selScr *SelectScroll) CreateRenderer() fyne.WidgetRenderer {
+	r := selScr.Select.CreateRenderer()
+	selScr.ExtendBaseWidget(selScr)
+	return r
+}
+
 func (selScr *SelectScroll) SilentSetSelectedIndex(index int) {
 	savedOnChangedFunc := selScr.OnChanged
 	selScr.OnChanged = nil
+	defer func() { selScr.OnChanged = savedOnChangedFunc }()
 	selScr.SetSelectedIndex(index)
-	selScr.OnChanged = savedOnChangedFunc
 }
 
 func (selScr *SelectScroll) SilentSetSelected(option string) {
 	savedOnChangedFunc := selScr.OnChanged
 	selScr.OnChanged = nil
+	defer func() { selScr.OnChanged = savedOnChangedFunc }()
 	selScr.SetSelected(option)
-	selScr.OnChanged = savedOnChangedFunc
 }
 
 func parseOptionToValue(s string) (float64, bool) {

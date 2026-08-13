@@ -33,6 +33,12 @@ func NewSliderScroll(min, max float64) *SliderScroll {
 	return sliderScroll
 }
 
+func (slScr *SliderScroll) CreateRenderer() fyne.WidgetRenderer {
+	r := slScr.Slider.CreateRenderer()
+	slScr.ExtendBaseWidget(slScr)
+	return r
+}
+
 func (slScr *SliderScroll) SilentSetValue(v float64) {
 	savedOnChangedFunc := slScr.OnChanged
 	slScr.OnChanged = nil
