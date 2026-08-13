@@ -639,19 +639,28 @@ type errorCountingWriter struct {
 	count       *uint64
 	errorsMutex sync.Mutex
 	firstErrors []string
+	logFifo     []string
 }
 
 func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	str := string(p)
 	s := strings.ToLower(str)
+	
+	w.errorsMutex.Lock()
 	if strings.Contains(s, "level=error") {
 		atomic.AddUint64(w.count, 1)
-		w.errorsMutex.Lock()
 		if len(w.firstErrors) < maxLoggedErrors {
-			w.firstErrors = append(w.firstErrors, str)
+			block := strings.Join(w.logFifo, "") + str
+			w.firstErrors = append(w.firstErrors, block)
 		}
-		w.errorsMutex.Unlock()
 	}
+	
+	w.logFifo = append(w.logFifo, str)
+	if len(w.logFifo) > 10 {
+		w.logFifo = w.logFifo[1:]
+	}
+	w.errorsMutex.Unlock()
+	
 	return w.target.Write(p)
 }
 
