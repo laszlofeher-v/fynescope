@@ -74,13 +74,16 @@ func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset 
 		if !getDigital(i) {
 			startOfStartBit := float64(i)
 			startBitIn := startOfStartBit
-			for startBitIn < float64(len(buffer)) && !getDigital(int(startBitIn)) && startBitIn < samplesPerBit {
+			for startBitIn < float64(len(buffer)) && !getDigital(int(startBitIn)) && (startBitIn-startOfStartBit) < samplesPerBit {
 				startBitIn += 1.0
 			}
-			if startBitIn >= samplesPerBit {
-				i = int(math.Round(startOfStartBit ))
+			if (startBitIn - startOfStartBit) >= samplesPerBit*0.75 {
+				i = int(math.Round(startOfStartBit))
 				slog.Debug("DecodeUART", "start at i", i)
 				break
+			} else {
+				i = int(startBitIn)
+				continue
 			}
 		}
 		i++
@@ -195,7 +198,11 @@ func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset 
 			} else if stopBits == "2" {
 				stopBitsLen = 2.0
 			}
-			i = int(sampleIdx + stopBitsLen*samplesPerBit)
+			// sampleIdx is currently in the middle of the first stop bit.
+			// Advance to the end of the stop bits, minus a small margin so we 
+			// land securely in the idle state before the next start bit, 
+			// rather than accidentally overshooting into the next start bit.
+			i = int(sampleIdx - (samplesPerBit / 2.0) + stopBitsLen*samplesPerBit)
 		} else {
 			i++
 		}

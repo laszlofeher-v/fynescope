@@ -31,3 +31,4 @@ fynescope-linux-amd64
 github_wiki/*.md
 scratch/*
 waveform*.bin
+*.csv
