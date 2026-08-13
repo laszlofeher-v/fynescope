@@ -72,6 +72,7 @@ var (
 		"ps3000a/connection.go":              false,
 		"settings/consts.go":                 false,
 		"control/control.go":                 false,
+		"control/decode.go":                  false,
 		"gui/dft_channel_label.go":           false,
 		"gui/dft_raster.go":                  false,
 		"disp7/disp7.go":                     false,

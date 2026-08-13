@@ -552,7 +552,7 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 		return
 	}
 
-	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondTrue)
+	triggerConditions := psControl.buildTriggerConditions(genericps.CondDontCare, genericps.CondTrue)
 
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
@@ -640,7 +640,7 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 		return
 	}
 
-	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondTrue)
+	triggerConditions := psControl.buildTriggerConditions(genericps.CondDontCare, genericps.CondTrue)
 
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
