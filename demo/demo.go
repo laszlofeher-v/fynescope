@@ -50,15 +50,15 @@ type (
 var (
 	// handle                  int16
 	triggerPhaseNoiseDisabled atomic.Bool
-	channels                [MaxChannels]channelDesc
-	behaviour               returnStatus
-	timeBaseSet             uint32
-	timeIntervalPicoSeconds float64
-	nOfPreTrSamples         int32
-	nOfPostTrSamples        int32
-	buffers                 [MaxChannels][]int16
-	buffersMin              [MaxChannels][]int16
-	triggerDetector         *TriggerDetector
+	channels                  [MaxChannels]channelDesc
+	behaviour                 returnStatus
+	timeBaseSet               uint32
+	timeIntervalPicoSeconds   float64
+	nOfPreTrSamples           int32
+	nOfPostTrSamples          int32
+	buffers                   [MaxChannels][]int16
+	buffersMin                [MaxChannels][]int16
+	triggerDetector           *TriggerDetector
 	// triggerDelay            uint32
 	TtToPercent float64
 	// NoiseAmplitude, PhaseNoiseDegree, TriggerTimeOffset are now accessed via
@@ -891,7 +891,6 @@ func simMinimumValue(handle int16) (value int32, err error) {
 	return
 }
 
-
 func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
 	if handle <= 0 {
@@ -1149,7 +1148,7 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
-	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16) (err error) {
+	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16, spiDataValue uint32) (err error) {
 
 	ch := int(channel)
 	if ch < 0 || ch >= numberOfChannels {
@@ -1164,6 +1163,11 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 	default:
 		if waveType == genericps.Arbitrary {
 			channels[ch].genWaveFunction = NewArbitraryWaveformGenerator(arbitraryWaveform)
+		} else if waveType == genericps.SpiData {
+			slog.Debug("SetDemoGen SpiData", "spiDataValue", spiDataValue)
+			channels[ch].genWaveFunction = NewSpiDataGenerator(spiDataValue)
+		} else if waveType == genericps.SpiClock {
+			channels[ch].genWaveFunction = NewSpiClockGenerator()
 		} else {
 			channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
 		}

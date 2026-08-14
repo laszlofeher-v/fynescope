@@ -150,6 +150,7 @@ type (
 		Phase                float64                   `yaml:"phase"`
 		ImpedanceMode        string                    `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
 		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
+		SpiDataValue         uint32                    `yaml:"spi_data_value"` // used for SpiData generator
 		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
 	DftSettings struct {

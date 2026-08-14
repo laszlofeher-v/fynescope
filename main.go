@@ -76,6 +76,10 @@ var (
 		"gui/dft_channel_label.go":           false,
 		"gui/dft_raster.go":                  false,
 		"disp7/disp7.go":                     false,
+		"disp7/events.go":                    false,
+		"disp16/disp16.go":                   false,
+		"disp16/events.go":                   false,
+		"disp16/renderer.go":                 false,
 		"control/ets.go":                     false,
 		"control/ext_gen.go":                 false,
 		"gui/ff_raster.go":                   false,
@@ -100,7 +104,7 @@ var (
 		"control/screen_time.go":             false,
 		"selectscroll/selectscroll.go":       false,
 		"settings/settings.go":               false,
-		"demo/demo.go":                       false,
+		"demo/demo.go":                       true,
 		"gui/demo_gen.go":                    false,
 		"sliderscroll/slider_scroll.go":      false,
 		"gui/status.go":                      false,
@@ -117,7 +121,7 @@ var (
 		"ps2000a/types.go":                   false,
 		"ps3000a/types.go":                   false,
 		"genericps/types.go":                 false,
-		"demo/waveforms.go":                  false,
+		"demo/waveforms.go":                  true,
 	}
 )
 

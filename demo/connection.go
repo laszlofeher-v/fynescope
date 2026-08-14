@@ -753,7 +753,7 @@ func setDemoGen(m *genericps.SetDemoGenMsg) {
 	err := s.SetDemoGen(m.Channel, m.On, m.OffsetVoltage, m.PkToPK, genericps.WaveTypeEnum(m.WaveType),
 		m.StartFrequency, m.StopFrequency, m.Increment, m.DwellTime, genericps.SweepTypeEnum(m.SweepType),
 		genericps.ExtraOperations(m.Operation), m.Shots, m.Sweeps, genericps.SigGenTrigType(m.TriggerType),
-		genericps.SigGenTrigSource(m.TriggerSource), m.ExtInThreshold, m.Phase, m.ArbitraryWaveform)
+		genericps.SigGenTrigSource(m.TriggerSource), m.ExtInThreshold, m.Phase, m.ArbitraryWaveform, m.SpiDataValue)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

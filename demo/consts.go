@@ -269,6 +269,9 @@ const (
 	Gaussian
 	HalfSine
 	DcVoltage
+	Arbitrary
+	SpiClock
+	SpiData
 )
 
 type SweepTypeEnum int
@@ -560,6 +563,9 @@ func loadConstants() {
 	genericps.Gaussian = genericps.WaveTypeEnum(Gaussian)
 	genericps.HalfSine = genericps.WaveTypeEnum(HalfSine)
 	genericps.DcVoltage = genericps.WaveTypeEnum(DcVoltage)
+	genericps.Arbitrary = genericps.WaveTypeEnum(Arbitrary)
+	genericps.SpiClock = genericps.WaveTypeEnum(SpiClock)
+	genericps.SpiData = genericps.WaveTypeEnum(SpiData)
 	genericps.InputRanges = inputRanges
 	genericps.ChannelInfoRanges = int16(ChannelInfoRanges)
 	genericps.RangeValuesMv = make(map[genericps.RangeEnum]float64)

@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"fynescope/control"
+	"fynescope/disp16"
 	"fynescope/genericps"
 	"image/color"
 	"log/slog"
@@ -67,6 +68,7 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
 	msg.Phase = genSettings.Phase
+	msg.SpiDataValue = genSettings.SpiDataValue
 
 	if genSettings.On {
 		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
@@ -127,6 +129,8 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			"HalfSine":  genericps.HalfSine,
 			"DcVoltage": genericps.DcVoltage,
 			"Arbitrary": genericps.Arbitrary,
+			"SpiClock":  genericps.SpiClock,
+			"SpiData":   genericps.SpiData,
 		}
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
@@ -172,6 +176,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			amp                                                              *disp7.DigitArray
 			raiseFallTimeDisp, noiseAmplitudeDisp, phaseNoiseDisp, phaseDisp *disp7.DigitArray
 			dwellTime                                                        *disp7.DigitArray
+			spiDataDisp                                                      *disp16.HexArray
 			undockButton                                                     *widget.Button
 			nameLabel                                                        *canvas.Text
 		)
@@ -326,14 +331,17 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		waveTypeChanged := func(option string, e selectscroll.Exception) {
 			genSettings.WaveType = waveTypeMap[option]
 			switch genSettings.WaveType {
-			case genericps.Square:
-				fallthrough
-			case genericps.RampUp:
-				fallthrough
-			case genericps.RampDown:
+			case genericps.Square, genericps.RampUp, genericps.RampDown:
 				raiseFallTimeDisp.Show()
 			default:
 				raiseFallTimeDisp.Hide()
+			}
+			if spiDataDisp != nil {
+				if genSettings.WaveType == genericps.SpiData {
+					spiDataDisp.Show()
+				} else {
+					spiDataDisp.Hide()
+				}
 			}
 			scp.applyDemoGenSettings(ch, genSettings)
 		}
@@ -396,6 +404,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 					amp.SilentSetValue(int(genSettings.Amplitude))
 					offset.SilentSetValue(int(genSettings.OffsetVoltage))
 					raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
+					spiDataDisp.SetValue(uint64(genSettings.SpiDataValue))
 					noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
 					phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
 					scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genTab.Content)
@@ -542,6 +551,19 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		setOffsetMinMax()
 		offset.SilentSetValue(int(genSettings.OffsetVoltage))
 
+		spiDataDisp, err = disp16.NewHexArray(4, scp.Window, chCol, false, "SPI Data:")
+		if err != nil {
+			return
+		}
+		spiDataDisp.OnChanged = func(v uint64) {
+			genSettings.SpiDataValue = uint32(v)
+			scp.applyDemoGenSettings(ch, genSettings)
+		}
+		spiDataDisp.SetValue(uint64(genSettings.SpiDataValue))
+		if genSettings.WaveType != genericps.SpiData {
+			spiDataDisp.Hide()
+		}
+
 		fLabel := widget.NewLabel("Freq")
 		voltLabel := widget.NewLabel("Amp")
 		shortLineF := container.NewBorder(nil, nil, nil, fLabel, freqSetAnalog)
@@ -595,7 +617,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp, /*triggerTimeOffsetDisp,*/
+			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp, spiDataDisp,
 			noiseAmplitudeDisp, phaseNoiseDisp, operationBox, calcBox, awgEditorBtn)
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)
 		show.SetChecked(genSettings.Digital)

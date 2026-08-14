@@ -233,3 +233,45 @@ func rampDownWave(t float64, freq float64) float64 {
 func dcVoltageWave(t float64, freq float64) float64 {
 	return 0
 }
+
+// NewSpiClockGenerator creates a waveform generator for SPI clock (CPOL=0, CPHA=0).
+// Clock pulses high in the middle of each bit period.
+func NewSpiClockGenerator() WaveformGenerator {
+	return func(t float64, freq float64) float64 {
+		if freq <= 0 {
+			return -1.0
+		}
+		// Calculate the fractional part of the bit period.
+		frac := math.Mod(t/(2*math.Pi), 1.0)
+		if frac < 0 {
+			frac += 1.0
+		}
+		if frac >= 0.25 && frac < 0.75 {
+			return 1.0
+		}
+		return -1.0
+	}
+}
+
+// NewSpiDataGenerator creates a waveform generator for SPI data (MOSI).
+// Outputs a 20-bit pattern (5 hex digits) MSB first continuously.
+func NewSpiDataGenerator(data uint32) WaveformGenerator {
+	slog.Debug("NewSpiDataGenerator", "data", data)
+	return func(t float64, freq float64) float64 {
+		if freq <= 0 {
+			return -1.0
+		}
+		bitIndex := int64(math.Floor(t / (2 * math.Pi)))
+		// We have 16 bits. MSB first.
+		idx := int(bitIndex % 16)
+		if idx < 0 {
+			idx += 16
+		}
+		shift := 15 - idx
+		bit := (data >> shift) & 1
+		if bit == 1 {
+			return 1.0
+		}
+		return -1.0
+	}
+}

@@ -559,6 +559,7 @@ type (
 		ExtInThreshold                                      int16
 		Phase                                               float64
 		ArbitraryWaveform                                   []int16
+		SpiDataValue                                        uint32
 	}
 	SetDemoGenRsp struct {
 		RespBase
@@ -871,7 +872,9 @@ var (
 	PwTypeInRange, PwTypeOutOfRange PulseWidthType
 	Sine, Square, Triangle, RampUp, RampDown,
 	SinC, Gaussian, HalfSine, DcVoltage WaveTypeEnum
-	Arbitrary         WaveTypeEnum = 999
+	Arbitrary                           WaveTypeEnum = 999
+	SpiClock                            WaveTypeEnum = 1000
+	SpiData                             WaveTypeEnum = 1001
 	InputRanges       []int32
 	ChannelInfoRanges int16
 	RangeValuesMv     map[RangeEnum]float64
@@ -1400,13 +1403,14 @@ func (c Connection) SetSigGenBuiltInV2(offsetVoltage int32, pkToPK uint32, waveT
 	return
 }
 func (c Connection) SetDemoGen(channel ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
-	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum,
-	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
-	triggerSource SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16) (err error) {
+	startFrequency, stopFrequency, increment, dwellTime float64, sweepType SweepTypeEnum, operation ExtraOperations,
+	shots, sweeps uint32, triggerType SigGenTrigType, triggerSource SigGenTrigSource, extInThreshold int16, phase float64,
+	arbitraryWaveform []int16, spiDataValue uint32) (err error) {
+
 	msg := &SetDemoGenMsg{Channel: channel, On: on, OffsetVoltage: offsetVoltage, PkToPK: pkToPK, WaveType: waveType,
 		StartFrequency: startFrequency, StopFrequency: stopFrequency, Increment: increment, DwellTime: dwellTime,
-		SweepType: sweepType, Operation: operation, Shots: shots, Sweeps: sweeps, TriggerType: triggerType,
-		TriggerSource: triggerSource, ExtInThreshold: extInThreshold, Phase: phase, ArbitraryWaveform: arbitraryWaveform}
+		SweepType: sweepType, Operation: operation, Shots: shots, Sweeps: sweeps, TriggerType: triggerType, TriggerSource: triggerSource, ExtInThreshold: extInThreshold,
+		Phase: phase, ArbitraryWaveform: arbitraryWaveform, SpiDataValue: spiDataValue}
 	msg.rsp = &SetDemoGenRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetDemoGenRsp)

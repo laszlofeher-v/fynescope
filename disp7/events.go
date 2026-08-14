@@ -162,7 +162,6 @@ func (d7 *DigitArray) FocusGained() {
 	if d7.Readonly {
 		return
 	}
-	d7.digitCursor = len(d7.digits) - 1 // default when TAB pressed
 	d7.Refresh()
 }
 
