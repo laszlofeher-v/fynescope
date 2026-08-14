@@ -926,6 +926,13 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 	}, "Stop Bits")
 	stopBitsSelect.SetSelected("1")
 
+	bitOrderSelect := selectscroll.NewSelectScroll([]string{"LSB First", "MSB First"}, func(s string, ex selectscroll.Exception) {
+		if updateWaveform != nil {
+			updateWaveform()
+		}
+	}, "Bit Order")
+	bitOrderSelect.SetSelected("LSB First")
+
 	updateWaveform = func() {
 		hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
 		llPct, errL := strconv.ParseFloat(lowEntry.Text, 64)
@@ -954,6 +961,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		}
 
 		parity := paritySelect.Selected
+		bitOrder := bitOrderSelect.Selected
 		text := textEntry.Text
 		N := len(editor.values)
 
@@ -1016,8 +1024,11 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 				// Start bit
 				val = ll
 			} else if intraCharBit < 1.0+float64(dataBits) {
-				// Data bit (LSB first)
+				// Data bit
 				bitPos := int(intraCharBit - 1.0)
+				if bitOrder == "MSB First" {
+					bitPos = dataBits - 1 - bitPos
+				}
 				bitVal := (c >> bitPos) & 1
 				if bitVal == 1 {
 					val = hl
@@ -1074,6 +1085,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		widget.NewFormItem("Data Bits", bitNumsSelect),
 		widget.NewFormItem("Parity", paritySelect),
 		widget.NewFormItem("Stop Bits", stopBitsSelect),
+		widget.NewFormItem("Bit Order", bitOrderSelect),
 		widget.NewFormItem("Suggested AWG Freq", suggestedFreqLabel),
 	)
 

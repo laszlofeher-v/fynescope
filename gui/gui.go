@@ -1266,7 +1266,7 @@ func (scp *ScpDesc) build2000Gui() {
 				if ch1 >= 0 && ch1 < len(buffers) {
 					newDecodeState = control.DecodeUART(buffers[ch1], samplingTimeInterval,
 						triggerTimeOffset, scp.Settings.Decode.BaudRate, scp.Settings.Decode.DataBits,
-						scp.Settings.Decode.StopBits, scp.Settings.Decode.Parity,
+						scp.Settings.Decode.StopBits, scp.Settings.Decode.Parity, scp.Settings.Decode.BitOrder,
 						scp.Settings.Decode.Threshold, scp.Settings.Decode.Hysteresis, scp.Settings.Decode.Invert)
 				}
 			} else if scp.Settings.Decode.Protocol == "SPI" {

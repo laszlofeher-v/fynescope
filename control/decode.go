@@ -28,7 +28,7 @@ type DecoderState struct {
 
 // DecodeUART decodes a UART stream from an analog buffer.
 func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset int64,
-	baudRate int, dataBits int, stopBits string, parity string, threshold int16,
+	baudRate int, dataBits int, stopBits string, parity string, bitOrder string, threshold int16,
 	hysteresis int32, invert bool) DecoderState {
 	slog.Debug("DecodeUART", "samplingTimeInterval", samplingTimeInterval, "triggerTimeOffset", triggerTimeOffset,
 		"triggerTimeOffset", triggerTimeOffset, "baudRate", baudRate,
@@ -119,7 +119,11 @@ func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset 
 				}
 				bitVal := getDigital(int(sampleIdx))
 				if bitVal {
-					val |= (1 << bitIndex)
+					if bitOrder == "MSB First" {
+						val |= (1 << (dataBits - 1 - bitIndex))
+					} else {
+						val |= (1 << bitIndex)
+					}
 				}
 				state.Bits = append(state.Bits, DecodeBit{
 					StartTime: (sampleIdx * samplingTimeInterval) + (float64(triggerTimeOffset) / 1e15),
