@@ -119,6 +119,7 @@ type (
 		StopDeltaPhase                                      uint32
 		DeltaPhaseIncrement                                 uint32
 		IndexMode                                           genericps.IndexMode
+		SpiDataValue                                        uint32
 	}
 
 	GeneratorDescMsg struct {
@@ -213,7 +214,8 @@ func (g *GeneratorDesc) Equals(other *GeneratorDesc) bool {
 		g.TriggerSource != other.TriggerSource || g.ExtInThreshold != other.ExtInThreshold ||
 		g.Phase != other.Phase || g.Channel != other.Channel || g.On != other.On ||
 		g.StartDeltaPhase != other.StartDeltaPhase || g.StopDeltaPhase != other.StopDeltaPhase ||
-		g.DeltaPhaseIncrement != other.DeltaPhaseIncrement || g.IndexMode != other.IndexMode {
+		g.DeltaPhaseIncrement != other.DeltaPhaseIncrement || g.IndexMode != other.IndexMode ||
+		g.SpiDataValue != other.SpiDataValue {
 		return false
 	}
 	if len(g.ArbitraryWaveform) != len(other.ArbitraryWaveform) {

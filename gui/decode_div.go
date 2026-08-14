@@ -106,8 +106,8 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		form.Append("Channel 2 (MOSI)", ch2Select)
 	}
 
-	form.Append("Baud / Clock (Hz)", baudSelect)
 	if settings.Protocol == "UART" {
+		form.Append("Baud / Clock (Hz)", baudSelect)
 		dataBitsOptions := []string{"5", "6", "7", "8", "9"}
 		dataBitsSelect := selectscroll.NewSelectScroll(dataBitsOptions, func(s string, _ selectscroll.Exception) {
 			if val, err := strconv.Atoi(s); err == nil {
@@ -143,7 +143,9 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		form.Append("Bit Order", bitOrderSelect)
 	}
 	form.Append("Invert", invertCheck)
-	form.Append("Show Bit Lines", showBitstartsCheck)
+	if settings.Protocol == "UART" {
+		form.Append("Show Bit Lines", showBitstartsCheck)
+	}
 	form.Append("Threshold (V)", thresholdEntry)
 	form.Append("Hysteresis (V)", hysteresisEntry)
 
