@@ -188,6 +188,7 @@ type (
 		DataBits      int    `yaml:"databits"`
 		StopBits      string `yaml:"stopbits"`
 		Parity        string `yaml:"parity"`
+		BitOrder      string `yaml:"bitorder"`
 		Invert        bool   `yaml:"invert"`
 		Threshold     int16  `yaml:"threshold"`
 		Hysteresis    int32  `yaml:"hysteresis"`
@@ -320,6 +321,7 @@ func NewDefaultSettings() *PsSettings {
 			DataBits:   8,
 			StopBits:   "1",
 			Parity:     "None",
+			BitOrder:   "LSB First",
 			Invert:     false,
 			Threshold:  0,
 			Hysteresis: 100,

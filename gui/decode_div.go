@@ -65,12 +65,12 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	}, "Baud Rate")
 	baudSelect.SetSelected(strconv.Itoa(settings.BaudRate))
 
-	invertCheck := widget.NewCheck("Invert", func(b bool) {
+	invertCheck := widget.NewCheck("", func(b bool) {
 		settings.Invert = b
 	})
 	invertCheck.SetChecked(settings.Invert)
 
-	showBitstartsCheck := widget.NewCheck("Show Bitstart Lines", func(b bool) {
+	showBitstartsCheck := widget.NewCheck("", func(b bool) {
 		settings.ShowBitstarts = b
 	})
 	showBitstartsCheck.SetChecked(settings.ShowBitstarts)
@@ -128,12 +128,22 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		}, "Parity")
 		paritySelect.SetSelected(settings.Parity)
 
+		bitOrderOptions := []string{"LSB First", "MSB First"}
+		bitOrderSelect := selectscroll.NewSelectScroll(bitOrderOptions, func(s string, _ selectscroll.Exception) {
+			settings.BitOrder = s
+		}, "Bit Order")
+		if settings.BitOrder == "" {
+			settings.BitOrder = "LSB First"
+		}
+		bitOrderSelect.SetSelected(settings.BitOrder)
+
 		form.Append("Data Bits", dataBitsSelect)
 		form.Append("Stop Bits", stopBitsSelect)
 		form.Append("Parity", paritySelect)
+		form.Append("Bit Order", bitOrderSelect)
 	}
 	form.Append("Invert", invertCheck)
-	form.Append("Show Bitstart Lines", showBitstartsCheck)
+	form.Append("Show Bit Lines", showBitstartsCheck)
 	form.Append("Threshold (V)", thresholdEntry)
 	form.Append("Hysteresis (V)", hysteresisEntry)
 
@@ -183,7 +193,7 @@ func (scp *ScpDesc) refreshDecodeTab() {
 		scp.decodeLayout.Objects = []fyne.CanvasObject{scp.buildDecodeContent(scp.decodeWindow == nil)}
 		scp.decodeLayout.Refresh()
 	}
-	
+
 	// If undocked, we need to refresh the undocked window's layout too
 	if scp.decodeWindow != nil {
 		newLayout := scp.buildDecodeContent(false)
