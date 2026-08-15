@@ -964,7 +964,7 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
 	}
 
-	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth || scp.triggerSettingMsg.Type == control.WindowDropout || scp.triggerSettingMsg.Type == control.Runt || scp.triggerSettingMsg.Type == control.RiseFall {
+	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth || scp.triggerSettingMsg.Type == control.WindowDropout || scp.triggerSettingMsg.Type == control.Runt {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1009,8 +1009,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt ||
-		scp.triggerSettingMsg.Type == control.RiseFall {
+		scp.triggerSettingMsg.Type == control.Runt {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level

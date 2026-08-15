@@ -132,7 +132,7 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 	upperHyst := psControl.triggerSetting.HysteresisADC
 	lowerHyst := psControl.triggerSetting.LowerHysteresisADC
 	slog.Debug("validprop", "genericps.Window", genericps.Window)
-	if psControl.triggerSetting.ThresholdMode == genericps.Window {
+	if psControl.triggerSetting.ThresholdMode == genericps.Window || psControl.triggerSetting.Type == RiseFall {
 		if lower >= upper {
 			slog.Warn("getValidTriggerProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
 			if lower > upper {
