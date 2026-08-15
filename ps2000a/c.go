@@ -579,14 +579,14 @@ func ps2000aSetTriggerChannelConditions(handle int16, triggerConditions []Trigge
 		cTriggerConditions[i].pulseWidthQualifier = (C.PS2000A_TRIGGER_STATE)(triggerConditions[i].PulseWidthQualifier)
 		cTriggerConditions[i].digital = (C.PS2000A_TRIGGER_STATE)(triggerConditions[i].Digital)
 	}
-	slog.Debug("ps2000aSetTriggerChannelConditions", "handle", handle, "triggerConditions", triggerConditions)
-	stat := C.ps2000aSetTriggerChannelConditions((C.short)(handle), (*C.PS2000A_TRIGGER_CONDITIONS)(nil), 0)
+	// slog.Debug("ps2000aSetTriggerChannelConditions", "handle", handle, "triggerConditions", triggerConditions)
+	// stat := C.ps2000aSetTriggerChannelConditions((C.short)(handle), (*C.PS2000A_TRIGGER_CONDITIONS)(nil), 0)
 	pcTriggerConditions := (*C.PS2000A_TRIGGER_CONDITIONS)(nil)
 	if len(triggerConditions) > 0 {
 		pcTriggerConditions = &cTriggerConditions[0]
 	}
 	slog.Debug("ps2000aSetTriggerChannelConditions", "handle", handle, "triggerConditions", triggerConditions)
-	stat = C.ps2000aSetTriggerChannelConditions((C.short)(handle),
+	stat := C.ps2000aSetTriggerChannelConditions((C.short)(handle),
 		(*C.PS2000A_TRIGGER_CONDITIONS)(pcTriggerConditions),
 		(C.short)(len(triggerConditions)))
 	if stat != C.PICO_OK {
