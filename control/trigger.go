@@ -976,7 +976,15 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 		lowerSamples = upperSamples
 		upperSamples = 0
 	} else if intervalType == genericps.PwTypeGreaterThan {
-		upperSamples = 0
+		// RiseFall triggers require a bounded window — use PwTypeInRange instead of
+		// PwTypeGreaterThan (which would set upperSamples=0, making the range open-ended).
+		// Set upperSamples to the hardware maximum so the window covers all practical
+		// slew rates faster than lowerSamples while remaining well-defined.
+		intervalType = genericps.PwTypeInRange
+		upperSamples = 16777215
+		if lowerSamples >= upperSamples {
+			lowerSamples = upperSamples - 1
+		}
 	}
 
 	slog.Debug("sendRiseFallTrigger", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
