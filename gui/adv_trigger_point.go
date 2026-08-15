@@ -208,7 +208,7 @@ func (tp *advTriggerPointViewer) dragged(dx, dy, x, y float32) {
 
 	if tp.uhSelected {
 		switch {
-		case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout || tp.scp.triggerSettingMsg.Type == control.RiseFall:
+		case tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout:
 			switch channel.Trigger.TriggerDirection {
 			case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 				if newH >= channel.Trigger.Mv {
@@ -328,7 +328,7 @@ func (tp *advTriggerPointViewer) draw() {
 			int(math.Round(float64(x+halfRectSize))),
 			int(math.Round(float64(y+halfRectSize))))
 		var yh float32
-		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout || tp.scp.triggerSettingMsg.Type == control.RiseFall {
+		if tp.scp.triggerSettingMsg.Type == control.WindowPulseWidth || tp.scp.triggerSettingMsg.Type == control.WindowDropout {
 			_, yh = tp.timeMv2xy(channel.Trigger.Mv + channel.Trigger.Hysteresis)
 			if channel.Trigger.TriggerDirection == genericps.TriggerFalling || channel.Trigger.TriggerDirection == genericps.TriggerExit {
 				_, yh = tp.timeMv2xy(channel.Trigger.Mv - channel.Trigger.Hysteresis)
