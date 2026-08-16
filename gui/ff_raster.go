@@ -958,14 +958,14 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if unitStr == settings.ModeArbitraryDB {
 					unitStr = "dB"
 				}
-				ampStr = fmt.Sprintf("%.1f%s", db, unitStr)
-				ampCurStr = fmt.Sprintf("%.1f%s", ff.inspectorDispAmpCur[chIdx], unitStr)
+				ampStr = fmt.Sprintf("%+.1f%s", db, unitStr)
+				ampCurStr = fmt.Sprintf("%+.1f%s", ff.inspectorDispAmpCur[chIdx], unitStr)
 			}
 		}
 
 		if phaseEnabled {
-			phaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx])
-			phaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx])
+			phaseStr = fmt.Sprintf("%+.1f°", ff.inspectorDispPhase[chIdx])
+			phaseCurStr = fmt.Sprintf("%+.1f°", ff.inspectorDispPhaseCur[chIdx])
 		}
 
 		var line string

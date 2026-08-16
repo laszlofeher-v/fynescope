@@ -4,6 +4,7 @@ import (
 	"fynescope/genericps"
 	"log/slog"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -177,8 +178,12 @@ func streamMode(psControl *PscDesc) state {
 				default:
 					err := psControl.Con.GetStreamingLatestValues(callbackStream, nil)
 					if err != nil {
-						slog.Error("GetStreamingLatestValues failed", "err", err)
-						psControl.DisplayStatus(err.Error(), Fatal)
+						if !strings.Contains(err.Error(), "streaming not") {
+							slog.Error("GetStreamingLatestValues failed", "err", err)
+							psControl.DisplayStatus(err.Error(), Fatal)
+						} else {
+							slog.Debug("GetStreamingLatestValues aborted (likely stopped)", "err", err)
+						}
 						return nil
 					}
 					time.Sleep(20 * time.Millisecond)

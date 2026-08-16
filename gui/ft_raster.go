@@ -1128,9 +1128,9 @@ func (sv *signalViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 func (sv *signalViewer) formatVoltage(mv float32, vRange genericps.RangeEnum) string {
 	if genericps.InputRanges[vRange] >= 1000 {
-		return fmt.Sprintf("%.3f V", mv/1000.0)
+		return fmt.Sprintf("%+.3f V", mv/1000.0)
 	}
-	return fmt.Sprintf("%.1f mV", mv)
+	return fmt.Sprintf("%+.1f mV", mv)
 }
 
 func (sv *signalViewer) formatTime(seconds float64) string {

@@ -158,7 +158,7 @@ func (fv *fvViewer) draw() {
 			col = vch.Col[fv.scp.Settings.ChannelColorIndex]
 			displayVOffset = vch.DisplayVOffset
 		}
-		
+
 		if fvMode == settings.FvValue && enabled {
 			yRange := genericps.RangeValuesMv[vRange]
 			col := col
@@ -326,7 +326,7 @@ func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rect
 			vRange = vch.VRange
 			displayVOffset = vch.DisplayVOffset
 		}
-		
+
 		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex {
 			displayBuffer := fv.scp.displayBuffers[channelIndex]
 			if len(displayBuffer) == 0 || bestIdx >= len(displayBuffer) {
@@ -386,13 +386,13 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	if xCh == -1 || (!fv.showInspector && !fv.refActive) {
 		return
 	}
-	
+
 	if !fv.showInspector {
 		return
 	}
 
 	instVLocal, instVCurLocal := fv.calcValuesAt(fv.mouseX, fv.mouseY, w, h, bounds, xCh)
-	
+
 	var refInstV, refInstVCur []float32
 	if fv.refActive {
 		refInstV, refInstVCur = fv.calcValuesAt(fv.refX, fv.refY, w, h, bounds, xCh)
@@ -488,11 +488,11 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			col = vch.Col[fv.scp.Settings.ChannelColorIndex]
 			chName = fmt.Sprintf("%s(Y)", vch.Name)
 		}
-		
+
 		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex && len(fv.scp.displayBuffers[channelIndex]) > 0 {
 			v := fv.inspectorDispV[channelIndex]
 			v_cursor := fv.inspectorDispVCur[channelIndex]
-			
+
 			yText := fmt.Sprintf("%s: %s (Cur: %s)", chName, fv.formatVoltage(v, vRange), fv.formatVoltage(v_cursor, vRange))
 			if fv.refActive {
 				dvY := v - refInstV[channelIndex]
@@ -551,9 +551,9 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 func (fv *fvViewer) formatVoltage(mv float32, vRange genericps.RangeEnum) string {
 	if genericps.RangeValuesMv[vRange] >= 1000 {
-		return fmt.Sprintf("%.1fV", mv/1000.0)
+		return fmt.Sprintf("%+.1fV", mv/1000.0)
 	}
-	return fmt.Sprintf("%.0fmV", mv)
+	return fmt.Sprintf("%+.0fmV", mv)
 }
 
 func (fv *fvViewer) mouseInSignalScreen(x, y float32) bool {
