@@ -104,7 +104,7 @@ var (
 		"control/screen_time.go":             false,
 		"selectscroll/selectscroll.go":       false,
 		"settings/settings.go":               false,
-		"demo/demo.go":                       true,
+		"demo/demo.go":                       false,
 		"gui/demo_gen.go":                    false,
 		"sliderscroll/slider_scroll.go":      false,
 		"gui/status.go":                      false,
@@ -121,7 +121,7 @@ var (
 		"ps2000a/types.go":                   false,
 		"ps3000a/types.go":                   false,
 		"genericps/types.go":                 false,
-		"demo/waveforms.go":                  true,
+		"demo/waveforms.go":                  false,
 	}
 )
 
