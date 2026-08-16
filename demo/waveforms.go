@@ -43,6 +43,13 @@ func NewWaveformGenerator(waveType WaveTypeEnum) WaveformGenerator {
 	}
 }
 
+// NewWhiteNoiseGenerator creates a waveform generator for white noise.
+func NewWhiteNoiseGenerator() WaveformGenerator {
+	return func(t float64, freq float64) float64 {
+		return (rand.Float64() * 2) - 1.0
+	}
+}
+
 // NewArbitraryWaveformGenerator creates a waveform generator that plays back a custom []int16 buffer.
 // The data values are expected to be signed 16-bit integers and are scaled to the range [-1.0, 1.0].
 func NewArbitraryWaveformGenerator(data []int16) WaveformGenerator {

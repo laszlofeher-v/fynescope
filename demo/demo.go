@@ -1160,6 +1160,8 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 	switch operation {
 	case genericps.Prbs:
 		channels[ch].genWaveFunction = NewPrbsGenerator()
+	case genericps.WhiteNoise:
+		channels[ch].genWaveFunction = NewWhiteNoiseGenerator()
 	default:
 		if waveType == genericps.Arbitrary {
 			channels[ch].genWaveFunction = NewArbitraryWaveformGenerator(arbitraryWaveform)

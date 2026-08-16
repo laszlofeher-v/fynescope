@@ -916,8 +916,8 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if unitStr == settings.ModeArbitraryDB {
 					unitStr = "dB"
 				}
-				valStr = fmt.Sprintf("%.1f%s", v, unitStr)
-				curStr = fmt.Sprintf("%.1f%s", v_cursor, unitStr)
+				valStr = fmt.Sprintf("%+.1f%s", v, unitStr)
+				curStr = fmt.Sprintf("%+.1f%s", v_cursor, unitStr)
 			}
 
 			text := fmt.Sprintf("%s: %s (Cur: %s)", chName, valStr, curStr)
@@ -995,9 +995,9 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 
 func formatVoltageFloat64(mv float64, vRange genericps.RangeEnum) string {
 	if genericps.RangeValuesMv[vRange] >= 1000 {
-		return fmt.Sprintf("%.1fV", mv/1000.0)
+		return fmt.Sprintf("%+.1fV", mv/1000.0)
 	}
-	return fmt.Sprintf("%.0fmV", mv)
+	return fmt.Sprintf("%+.0fmV", mv)
 }
 
 func formatFreq(f float64) string {
@@ -1015,18 +1015,18 @@ func formatFreq(f float64) string {
 
 func formatTime(t float64) string {
 	if t >= 1.0 {
-		return fmt.Sprintf("%.3gs", t)
+		return fmt.Sprintf("%+.3gs", t)
 	}
 	if t >= 1e-3 {
-		return fmt.Sprintf("%.3gms", t*1e3)
+		return fmt.Sprintf("%+.3gms", t*1e3)
 	}
 	if t >= 1e-6 {
 		return fmt.Sprintf("%.3gµs", t*1e6)
 	}
 	if t >= 1e-9 {
-		return fmt.Sprintf("%.3gns", t*1e9)
+		return fmt.Sprintf("%+.3gns", t*1e9)
 	}
-	return fmt.Sprintf("%.3gps", t*1e12)
+	return fmt.Sprintf("%+.3gps", t*1e12)
 }
 
 func (scp *ScpDesc) updateBinWidth() {
