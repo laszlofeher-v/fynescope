@@ -245,6 +245,16 @@ func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, samplingTimeInterval float
 	bitCount := 0
 	var startIdx int
 
+	// If we start capturing while the clock is already HIGH (e.g. triggered exactly on the edge),
+	// we should sample the MOSI line for this first active clock pulse.
+	if len(clkBuffer) > 0 && getClk(0) {
+		startIdx = 0
+		if getMosi(0) {
+			currentByte |= 1
+		}
+		bitCount++
+	}
+
 	for i := 1; i < len(clkBuffer); i++ {
 		// Detect rising edge on CLK
 		if !getClk(i-1) && getClk(i) {
