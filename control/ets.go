@@ -135,6 +135,10 @@ func etsBlockMode(psControl *PscDesc) state {
 			slog.Debug("ETS sample count clamped to memory segment limit", "original", rawSampleCount, "max", sampleCount)
 			rawSampleCount = sampleCount
 		}
+		if rawSampleCount < 2 {
+			slog.Debug("ETS sample count clamped to minimum", "original", rawSampleCount, "min", 2)
+			rawSampleCount = 2
+		}
 		psControl.SampleCountRequired = rawSampleCount
 		if psControl.SampleCountRequired <= 0 {
 			err = fmt.Errorf("invalid sample count: %d (TimeInterval=%g, maxScreenTime=%g)",
