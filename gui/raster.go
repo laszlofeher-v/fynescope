@@ -140,10 +140,12 @@ func (raster *screenRaster) Tapped(event *fyne.PointEvent) {
 func (raster *screenRaster) TappedSecondary(event *fyne.PointEvent) {
 }
 func (raster *screenRaster) MouseIn(event *desktop.MouseEvent) {
-	if raster.disableInput {
+	if raster.disableInput || !raster.Visible() {
 		return
 	}
-	raster.Window.Canvas().Focus(raster)
+	if canvas := raster.Window.Canvas(); canvas != nil {
+		canvas.Focus(raster)
+	}
 	raster.mouseIn = true
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
