@@ -239,7 +239,7 @@ func dcVoltageWave(t float64, freq float64) float64 {
 func NewSpiClockGenerator() WaveformGenerator {
 	return func(t float64, freq float64) float64 {
 		if freq <= 0 {
-			return -1.0
+			return 0.0
 		}
 		// Calculate the fractional part of the bit period.
 		frac := math.Mod(t/(2*math.Pi), 1.0)
@@ -249,7 +249,7 @@ func NewSpiClockGenerator() WaveformGenerator {
 		if frac >= 0.25 && frac < 0.75 {
 			return 1.0
 		}
-		return -1.0
+		return 0.0
 	}
 }
 
@@ -259,7 +259,7 @@ func NewSpiDataGenerator(data uint32) WaveformGenerator {
 	slog.Debug("NewSpiDataGenerator", "data", data)
 	return func(t float64, freq float64) float64 {
 		if freq <= 0 {
-			return -1.0
+			return 0.0
 		}
 		bitIndex := int64(math.Floor(t / (2 * math.Pi)))
 		// We have 16 bits. MSB first.
@@ -272,6 +272,6 @@ func NewSpiDataGenerator(data uint32) WaveformGenerator {
 		if bit == 1 {
 			return 1.0
 		}
-		return -1.0
+		return 0.0
 	}
 }
