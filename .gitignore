@@ -31,3 +31,4 @@ github_wiki/*.md
 scratch/*
 waveform*.bin
 *.csv
+fynescope_bin
