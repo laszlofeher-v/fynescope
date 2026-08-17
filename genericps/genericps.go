@@ -98,7 +98,7 @@ type (
 	Message interface {
 		SetHandle(handle int16)
 		SetRspCh(rspCh chan struct{})
-		// SetRsp(rsp Response)
+		SetRsp(rsp Response)
 		Handle() (handle int16)
 		SetStatus(err error)
 		// RspCh() (rspCh chan Response)
@@ -1575,6 +1575,9 @@ func (m *MsgBase) RspCh() (rspCh chan struct{}) {
 func (m *MsgBase) Rsp() (rsp Response) {
 	rsp = m.rsp
 	return
+}
+func (m *MsgBase) SetRsp(rsp Response) {
+	m.rsp = rsp
 }
 func (r *RespBase) SetStatus(err error) {
 	r.status = err
