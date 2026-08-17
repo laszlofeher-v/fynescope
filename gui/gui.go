@@ -448,9 +448,8 @@ func (scp *ScpDesc) saveRasterToPng() {
 		if dir := scp.getLastSaveDir(); dir != nil {
 			fd.SetLocation(dir)
 		}
-		fd.Show()
-		if IsFuzzer() {
-			fd.Hide()
+		if !IsFuzzer() {
+			fd.Show()
 		}
 	}
 }
@@ -647,9 +646,8 @@ func (scp *ScpDesc) toggleGifRecording() {
 						if dir := scp.getLastSaveDir(); dir != nil {
 							fd.SetLocation(dir)
 						}
-						fd.Show()
-						if IsFuzzer() {
-							fd.Hide()
+						if !IsFuzzer() {
+							fd.Show()
 						}
 					})
 					return
@@ -692,9 +690,8 @@ func (scp *ScpDesc) saveWindowToPng() {
 		if dir := scp.getLastSaveDir(); dir != nil {
 			fd.SetLocation(dir)
 		}
-		fd.Show()
-		if IsFuzzer() {
-			fd.Hide()
+		if !IsFuzzer() {
+			fd.Show()
 		}
 	}
 }

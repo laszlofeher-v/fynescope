@@ -160,10 +160,14 @@ type TestControl struct {
 }
 
 var (
-	controls       map[string]TestControl
-	tabValidKeys   map[int][]string
-	controlsMtx    sync.RWMutex
-	FuzzerCommitID string
+	controls        map[string]TestControl
+	tabValidKeys    map[int][]string
+	controlsMtx     sync.RWMutex
+	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
+	// destruction. All rand* event helpers hold a read lock; randCloseWindow
+	// holds a write lock so no new events reach GLFW while a window is torn down.
+	fuzzerEventMtx  sync.RWMutex
+	FuzzerCommitID  string
 )
 
 func IsFuzzer() bool {
@@ -192,6 +196,18 @@ func wait() {
 	time.Sleep(sleepTime)
 }
 
+// doEvent is the safe wrapper for all fuzzer event dispatches.
+// It holds fuzzerEventMtx as a reader so that randCloseWindow (which holds the
+// write lock while tearing down a window) can quiesce all in-flight events
+// before destroying the underlying GLFW handle.
+func doEvent(fn func()) {
+	fuzzerEventMtx.RLock()
+	defer fuzzerEventMtx.RUnlock()
+	wait()
+	fyne.Do(fn)
+}
+
+
 var keyNames = []fyne.KeyName{
 	fyne.KeyUp, fyne.KeyDown, fyne.KeyLeft,
 	fyne.KeyRight, fyne.KeyDelete, fyne.KeyBackspace,
@@ -212,9 +228,8 @@ func randKey(name string) bool {
 	switch c := c.(type) {
 	case *disp7.DigitArray:
 		slog.Debug("randKey", "name", name)
-		wait()
 		key := keyNames[rand.Intn(len(keyNames))]
-		fyne.Do(func() {
+		doEvent(func() {
 			c.Window.Canvas().Focus(c)
 			c.KeyDown(&fyne.KeyEvent{Name: key})
 			c.KeyUp(&fyne.KeyEvent{Name: key})
@@ -222,8 +237,7 @@ func randKey(name string) bool {
 		})
 	case *digitEntry:
 		slog.Debug("randKey", "name", name)
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -234,8 +248,7 @@ func randKey(name string) bool {
 		})
 	case *widget.Entry:
 		slog.Debug("randKey", "name", name)
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -269,8 +282,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			var targetText string
 			switch name {
 			case ftFuncId:
@@ -303,8 +315,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 			n := rand.Intn(len(c.Options))
-			wait()
-			fyne.Do(func() {
+			doEvent(func() {
 				c.SetSelectedIndex(n)
 			})
 		} else {
@@ -317,8 +328,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 	default:
@@ -360,9 +370,8 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		if isFuzzer && n > 2 {
 			n = 2
 		}
-		wait()
 		for ; n > 0; n-- {
-			fyne.Do(func() {
+			doEvent(func() {
 				if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
 					return
 				}
@@ -387,9 +396,8 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randScroll", "name", name)
 		}
-		wait()
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		fyne.Do(func() {
+		doEvent(func() {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
@@ -399,10 +407,9 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		if isFuzzer && n > 2 {
 			n = 2
 		}
-		wait()
 		for ; n > 0; n-- {
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			fyne.Do(func() {
+			doEvent(func() {
 				c.Scrolled(e)
 			})
 		}
@@ -413,9 +420,8 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		if isFuzzer && n > 2 {
 			n = 2
 		}
-		wait()
 		for ; n > 0; n-- {
-			fyne.Do(func() {
+			doEvent(func() {
 				if int(c.Size().Width) <= 0 {
 					return
 				}
@@ -460,8 +466,7 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
 				return
 			}
@@ -479,16 +484,14 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *disp7.DigitArray:
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		wait()
-		fyne.Do(func() {
+		doEvent(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
@@ -670,6 +673,12 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 
 // randCloseWindow randomly selects a non-main window and closes it.
 // It returns true if a window was successfully selected and closed.
+//
+// Safety: closing a Fyne/GLFW window while another goroutine is dispatching
+// a mouse event on it causes a nil-pointer dereference inside GetCursorPos.
+// We prevent this by holding fuzzerEventMtx as a writer while the close
+// (and a short drain wait) is in progress. All other rand* helpers hold a
+// read lock around their fyne.Do calls, so they block until the close is done.
 func randCloseWindow(scp *ScpDesc) bool {
 	windows := scp.App.Driver().AllWindows()
 	if len(windows) <= 1 {
@@ -683,18 +692,24 @@ func randCloseWindow(scp *ScpDesc) bool {
 		}
 	}
 
-	if len(candidates) > 0 {
-		target := candidates[rand.Intn(len(candidates))]
-		if isFuzzer := true; isFuzzer {
-			slog.Debug("randCloseWindow", "title", target.Title())
-		}
-		wait()
-		fyne.Do(func() {
-			target.Close()
-		})
-		return true
+	if len(candidates) == 0 {
+		return false
 	}
-	return false
+
+	target := candidates[rand.Intn(len(candidates))]
+	slog.Debug("randCloseWindow", "title", target.Title())
+
+	// Acquire write lock: quiesces all pending fyne.Do event dispatches so that
+	// no mouse/key event can reach GLFW while we destroy the window handle.
+	fuzzerEventMtx.Lock()
+	defer fuzzerEventMtx.Unlock()
+
+	wait() // let any in-flight event already submitted to fyne.Do finish
+	fyne.Do(func() {
+		target.Close()
+	})
+	wait() // allow GLFW to process the window-destroyed notification
+	return true
 }
 
 // randClosePopup searches across all active windows for an open popup (overlay)
@@ -708,8 +723,7 @@ func randClosePopup(scp *ScpDesc) bool {
 				if isFuzzer := true; isFuzzer {
 					slog.Debug("randClosePopup")
 				}
-				wait()
-				fyne.Do(func() {
+				doEvent(func() {
 					top.Hide()
 				})
 				return true
@@ -872,27 +886,25 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 		selectedKey := validKeys[rand.Intn(len(validKeys))]
 
-		op = rand.Intn(6)
+		op = rand.Intn(100)
 		go func() {
 			n := 0
 			executed := false
-			switch op {
-			case 0:
+			switch {
+			case op < 25:
 				n := rand.Intn(32) - 16
 				executed = randDrag(selectedKey, float32(n))
-			case 1:
+			case op < 50:
 				n = rand.Intn(10) - 5
 				executed = randScroll(selectedKey, n)
-			case 2:
+			case op < 75:
 				executed = randTap(selectedKey)
-			case 3:
+			case op < 96:
 				executed = randKey(selectedKey)
-			case 4:
+			case op < 98:
 				executed = randCloseWindow(scp)
-			case 5:
-				executed = randClosePopup(scp)
 			default:
-				panic(8)
+				executed = randClosePopup(scp)
 			}
 			ready <- executed
 		}()

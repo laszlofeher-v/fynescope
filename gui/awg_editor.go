@@ -646,9 +646,8 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 				fd.SetLocation(lister)
 			}
 		}
-		fd.Show()
-		if IsFuzzer() {
-			fd.Hide()
+		if !IsFuzzer() {
+			fd.Show()
 		}
 	})
 	addToTest(importCsvBtn, "awgImportCsvBtn", -1)
@@ -684,9 +683,8 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 				fd.SetLocation(lister)
 			}
 		}
-		fd.Show()
-		if IsFuzzer() {
-			fd.Hide()
+		if !IsFuzzer() {
+			fd.Show()
 		}
 	})
 	addToTest(exportCsvBtn, "awgExportCsvBtn", -1)
