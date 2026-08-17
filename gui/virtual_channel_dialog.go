@@ -373,6 +373,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 			scp.virtualChWindow.Show()
 			fyne.Do(winContent.Refresh)
 		})
+		addToTest(undockBtn, "vchUndockBtn", vchTabIndex)
 	}
 
 	// Single-column layout: channel list in top pane, form fields in bottom pane.

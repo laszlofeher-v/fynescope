@@ -596,11 +596,18 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	}, "Select Waveform")
 
 	clearBtn := widget.NewButton("Clear", func() {
+		if scp.awgWindow == nil {
+			return
+		}
 		editor.clear()
 		waveformSelect.ClearSelected()
 	})
+	addToTest(clearBtn, "awgClearBtn", -1)
 
 	importCsvBtn := widget.NewButton("Import CSV", func() {
+		if scp.awgWindow == nil {
+			return
+		}
 		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil || reader == nil {
 				return
@@ -640,9 +647,16 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			}
 		}
 		fd.Show()
+		if IsFuzzer() {
+			fd.Hide()
+		}
 	})
+	addToTest(importCsvBtn, "awgImportCsvBtn", -1)
 
 	exportCsvBtn := widget.NewButton("Export CSV", func() {
+		if scp.awgWindow == nil {
+			return
+		}
 		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
 			if err != nil || writer == nil {
 				return
@@ -671,9 +685,16 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			}
 		}
 		fd.Show()
+		if IsFuzzer() {
+			fd.Hide()
+		}
 	})
+	addToTest(exportCsvBtn, "awgExportCsvBtn", -1)
 
 	patternGenBtn := widget.NewButton("Pattern Gen", func() {
+		if scp.awgWindow == nil {
+			return
+		}
 		if scp.patternWindow != nil {
 			scp.patternWindow.Show()
 			return
@@ -821,8 +842,12 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		)
 
 		closeBtn := widget.NewButton("Close", func() {
+			if scp.patternWindow == nil {
+				return
+			}
 			scp.patternWindow.Close()
 		})
+		addToTest(closeBtn, "awgPatternCloseBtn", -1)
 
 		content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
 		scp.patternWindow.SetContent(content)
@@ -831,6 +856,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		})
 		scp.patternWindow.Show()
 	})
+	addToTest(patternGenBtn, "awgPatternGenBtn", -1)
 
 	var err error
 	pointsDisp, err = disp7.NewCustomDisp7Array(5, 0, 32768, 10,
@@ -846,6 +872,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	}
 
 	applyBtn := widget.NewButton("Apply to Generator", func() {
+		if scp.awgWindow == nil {
+			return
+		}
 		waveform := make([]int16, len(editor.values))
 		for i, v := range editor.values {
 			waveform[i] = int16(v * 32767.0)
@@ -854,6 +883,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			applyCb(waveform)
 		}
 	})
+	addToTest(applyBtn, "awgApplyBtn", -1)
 	applyBtn.Importance = widget.HighImportance
 
 	toolbar := container.NewHBox(
@@ -1090,8 +1120,12 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 	)
 
 	closeBtn := widget.NewButton("Close", func() {
+		if scp.patternWindow == nil {
+			return
+		}
 		scp.patternWindow.Close()
 	})
+	addToTest(closeBtn, "awgPatternCloseBtn", -1)
 
 	content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
 	scp.patternWindow.SetContent(content)

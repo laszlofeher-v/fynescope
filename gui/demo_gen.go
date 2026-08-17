@@ -434,6 +434,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 				fyne.Do(undockButton.Refresh)
 				fyne.Do(genControls.Refresh)
 			})
+			addToTest(undockButton, "demoGenUndockBtn", genTabIndex)
 		}
 		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
 		addToTest(freqSetAnalog, genFreqSetId, genTabIndex)
@@ -582,6 +583,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 				scp.applyDemoGenSettings(ch, genSettings)
 			})
 		})
+		addToTest(awgEditorBtn, "demoAwgEditorBtn", genTabIndex)
 
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), nameLabel, show, check,
@@ -652,6 +654,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			scp.genWindow.Show()
 		})
 		cont.Add(undockButton)
+		addToTest(undockButton, "demoGenUndockBtnMain", genTabIndex)
 	}
 
 	tabs := container.NewAppTabs()

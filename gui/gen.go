@@ -311,6 +311,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 				fyne.Do(genControls.Refresh)
 				// scp.genFunc.Content.Refresh()
 			})
+			addToTest(undockButton, "genUndockBtn", genTabIndex)
 		}
 		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
 		addToTest(freqSetAnalog, genFreqSetId, genTabIndex)
@@ -457,6 +458,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 				scp.applyInternalGenSettings(scp.Settings.GenPanel.On)
 			})
 		})
+		addToTest(awgEditorBtn, "genAwgEditorBtn", genTabIndex)
 		if undockable {
 			top = container.New(layout.NewHBoxLayout(), show, check,
 				container.New(layout.NewVBoxLayout(), waveType), undockButton)

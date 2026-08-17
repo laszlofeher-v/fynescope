@@ -176,6 +176,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 				scp.decodeWindow.Close()
 			}
 		})
+		addToTest(undockBtn, "decodeUndockBtn", decodeTabIndex)
 	}
 
 	topRow := container.NewHBox(layout.NewSpacer())
