@@ -449,6 +449,9 @@ func (scp *ScpDesc) saveRasterToPng() {
 			fd.SetLocation(dir)
 		}
 		fd.Show()
+		if IsFuzzer() {
+			fd.Hide()
+		}
 	}
 }
 
@@ -645,6 +648,9 @@ func (scp *ScpDesc) toggleGifRecording() {
 							fd.SetLocation(dir)
 						}
 						fd.Show()
+						if IsFuzzer() {
+							fd.Hide()
+						}
 					})
 					return
 				}
@@ -687,6 +693,9 @@ func (scp *ScpDesc) saveWindowToPng() {
 			fd.SetLocation(dir)
 		}
 		fd.Show()
+		if IsFuzzer() {
+			fd.Hide()
+		}
 	}
 }
 

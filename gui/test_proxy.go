@@ -166,6 +166,10 @@ var (
 	FuzzerCommitID string
 )
 
+func IsFuzzer() bool {
+	return FuzzerCommitID != "" || os.Getenv("FUZZER_COMMIT_ID") != ""
+}
+
 func init() {
 	controls = make(map[string]TestControl)
 	tabValidKeys = make(map[int][]string)
@@ -664,6 +668,57 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	return w.target.Write(p)
 }
 
+// randCloseWindow randomly selects a non-main window and closes it.
+// It returns true if a window was successfully selected and closed.
+func randCloseWindow(scp *ScpDesc) bool {
+	windows := scp.App.Driver().AllWindows()
+	if len(windows) <= 1 {
+		return false
+	}
+
+	var candidates []fyne.Window
+	for _, w := range windows {
+		if w != scp.Window && w.Title() != "Fuzzer Status" {
+			candidates = append(candidates, w)
+		}
+	}
+
+	if len(candidates) > 0 {
+		target := candidates[rand.Intn(len(candidates))]
+		if isFuzzer := true; isFuzzer {
+			slog.Debug("randCloseWindow", "title", target.Title())
+		}
+		wait()
+		fyne.Do(func() {
+			target.Close()
+		})
+		return true
+	}
+	return false
+}
+
+// randClosePopup searches across all active windows for an open popup (overlay)
+// and hides it, returning true if one was successfully dismissed.
+func randClosePopup(scp *ScpDesc) bool {
+	windows := scp.App.Driver().AllWindows()
+	for _, w := range windows {
+		if w.Canvas() != nil && w.Canvas().Overlays() != nil {
+			top := w.Canvas().Overlays().Top()
+			if top != nil {
+				if isFuzzer := true; isFuzzer {
+					slog.Debug("randClosePopup")
+				}
+				wait()
+				fyne.Do(func() {
+					top.Hide()
+				})
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Random is the primary entry point for the Automated UI Fuzzer.
 // It rapidly injects randomized GUI events into the Fyne event loop to
 // aggressively test application stability, race conditions, and thread safety.
@@ -817,7 +872,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 		selectedKey := validKeys[rand.Intn(len(validKeys))]
 
-		op = rand.Intn(4)
+		op = rand.Intn(6)
 		go func() {
 			n := 0
 			executed := false
@@ -832,6 +887,10 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				executed = randTap(selectedKey)
 			case 3:
 				executed = randKey(selectedKey)
+			case 4:
+				executed = randCloseWindow(scp)
+			case 5:
+				executed = randClosePopup(scp)
 			default:
 				panic(8)
 			}

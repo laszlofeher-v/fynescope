@@ -136,6 +136,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 				scp.extgenWindow.Close()
 			}
 		})
+		addToTest(undockButton, "extGenUndockBtn", extgenTabIndex)
 	}
 
 	createChannelColumn := func(chIdx int, scpiCh scpi.ChType) *fyne.Container {
