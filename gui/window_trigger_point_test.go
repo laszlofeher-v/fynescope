@@ -79,6 +79,7 @@ func TestWindowTriggerPointViewer_MouseEvents(t *testing.T) {
 	assert.False(t, ok)
 
 	// Test mouseDown sets selection
+	tp.mouseMoved(35, 35)
 	tp.mouseDown(0, 0, 35, 35) // inside lImgRect
 	assert.True(t, tp.lSelected)
 	assert.False(t, tp.uhSelected)
@@ -88,6 +89,7 @@ func TestWindowTriggerPointViewer_MouseEvents(t *testing.T) {
 	assert.False(t, tp.lSelected)
 
 	// Test mouseDown for lhImgRect
+	tp.mouseMoved(55, 55)
 	tp.mouseDown(0, 0, 55, 55)
 	assert.True(t, tp.lhSelected)
 	assert.False(t, tp.lSelected)

@@ -61,10 +61,11 @@ func TestWindowPulseWidthTriggerPointViewer_MouseEvents(t *testing.T) {
 	assert.True(t, ok)
 
 	// Test cursor outside
-	_, ok = tp.cursor(0, 0)
+	_, ok = tp.cursor(100, 100)
 	assert.False(t, ok)
 
 	// Test mouseDown sets selection
+	tp.mouseMoved(15, 15)
 	tp.mouseDown(0, 0, 15, 15) // inside lImgRect
 	assert.True(t, tp.lSelected)
 	assert.False(t, tp.lhSelected)
@@ -74,6 +75,7 @@ func TestWindowPulseWidthTriggerPointViewer_MouseEvents(t *testing.T) {
 	assert.False(t, tp.lSelected)
 
 	// Test mouseDown for lhImgRect
+	tp.mouseMoved(35, 35)
 	tp.mouseDown(0, 0, 35, 35)
 	assert.True(t, tp.lhSelected)
 	assert.False(t, tp.lSelected)
