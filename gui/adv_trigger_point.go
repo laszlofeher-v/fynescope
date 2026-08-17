@@ -108,7 +108,9 @@ func (tp *advTriggerPointViewer) mouseUp(button desktop.MouseButton, modifier fy
 func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 	if scp.triggerSettingMsg.UpperHysteresis != mv {
 		scp.triggerSettingMsg.UpperHysteresis = mv
-		scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
+		if scp.triggerSource >= 0 && int(scp.triggerSource) < len(scp.Settings.Channels) {
+			scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
+		}
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
@@ -121,7 +123,9 @@ func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 func (scp *ScpDesc) SetTriggerLowerHysteresis(mv int32) {
 	if scp.triggerSettingMsg.LowerHysteresis != mv {
 		scp.triggerSettingMsg.LowerHysteresis = mv
-		scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
+		if scp.triggerSource >= 0 && int(scp.triggerSource) < len(scp.Settings.Channels) {
+			scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
+		}
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {

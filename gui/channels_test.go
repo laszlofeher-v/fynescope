@@ -23,9 +23,9 @@ func TestRemoveIndex(t *testing.T) {
 
 func TestSortMapString(t *testing.T) {
 	testMap := map[string]genericps.RangeEnum{
-		"10V":  genericps.Range_10v,  // higher numeric value
-		"5V":   genericps.Range_5v,
-		"20mV": genericps.Range_20mv, // lowest numeric value
+		"10V":  genericps.RangeEnum(30), // higher numeric value
+		"5V":   genericps.RangeEnum(20),
+		"20mV": genericps.RangeEnum(10), // lowest numeric value
 	}
 
 	// This function sorts keys descending by map values. 
