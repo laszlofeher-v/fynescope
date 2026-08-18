@@ -23,6 +23,10 @@ In the Wiki, you will find detailed guides on:
 <p align="center">
   <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
 </p>
+<p align="center">
+  <img src="pulsewidth.png" width="100%" alt="Fynescope Interface Screenshot">
+</p>
+
 
 ## Limitations
 `fynescope` is a focused, early-stage project with specific hardware dependencies and some missing advanced features compared to the official PicoScope 7 software (like protocol decoding, deep measure, and MSO support). 
