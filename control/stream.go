@@ -199,5 +199,8 @@ func streamMode(psControl *PscDesc) state {
 	}
 
 	stateMachine()
+	if nextState == nil {
+		nextState = idle
+	}
 	return nextState
 }

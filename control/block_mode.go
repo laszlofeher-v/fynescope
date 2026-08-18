@@ -259,5 +259,8 @@ func blockMode(psControl *PscDesc) state {
 
 	// begin BlockMode
 	stateMachine()
+	if nextState == nil {
+		nextState = idle
+	}
 	return nextState
 }
