@@ -119,7 +119,7 @@ func (psControl *PscDesc) demoGeneratorMonitor() {
 					psControl.Con.SetDemoGen(msg.Channel, msg.On, msg.OffsetVoltage, msg.PkToPK, msg.WaveType,
 						msg.StartFrequency, msg.StopFrequency, msg.Increment, msg.DwellTime, msg.SweepType, msg.Operation,
 						msg.Shots, msg.Sweeps, msg.TriggerType, msg.TriggerSource, msg.ExtInThreshold, msg.Phase,
-						msg.ArbitraryWaveform, msg.SpiDataValue)
+						msg.ArbitraryWaveform, msg.SpiDataValue, msg.I2cAddressValue)
 					psControl.requestRestart()
 				}
 			}

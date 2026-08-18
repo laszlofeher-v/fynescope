@@ -20,7 +20,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	})
 	enableCheck.SetChecked(settings.Enabled)
 
-	protocolSelect := selectscroll.NewSelectScroll([]string{"UART", "SPI"}, func(s string, _ selectscroll.Exception) {
+	protocolSelect := selectscroll.NewSelectScroll([]string{"UART", "SPI", "I2C"}, func(s string, _ selectscroll.Exception) {
 		if settings.Protocol != s {
 			settings.Protocol = s
 			scp.refreshDecodeTab() // Refresh to show/hide Ch2
@@ -56,6 +56,49 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	if settings.Channel2 >= 0 && settings.Channel2 < len(chNames) {
 		ch2Select.SetSelected(chNames[settings.Channel2])
 	}
+
+	chNamesWithNone := []string{"None", "Ch A", "Ch B", "Ch C", "Ch D"}
+
+	ch3Select := selectscroll.NewSelectScroll(chNamesWithNone, func(s string, _ selectscroll.Exception) {
+		if s == "None" {
+			settings.Channel3 = -1
+			return
+		}
+		for i, name := range chNames {
+			if s == name {
+				settings.Channel3 = i
+				break
+			}
+		}
+	}, "Channel 3")
+	if settings.Channel3 >= 0 && settings.Channel3 < len(chNames) {
+		ch3Select.SetSelected(chNames[settings.Channel3])
+	} else {
+		ch3Select.SetSelected("None")
+	}
+
+	ch4Select := selectscroll.NewSelectScroll(chNamesWithNone, func(s string, _ selectscroll.Exception) {
+		if s == "None" {
+			settings.Channel4 = -1
+			return
+		}
+		for i, name := range chNames {
+			if s == name {
+				settings.Channel4 = i
+				break
+			}
+		}
+	}, "Channel 4")
+	if settings.Channel4 >= 0 && settings.Channel4 < len(chNames) {
+		ch4Select.SetSelected(chNames[settings.Channel4])
+	} else {
+		ch4Select.SetSelected("None")
+	}
+
+	csActiveHighCheck := widget.NewCheck("", func(b bool) {
+		settings.CSActiveHigh = b
+	})
+	csActiveHighCheck.SetChecked(settings.CSActiveHigh)
 
 	baudrates := []string{"300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "38400", "57600", "115200", "128000", "256000", "921600"}
 	baudSelect := selectscroll.NewSelectScroll(baudrates, func(s string, _ selectscroll.Exception) {
@@ -97,13 +140,29 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		}
 	}
 
+	ch1Label := "Channel 1 (Rx/CLK)"
+	if settings.Protocol == "I2C" {
+		ch1Label = "Channel 1 (SCL)"
+	}
+
 	form := widget.NewForm(
 		widget.NewFormItem("Protocol", protocolSelect),
-		widget.NewFormItem("Channel 1 (Rx/CLK)", ch1Select),
+		widget.NewFormItem(ch1Label, ch1Select),
 	)
 
 	if settings.Protocol == "SPI" {
 		form.Append("Channel 2 (MOSI)", ch2Select)
+		form.Append("Channel 3 (MISO)", ch3Select)
+		form.Append("Channel 4 (CS)", ch4Select)
+		form.Append("CS Active High", csActiveHighCheck)
+	}
+
+	if settings.Protocol == "UART" {
+		form.Append("Channel 2 (Tx)", ch2Select)
+	}
+
+	if settings.Protocol == "I2C" {
+		form.Append("Channel 2 (SDA)", ch2Select)
 	}
 
 	if settings.Protocol == "UART" {

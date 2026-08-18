@@ -272,6 +272,8 @@ const (
 	Arbitrary
 	SpiClock
 	SpiData
+	I2cClock
+	I2cData
 )
 
 type SweepTypeEnum int
@@ -566,6 +568,8 @@ func loadConstants() {
 	genericps.Arbitrary = genericps.WaveTypeEnum(Arbitrary)
 	genericps.SpiClock = genericps.WaveTypeEnum(SpiClock)
 	genericps.SpiData = genericps.WaveTypeEnum(SpiData)
+	genericps.I2cClock = genericps.WaveTypeEnum(I2cClock)
+	genericps.I2cData = genericps.WaveTypeEnum(I2cData)
 	genericps.InputRanges = inputRanges
 	genericps.ChannelInfoRanges = int16(ChannelInfoRanges)
 	genericps.RangeValuesMv = make(map[genericps.RangeEnum]float64)

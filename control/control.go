@@ -120,6 +120,7 @@ type (
 		DeltaPhaseIncrement                                 uint32
 		IndexMode                                           genericps.IndexMode
 		SpiDataValue                                        uint32
+		I2cAddressValue                                     uint32
 	}
 
 	GeneratorDescMsg struct {
@@ -215,7 +216,7 @@ func (g *GeneratorDesc) Equals(other *GeneratorDesc) bool {
 		g.Phase != other.Phase || g.Channel != other.Channel || g.On != other.On ||
 		g.StartDeltaPhase != other.StartDeltaPhase || g.StopDeltaPhase != other.StopDeltaPhase ||
 		g.DeltaPhaseIncrement != other.DeltaPhaseIncrement || g.IndexMode != other.IndexMode ||
-		g.SpiDataValue != other.SpiDataValue {
+		g.SpiDataValue != other.SpiDataValue || g.I2cAddressValue != other.I2cAddressValue {
 		return false
 	}
 	if len(g.ArbitraryWaveform) != len(other.ArbitraryWaveform) {

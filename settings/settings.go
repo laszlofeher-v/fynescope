@@ -151,6 +151,7 @@ type (
 		ImpedanceMode        string                    `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
 		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
 		SpiDataValue         uint32                    `yaml:"spi_data_value"` // used for SpiData generator
+		I2cAddressValue      uint32                    `yaml:"i2c_address_value"` // used for I2cData generator
 		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
 	DftSettings struct {
@@ -185,6 +186,9 @@ type (
 		Protocol      string `yaml:"protocol"` // "UART" or "SPI"
 		Channel1      int    `yaml:"channel1"` // UART Rx or SPI CLK
 		Channel2      int    `yaml:"channel2"` // SPI MOSI (Data)
+		Channel3      int    `yaml:"channel3"` // SPI MISO (Data)
+		Channel4      int    `yaml:"channel4"` // SPI CS
+		CSActiveHigh  bool   `yaml:"csactivehigh"`
 		BaudRate      int    `yaml:"baudrate"`
 		DataBits      int    `yaml:"databits"`
 		StopBits      string `yaml:"stopbits"`
@@ -314,18 +318,21 @@ func NewDefaultSettings() *PsSettings {
 				TriggerTimeOffset: 0, NoiseAmplitude: 0, PhaseNoiseDegree: 0, Phase: 0},
 		},
 		Decode: DecodeSettings{
-			Enabled:    false,
-			Protocol:   "UART",
-			Channel1:   int(genericps.ChA),
-			Channel2:   int(genericps.ChB),
-			BaudRate:   115200,
-			DataBits:   8,
-			StopBits:   "1",
-			Parity:     "None",
-			BitOrder:   "LSB First",
-			Invert:     false,
-			Threshold:  0,
-			Hysteresis: 100,
+			Enabled:      false,
+			Protocol:     "UART",
+			Channel1:     int(genericps.ChA),
+			Channel2:     int(genericps.ChB),
+			Channel3:     -1,
+			Channel4:     -1,
+			CSActiveHigh: false,
+			BaudRate:     115200,
+			DataBits:     8,
+			StopBits:     "1",
+			Parity:       "None",
+			BitOrder:     "LSB First",
+			Invert:       false,
+			Threshold:    0,
+			Hysteresis:   100,
 		},
 		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
 		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
