@@ -156,88 +156,76 @@ func TestDecodeSPI(t *testing.T) {
 }
 
 func TestDecodeI2C(t *testing.T) {
-	sclBuffer := make([]int16, 200)
-	sdaBuffer := make([]int16, 200)
+	sclBuffer := make([]int16, 0, 500)
+	sdaBuffer := make([]int16, 0, 500)
 
-	// idle high
-	for i := range sclBuffer {
-		sclBuffer[i] = 1000
-		sdaBuffer[i] = 1000
+	addSample := func(scl, sda int16) {
+		sclBuffer = append(sclBuffer, scl)
+		sdaBuffer = append(sdaBuffer, sda)
 	}
 
-	// START: SCL high, SDA falls
-	sdaBuffer[10] = 0
+	idle := func(count int) {
+		for i := 0; i < count; i++ {
+			addSample(1000, 1000)
+		}
+	}
 
-	// Write Addr byte: 0x50 (write, so byte is 0xA0)
-	// Addr byte = 10100000 -> bit7=1, bit6=0, bit5=1, bit4=0, bit3=0, bit2=0, bit1=0, bit0=0
-	bits := []int{1, 0, 1, 0, 0, 0, 0, 0}
+	start := func() {
+		addSample(1000, 1000)
+		addSample(1000, 0)
+		addSample(0, 0)
+	}
+
+	stop := func() {
+		addSample(0, 0)
+		addSample(1000, 0)
+		addSample(1000, 1000)
+	}
+
+	writeBit := func(bit int) {
+		sdaVal := int16(0)
+		if bit == 1 {
+			sdaVal = 1000
+		}
+		addSample(0, sdaVal)
+		addSample(1000, sdaVal)
+		addSample(1000, sdaVal)
+		addSample(0, sdaVal)
+	}
+
+	writeByte := func(val byte) {
+		for i := 7; i >= 0; i-- {
+			bit := int((val >> i) & 1)
+			writeBit(bit)
+		}
+	}
+
+	writeAck := func() {
+		writeBit(0) // ACK is 0
+	}
+
+	// Build the waveform
+	idle(5)
+	start()
 	
-	idx := 15
-	for _, bit := range bits {
-		sclBuffer[idx] = 0 // scl low
-		if bit == 1 {
-			sdaBuffer[idx] = 1000
-		} else {
-			sdaBuffer[idx] = 0
-		}
-		idx += 2
-		sclBuffer[idx] = 1000 // scl high (sample)
-		if bit == 1 {
-			sdaBuffer[idx] = 1000
-		} else {
-			sdaBuffer[idx] = 0
-		}
-		idx += 2
-	}
+	// Addr byte: 0xA0 (write)
+	writeByte(0xA0)
+	writeAck()
 
-	// ACK
-	sclBuffer[idx] = 0
-	sdaBuffer[idx] = 0 // ACK
-	idx += 2
-	sclBuffer[idx] = 1000
-	sdaBuffer[idx] = 0
-	idx += 2
+	// Data byte 1: 0x5A
+	writeByte(0x5A)
+	writeAck()
 
-	// Data byte: 0x5A -> 01011010
-	dataBits := []int{0, 1, 0, 1, 1, 0, 1, 0}
-	for _, bit := range dataBits {
-		sclBuffer[idx] = 0 // scl low
-		if bit == 1 {
-			sdaBuffer[idx] = 1000
-		} else {
-			sdaBuffer[idx] = 0
-		}
-		idx += 2
-		sclBuffer[idx] = 1000 // scl high (sample)
-		if bit == 1 {
-			sdaBuffer[idx] = 1000
-		} else {
-			sdaBuffer[idx] = 0
-		}
-		idx += 2
-	}
+	// Data byte 2: 0x3C
+	writeByte(0x3C)
+	writeAck()
 
-	// ACK
-	sclBuffer[idx] = 0
-	sdaBuffer[idx] = 0 // ACK
-	idx += 2
-	sclBuffer[idx] = 1000
-	sdaBuffer[idx] = 0
-	idx += 2
-
-	// STOP: scl high, sda rises
-	sclBuffer[idx] = 0
-	sdaBuffer[idx] = 0
-	idx += 2
-	sclBuffer[idx] = 1000
-	sdaBuffer[idx] = 0
-	idx += 2
-	sclBuffer[idx] = 1000
-	sdaBuffer[idx] = 1000
+	stop()
+	idle(5)
 
 	state := DecodeI2C(sclBuffer, sdaBuffer, 1e-6, 0, 500, 100, false)
-	assert.Len(t, state.Bytes, 2)
-	if len(state.Bytes) == 2 {
+	assert.Len(t, state.Bytes, 3)
+	if len(state.Bytes) == 3 {
 		assert.Equal(t, uint16(0xA0), state.Bytes[0].Value)
 		assert.Equal(t, "A:A0(W)", state.Bytes[0].Label)
 		assert.False(t, state.Bytes[0].Error)
@@ -245,5 +233,9 @@ func TestDecodeI2C(t *testing.T) {
 		assert.Equal(t, uint16(0x5A), state.Bytes[1].Value)
 		assert.Equal(t, "D:5A", state.Bytes[1].Label)
 		assert.False(t, state.Bytes[1].Error)
+
+		assert.Equal(t, uint16(0x3C), state.Bytes[2].Value)
+		assert.Equal(t, "D:3C", state.Bytes[2].Label)
+		assert.False(t, state.Bytes[2].Error)
 	}
 }
