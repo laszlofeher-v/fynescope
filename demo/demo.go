@@ -1148,7 +1148,7 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
-	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16, spiDataValue uint32) (err error) {
+	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16, spiDataValue uint32, i2cAddressValue uint32) (err error) {
 
 	ch := int(channel)
 	if ch < 0 || ch >= numberOfChannels {
@@ -1170,6 +1170,11 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 			channels[ch].genWaveFunction = NewSpiDataGenerator(spiDataValue)
 		} else if waveType == genericps.SpiClock {
 			channels[ch].genWaveFunction = NewSpiClockGenerator()
+		} else if waveType == genericps.I2cData {
+			slog.Debug("SetDemoGen I2cData", "spiDataValue", spiDataValue, "i2cAddressValue", i2cAddressValue)
+			channels[ch].genWaveFunction = NewI2cDataGenerator(i2cAddressValue, spiDataValue)
+		} else if waveType == genericps.I2cClock {
+			channels[ch].genWaveFunction = NewI2cClockGenerator()
 		} else {
 			channels[ch].genWaveFunction = NewWaveformGenerator(WaveTypeEnum(waveType))
 		}

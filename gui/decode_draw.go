@@ -54,51 +54,66 @@ func (scp *ScpDesc) drawDecode(img rasterImage, bounds image.Rectangle, w float6
 			xEnd = w
 		}
 
-		rect := image.Rect(int(xStart)+bounds.Min.X, yPos, int(xEnd)+bounds.Min.X, yPos+20)
+		drawBox := func(val uint16, y int, bgColor color.Color, label string) {
+			rect := image.Rect(int(xStart)+bounds.Min.X, y, int(xEnd)+bounds.Min.X, y+20)
+
+			// Draw background box
+			draw.Draw(img.(draw.Image), rect, &image.Uniform{bgColor}, image.ZP, draw.Src)
+			// Draw border
+			borderRect := rect
+			borderRect.Max.X = borderRect.Min.X + 1
+			draw.Draw(img.(draw.Image), borderRect, &image.Uniform{color.RGBA{255, 255, 255, 255}}, image.ZP, draw.Src)
+
+			// Draw text
+			text := fmt.Sprintf("%02X", val)
+			if label != "" {
+				text = label
+			}
+			asciiText := ""
+			if scp.Settings.Decode.Protocol == "UART" && val >= 32 && val <= 126 {
+				asciiText = fmt.Sprintf(" ('%c')", val)
+			}
+
+			fullText := text + asciiText
+			textWidth := len(fullText) * f.Width
+
+			if float64(rect.Dx()) > float64(textWidth)+4 {
+				text = fullText
+			} else {
+				textWidth = len(text) * f.Width
+				if float64(rect.Dx()) <= float64(textWidth)+4 {
+					text = ""
+				}
+			}
+
+			if text != "" {
+				// Center text
+				x := rect.Min.X + (rect.Dx()-textWidth)/2
+				yText := rect.Min.Y + 14 // Baseline
+
+				d := &font.Drawer{
+					Dst:  img.(draw.Image),
+					Src:  image.NewUniform(textColor),
+					Face: f,
+					Dot:  fixed.Point26_6{X: fixed.I(x), Y: fixed.I(yText)},
+				}
+				d.DrawString(text)
+			}
+		}
 
 		bgColor := boxColor
 		if result.Error {
 			bgColor = errColor
 		}
 
-		// Draw background box
-		draw.Draw(img.(draw.Image), rect, &image.Uniform{bgColor}, image.ZP, draw.Src)
-		// Draw border
-		borderRect := rect
-		borderRect.Max.X = borderRect.Min.X + 1
-		draw.Draw(img.(draw.Image), borderRect, &image.Uniform{color.RGBA{255, 255, 255, 255}}, image.ZP, draw.Src)
-
-		// Draw text
-		text := fmt.Sprintf("%02X", result.Value)
-		asciiText := ""
-		if scp.Settings.Decode.Protocol == "UART" && result.Value >= 32 && result.Value <= 126 {
-			asciiText = fmt.Sprintf(" ('%c')", result.Value)
-		}
-
-		fullText := text + asciiText
-		textWidth := len(fullText) * f.Width
-
-		if float64(rect.Dx()) > float64(textWidth)+4 {
-			text = fullText
-		} else {
-			textWidth = len(text) * f.Width
-			if float64(rect.Dx()) <= float64(textWidth)+4 {
-				text = ""
+		drawBox(result.Value, yPos, bgColor, result.Label)
+		
+		if result.HasValue2 {
+			misoColor := color.RGBA{50, 50, 150, 200}
+			if result.Error {
+				misoColor = errColor
 			}
-		}
-
-		if text != "" {
-			// Center text
-			x := rect.Min.X + (rect.Dx()-textWidth)/2
-			y := rect.Min.Y + 14 // Baseline
-
-			d := &font.Drawer{
-				Dst:  img.(draw.Image),
-				Src:  image.NewUniform(textColor),
-				Face: f,
-				Dot:  fixed.Point26_6{X: fixed.I(x), Y: fixed.I(y)},
-			}
-			d.DrawString(text)
+			drawBox(result.Value2, yPos+22, misoColor, "")
 		}
 	}
 

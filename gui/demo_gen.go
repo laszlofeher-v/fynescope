@@ -69,6 +69,7 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 	msg.ExtInThreshold = 0
 	msg.Phase = genSettings.Phase
 	msg.SpiDataValue = genSettings.SpiDataValue
+	msg.I2cAddressValue = genSettings.I2cAddressValue
 
 	if genSettings.On {
 		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
@@ -131,6 +132,8 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			"Arbitrary": genericps.Arbitrary,
 			"SpiClock":  genericps.SpiClock,
 			"SpiData":   genericps.SpiData,
+			"I2cClock":  genericps.I2cClock,
+			"I2cData":   genericps.I2cData,
 		}
 		var keyVal []keyValDesc
 		for key, val := range waveTypeMap {
@@ -176,7 +179,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			amp                                                              *disp7.DigitArray
 			raiseFallTimeDisp, noiseAmplitudeDisp, phaseNoiseDisp, phaseDisp *disp7.DigitArray
 			dwellTime                                                        *disp7.DigitArray
-			spiDataDisp                                                      *disp16.HexArray
+			spiDataDisp, i2cAddressDisp                                      *disp16.HexArray
 			undockButton                                                     *widget.Button
 			nameLabel                                                        *canvas.Text
 		)
@@ -337,10 +340,17 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 				raiseFallTimeDisp.Hide()
 			}
 			if spiDataDisp != nil {
-				if genSettings.WaveType == genericps.SpiData {
+				if genSettings.WaveType == genericps.SpiData || genSettings.WaveType == genericps.I2cData {
 					spiDataDisp.Show()
 				} else {
 					spiDataDisp.Hide()
+				}
+			}
+			if i2cAddressDisp != nil {
+				if genSettings.WaveType == genericps.I2cData {
+					i2cAddressDisp.Show()
+				} else {
+					i2cAddressDisp.Hide()
 				}
 			}
 			scp.applyDemoGenSettings(ch, genSettings)
@@ -405,6 +415,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 					offset.SilentSetValue(int(genSettings.OffsetVoltage))
 					raiseFallTimeDisp.SilentSetValue(int(genSettings.RaiseFallTimePercent * 100))
 					spiDataDisp.SetValue(uint64(genSettings.SpiDataValue))
+					i2cAddressDisp.SetValue(uint64(genSettings.I2cAddressValue))
 					noiseAmplitudeDisp.SilentSetValue(int(genSettings.NoiseAmplitude))
 					phaseNoiseDisp.SilentSetValue(int(math.Round(genSettings.PhaseNoiseDegree * 100)))
 					scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genTab.Content)
@@ -552,7 +563,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		setOffsetMinMax()
 		offset.SilentSetValue(int(genSettings.OffsetVoltage))
 
-		spiDataDisp, err = disp16.NewHexArray(4, scp.Window, chCol, false, "SPI Data:")
+		spiDataDisp, err = disp16.NewHexArray(4, scp.Window, chCol, false, "SPI/I2C Data:")
 		if err != nil {
 			return
 		}
@@ -561,8 +572,21 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			scp.applyDemoGenSettings(ch, genSettings)
 		}
 		spiDataDisp.SetValue(uint64(genSettings.SpiDataValue))
-		if genSettings.WaveType != genericps.SpiData {
+		if genSettings.WaveType != genericps.SpiData && genSettings.WaveType != genericps.I2cData {
 			spiDataDisp.Hide()
+		}
+
+		i2cAddressDisp, err = disp16.NewHexArray(2, scp.Window, chCol, false, "I2C Addr:")
+		if err != nil {
+			return
+		}
+		i2cAddressDisp.OnChanged = func(v uint64) {
+			genSettings.I2cAddressValue = uint32(v)
+			scp.applyDemoGenSettings(ch, genSettings)
+		}
+		i2cAddressDisp.SetValue(uint64(genSettings.I2cAddressValue))
+		if genSettings.WaveType != genericps.I2cData {
+			i2cAddressDisp.Hide()
 		}
 
 		fLabel := widget.NewLabel("Freq")
@@ -619,7 +643,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
-			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp, spiDataDisp,
+			sweepBox, amp, offset, phaseDisp, raiseFallTimeDisp, spiDataDisp, i2cAddressDisp,
 			noiseAmplitudeDisp, phaseNoiseDisp, operationBox, calcBox, awgEditorBtn)
 		box = container.New(layout.NewVBoxLayout(), top, analog, digital)
 		show.SetChecked(genSettings.Digital)

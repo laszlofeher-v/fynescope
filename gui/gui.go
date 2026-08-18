@@ -1278,7 +1278,23 @@ func (scp *ScpDesc) build2000Gui() {
 				}
 			} else if scp.Settings.Decode.Protocol == "SPI" {
 				if ch1 >= 0 && ch1 < len(buffers) && ch2 >= 0 && ch2 < len(buffers) {
-					newDecodeState = control.DecodeSPI(buffers[ch1], buffers[ch2],
+					ch3 := scp.Settings.Decode.Channel3
+					ch4 := scp.Settings.Decode.Channel4
+					var misoBuffer []int16
+					var csBuffer []int16
+					if ch3 >= 0 && ch3 < len(buffers) {
+						misoBuffer = buffers[ch3]
+					}
+					if ch4 >= 0 && ch4 < len(buffers) {
+						csBuffer = buffers[ch4]
+					}
+					newDecodeState = control.DecodeSPI(buffers[ch1], buffers[ch2], misoBuffer, csBuffer,
+						scp.Settings.Decode.CSActiveHigh, samplingTimeInterval, triggerTimeOffset,
+						scp.Settings.Decode.Threshold, scp.Settings.Decode.Hysteresis, scp.Settings.Decode.Invert)
+				}
+			} else if scp.Settings.Decode.Protocol == "I2C" {
+				if ch1 >= 0 && ch1 < len(buffers) && ch2 >= 0 && ch2 < len(buffers) {
+					newDecodeState = control.DecodeI2C(buffers[ch1], buffers[ch2],
 						samplingTimeInterval, triggerTimeOffset, scp.Settings.Decode.Threshold,
 						scp.Settings.Decode.Hysteresis, scp.Settings.Decode.Invert)
 				}

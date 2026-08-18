@@ -282,3 +282,102 @@ func NewSpiDataGenerator(data uint32) WaveformGenerator {
 		return 0.0
 	}
 }
+
+// NewI2cClockGenerator creates a waveform generator for I2C clock (SCL).
+func NewI2cClockGenerator() WaveformGenerator {
+	return func(t float64, freq float64) float64 {
+		if freq <= 0 {
+			return 1.0 // idle high
+		}
+		// 29 bit periods:
+		// 0: Start
+		// 1-8: Addr+RW
+		// 9: ACK
+		// 10-17: Data Byte 1
+		// 18: ACK
+		// 19-26: Data Byte 2
+		// 27: ACK
+		// 28: Stop
+		period := math.Mod(t/(2*math.Pi), 29.0)
+		if period < 0 {
+			period += 29.0
+		}
+		
+		idx := int(period)
+		if idx == 0 || idx == 28 {
+			return 1.0 // SCL high during start and stop
+		}
+		
+		// SCL pulses high in the middle of data/ACK bits
+		frac := period - float64(idx)
+		if frac >= 0.25 && frac < 0.75 {
+			return 1.0
+		}
+		return 0.0
+	}
+}
+
+// NewI2cDataGenerator creates a waveform generator for I2C data (SDA).
+func NewI2cDataGenerator(addr uint32, data uint32) WaveformGenerator {
+	slog.Debug("NewI2cDataGenerator", "addr", addr, "data", data)
+	return func(t float64, freq float64) float64 {
+		if freq <= 0 {
+			return 1.0 // idle high
+		}
+		period := math.Mod(t/(2*math.Pi), 29.0)
+		if period < 0 {
+			period += 29.0
+		}
+		
+		idx := int(period)
+		frac := period - float64(idx)
+		
+		if idx == 0 {
+			// Start condition: SDA goes low in the middle while SCL is high
+			if frac >= 0.5 {
+				return 0.0
+			}
+			return 1.0
+		} else if idx >= 1 && idx <= 8 {
+			// Addr+RW (MSB first)
+			shift := 8 - idx
+			bit := (addr >> shift) & 1
+			if bit == 1 {
+				return 1.0
+			}
+			return 0.0
+		} else if idx == 9 {
+			// ACK 1
+			return 0.0
+		} else if idx >= 10 && idx <= 17 {
+			// Data 1 (MSB first)
+			shift := 25 - idx
+			bit := (data >> shift) & 1
+			if bit == 1 {
+				return 1.0
+			}
+			return 0.0
+		} else if idx == 18 {
+			// ACK 2
+			return 0.0
+		} else if idx >= 19 && idx <= 26 {
+			// Data 2 (MSB first)
+			shift := 26 - idx
+			bit := (data >> shift) & 1
+			if bit == 1 {
+				return 1.0
+			}
+			return 0.0
+		} else if idx == 27 {
+			// ACK 3
+			return 0.0
+		} else if idx == 28 {
+			// Stop condition: SDA goes high in the middle while SCL is high
+			if frac >= 0.5 {
+				return 1.0
+			}
+			return 0.0
+		}
+		return 1.0
+	}
+}

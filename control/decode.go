@@ -1,6 +1,7 @@
 package control
 
 import (
+	"fmt"
 	"log/slog"
 	"math"
 )
@@ -10,6 +11,9 @@ type DecodeResult struct {
 	StartTime float64 // in seconds relative to trigger
 	EndTime   float64 // in seconds relative to trigger
 	Value     uint16
+	Value2    uint16
+	HasValue2 bool
+	Label     string // Custom label for rendering
 	Error     bool // Framing error or parity error
 }
 
@@ -216,12 +220,14 @@ func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset 
 }
 
 // DecodeSPI decodes an SPI stream (CPOL=0, CPHA=0) from clock and data analog buffers.
-func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, samplingTimeInterval float64,
-	triggerTimeOffset int64, threshold int16, hysteresis int32, invert bool) DecoderState {
+func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, misoBuffer []int16, csBuffer []int16, csActiveHigh bool,
+	samplingTimeInterval float64, triggerTimeOffset int64, threshold int16, hysteresis int32, invert bool) DecoderState {
 	var state DecoderState
 	if len(clkBuffer) == 0 || len(clkBuffer) != len(mosiBuffer) {
 		return state
 	}
+	hasMiso := len(misoBuffer) == len(clkBuffer)
+	hasCs := len(csBuffer) == len(clkBuffer)
 
 	getClk := func(idx int) bool {
 		val := clkBuffer[idx]
@@ -239,32 +245,75 @@ func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, samplingTimeInterval float
 		}
 		return bit
 	}
+	getMiso := func(idx int) bool {
+		if !hasMiso {
+			return false
+		}
+		val := misoBuffer[idx]
+		bit := val >= threshold
+		if invert {
+			return !bit
+		}
+		return bit
+	}
+	getCsActive := func(idx int) bool {
+		if !hasCs {
+			return true // If no CS provided, always active
+		}
+		val := csBuffer[idx]
+		bit := val >= threshold
+		if invert {
+			bit = !bit
+		}
+		if csActiveHigh {
+			return bit
+		}
+		return !bit
+	}
 
-	// 2. SPI State Machine (Sample MOSI on rising edge of CLK)
-	var currentByte byte
+	// 2. SPI State Machine (Sample MOSI/MISO on rising edge of CLK)
+	var currentByte uint8
+	var currentByteMiso uint8
 	bitCount := 0
 	var startIdx int
 
 	// If we start capturing while the clock is already HIGH (e.g. triggered exactly on the edge),
-	// we should sample the MOSI line for this first active clock pulse.
-	if len(clkBuffer) > 0 && getClk(0) {
+	// we should sample the MOSI/MISO line for this first active clock pulse.
+	if len(clkBuffer) > 0 && getClk(0) && getCsActive(0) {
 		startIdx = 0
 		if getMosi(0) {
 			currentByte |= 1
+		}
+		if hasMiso && getMiso(0) {
+			currentByteMiso |= 1
 		}
 		bitCount++
 	}
 
 	for i := 1; i < len(clkBuffer); i++ {
+		// Only decode if CS is active (or no CS provided)
+		if !getCsActive(i) {
+			bitCount = 0
+			currentByte = 0
+			currentByteMiso = 0
+			continue
+		}
+
 		// Detect rising edge on CLK
 		if !getClk(i-1) && getClk(i) {
 			if bitCount == 0 {
 				startIdx = i
 			}
-			// Sample MOSI
+			// Sample MOSI and MISO
 			currentByte <<= 1
 			if getMosi(i) {
 				currentByte |= 1
+			}
+			if hasMiso {
+				currentByteMiso <<= 1
+				if getMiso(i) {
+					currentByteMiso |= 1
+				}
 			}
 			bitCount++
 
@@ -276,8 +325,143 @@ func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, samplingTimeInterval float
 					StartTime: timeStart,
 					EndTime:   timeEnd,
 					Value:     uint16(currentByte),
+					Value2:    uint16(currentByteMiso),
+					HasValue2: hasMiso,
 					Error:     false,
 				})
+				bitCount = 0
+				currentByte = 0
+				currentByteMiso = 0
+			}
+		}
+	}
+
+	return state
+}
+
+// DecodeI2C decodes an I2C stream from SCL and SDA analog buffers.
+func DecodeI2C(sclBuffer []int16, sdaBuffer []int16, samplingTimeInterval float64, triggerTimeOffset int64, threshold int16, hysteresis int32, invert bool) DecoderState {
+	slog.Debug("DecodeI2C", "samplingTimeInterval", samplingTimeInterval, "triggerTimeOffset", triggerTimeOffset, "threshold", threshold, "hysteresis", hysteresis, "invert", invert)
+	var state DecoderState
+	if len(sclBuffer) == 0 || len(sdaBuffer) == 0 || len(sclBuffer) != len(sdaBuffer) {
+		return state
+	}
+
+	upper := threshold + int16(hysteresis/2)
+	lower := threshold - int16(hysteresis/2)
+
+	getDigital := func(buffer []int16) []bool {
+		digital := make([]bool, len(buffer))
+		currentState := buffer[0] >= threshold
+		for i, val := range buffer {
+			if val > upper {
+				currentState = true
+			} else if val < lower {
+				currentState = false
+			}
+			digital[i] = currentState
+			if invert {
+				digital[i] = !digital[i]
+			}
+		}
+		return digital
+	}
+
+	scl := getDigital(sclBuffer)
+	sda := getDigital(sdaBuffer)
+
+	type i2cState int
+	const (
+		i2cIdle i2cState = iota
+		i2cAddr
+		i2cAckAddr
+		i2cData
+		i2cAckData
+	)
+
+	currentState := i2cIdle
+	var currentByte uint16
+	var bitCount int
+	var byteStartTime float64
+	var addrIsRead bool
+
+	for i := 1; i < len(scl); i++ {
+		sclCurr := scl[i]
+		sclPrev := scl[i-1]
+		sdaCurr := sda[i]
+		sdaPrev := sda[i-1]
+
+		timeNow := (float64(i) * samplingTimeInterval) + (float64(triggerTimeOffset) / 1e15)
+
+		// START condition: SCL high, SDA falls
+		if sclCurr && sclPrev && !sdaCurr && sdaPrev {
+			currentState = i2cAddr
+			bitCount = 0
+			currentByte = 0
+			continue
+		}
+
+		// STOP condition: SCL high, SDA rises
+		if sclCurr && sclPrev && sdaCurr && !sdaPrev {
+			currentState = i2cIdle
+			continue
+		}
+
+		// Sample SDA on SCL rising edge
+		if sclCurr && !sclPrev {
+			switch currentState {
+			case i2cAddr:
+				if bitCount == 0 {
+					byteStartTime = timeNow
+				}
+				currentByte <<= 1
+				if sdaCurr {
+					currentByte |= 1
+				}
+				bitCount++
+				if bitCount == 8 {
+					addrIsRead = (currentByte & 1) == 1
+					currentState = i2cAckAddr
+				}
+			case i2cAckAddr:
+				nack := sdaCurr
+				addr := currentByte // display the raw 8-bit byte to match user payload expectations
+				label := fmt.Sprintf("A:%02X(W)", addr)
+				if addrIsRead {
+					label = fmt.Sprintf("A:%02X(R)", addr)
+				}
+				state.Bytes = append(state.Bytes, DecodeResult{
+					StartTime: byteStartTime,
+					EndTime:   timeNow,
+					Value:     currentByte,
+					Label:     label,
+					Error:     nack,
+				})
+				currentState = i2cData
+				bitCount = 0
+				currentByte = 0
+			case i2cData:
+				if bitCount == 0 {
+					byteStartTime = timeNow
+				}
+				currentByte <<= 1
+				if sdaCurr {
+					currentByte |= 1
+				}
+				bitCount++
+				if bitCount == 8 {
+					currentState = i2cAckData
+				}
+			case i2cAckData:
+				nack := sdaCurr
+				state.Bytes = append(state.Bytes, DecodeResult{
+					StartTime: byteStartTime,
+					EndTime:   timeNow,
+					Value:     currentByte,
+					Label:     fmt.Sprintf("D:%02X", currentByte),
+					Error:     nack,
+				})
+				currentState = i2cData
 				bitCount = 0
 				currentByte = 0
 			}
@@ -286,3 +470,4 @@ func DecodeSPI(clkBuffer []int16, mosiBuffer []int16, samplingTimeInterval float
 
 	return state
 }
+
