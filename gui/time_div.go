@@ -100,12 +100,6 @@ var (
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
 	resolutionModeOptions = []string{"Normal", "High-Res", "ED", "Decimate"}
-	resolutionModes       = map[string]genericps.RatioMode{
-		"Normal":   genericps.RatioModeNone,
-		"High-Res": genericps.RatioModeAverage,
-		"ED":       genericps.RatioModeAggregate,
-		"Decimate": genericps.RatioModeDecimate,
-	}
 	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
 		IntervalTypeInRange, IntervalTypeOutOfRange}
 	intervalTypes      map[string]genericps.PulseWidthType
@@ -113,9 +107,17 @@ var (
 	// intervalSingleModeTypes are interval types that use a single ΔT value
 	// (only one horizontal trigger point handle and one time disp7 widget).
 	intervalSingleModeTypes map[genericps.PulseWidthType]bool
+	
+	resolutionModes map[string]genericps.RatioMode
 )
 
 func initTimeMaps() {
+	resolutionModes = map[string]genericps.RatioMode{
+		"Normal":   genericps.RatioModeNone,
+		"High-Res": genericps.RatioModeAverage,
+		"ED":       genericps.RatioModeAggregate,
+		"Decimate": genericps.RatioModeDecimate,
+	}
 	intervalTypes = map[string]genericps.PulseWidthType{
 		intervalTypeOptions[0]: genericps.PwTypeLessThan,
 		intervalTypeOptions[1]: genericps.PwTypeGreaterThan,
