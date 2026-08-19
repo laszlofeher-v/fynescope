@@ -23,7 +23,6 @@ type (
 		Val     bool
 		window  fyne.Window
 		focused bool
-		//TODO show fucus
 	}
 )
 
@@ -193,11 +192,7 @@ func (ccp *CheckColorPick) Disabled() bool {
 }
 
 var _ fyne.Disableable = (*CheckColorPick)(nil)
-
-// var _ fyne.Draggable = (*checkColorPick)(nil)
 var _ fyne.Focusable = (*CheckColorPick)(nil)
 var _ fyne.Tappable = (*CheckColorPick)(nil)
 var _ fyne.Widget = (*CheckColorPick)(nil)
 var _ desktop.Mouseable = (*CheckColorPick)(nil)
-
-// var _ desktop.Keyable = (*checkColorPick)(nil)

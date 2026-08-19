@@ -566,6 +566,41 @@ type (
 		RespBase
 	}
 
+	DigitalDemoGenMode int
+	DigitalDemoGenDirection int
+	DigitalDemoGenEncoding int
+)
+
+const (
+	DigitalDemoGenModeSynchronous DigitalDemoGenMode = iota
+	DigitalDemoGenModeAsynchronous
+)
+
+const (
+	DigitalDemoGenDirectionUp DigitalDemoGenDirection = iota
+	DigitalDemoGenDirectionDown
+)
+
+const (
+	DigitalDemoGenEncodingBinary DigitalDemoGenEncoding = iota
+	DigitalDemoGenEncodingGray
+)
+
+type (
+
+	SetDemoDigitalGenMsg struct {
+		MsgBase
+		Port      DigitalPort
+		Frequency float64
+		Direction DigitalDemoGenDirection
+		Encoding  DigitalDemoGenEncoding
+		Mode      DigitalDemoGenMode
+		BitDelay  float64
+	}
+	SetDemoDigitalGenRsp struct {
+		RespBase
+	}
+
 	SetDemoRlcFilterMsg struct {
 		MsgBase
 		Channel    ChannelId
@@ -1438,6 +1473,23 @@ func (c Connection) SetDemoGen(channel ChannelId, on bool, offsetVoltage int32, 
 	rsp := msg.Rsp().(*SetDemoGenRsp)
 	err = rsp.Status()
 	return
+}
+
+func (c Connection) SetDemoDigitalGen(port DigitalPort, freq float64, dir DigitalDemoGenDirection, enc DigitalDemoGenEncoding, mode DigitalDemoGenMode, bitDelay float64) (err error) {
+	msg := &SetDemoDigitalGenMsg{
+		Port:      port,
+		Frequency: freq,
+		Direction: dir,
+		Encoding:  enc,
+		Mode:      mode,
+		BitDelay:  bitDelay,
+	}
+	msg.rsp = &SetDemoDigitalGenRsp{}
+	msg.handle = c.Handle
+	rsp := msg.Rsp().(*SetDemoDigitalGenRsp)
+	c.MsgCh <- msg
+	<-c.RspCh
+	return rsp.Status()
 }
 
 func (c Connection) SetDemoRlcFilter(channel ChannelId, genSource ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) (err error) {

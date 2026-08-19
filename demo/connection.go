@@ -770,3 +770,16 @@ func setDemoRlcFilter(m *genericps.SetDemoRlcFilterMsg) {
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
+
+func setDemoDigitalGen(m *genericps.SetDemoDigitalGenMsg) {
+	response := m.Rsp().(*genericps.SetDemoDigitalGenRsp)
+	if err := checkHandle(m.Handle()); err != nil {
+		response.SetStatus(err)
+		m.RspCh() <- struct{}{}
+		return
+	}
+	s := SimDesc{handle: m.Handle()}
+	err := s.SetDemoDigitalGen(m.Port, m.Frequency, m.Direction, m.Encoding, m.Mode, m.BitDelay)
+	response.SetStatus(err)
+	m.RspCh() <- struct{}{}
+}
