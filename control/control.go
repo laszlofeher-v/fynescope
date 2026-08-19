@@ -85,6 +85,16 @@ type (
 	getNumOfEnabledChMsg struct {
 		n chan int
 	}
+
+	DigitalPortMsg struct {
+		Port     genericps.DigitalPort
+		Settings settings.DigitalPortSettings
+	}
+
+	getDigitalPortMsg struct {
+		portSettings *DigitalPortMsg
+		newSettings  chan bool
+	}
 	getChannelMsg struct {
 		channelSettings *genericps.SetChannelMsg
 		newSettings     chan bool
@@ -153,6 +163,10 @@ type (
 		getChannel        getChannelMsg
 		getNumOfEnabled   getNumOfEnabledChMsg
 
+		SetDigitalPortCh  chan *DigitalPortMsg
+		getDigitalPortCh  chan *getDigitalPortMsg
+		getDigitalPort    getDigitalPortMsg
+
 		SetInterpolationModeCh chan settings.InterpolationType
 		getInterpolationModeCh chan *getInterpolationModeMsg
 		getInterpolationMode   getInterpolationModeMsg
@@ -192,7 +206,7 @@ type (
 		scopeScreenWidth            float64
 		timeBaseDec                 uint64
 		minValue                    int32
-		RefreshCallback             func(buffers [][]int16, buffersMin [][]int16, startTimeOffset int64,
+		RefreshCallback             func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64,
 			xRoundError, samplingTimeInterval float64)
 		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64)
 		BufferCallback     func(size int)
@@ -258,6 +272,10 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	psControl.getNumOfEnabledCh = make(chan *getNumOfEnabledChMsg)
 	psControl.getNumOfEnabled.n = make(chan int)
 
+	psControl.SetDigitalPortCh = make(chan *DigitalPortMsg)
+	psControl.getDigitalPortCh = make(chan *getDigitalPortMsg)
+	psControl.getDigitalPort.newSettings = make(chan bool)
+
 	psControl.SetInterpolationModeCh = make(chan settings.InterpolationType)
 	psControl.getInterpolationModeCh = make(chan *getInterpolationModeMsg)
 	psControl.getInterpolationMode.newSetting = make(chan bool)
@@ -275,6 +293,7 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	go psControl.generatorMonitor()
 	go psControl.demoGeneratorMonitor()
 	go psControl.interpolationMonitor()
+	go psControl.digitalPortMonitor()
 	return psControl
 }
 

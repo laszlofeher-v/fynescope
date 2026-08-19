@@ -135,7 +135,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 			psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
 				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
-		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
+		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, nil, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return
 }
