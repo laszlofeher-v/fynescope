@@ -155,8 +155,9 @@ func (tp *runtTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	tp.scp.addFtXOffset(float64(dx))
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 	newMv := int32(math.Round(float64(mv)))
-	if newMv > channel.Trigger.Mv-genericps.MinThresholdDiff {
-		newMv = channel.Trigger.Mv - genericps.MinThresholdDiff
+	minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
+	if newMv > channel.Trigger.Mv-minThresholdDiff {
+		newMv = channel.Trigger.Mv - minThresholdDiff
 	}
 	channel.Trigger.LowerMv = newMv
 	tp.scp.triggerSettingMsg.LowerMv = newMv

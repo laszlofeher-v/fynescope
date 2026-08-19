@@ -1078,8 +1078,9 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 		scp.Settings.Trigger.Type == settings.TriggerTypeRunt ||
 		scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
 		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
-		if intV < lowerMv+genericps.MinThresholdDiff {
-			intV = lowerMv + genericps.MinThresholdDiff
+		minThresholdDiff := genericps.GetMinThresholdDiff(scp.Settings.Channels[scp.triggerSource].VRange)
+		if intV < lowerMv+minThresholdDiff {
+			intV = lowerMv + minThresholdDiff
 			fyne.Do(func() {
 				scp.triggerThresholdDisp.SilentSetValue(int(intV))
 				scp.triggerThresholdDisp.Refresh()
@@ -1141,8 +1142,9 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 		scp.Settings.Trigger.Type == settings.TriggerTypeRunt ||
 		scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
 		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
-		if intV > upperMv-genericps.MinThresholdDiff {
-			intV = upperMv - genericps.MinThresholdDiff
+		minThresholdDiff := genericps.GetMinThresholdDiff(scp.Settings.Channels[scp.triggerSource].VRange)
+		if intV > upperMv-minThresholdDiff {
+			intV = upperMv - minThresholdDiff
 			fyne.Do(func() {
 				scp.triggerLowerThresholdDisp.SilentSetValue(int(intV))
 				scp.triggerLowerThresholdDisp.Refresh()
