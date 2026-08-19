@@ -738,13 +738,13 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		triggerDirection.SetSelected(activeTriggerDirectionOptions[0])
 		scp.Settings.Channels[chIndex].Trigger.TriggerDirection = triggerDirections[activeTriggerDirectionOptions[0]]
 	}
-	invertTriggerIpm = container.New(layout.NewHBoxLayout(), invert, trigger,
-		triggerDirection, pers)
-	enableCouplingRange := container.New(layout.NewHBoxLayout(), enableCh, acdc,
-		vRange, x10)
 	minMaxBox := scp.minMaxDisp(chIndex)
 	frqPeriodBox := scp.frqPeriodDisp(chIndex)
-	frqPeriodBox.Add(scp.channelViewers[chIndex].triggerConditionSelect)
+
+	invertTriggerIpm = container.New(layout.NewHBoxLayout(), invert, trigger,
+		triggerDirection, scp.channelViewers[chIndex].triggerConditionSelect, pers)
+	enableCouplingRange := container.New(layout.NewHBoxLayout(), enableCh, acdc,
+		vRange, x10)
 	voltageBox := container.New(layout.NewVBoxLayout(), offsetBox, minMaxBox)
 	vfBox := container.New(layout.NewCustomPaddedHBoxLayout(-20), voltageBox, frqPeriodBox)
 	setChannel()
