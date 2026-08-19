@@ -231,8 +231,9 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 
 	newMv := int32(math.Round(float64(mv)))
 	if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
-		if newMv < channel.Trigger.LowerMv+genericps.MinThresholdDiff {
-			newMv = channel.Trigger.LowerMv + genericps.MinThresholdDiff
+		minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
+		if newMv < channel.Trigger.LowerMv+minThresholdDiff {
+			newMv = channel.Trigger.LowerMv + minThresholdDiff
 		}
 	}
 	channel.Trigger.Mv = newMv
@@ -273,8 +274,9 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 
 	newMv := int32(math.Round(float64(mv)))
 	if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
-		if newMv > channel.Trigger.Mv-genericps.MinThresholdDiff {
-			newMv = channel.Trigger.Mv - genericps.MinThresholdDiff
+		minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
+		if newMv > channel.Trigger.Mv-minThresholdDiff {
+			newMv = channel.Trigger.Mv - minThresholdDiff
 		}
 	}
 	// if newMv > channel.Trigger.Mv {

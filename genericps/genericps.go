@@ -888,6 +888,24 @@ var (
 	MinThresholdDiff                               int32
 )
 
+func GetMinThresholdDiff(vRange RangeEnum) int32 {
+	if vRange < 0 {
+		return MinThresholdDiff
+	}
+	rangeMv, ok := RangeValuesMv[vRange]
+	if !ok {
+		return MinThresholdDiff
+	}
+	diff := int32(rangeMv * 0.05) // 5% of the range
+	if diff > MinThresholdDiff {
+		return MinThresholdDiff
+	}
+	if diff < 1 {
+		return 1
+	}
+	return diff
+}
+
 func NewConnection() (con *Connection) {
 	con = &Connection{}
 	con.ID = ""

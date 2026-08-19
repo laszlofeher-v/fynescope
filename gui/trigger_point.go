@@ -180,8 +180,9 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 		tp.scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout ||
 		tp.scp.Settings.Trigger.Type == settings.TriggerTypeRunt ||
 		tp.scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
-		if newMv < channel.Trigger.LowerMv+genericps.MinThresholdDiff {
-			newMv = channel.Trigger.LowerMv + genericps.MinThresholdDiff
+		minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
+		if newMv < channel.Trigger.LowerMv+minThresholdDiff {
+			newMv = channel.Trigger.LowerMv + minThresholdDiff
 		}
 	}
 	channel.Trigger.Mv = newMv
