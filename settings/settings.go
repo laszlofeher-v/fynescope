@@ -162,6 +162,20 @@ type (
 		Mode      genericps.DigitalDemoGenMode      `yaml:"mode"`
 		BitDelay  float64                           `yaml:"bitdelay"`
 	}
+	DigitalPortSettings struct {
+		Enabled   bool  `yaml:"enabled"`
+		Threshold int16 `yaml:"threshold"`
+	}
+	DigitalTriggerSettings struct {
+		Enabled    bool                               `yaml:"enabled"`
+		Logic      string                             `yaml:"logic"` // "AND", "OR", etc.
+		Directions [16]genericps.DigitalDirection     `yaml:"directions"`
+	}
+	DigitalSettings struct {
+		Ports   [2]DigitalPortSettings `yaml:"ports"`
+		Trigger DigitalTriggerSettings `yaml:"trigger"`
+		HexView bool                   `yaml:"hexview"`
+	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`
 		MinFreq         float64 `yaml:"minfreq"`
@@ -224,6 +238,7 @@ type (
 		Ff                  FfSettings             `yaml:"ff"`
 		VirtualChannels     []VirtualChSettings    `yaml:"virtualchannels"`
 		Decode              DecodeSettings         `yaml:"decode"`
+		Digital             DigitalSettings        `yaml:"digital"`
 		StreamEnabled       *bool                  `yaml:"streamenabled,omitempty"`
 	}
 )
@@ -345,6 +360,17 @@ func NewDefaultSettings() *PsSettings {
 		},
 		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
 		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
+		Digital: DigitalSettings{
+			Ports: [2]DigitalPortSettings{
+				{Enabled: false, Threshold: 1500},
+				{Enabled: false, Threshold: 1500},
+			},
+			Trigger: DigitalTriggerSettings{
+				Enabled: false,
+				Logic:   "AND",
+			},
+			HexView: false,
+		},
 		Theme:         DarkTheme,
 		StreamEnabled: &streamDefault,
 	}

@@ -236,6 +236,7 @@ type (
 
 		triggerCheck               []*widget.Check
 		displayBuffers             [][]float32 // signal stored in mv
+		digitalDisplayBuffer       [][]uint8   // digital signals stored per port
 		displayBuffersMin          [][]float32 // min signal stored in mv for ED mode
 		etsBuffer                  []int64
 		channelViewers             []channelViewerDesc
@@ -283,7 +284,10 @@ type (
 		timeZoomTimeDiv            int
 		timeZoomTimeUnit           int
 		tzRepartition              chan struct{}
-		activeRasterContainer      *fyne.Container
+		activeRasterContainer        *fyne.Container
+		digitalRasterContainer       *fyne.Container
+		digitalRaster                *digitalRaster
+		mainSplit                    *container.Split
 		mouseX, mouseY             float32
 		lastSaveDir                fyne.ListableURI
 		gifRecording               bool
@@ -730,6 +734,9 @@ func (scp *ScpDesc) refreshRasters() {
 				canvas.Refresh(scp.timeZoomRaster)
 			}
 		}
+		if scp.digitalRaster != nil && (scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled) {
+			scp.digitalRaster.refresh()
+		}
 	})
 }
 
@@ -838,6 +845,16 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
+	scp.digitalRasterContainer, scp.digitalRaster = scp.newDigitalRaster(scp.Window)
+	if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+		scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
+		scp.mainSplit.Offset = 0.7
+	} else {
+		scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, container.NewMax())
+		scp.mainSplit.Offset = 1.0
+	}
+	scp.updateDigitalSplit()
+	
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
 		newTab := scp.controlTab.SelectedIndex()
@@ -1142,7 +1159,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.status.label)
-			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.activeRasterContainer)
+			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateNextIcon())
 		} else {
 			scp.Settings.Window.LeftControl = false
@@ -1162,7 +1179,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
 			scp.toolbar.Add(logout)
-			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.activeRasterContainer)
+			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateBackIcon())
 		}
 		scp.toolbar.Refresh()
@@ -1211,7 +1228,7 @@ func (scp *ScpDesc) build2000Gui() {
 				layout.NewSpacer(),
 				scp.status.label)
 		}
-		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.activeRasterContainer)
+		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
 	} else {
 		if scp.GifEnabled {
 			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
@@ -1224,7 +1241,7 @@ func (scp *ScpDesc) build2000Gui() {
 				themeChangeAction,
 				logout)
 		}
-		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.activeRasterContainer)
+		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 	}
 
 	scp.updateStreamButtonVisibility()
@@ -1265,10 +1282,10 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64) {
 		copy(scp.etsBuffer, etsInBuffer)
-		scp.psControl.RefreshCallback(buffers, nil, 0, xRoundError, 0)
+		scp.psControl.RefreshCallback(buffers, nil, nil, 0, xRoundError, 0)
 	}
 
-	scp.psControl.RefreshCallback = func(buffers [][]int16, buffersMin [][]int16, triggerTimeOffset int64,
+	scp.psControl.RefreshCallback = func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
 		xRoundError, samplingTimeInterval float64) {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
@@ -1334,6 +1351,26 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.Window.SetContent(content)
 }
 
+func (scp *ScpDesc) updateDigitalSplit() {
+	if scp.mainSplit == nil {
+		return
+	}
+	if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+		scp.mainSplit.Offset = 0.7
+		if scp.digitalRasterContainer != nil {
+			scp.digitalRasterContainer.Show()
+		}
+	} else {
+		scp.mainSplit.Offset = 1.0
+		if scp.digitalRasterContainer != nil {
+			scp.digitalRasterContainer.Hide()
+		}
+	}
+	if scp.Window != nil && scp.Window.Canvas() != nil {
+		scp.Window.Canvas().Refresh(scp.mainSplit)
+	}
+}
+
 // StopRunning stops the current capture or sweep operation and updates the run button UI.
 func (scp *ScpDesc) StopRunning() {
 	scp.stopFfSweep() // stop any running Bode sweep
@@ -1394,6 +1431,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.displayBuffersMin = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.bodeBuffers = make([][]bodePoint, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
+	scp.digitalDisplayBuffer = make([][]uint8, 2)
 	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
 
