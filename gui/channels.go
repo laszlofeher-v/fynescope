@@ -465,7 +465,18 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		}
 		channel.Trigger.TriggerDirection = direction
 		scp.Settings.Channels[chIndex].Trigger.TriggerDirection = direction
-		if scp.triggerSource == chIndex && channelViewer.triggerCheckbox.Checked {
+		if scp.Settings.Trigger.ComplexEnabled {
+			scp.buildComplexTriggerMessage()
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
+			scp.clearAllFtPersistentLayers()
+			scp.clearAllDftPersistentLayers()
+			scp.SaveSettings()
+		} else if scp.triggerSource == chIndex && channelViewer.triggerCheckbox.Checked {
 			scp.setTrigger(true, chIndex, channel.Trigger.Mv, direction, 1000,
 				scp.Settings.Time.TriggerTimeOffset)
 		}
