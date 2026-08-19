@@ -25,13 +25,16 @@ func (l *fixedVBoxLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 func (l *fixedVBoxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	width, height := float32(0), float32(0)
 	for _, child := range objects {
+		if !child.Visible() {
+			continue
+		}
 		min := child.MinSize()
 		if min.Width > width {
 			width = min.Width
 		}
 		height += min.Height + theme.Padding()
 	}
-	if len(objects) > 0 {
+	if height > 0 {
 		height -= theme.Padding()
 	}
 	
@@ -53,6 +56,9 @@ func (l *fixedMaxLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 func (l *fixedMaxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	var width, height float32
 	for _, child := range objects {
+		if !child.Visible() {
+			continue
+		}
 		min := child.MinSize()
 		if min.Width > width {
 			width = min.Width
