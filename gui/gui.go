@@ -1497,6 +1497,7 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	}
 	GlobalScreenScale = scp.getScreenScale()
 	scp.Window = scp.App.NewWindow("")
+	scp.Window.SetMaster()
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
 	scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})

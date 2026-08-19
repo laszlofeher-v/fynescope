@@ -84,6 +84,20 @@ func blockMode(psControl *PscDesc) state {
 		rawSampleCount := psControl.SampleCountRequired * psControl.downSampleRatio
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(rawSampleCount)
 
+		minSampleCount := uint64(math.Round(psControl.scopeScreenWidth))
+		if minSampleCount < 1024 {
+			minSampleCount = 1024
+		}
+
+		maxAllowedDownSample := uint64(psControl.maxScreenTime / (float64(timeIntervalNanoseconds) * 1e-9 * float64(minSampleCount)))
+		if psControl.downSampleRatio > maxAllowedDownSample {
+			psControl.downSampleRatio = maxAllowedDownSample
+			if psControl.downSampleRatio < 1 {
+				psControl.downSampleRatio = 1
+			}
+			rawSampleCount = psControl.SampleCountRequired * psControl.downSampleRatio
+		}
+
 		if rawSampleCount > maxSampleCount {
 			psControl.downSampleRatio = uint64(maxSampleCount / psControl.SampleCountRequired)
 			if psControl.downSampleRatio < 1 {
@@ -97,6 +111,7 @@ func blockMode(psControl *PscDesc) state {
 		}
 
 		psControl.SampleCountRequired = uint64(math.Round(psControl.maxScreenTime/float64(timeIntervalNanoseconds*1e-9*float64(psControl.downSampleRatio)))) + 2
+
 		if psControl.ipmode == settings.Sinc {
 			psControl.SampleCountRequired = SincWMultiplier * psControl.SampleCountRequired
 		} else {
@@ -107,7 +122,6 @@ func blockMode(psControl *PscDesc) state {
 			psControl.SampleCountRequired = maxSampleCount / psControl.downSampleRatio
 		}
 
-		minSampleCount := uint64(math.Round(psControl.scopeScreenWidth))
 		if minSampleCount < 1024 {
 			minSampleCount = 1024
 		}
