@@ -21,7 +21,7 @@ func blockMode(psControl *PscDesc) state {
 	)
 
 	callbackBlock := func(handle int16, status int, param any) {
-		// Must not call ps2000 function from here
+		// Must not call PicoScope API function from here
 		select {
 		case callbackChannel <- struct{}{}: // inform the state machine
 		default:
@@ -56,7 +56,7 @@ func blockMode(psControl *PscDesc) state {
 			slog.Error("runblock memorySegments", "err", err)
 			return
 		}
-		psControl.overSample = 1 // not used
+		psControl.overSample = 1
 		psControl.downSampleRatioMode = genericps.RatioMode(psControl.ResolutionMode.Load())
 		psControl.downSampleRatio = 1
 		if psControl.downSampleRatioMode != genericps.RatioModeNone {

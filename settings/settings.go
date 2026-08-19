@@ -154,6 +154,14 @@ type (
 		I2cAddressValue      uint32                    `yaml:"i2c_address_value"` // used for I2cData generator
 		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
+	DigitalDemoGenSettings struct {
+		Port      genericps.DigitalPort             `yaml:"port"`
+		Frequency float64                           `yaml:"frequency"`
+		Direction genericps.DigitalDemoGenDirection `yaml:"direction"`
+		Encoding  genericps.DigitalDemoGenEncoding  `yaml:"encoding"`
+		Mode      genericps.DigitalDemoGenMode      `yaml:"mode"`
+		BitDelay  float64                           `yaml:"bitdelay"`
+	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`
 		MinFreq         float64 `yaml:"minfreq"`
@@ -200,22 +208,23 @@ type (
 		ShowBitstarts bool   `yaml:"showbitstarts"`
 	}
 	PsSettings struct {
-		Theme             ThemeType             `yaml:"theme"`
-		ChannelColorIndex ChannelColorIndexType `yaml:"channelcolorindex"`
-		Window            WindowSettings        `yaml:"window"`
-		ScreenSize        string                `yaml:"screensize,omitempty"`
-		Channels          []ChSettings          `yaml:"channels"`
-		Trigger           TriggerSettings       `yaml:"trigger"`
-		Time              TimeSettings          `yaml:"time"`
-		GenPanel          GeneratorSettings     `yaml:"genpanel"`
-		DemoGenPanel      []GeneratorSettings   `yaml:"demogenpanel"`
-		FfGen             GeneratorSettings     `yaml:"ffgen"`  // Demo and real hw has the same functionality
-		ExtGen            [2]GeneratorSettings  `yaml:"extgen"` // External generator explicit settings
-		Dft               DftSettings           `yaml:"dft"`
-		Ff                FfSettings            `yaml:"ff"`
-		VirtualChannels   []VirtualChSettings   `yaml:"virtualchannels"`
-		Decode            DecodeSettings        `yaml:"decode"`
-		StreamEnabled     *bool                 `yaml:"streamenabled,omitempty"`
+		Theme               ThemeType              `yaml:"theme"`
+		ChannelColorIndex   ChannelColorIndexType  `yaml:"channelcolorindex"`
+		Window              WindowSettings         `yaml:"window"`
+		ScreenSize          string                 `yaml:"screensize,omitempty"`
+		Channels            []ChSettings           `yaml:"channels"`
+		Trigger             TriggerSettings        `yaml:"trigger"`
+		Time                TimeSettings           `yaml:"time"`
+		GenPanel            GeneratorSettings      `yaml:"genpanel"`
+		DemoGenPanel        []GeneratorSettings    `yaml:"demogenpanel"`
+		DigitalDemoGenPanel DigitalDemoGenSettings `yaml:"digitaldemogenpanel"`
+		FfGen               GeneratorSettings      `yaml:"ffgen"`  // Demo and real hw has the same functionality
+		ExtGen              [2]GeneratorSettings   `yaml:"extgen"` // External generator explicit settings
+		Dft                 DftSettings            `yaml:"dft"`
+		Ff                  FfSettings             `yaml:"ff"`
+		VirtualChannels     []VirtualChSettings    `yaml:"virtualchannels"`
+		Decode              DecodeSettings         `yaml:"decode"`
+		StreamEnabled       *bool                  `yaml:"streamenabled,omitempty"`
 	}
 )
 

@@ -21,6 +21,7 @@ var (
 	channels         [4]channelDesc
 	triggerDetector  *demo.TriggerDetector
 	buffers          [4][]int16
+	digitalBuffers   = make(map[int][]int16)
 	running          bool
 	isReady          bool
 	timeBaseSet      uint32
@@ -89,6 +90,8 @@ func simSetPulseWidthQualifier(handle int16, conds []demo.PwqConditions, directi
 func simSetDataBuffer(handle int16, channel int, buffer []int16, segmentIndex uint32) {
 	if channel >= 0 && channel < 4 {
 		buffers[channel] = buffer
+	} else {
+		digitalBuffers[channel] = buffer
 	}
 }
 

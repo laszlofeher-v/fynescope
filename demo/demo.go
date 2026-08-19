@@ -58,6 +58,17 @@ var (
 	nOfPostTrSamples          int32
 	buffers                   [MaxChannels][]int16
 	buffersMin                [MaxChannels][]int16
+	digitalPortsEnabled       map[genericps.DigitalPort]bool
+	digitalBuffers            map[int][]int16
+	digitalBuffersMin         map[int][]int16
+	digitalGenPort            genericps.DigitalPort
+	digitalGenFrequency       float64
+	digitalGenDirection       genericps.DigitalDemoGenDirection
+	digitalGenEncoding        genericps.DigitalDemoGenEncoding
+	digitalGenMode            genericps.DigitalDemoGenMode
+	digitalGenBitDelay        float64
+	digitalGenCounter         uint16
+	captureIndex              uint64
 	triggerDetector           *TriggerDetector
 	// triggerDelay            uint32
 	TtToPercent float64
@@ -588,13 +599,76 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			}
 		}
 
-		// Update sweep controller for each channel after each buffer fill
 		for i := range channels {
 			if channels[i].sweepController != nil {
 				channels[i].sweepController.Update()
 			}
 		}
 	}
+
+	// Fill digital buffers
+	for ch, enabled := range digitalPortsEnabled {
+		if enabled && digitalBuffers[int(ch)] != nil {
+			buf := digitalBuffers[int(ch)]
+			if noOfSamples > uint32(len(buf)) {
+				noOfSamples = uint32(len(buf))
+			}
+
+			for t := uint32(0); t < noOfSamples; t++ {
+				dt := timeIntervalNanoseconds / 1e9
+				if downSampleRatio < 1 {
+					downSampleRatio = 1
+				}
+				rawSampleIndex := float64(t)*float64(downSampleRatio) - float64(nOfPreTrSamples)*float64(downSampleRatio)
+				rt := rawSampleIndex*dt + triggerTime
+
+				var finalVal uint16
+				if digitalGenMode == genericps.DigitalDemoGenModeAsynchronous && digitalGenBitDelay > 0 {
+					for bit := 0; bit < 16; bit++ {
+						delay := float64(bit) * digitalGenBitDelay
+						shiftedRt := rt - delay
+						c := uint16(0)
+						if digitalGenFrequency > 0 {
+							c = uint16(uint64(math.Abs(shiftedRt*digitalGenFrequency)) & 0xFFFF)
+						} else {
+							c = digitalGenCounter
+						}
+						if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
+							c = 0xFFFF - c
+						}
+						if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
+							c = c ^ (c >> 1)
+						}
+						finalVal |= (c & (1 << bit))
+					}
+				} else {
+					if digitalGenFrequency > 0 {
+						finalVal = uint16(uint64(math.Abs(rt*digitalGenFrequency)) & 0xFFFF)
+					} else {
+						finalVal = digitalGenCounter
+					}
+					if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
+						finalVal = 0xFFFF - finalVal
+					}
+					if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
+						finalVal = finalVal ^ (finalVal >> 1)
+					}
+				}
+
+				var portVal int16
+				if int(ch) == 128 { // Port0 (D0-D7)
+					portVal = int16(finalVal & 0xFF)
+				} else if int(ch) == 129 { // Port1 (D8-D15)
+					portVal = int16((finalVal >> 8) & 0xFF)
+				} else {
+					portVal = int16(finalVal & 0xFF)
+				}
+
+				buf[t] = portVal
+			}
+		}
+	}
+
 	if etsEnbaled && running {
 		go delayedCall(handle, regLpBlockReadyGo)
 	}
@@ -894,9 +968,13 @@ func simMinimumValue(handle int16) (value int32, err error) {
 func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
 	}
-	buffers[ch] = bufferIn
+	if int(ch) >= MaxChannels {
+		digitalBuffers[int(ch)] = bufferIn
+	} else {
+		buffers[ch] = bufferIn
+	}
 	return
 }
 
@@ -905,12 +983,17 @@ func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16,
 		err = fmt.Errorf(invalidHandle)
 		return
 	}
-	if ch < 0 || ch >= MaxChannels {
+	if ch < 0 {
 		err = fmt.Errorf("invalid parameter")
 		return
 	}
-	buffers[ch] = bufferMax
-	buffersMin[ch] = bufferMin
+	if int(ch) >= MaxChannels {
+		digitalBuffers[int(ch)] = bufferMax
+		digitalBuffersMin[int(ch)] = bufferMin
+	} else {
+		buffers[ch] = bufferMax
+		buffersMin[ch] = bufferMin
+	}
 	return
 }
 
@@ -1145,6 +1228,16 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 	return
 }
 
+func (s *SimDesc) SetDemoDigitalGen(port genericps.DigitalPort, freq float64, dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error {
+	digitalGenPort = port
+	digitalGenFrequency = freq
+	digitalGenDirection = dir
+	digitalGenEncoding = enc
+	digitalGenMode = mode
+	digitalGenBitDelay = bitDelay
+	return nil
+}
+
 func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
@@ -1324,10 +1417,10 @@ func simSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand) (er
 
 func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
 	}
-	err = fmt.Errorf("%w; %s", err, notImplemented)
-	return
+	digitalPortsEnabled[genericps.DigitalPort(port)] = enabled
+	return nil
 }
 
 func simSetOutputEdgeDetect(handle int16, state int16) (err error) {
@@ -1482,6 +1575,8 @@ func dispatch(msg genericps.Message) {
 		setSigGenBuiltInV2(m)
 	case *genericps.SetDemoGenMsg:
 		setDemoGen(m)
+	case *genericps.SetDemoDigitalGenMsg:
+		setDemoDigitalGen(m)
 	case *genericps.SetDemoRlcFilterMsg:
 		setDemoRlcFilter(m)
 
@@ -1536,6 +1631,10 @@ func dispatch(msg genericps.Message) {
 	}
 }
 func init() {
+	digitalPortsEnabled = make(map[genericps.DigitalPort]bool)
+	digitalBuffers = make(map[int][]int16)
+	digitalBuffersMin = make(map[int][]int16)
+
 	var scopeHandler genericps.ScopeHandler
 	scopeHandler.Dispatch = dispatch
 	scopeHandler.EnumerateUnits = EnumerateUnits

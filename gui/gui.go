@@ -71,12 +71,13 @@ const (
 	filterTabIndex
 	genTabIndex
 	extgenTabIndex
+	digGenTabIndex
 	vchTabIndex
 	decodeTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "vch", "Decode"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "digGen", "vch", "Decode"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -111,7 +112,7 @@ type (
 		signalTime                          float64
 		App                                 fyne.App
 		theme                               fyne.Theme
-		Window, genWindow                   fyne.Window
+		Window, genWindow, digGenWindow     fyne.Window
 		MaxChannel, triggerSource           genericps.ChannelId
 		channelCount                        genericps.NumOfChannelEnum
 		lastRange                           genericps.RangeEnum
@@ -170,6 +171,7 @@ type (
 		fvTab                        *container.TabItem
 		ffTab                        *container.TabItem
 		genTab                       *container.TabItem
+		digGenTab                    *container.TabItem
 		rlcTab                       *container.TabItem
 		filterTab                    *container.TabItem
 		extgenTab                    *container.TabItem
@@ -199,6 +201,7 @@ type (
 		boxIntervalTimeRange         *fyne.Container
 		digital                      *fyne.Container
 		genLayout                    *fyne.Container
+		digGenLayout                 *fyne.Container
 		rlcLayout                    *fyne.Container
 		filterLayout                 *fyne.Container
 		extgenLayout                 *fyne.Container
@@ -392,7 +395,7 @@ func drawFakeCursor(img draw.Image, cx, cy int) {
 		"12222222221",
 		"122222222221",
 		"1222222111111",
-		"122221221",
+		"12221221",
 		"12221 1221",
 		"1221  1221",
 		"121   1221",
@@ -702,7 +705,7 @@ func (scp *ScpDesc) refreshRasters() {
 	}
 	fyne.Do(func() {
 		targetFunction := scp.Settings.Window.Function
-		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
+		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == digGenTabIndex {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -813,6 +816,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.rlcTab = container.NewTabItem(tabNames[rlcTabIndex], scp.rlcLayout)
 	scp.filterLayout = container.NewMax()
 	scp.filterTab = container.NewTabItem(tabNames[filterTabIndex], scp.filterLayout)
+	scp.digGenLayout = container.NewVBox()
+	digGenPanel, _ := scp.newDemoDigGenPanel(true)
+	scp.digGenLayout.Add(digGenPanel)
+	scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.digGenLayout)
 	scp.extgenLayout = container.New(layout.NewVBoxLayout())
 	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.extgenLayout)
 	scp.vchMeasureIndex = -1
@@ -821,7 +828,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.refreshDecodeTab()
 	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab, scp.decodeTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab)
 
 	if scp.psControl != nil && scp.psControl.Con.ID != genericps.DemoId {
 		scp.controlTab.Remove(scp.rlcTab)
@@ -849,6 +856,7 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.controlTab.Selected() == scp.genTab ||
 			scp.controlTab.Selected() == scp.filterTab ||
 			scp.controlTab.Selected() == scp.extgenTab ||
+			scp.controlTab.Selected() == scp.digGenTab ||
 			scp.controlTab.Selected() == scp.vchTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
@@ -914,8 +922,9 @@ func (scp *ScpDesc) build2000Gui() {
 	targetFunctionInit := scp.Settings.Window.Function
 	if scp.Settings.Window.Function == genTabIndex ||
 		scp.Settings.Window.Function == filterTabIndex ||
-		scp.Settings.Window.Function == extgenTabIndex {
-		targetFunctionInit = scp.Settings.Window.LastDispFunction
+		scp.Settings.Window.Function == extgenTabIndex ||
+		scp.Settings.Window.Function == digGenTabIndex {
+		scp.controlTab.SelectTabIndex(scp.Settings.Window.LastDispFunction)
 	}
 	switch targetFunctionInit {
 	case dftTabIndex:
@@ -939,7 +948,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
-	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex {
+	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex {
 		scp.timeZoomButton.Hide()
 	}
 

@@ -121,7 +121,7 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	}
 	// Global ordered list of all possible tabs
 	allTabs := []*container.TabItem{
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.vchTab, scp.decodeTab,
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab,
 	}
 
 	var newItems []*container.TabItem
