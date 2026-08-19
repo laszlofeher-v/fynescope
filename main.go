@@ -81,7 +81,7 @@ var (
 		"disp16/events.go":                   false,
 		"disp16/renderer.go":                 false,
 		"control/ets.go":                     false,
-		"control/ext_gen.go":                 false,
+		"control/ext_gen.go":                 true,
 		"gui/ff_raster.go":                   false,
 		"gui/ft_channel_label.go":            false,
 		"gui/ft_raster.go":                   false,

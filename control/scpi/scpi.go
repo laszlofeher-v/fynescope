@@ -212,15 +212,15 @@ func (g *Generator) GetVidPid() (string, string) {
 }
 
 func (g *Generator) SetAmplitude(ch ChType, amp float64) error {
-	return g.send(fmt.Sprintf("SOURce%d:VOLTage:AMPLitude %fVpp", ch, amp))
+	return g.send(fmt.Sprintf("SOURce%d:VOLTage:AMPLitude %f", ch, amp))
 }
 
 func (g *Generator) SetOffset(ch ChType, offset float64) error {
-	return g.send(fmt.Sprintf("SOURce%d:VOLTage:OFFSet %fV", ch, offset))
+	return g.send(fmt.Sprintf("SOURce%d:VOLTage:OFFSet %f", ch, offset))
 }
 
 func (g *Generator) SetPhase(ch ChType, phase float64) error {
-	return g.send(fmt.Sprintf("SOUR%d:PHAS %fDEG", ch, phase))
+	return g.send(fmt.Sprintf("SOUR%d:PHAS %f", ch, phase))
 }
 
 func (g *Generator) SetOutput(ch ChType, on bool) error {

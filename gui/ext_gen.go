@@ -253,10 +253,10 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Amp   ", " V")
 		addToTest(amp, extGenAmpId, extgenTabIndex)
-		amp.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Amplitude))
+		amp.SilentSetValue(int(scp.Settings.ExtGen[chIdx].Amplitude / 1000))
 		amp.OnChanged = func(v float64) {
 			go func() {
-				scp.Settings.ExtGen[chIdx].Amplitude = uint32(v)
+				scp.Settings.ExtGen[chIdx].Amplitude = uint32(v * 1000)
 				if scp.extGen.Connected() {
 					if err := scp.extGen.SetAmplitude(scpiCh, v/1000.0); err != nil {
 						slog.Error("extgen set amplitude", "err", err)
@@ -273,10 +273,10 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			fontScale*disp7.DeafultDigitHeight, 1,
 			disp7.DefaultVCursorSpace, "Offs  ", " V")
 		addToTest(offset, extGenOffsetId, extgenTabIndex)
-		offset.SilentSetValue(int(scp.Settings.ExtGen[chIdx].OffsetVoltage))
+		offset.SilentSetValue(int(scp.Settings.ExtGen[chIdx].OffsetVoltage / 1000))
 		offset.OnChanged = func(v float64) {
 			go func() {
-				scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v)
+				scp.Settings.ExtGen[chIdx].OffsetVoltage = int32(v * 1000)
 				if scp.extGen.Connected() {
 					if err := scp.extGen.SetOffset(scpiCh, v/1000.0); err != nil {
 						slog.Error("extgen set offset", "err", err)
@@ -479,12 +479,12 @@ func (scp *ScpDesc) syncExtGenSettings() {
 		}
 
 		// Set amplitude
-		if err := scp.extGen.SetAmplitude(scpiCh, float64(settings.Amplitude)/1000.0); err != nil {
+		if err := scp.extGen.SetAmplitude(scpiCh, float64(settings.Amplitude)/1000000.0); err != nil {
 			slog.Error("extgen sync amplitude", "err", err)
 		}
 
 		// Set offset
-		if err := scp.extGen.SetOffset(scpiCh, float64(settings.OffsetVoltage)/1000.0); err != nil {
+		if err := scp.extGen.SetOffset(scpiCh, float64(settings.OffsetVoltage)/1000000.0); err != nil {
 			slog.Error("extgen sync offset", "err", err)
 		}
 
