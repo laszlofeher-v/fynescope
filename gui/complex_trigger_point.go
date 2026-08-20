@@ -8,10 +8,11 @@ import (
 	"log/slog"
 	"math"
 
+	"fynescope/settings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
-	"fynescope/control"
 )
 
 type complexHandleType int
@@ -22,7 +23,33 @@ const (
 	complexHandleUpperHyst
 	complexHandleLower
 	complexHandleLowerHyst
+	complexHandleIntervalLower
+	complexHandleIntervalUpper
 )
+
+func isWindowType(triggerType string) bool {
+	return triggerType == settings.TriggerTypeWindow ||
+		triggerType == settings.TriggerTypeWindowPulseWidth ||
+		triggerType == settings.TriggerTypeWindowDropout ||
+		triggerType == settings.TriggerTypeRunt ||
+		triggerType == settings.TriggerTypeRiseFall
+}
+
+func isAdvancedType(triggerType string) bool {
+	return triggerType == settings.TriggerTypeAdvanced ||
+		triggerType == settings.TriggerTypeInterval ||
+		triggerType == settings.TriggerTypePulseWidth ||
+		triggerType == settings.TriggerTypeDropout
+}
+
+func isTimeTriggerType(triggerType string) bool {
+	return triggerType == settings.TriggerTypeInterval ||
+		triggerType == settings.TriggerTypePulseWidth ||
+		triggerType == settings.TriggerTypeDropout ||
+		triggerType == settings.TriggerTypeWindowPulseWidth ||
+		triggerType == settings.TriggerTypeWindowDropout ||
+		triggerType == settings.TriggerTypeRiseFall
+}
 
 type complexHit struct {
 	channelIndex int
@@ -35,11 +62,13 @@ type complexTriggerPointViewer struct {
 	hoveredHit  complexHit
 	selectedHit complexHit
 
-	mainRects  map[int]image.Rectangle
-	uhRects    map[int]image.Rectangle
-	lRects     map[int]image.Rectangle
-	lhRects    map[int]image.Rectangle
-	isTimeZoom bool
+	mainRects     map[int]image.Rectangle
+	uhRects       map[int]image.Rectangle
+	lRects        map[int]image.Rectangle
+	lhRects       map[int]image.Rectangle
+	intLowerRects map[int][]image.Rectangle
+	intUpperRects map[int][]image.Rectangle
+	isTimeZoom    bool
 }
 
 var (
@@ -60,6 +89,8 @@ func newComplexTriggerPointViewer(img rasterImage, scp *ScpDesc, isTimeZoom bool
 		uhRects:         make(map[int]image.Rectangle),
 		lRects:          make(map[int]image.Rectangle),
 		lhRects:         make(map[int]image.Rectangle),
+		intLowerRects:   make(map[int][]image.Rectangle),
+		intUpperRects:   make(map[int][]image.Rectangle),
 		isTimeZoom:      isTimeZoom,
 	}
 }
@@ -154,6 +185,22 @@ func (tp *complexTriggerPointViewer) getHit(x, y float32) complexHit {
 			return complexHit{chIdx, complexHandleLowerHyst}
 		}
 	}
+	// Check interval lower rects
+	for chIdx, rects := range tp.intLowerRects {
+		for _, rect := range rects {
+			if p.In(rect) {
+				return complexHit{chIdx, complexHandleIntervalLower}
+			}
+		}
+	}
+	// Check interval upper rects
+	for chIdx, rects := range tp.intUpperRects {
+		for _, rect := range rects {
+			if p.In(rect) {
+				return complexHit{chIdx, complexHandleIntervalUpper}
+			}
+		}
+	}
 
 	return complexHit{-1, complexHandleNone}
 }
@@ -230,7 +277,7 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 
 	newMv := int32(math.Round(float64(mv)))
-	if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
+	if isWindowType(channel.Trigger.Type) || channel.Trigger.ThresholdMode == genericps.Window {
 		minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
 		if newMv < channel.Trigger.LowerMv+minThresholdDiff {
 			newMv = channel.Trigger.LowerMv + minThresholdDiff
@@ -273,15 +320,12 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	tp.scp.setTriggerTime(tp.scp.Settings.Time.TriggerTimeOffset)
 
 	newMv := int32(math.Round(float64(mv)))
-	if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
+	if isWindowType(channel.Trigger.Type) || channel.Trigger.ThresholdMode == genericps.Window {
 		minThresholdDiff := genericps.GetMinThresholdDiff(channel.VRange)
 		if newMv > channel.Trigger.Mv-minThresholdDiff {
 			newMv = channel.Trigger.Mv - minThresholdDiff
 		}
 	}
-	// if newMv > channel.Trigger.Mv {
-	// 	newMv = channel.Trigger.Mv
-	// }
 	channel.Trigger.LowerMv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
@@ -327,7 +371,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	newH := int32(math.Round(tp.y2mv(float64(y), chIdx)))
 
 	if tp.selectedHit.handle == complexHandleUpperHyst {
-		if channel.Trigger.Type == "Window" || channel.Trigger.ThresholdMode == genericps.Window {
+		if isWindowType(channel.Trigger.Type) || channel.Trigger.ThresholdMode == genericps.Window {
 			switch channel.Trigger.TriggerDirection {
 			case genericps.TriggerRising, genericps.TriggerInside, genericps.TriggerOutside, genericps.TriggerEnter, genericps.TriggerEnterOrExit:
 				if newH >= channel.Trigger.Mv {
@@ -340,7 +384,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			default:
 				slog.Error("windowTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 			}
-		} else if channel.Trigger.Type == "Advanced" {
+		} else {
 			switch channel.Trigger.TriggerDirection {
 			case genericps.TriggerRising:
 				if newH <= channel.Trigger.Mv {
@@ -396,6 +440,61 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 		return
 	}
+
+	if tp.selectedHit.handle == complexHandleIntervalLower || tp.selectedHit.handle == complexHandleIntervalUpper {
+		bounds := tp.signalScreen().Bounds()
+		w := float64(bounds.Dx() - 1)
+		if w <= 0 || tp.maxScreenTime() <= 0 {
+			return
+		}
+		triggerX, _ := tp.timeMv2xy(channel.Trigger.Mv, chIdx)
+		timeOffset := (float64(triggerX-x) / w) * tp.maxScreenTime()
+		if timeOffset < 0 {
+			timeOffset = 0
+		}
+		minTime, maxTime := tp.scp.getScreenTimeLimits()
+		if timeOffset < minTime {
+			timeOffset = minTime
+		}
+		if timeOffset > maxTime {
+			timeOffset = maxTime
+		}
+
+		pwType := channel.Trigger.IntervalType
+		isSingle := intervalSingleModeTypes[pwType]
+		if isSingle {
+			channel.Trigger.IntervalTimeUpper = timeOffset
+			channel.Trigger.IntervalTimeLower = timeOffset
+		} else {
+			if tp.selectedHit.handle == complexHandleIntervalLower {
+				if channel.Trigger.IntervalTimeUpper > 0 && timeOffset > channel.Trigger.IntervalTimeUpper {
+					timeOffset = channel.Trigger.IntervalTimeUpper
+				}
+				channel.Trigger.IntervalTimeLower = timeOffset
+			} else {
+				if timeOffset < channel.Trigger.IntervalTimeLower {
+					timeOffset = channel.Trigger.IntervalTimeLower
+				}
+				channel.Trigger.IntervalTimeUpper = timeOffset
+			}
+		}
+		if genericps.ChannelId(chIdx) == tp.scp.triggerSource {
+			tp.scp.triggerSettingMsg.IntervalTimeLower = channel.Trigger.IntervalTimeLower
+			tp.scp.triggerSettingMsg.IntervalTimeUpper = channel.Trigger.IntervalTimeUpper
+		}
+		tp.scp.buildComplexTriggerMessage()
+		t := tp.scp.triggerSettingMsg
+		t.Done = make(chan struct{}, 1)
+		go func() {
+			tp.scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+		}()
+		tp.enableRefresh()
+		if tp.raster() != nil {
+			tp.raster().Refresh()
+		}
+		return
+	}
 }
 
 func (tp *complexTriggerPointViewer) scrolled(delta, x, y float32) {
@@ -410,6 +509,11 @@ func (tp *complexTriggerPointViewer) draw() {
 	tp.uhRects = make(map[int]image.Rectangle)
 	tp.lRects = make(map[int]image.Rectangle)
 	tp.lhRects = make(map[int]image.Rectangle)
+	tp.intLowerRects = make(map[int][]image.Rectangle)
+	tp.intUpperRects = make(map[int][]image.Rectangle)
+
+	bounds := tp.signalScreen().Bounds()
+	w := float64(bounds.Dx() - 1)
 
 	for i, ch := range tp.scp.Settings.Channels {
 		chCfg := ch.Trigger
@@ -456,7 +560,10 @@ func (tp *complexTriggerPointViewer) draw() {
 				drawCircle(tp.signalScreen(), x, y, triggerPointR-4, mainCol)
 			}
 
-			if chCfg.Type == "Window" || chCfg.ThresholdMode == genericps.Window {
+			isWin := isWindowType(chCfg.Type) || chCfg.ThresholdMode == genericps.Window
+			isAdv := isAdvancedType(chCfg.Type) || (!isWin && chCfg.Type != settings.TriggerTypeSimple && chCfg.Type != "")
+
+			if isWin {
 				var yh float32
 				_, yh = tp.timeMv2xy(chCfg.Mv+chCfg.Hysteresis, i)
 				if chCfg.TriggerDirection == genericps.TriggerFalling || chCfg.TriggerDirection == genericps.TriggerExit {
@@ -540,7 +647,8 @@ func (tp *complexTriggerPointViewer) draw() {
 				}
 				drawLine(tp.signalScreen(), lx, ly, lx, lyh, lhCol)
 				drawLine(tp.signalScreen(), lx-halfRectSize, lyh, lx+halfRectSize, lyh, lhCol)
-			} else if chCfg.Type == "Advanced" {
+
+			} else if isAdv {
 				// Draw Advanced (Level) Trigger Hysteresis
 				var yh float32
 				_, yh = tp.timeMv2xy(chCfg.Mv-chCfg.Hysteresis, i)
@@ -568,6 +676,109 @@ func (tp *complexTriggerPointViewer) draw() {
 				drawLine(tp.signalScreen(), x-halfRectSize, yh, x+halfRectSize, yh, uhCol)
 			}
 
+			// Draw Time Handles if applicable
+			if isTimeTriggerType(chCfg.Type) && w > 0 && tp.maxScreenTime() > 0 {
+				pwType := chCfg.IntervalType
+				isSingle := intervalSingleModeTypes[pwType]
+
+				yList := []float32{y}
+				if isWin {
+					_, yLower := tp.timeMv2xy(chCfg.LowerMv, i)
+					yList = append(yList, yLower)
+				}
+
+				for _, currY := range yList {
+					if isSingle {
+						var singleTime float64
+						if pwType == genericps.PwTypeLessThan {
+							singleTime = chCfg.IntervalTimeUpper
+						} else {
+							singleTime = chCfg.IntervalTimeLower
+						}
+						singleDx := float32((singleTime / tp.maxScreenTime()) * w)
+						xSingle := x - singleDx
+
+						rect := image.Rect(
+							int(math.Round(float64(xSingle-rectSize2))),
+							int(math.Round(float64(currY-rectSize2))),
+							int(math.Round(float64(xSingle+rectSize2))),
+							int(math.Round(float64(currY+rectSize2))))
+						tp.intLowerRects[i] = append(tp.intLowerRects[i], rect)
+
+						var colSingle color.Color = col
+						if (tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleIntervalLower) ||
+							(tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleIntervalLower) {
+							colSingle = theme.SelectionColor()
+						}
+
+						drawLine(tp.signalScreen(), x, currY, xSingle, currY, colSingle)
+						if pwType == genericps.PwTypeLessThan {
+							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle-halfRectSize, currY+halfRectSize, colSingle)
+							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
+							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+						} else {
+							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle+halfRectSize, currY+halfRectSize, colSingle)
+							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
+							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+						}
+					} else {
+						lowerDx := float32((chCfg.IntervalTimeLower / tp.maxScreenTime()) * w)
+						upperDx := float32((chCfg.IntervalTimeUpper / tp.maxScreenTime()) * w)
+
+						xLower := x - lowerDx
+						xUpper := x - upperDx
+
+						lRect := image.Rect(
+							int(math.Round(float64(xLower-rectSize2))),
+							int(math.Round(float64(currY-rectSize2))),
+							int(math.Round(float64(xLower+rectSize2))),
+							int(math.Round(float64(currY+rectSize2))))
+						tp.intLowerRects[i] = append(tp.intLowerRects[i], lRect)
+
+						uRect := image.Rect(
+							int(math.Round(float64(xUpper-rectSize2))),
+							int(math.Round(float64(currY-rectSize2))),
+							int(math.Round(float64(xUpper+rectSize2))),
+							int(math.Round(float64(currY+rectSize2))))
+						tp.intUpperRects[i] = append(tp.intUpperRects[i], uRect)
+
+						var colLower color.Color = col
+						if (tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleIntervalLower) ||
+							(tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleIntervalLower) {
+							colLower = theme.SelectionColor()
+						}
+
+						var colUpper color.Color = col
+						if (tp.selectedHit.channelIndex == i && tp.selectedHit.handle == complexHandleIntervalUpper) ||
+							(tp.hoveredHit.channelIndex == i && tp.hoveredHit.handle == complexHandleIntervalUpper) {
+							colUpper = theme.SelectionColor()
+						}
+
+						drawLine(tp.signalScreen(), x, currY, xLower, currY, colLower)
+						drawLine(tp.signalScreen(), x, currY, xUpper, currY, colUpper)
+
+						switch pwType {
+						case genericps.PwTypeInRange:
+							drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower+halfRectSize, currY+halfRectSize, colLower)
+							drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower, currY, colLower)
+							drawLine(tp.signalScreen(), xLower+halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+
+							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper-halfRectSize, currY+halfRectSize, colUpper)
+							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
+							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+						case genericps.PwTypeOutOfRange:
+							drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower-halfRectSize, currY+halfRectSize, colLower)
+							drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower, currY, colLower)
+							drawLine(tp.signalScreen(), xLower-halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+
+							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper+halfRectSize, currY+halfRectSize, colUpper)
+							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
+							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+						}
+					}
+				}
+			}
+
 			if genericps.ChannelId(i) == tp.scp.triggerSource {
 				if tp.scp.triggerThresholdDisp.Value != int(chCfg.Mv) {
 					tp.scp.triggerThresholdDisp.SilentSetValue(int(chCfg.Mv))
@@ -581,7 +792,7 @@ func (tp *complexTriggerPointViewer) draw() {
 				}
 				currentHysteresis := int(chCfg.Hysteresis)
 				currentLowerHysteresis := int(chCfg.LowerHysteresis)
-				if tp.scp.triggerSettingMsg.Type == control.Dropout {
+				if chCfg.Type == settings.TriggerTypeDropout || chCfg.Type == settings.TriggerTypeWindowDropout {
 					currentHysteresis = int(chCfg.DropoutHysteresis)
 					currentLowerHysteresis = int(chCfg.DropoutHysteresis)
 				}
@@ -594,6 +805,48 @@ func (tp *complexTriggerPointViewer) draw() {
 					if tp.scp.triggerLowerHysteresisDisp.Value != currentLowerHysteresis {
 						tp.scp.triggerLowerHysteresisDisp.SilentSetValue(currentLowerHysteresis)
 						tp.scp.triggerLowerHysteresisDisp.Refresh()
+					}
+				}
+
+				// Update time displays for active source if time trigger
+				if isTimeTriggerType(chCfg.Type) {
+					pwType := chCfg.IntervalType
+					isSingle := intervalSingleModeTypes[pwType]
+					if isSingle {
+						if tp.scp.intervalTimeSingleDisp != nil {
+							var singleTime float64
+							if pwType == genericps.PwTypeLessThan {
+								singleTime = chCfg.IntervalTimeUpper
+							} else {
+								singleTime = chCfg.IntervalTimeLower
+							}
+							unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
+							multiplier := getIntervalUnitMultiplier(unit)
+							val := int(math.Round(singleTime / multiplier))
+							if tp.scp.intervalTimeSingleDisp.Value != val {
+								tp.scp.intervalTimeSingleDisp.SilentSetValue(val)
+								tp.scp.intervalTimeSingleDisp.Refresh()
+							}
+						}
+					} else {
+						if tp.scp.intervalTimeLowerDisp != nil {
+							unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
+							multiplier := getIntervalUnitMultiplier(unit)
+							val := int(math.Round(chCfg.IntervalTimeLower / multiplier))
+							if tp.scp.intervalTimeLowerDisp.Value != val {
+								tp.scp.intervalTimeLowerDisp.SilentSetValue(val)
+								tp.scp.intervalTimeLowerDisp.Refresh()
+							}
+						}
+						if tp.scp.intervalTimeUpperDisp != nil {
+							unit := getBaseTimeUnit(tp.scp.Settings.Time.Unit)
+							multiplier := getIntervalUnitMultiplier(unit)
+							val := int(math.Round(chCfg.IntervalTimeUpper / multiplier))
+							if tp.scp.intervalTimeUpperDisp.Value != val {
+								tp.scp.intervalTimeUpperDisp.SilentSetValue(val)
+								tp.scp.intervalTimeUpperDisp.Refresh()
+							}
+						}
 					}
 				}
 			}

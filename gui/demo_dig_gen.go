@@ -83,10 +83,11 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	}
 
 	// Frequency
+	freqLabel := widget.NewLabel("Frequency:")
 	freqDisp, err := disp7.NewCustomDisp7Array(8, 0, 10000000, 1,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		color.White, disp7.ReadWrite, disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1, disp7.DefaultVCursorSpace, "Frequency:", " Hz")
+		disp7.DeafultDigitHeight, 1, disp7.DefaultVCursorSpace, "", " Hz")
 	if err != nil {
 		return nil, err
 	}
@@ -145,10 +146,11 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	}
 
 	// Bit Delay
+	bitDelayLabel := widget.NewLabel("Bit Delay:")
 	bitDelayDisp, err := disp7.NewCustomDisp7Array(10, 9, 1000000000, 0,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		color.White, disp7.ReadWrite, disp7.DefaultDigitWidth,
-		disp7.DeafultDigitHeight, 1, disp7.DefaultVCursorSpace, "Bit Delay:", " s")
+		disp7.DeafultDigitHeight, 1, disp7.DefaultVCursorSpace, "", " s")
 	if err != nil {
 		return nil, err
 	}
@@ -158,29 +160,28 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		scp.applyDemoDigitalGenSettings()
 	}
 
-	// Optional info label
-	infoLabel := widget.NewLabelWithStyle("Controls the internal logic of the digital demo generator.\nThe changes are applied in real-time.", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
-
 	if undockable {
 		box = container.NewVBox(
 			undockButton,
 			portSelect,
+			freqLabel,
 			freqDisp,
 			dirSelect,
 			encSelect,
 			modeSelect,
+			bitDelayLabel,
 			bitDelayDisp,
-			infoLabel,
 		)
 	} else {
 		box = container.NewVBox(
 			portSelect,
+			freqLabel,
 			freqDisp,
 			dirSelect,
 			encSelect,
 			modeSelect,
+			bitDelayLabel,
 			bitDelayDisp,
-			infoLabel,
 		)
 	}
 	return box, nil
