@@ -184,9 +184,12 @@ type (
 
 		triggerSetting              TriggerDesc
 		chEnabled                   []atomic.Bool
+		digitalPortsEnabled         [2]atomic.Bool
 		triggerTimeOffset           int64
 		receiveBuffer               [][]int16   // raw data buffer, only for real channel
 		receiveBufferMin            [][]int16   // raw data buffer for min values when in ED mode
+		digitalReceiveBuffer        [][]int16
+		digitalReceiveBufferMin     [][]int16
 		displayBuffer               [][]float32 // signal stored in mv
 		EtsInBuffer                 []int64
 		overSample                  int16
@@ -421,11 +424,17 @@ func (psControl *PscDesc) NewChannels(numberOfChannels int) {
 	go psControl.channelStateMachine(numberOfChannels)
 	psControl.receiveBuffer = make([][]int16, numberOfChannels)
 	psControl.receiveBufferMin = make([][]int16, numberOfChannels)
+	psControl.digitalReceiveBuffer = make([][]int16, 2)
+	psControl.digitalReceiveBufferMin = make([][]int16, 2)
 	psControl.displayBuffer = make([][]float32, numberOfChannels)
 	for i := 0; i < numberOfChannels; i++ {
 		psControl.receiveBuffer[i] = make([]int16, initialBufferSize)
 		psControl.receiveBufferMin[i] = make([]int16, initialBufferSize)
 		psControl.displayBuffer[i] = make([]float32, initialBufferSize)
+	}
+	for i := 0; i < 2; i++ {
+		psControl.digitalReceiveBuffer[i] = make([]int16, initialBufferSize)
+		psControl.digitalReceiveBufferMin[i] = make([]int16, initialBufferSize)
 	}
 }
 

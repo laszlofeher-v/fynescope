@@ -590,7 +590,8 @@ type (
 
 	SetDemoDigitalGenMsg struct {
 		MsgBase
-		Port      DigitalPort
+		Port0Enabled bool
+		Port1Enabled bool
 		Frequency float64
 		Direction DigitalDemoGenDirection
 		Encoding  DigitalDemoGenEncoding
@@ -969,14 +970,14 @@ func (c Connection) Send(msg Message) {
 	select {
 	case c.MsgCh <- msg:
 	case <-time.After(cmdSendTimeout):
-		msg.SetStatus(fmt.Errorf("Timeout. Could not send %t\n", msg))
+		msg.SetStatus(fmt.Errorf("Timeout. Could not send %v\n", msg))
 		return
 	}
 	select {
 	case <-rspCh:
 		// slog.Debug("response received", "c", c)
 	case <-time.After(responseReceiveTimeout):
-		msg.SetStatus(fmt.Errorf("Timeout. Could not receive response of %t\n", msg))
+		msg.SetStatus(fmt.Errorf("Timeout. Could not receive response of %v\n", msg))
 	}
 }
 
@@ -1475,20 +1476,19 @@ func (c Connection) SetDemoGen(channel ChannelId, on bool, offsetVoltage int32, 
 	return
 }
 
-func (c Connection) SetDemoDigitalGen(port DigitalPort, freq float64, dir DigitalDemoGenDirection, enc DigitalDemoGenEncoding, mode DigitalDemoGenMode, bitDelay float64) (err error) {
+func (c Connection) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64, dir DigitalDemoGenDirection, enc DigitalDemoGenEncoding, mode DigitalDemoGenMode, bitDelay float64) (err error) {
 	msg := &SetDemoDigitalGenMsg{
-		Port:      port,
-		Frequency: freq,
+		Port0Enabled: port0Enabled,
+		Port1Enabled: port1Enabled,
+		Frequency:    freq,
 		Direction: dir,
 		Encoding:  enc,
 		Mode:      mode,
 		BitDelay:  bitDelay,
 	}
 	msg.rsp = &SetDemoDigitalGenRsp{}
-	msg.handle = c.Handle
+	c.Send(msg)
 	rsp := msg.Rsp().(*SetDemoDigitalGenRsp)
-	c.MsgCh <- msg
-	<-c.RspCh
 	return rsp.Status()
 }
 

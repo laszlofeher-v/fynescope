@@ -29,6 +29,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 	var changedSet [2]bool
 	
 	storeSettings := func(setMsg *DigitalPortMsg) (nextFunc eventHandlerFunc) {
+		psControl.digitalPortsEnabled[int(setMsg.Port)].Store(setMsg.Settings.Enabled)
 		if oldChDesc[int(setMsg.Port)] != setMsg.Settings {
 			oldChDesc[int(setMsg.Port)] = setMsg.Settings
 			changedSet[int(setMsg.Port)] = true

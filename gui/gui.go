@@ -111,6 +111,8 @@ type (
 		maxScreenTime                       float64
 		signalTime                          float64
 		App                                 fyne.App
+		d07Button                           *widget.Button
+		d815Button                          *widget.Button
 		theme                               fyne.Theme
 		Window, genWindow, digGenWindow     fyne.Window
 		MaxChannel, triggerSource           genericps.ChannelId
@@ -284,10 +286,10 @@ type (
 		timeZoomTimeDiv            int
 		timeZoomTimeUnit           int
 		tzRepartition              chan struct{}
-		activeRasterContainer        *fyne.Container
-		digitalRasterContainer       *fyne.Container
-		digitalRaster                *digitalRaster
-		mainSplit                    *container.Split
+		activeRasterContainer      *fyne.Container
+		digitalRasterContainer     *fyne.Container
+		digitalRaster              *digitalRaster
+		mainSplit                  *container.Split
 		mouseX, mouseY             float32
 		lastSaveDir                fyne.ListableURI
 		gifRecording               bool
@@ -843,18 +845,20 @@ func (scp *ScpDesc) build2000Gui() {
 	if !scp.ExtGenEnabled {
 		scp.controlTab.Remove(scp.extgenTab)
 	}
+	if scp.psControl == nil || !(strings.HasSuffix(scp.psControl.Info, "SIM") || strings.HasSuffix(scp.psControl.Info, "DEMO")) {
+		scp.controlTab.Remove(scp.digGenTab)
+	}
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
 	scp.digitalRasterContainer, scp.digitalRaster = scp.newDigitalRaster(scp.Window)
+	scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
 	if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
-		scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
 		scp.mainSplit.Offset = 0.7
 	} else {
-		scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, container.NewMax())
 		scp.mainSplit.Offset = 1.0
 	}
 	scp.updateDigitalSplit()
-	
+
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
 		newTab := scp.controlTab.SelectedIndex()
@@ -887,6 +891,10 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
+			if scp.d07Button != nil {
+				scp.d07Button.Hide()
+				scp.d815Button.Hide()
+			}
 		case fvTabIndex:
 			scp.ftRaster.Hide()
 			scp.dftRaster.Hide()
@@ -894,6 +902,10 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.fvRaster.Show()
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
+			}
+			if scp.d07Button != nil {
+				scp.d07Button.Hide()
+				scp.d815Button.Hide()
 			}
 		case ffTabIndex:
 			scp.ftRaster.Hide()
@@ -903,6 +915,10 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
+			if scp.d07Button != nil {
+				scp.d07Button.Hide()
+				scp.d815Button.Hide()
+			}
 		case rlcTabIndex:
 			scp.ftRaster.Show()
 			scp.dftRaster.Hide()
@@ -911,6 +927,10 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Show()
 			}
+			if scp.d07Button != nil {
+				scp.d07Button.Hide()
+				scp.d815Button.Hide()
+			}
 		default:
 			scp.dftRaster.Hide()
 			scp.fvRaster.Hide()
@@ -918,6 +938,10 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.ftRaster.Show()
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Show()
+			}
+			if scp.d07Button != nil {
+				scp.d07Button.Show()
+				scp.d815Button.Show()
 			}
 		}
 
@@ -1140,6 +1164,31 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.initStatus()
 	var saveRasterButton, saveWindowButton *widget.Button
+	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
+	if scp.psControl != nil && (strings.HasSuffix(scp.psControl.Info, "SIM") || strings.HasSuffix(scp.psControl.Info, "DEMO")) {
+		scp.d07Button = widget.NewButton("D0-7", func() {
+			scp.Settings.Digital.Ports[0].Enabled = !scp.Settings.Digital.Ports[0].Enabled
+			scp.SaveSettings()
+			scp.updateDigitalSplit()
+			if scp.digitalRaster != nil {
+				scp.digitalRaster.refresh()
+			}
+			if scp.psControl != nil {
+				scp.psControl.Con.SetDigitalPort(genericps.Port0, scp.Settings.Digital.Ports[0].Enabled, 5000)
+			}
+		})
+		scp.d815Button = widget.NewButton("D8-15", func() {
+			scp.Settings.Digital.Ports[1].Enabled = !scp.Settings.Digital.Ports[1].Enabled
+			scp.SaveSettings()
+			scp.updateDigitalSplit()
+			if scp.digitalRaster != nil {
+				scp.digitalRaster.refresh()
+			}
+			if scp.psControl != nil {
+				scp.psControl.Con.SetDigitalPort(genericps.Port1, scp.Settings.Digital.Ports[1].Enabled, 5000)
+			}
+		})
+	}
 	changeSideFunc := func() {
 		if changeSide.Icon == theme.NavigateBackIcon() {
 			scp.Settings.Window.LeftControl = true
@@ -1149,6 +1198,10 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.timeZoomButton)
 			if scp.GifEnabled {
 				scp.toolbar.Add(scp.recordGifButton)
+			}
+			if scp.d07Button != nil {
+				scp.toolbar.Add(scp.d07Button)
+				scp.toolbar.Add(scp.d815Button)
 			}
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
@@ -1171,6 +1224,10 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.timeZoomButton)
 			if scp.GifEnabled {
 				scp.toolbar.Add(scp.recordGifButton)
+			}
+			if scp.d07Button != nil {
+				scp.toolbar.Add(scp.d07Button)
+				scp.toolbar.Add(scp.d815Button)
 			}
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
@@ -1215,32 +1272,40 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.App.Quit()
 	})
 	if scp.Settings.Window.LeftControl {
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
-				themeChangeAction,
-				logout,
-				layout.NewSpacer(),
-				scp.status.label)
-		} else {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
-				themeChangeAction,
-				logout,
-				layout.NewSpacer(),
-				scp.status.label)
+			scp.toolbar.Add(scp.recordGifButton)
 		}
+		if scp.d07Button != nil {
+			scp.toolbar.Add(scp.d07Button)
+			scp.toolbar.Add(scp.d815Button)
+		}
+		scp.toolbar.Add(saveRasterButton)
+		scp.toolbar.Add(saveWindowButton)
+		scp.toolbar.Add(fullScreen)
+		scp.toolbar.Add(restoreScreen)
+		scp.toolbar.Add(changeSide)
+		scp.toolbar.Add(themeChangeAction)
+		scp.toolbar.Add(logout)
+		scp.toolbar.Add(layout.NewSpacer())
+		scp.toolbar.Add(scp.status.label)
 		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
 	} else {
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, scp.recordGifButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
-				themeChangeAction,
-				logout)
-		} else {
-			scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(),
-				scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton, saveRasterButton, saveWindowButton, fullScreen, restoreScreen, changeSide,
-				themeChangeAction,
-				logout)
+			scp.toolbar.Add(scp.recordGifButton)
 		}
+		if scp.d07Button != nil {
+			scp.toolbar.Add(scp.d07Button)
+			scp.toolbar.Add(scp.d815Button)
+		}
+		scp.toolbar.Add(saveRasterButton)
+		scp.toolbar.Add(saveWindowButton)
+		scp.toolbar.Add(fullScreen)
+		scp.toolbar.Add(restoreScreen)
+		scp.toolbar.Add(changeSide)
+		scp.toolbar.Add(themeChangeAction)
+		scp.toolbar.Add(logout)
 		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 	}
 
@@ -1290,6 +1355,21 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
 		scp.controlSamplingTimeInterval = samplingTimeInterval
+
+		for i := range digitalBuffers {
+			if len(scp.digitalDisplayBuffer) > i {
+				if len(scp.digitalDisplayBuffer[i]) != len(digitalBuffers[i]) {
+					if cap(scp.digitalDisplayBuffer[i]) >= len(digitalBuffers[i]) {
+						scp.digitalDisplayBuffer[i] = scp.digitalDisplayBuffer[i][:len(digitalBuffers[i])]
+					} else {
+						scp.digitalDisplayBuffer[i] = make([]uint8, len(digitalBuffers[i]))
+					}
+				}
+				for j := range digitalBuffers[i] {
+					scp.digitalDisplayBuffer[i][j] = uint8(digitalBuffers[i][j])
+				}
+			}
+		}
 
 		var newDecodeState control.DecoderState
 		if scp.Settings.Decode.Enabled {
@@ -1365,6 +1445,9 @@ func (scp *ScpDesc) updateDigitalSplit() {
 		if scp.digitalRasterContainer != nil {
 			scp.digitalRasterContainer.Hide()
 		}
+	}
+	if scp.digitalRaster != nil {
+		scp.digitalRaster.refresh()
 	}
 	if scp.Window != nil && scp.Window.Canvas() != nil {
 		scp.Window.Canvas().Refresh(scp.mainSplit)

@@ -653,7 +653,7 @@ func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 	)
 	err = simSetDigitalPort(m.Handle(), DigitalPort(m.Port), m.Enabled, m.Logiclevel)
 
-	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
+	response := m.Rsp().(*genericps.SetDigitalPortRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -779,7 +779,7 @@ func setDemoDigitalGen(m *genericps.SetDemoDigitalGenMsg) {
 		return
 	}
 	s := SimDesc{handle: m.Handle()}
-	err := s.SetDemoDigitalGen(m.Port, m.Frequency, m.Direction, m.Encoding, m.Mode, m.BitDelay)
+	err := s.SetDemoDigitalGen(m.Port0Enabled, m.Port1Enabled, m.Frequency, m.Direction, m.Encoding, m.Mode, m.BitDelay)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

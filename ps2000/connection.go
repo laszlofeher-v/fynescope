@@ -286,8 +286,9 @@ func setTriggerChannelProperties(m *genericps.SetTriggerChannelPropertiesMsg) {
 }
 
 func setTriggerChannelConditions(m *genericps.SetTriggerChannelConditionsMsg) {
+	err := ps2000SetAdvTriggerChannelConditions(m.Handle(), m.TriggerConditions)
 	response := m.Rsp().(*genericps.SetTriggerChannelConditionsRsp)
-	response.SetStatus(nil)
+	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
 
@@ -311,7 +312,7 @@ func setPulseWidthQualifier(m *genericps.SetPulseWidthQualifierMsg) {
 }
 
 func setTriggerDigitalPortProperties(m *genericps.SetTriggerDigitalPortPropertiesMsg) {
-	err := fmt.Errorf("Not Supported on ps2000")
+	err := ps2000SetTriggerDigitalPortProperties(m.Handle(), m.DigitalDirections)
 	response := m.Rsp().(*genericps.SetTriggerDigitalPortPropertiesRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -447,8 +448,8 @@ func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandM
 }
 
 func setDigitalPort(m *genericps.SetDigitalPortMsg) {
-	err := fmt.Errorf("Not Supported on ps2000")
-	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
+	err := ps2000SetDigitalPort(m.Handle(), genericps.DigitalPort(m.Port), m.Enabled, m.Logiclevel)
+	response := m.Rsp().(*genericps.SetDigitalPortRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

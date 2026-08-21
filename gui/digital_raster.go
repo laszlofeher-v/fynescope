@@ -26,6 +26,7 @@ func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digi
 
 	dr.img = canvas.NewImageFromImage(image.NewRGBA(image.Rect(0, 0, 1024, 200)))
 	dr.img.FillMode = canvas.ImageFillStretch
+	dr.imgRect = dr.img.Image.Bounds()
 
 	return container.NewMax(dr.img), dr
 }
@@ -33,6 +34,10 @@ func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digi
 func (dr *digitalRaster) refresh() {
 	if !dr.scp.Settings.Digital.Ports[0].Enabled && !dr.scp.Settings.Digital.Ports[1].Enabled {
 		return
+	}
+
+	if dr.img != nil && dr.img.Image != nil {
+		dr.imgRect = dr.img.Image.Bounds()
 	}
 
 	w := dr.imgRect.Dx()
@@ -60,12 +65,54 @@ func (dr *digitalRaster) refresh() {
 
 	channelHeight := float64(h) / float64(activeChannels)
 
-	// A very basic digital drawer (only drawing horizontal lines for logic 0 to start)
 	lineCol := color.RGBA{0, 255, 0, 255}
-	for i := 0; i < activeChannels; i++ {
-		yPos := int(float64(i)*channelHeight + channelHeight/2)
-		for x := 0; x < w; x++ {
-			dr.img.Image.(*image.RGBA).Set(x, yPos, lineCol)
+	
+	chIdx := 0
+	for port := 0; port < 2; port++ {
+		if !dr.scp.Settings.Digital.Ports[port].Enabled {
+			continue
+		}
+		var buf []uint8
+		if len(dr.scp.digitalDisplayBuffer) > port {
+			buf = dr.scp.digitalDisplayBuffer[port]
+		}
+		samples := len(buf)
+		
+		for c := 0; c < 8; c++ {
+			yBase := float64(chIdx) * channelHeight
+			yHigh := int(yBase + channelHeight*0.2)
+			yLow := int(yBase + channelHeight*0.8)
+			
+			for x := 0; x < w; x++ {
+				yPos := yLow
+				sampleIdx := 0
+				if samples > 0 {
+					sampleIdx = int(float64(x) * float64(samples) / float64(w))
+					if sampleIdx < samples {
+						val := buf[sampleIdx]
+						if (val & (1 << c)) != 0 {
+							yPos = yHigh
+						}
+					}
+				}
+				dr.img.Image.(*image.RGBA).Set(x, yPos, lineCol)
+				
+				if x > 0 && samples > 0 {
+					prevSampleIdx := int(float64(x-1) * float64(samples) / float64(w))
+					if sampleIdx < samples && prevSampleIdx < samples {
+						prevVal := buf[prevSampleIdx]
+						val := buf[sampleIdx]
+						prevBit := (prevVal & (1 << c)) != 0
+						currBit := (val & (1 << c)) != 0
+						if prevBit != currBit {
+							for y := yHigh; y <= yLow; y++ {
+								dr.img.Image.(*image.RGBA).Set(x, y, lineCol)
+							}
+						}
+					}
+				}
+			}
+			chIdx++
 		}
 	}
 	dr.img.Refresh()

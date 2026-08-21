@@ -3,6 +3,7 @@
 package ps2000a
 
 import (
+	"fynescope/demo"
 	"fynescope/genericps"
 	"log/slog"
 	"reflect"
@@ -573,6 +574,14 @@ func numOfStreamingValues(m *genericps.NumOfStreamingValuesMsg) {
 	m.RspCh() <- struct{}{}
 }
 
+func setDemoDigitalGen(m *genericps.SetDemoDigitalGenMsg) {
+	response := m.Rsp().(*genericps.SetDemoDigitalGenRsp)
+	s := demo.SimDesc{}
+	err := s.SetDemoDigitalGen(m.Port0Enabled, m.Port1Enabled, m.Frequency, m.Direction, m.Encoding, m.Mode, m.BitDelay)
+	response.SetStatus(err)
+	m.RspCh() <- struct{}{}
+}
+
 func pingUnit(m *genericps.PingUnitMsg) {
 	err := ps2000aPingUnit(m.Handle())
 	response := m.Rsp().(*genericps.PingUnitRsp)
@@ -603,7 +612,7 @@ func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 		err error
 	)
 	err = ps2000aSetDigitalPort(m.Handle(), DigitalPort(m.Port), m.Enabled, m.Logiclevel)
-	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
+	response := m.Rsp().(*genericps.SetDigitalPortRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }
@@ -809,6 +818,8 @@ func dispatch(msg genericps.Message) {
 		sigGenArbitraryMinMaxValues(m)
 	case *genericps.SigGenSoftwareControlMsg:
 		sigGenSoftwareControl(m)
+	case *genericps.SetDemoDigitalGenMsg:
+		setDemoDigitalGen(m)
 	default:
 		slog.Error("dispatch unhandled", "type", reflect.TypeOf(msg), "msg", msg)
 	}

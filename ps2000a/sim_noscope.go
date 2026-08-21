@@ -4,6 +4,7 @@ package ps2000a
 
 import (
 	"fynescope/demo"
+	"fynescope/genericps"
 
 	"math"
 	"math/rand"
@@ -222,9 +223,33 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 						buf[i] = level
 					}
 				}
-				if sweepController != nil {
-					sweepController.Update()
+			}
+			
+			// Digital buffers
+			p0Buf := digitalBuffers[128]
+			p1Buf := digitalBuffers[129]
+			if p0Buf != nil || p1Buf != nil {
+				length := int(pre + post)
+				if p0Buf != nil && length > len(p0Buf) {
+					length = len(p0Buf)
 				}
+				if p1Buf != nil && length > len(p1Buf) {
+					length = len(p1Buf)
+				}
+				for i := 0; i < length; i++ {
+					rt := (float64(i)-float64(pre))*dt + triggerTime
+					p0Val, p1Val, p0En, p1En := demo.GetDemoDigitalGenValue(rt)
+					if p0Buf != nil && p0En {
+						p0Buf[i] = p0Val
+					}
+					if p1Buf != nil && p1En {
+						p1Buf[i] = p1Val
+					}
+				}
+			}
+
+			if sweepController != nil {
+				sweepController.Update()
 			}
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -244,8 +269,10 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveT
 	genOn = true
 	genOffsetVoltage = offsetVoltage
 	genPkToPk = pkToPk
-	if operation == int(Prbs) {
+	if operation == int(genericps.Prbs) {
 		genWaveFunction = demo.NewPrbsGenerator()
+	} else if operation == int(genericps.WhiteNoise) {
+		genWaveFunction = demo.NewWhiteNoiseGenerator()
 	} else {
 		genWaveFunction = demo.NewWaveformGenerator(demo.WaveTypeEnum(waveType))
 	}

@@ -22,6 +22,7 @@ typedef PS2000A_HOLDOFF_TYPE    PS2000_HOLDOFF_TYPE;
 typedef PS2000A_CHANNEL_INFO    PS2000_CHANNEL_INFO;
 typedef PS2000A_DIGITAL_PORT    PS2000_DIGITAL_PORT;
 typedef PS2000A_TRIGGER_CONDITIONS P2000_TRIGGER_CONDITIONS;
+typedef PS2000A_DIGITAL_CHANNEL_DIRECTIONS PS2000_DIGITAL_CHANNEL_DIRECTIONS;
 
 typedef void (*ps2000aBlockReady)(int16_t handle, PICO_STATUS status, void *pParameter);
 typedef void (*ps2000aStreamingReady)(
@@ -172,6 +173,14 @@ int16_t ps2000SetAdvTriggerChannelProperties(int16_t handle, PS2000_TRIGGER_CHAN
 
 int16_t ps2000SetAdvTriggerChannelConditions(int16_t handle, PS2000_TRIGGER_CONDITIONS *conditions, int16_t nConditions) {
     return ps2000aSetTriggerChannelConditions(handle, (PS2000A_TRIGGER_CONDITIONS*)conditions, nConditions);
+}
+
+int16_t ps2000SetTriggerDigitalPortProperties(int16_t handle, PS2000_DIGITAL_CHANNEL_DIRECTIONS *directions, int16_t nDirections) {
+    return (ps2000aSetTriggerDigitalPortProperties(handle, (PS2000A_DIGITAL_CHANNEL_DIRECTIONS*)directions, nDirections) == 0) ? 1 : 0;
+}
+
+int16_t ps2000SetDigitalPort(int16_t handle, PS2000_DIGITAL_PORT port, int16_t enabled, int16_t logicLevel) {
+    return (ps2000aSetDigitalPort(handle, (PS2000A_DIGITAL_PORT)port, enabled, logicLevel) == 0) ? 1 : 0;
 }
 
 int16_t ps2000SetAdvTriggerChannelDirections(int16_t handle, PS2000_THRESHOLD_DIRECTION channelA, PS2000_THRESHOLD_DIRECTION channelB, PS2000_THRESHOLD_DIRECTION channelC, PS2000_THRESHOLD_DIRECTION channelD, PS2000_THRESHOLD_DIRECTION ext) {
