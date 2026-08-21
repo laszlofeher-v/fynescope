@@ -10,10 +10,12 @@ import (
 
 func streamMode(psControl *PscDesc) state {
 	var (
-		callbackChannel chan struct{}
-		nextState       state = idle
-		driverBuffer    [][]int16
-		rollBuffer      [][]int16
+		callbackChannel    chan struct{}
+		nextState          state = idle
+		driverBuffer       [][]int16
+		digitalDriverBuffer [][]int16
+		rollBuffer         [][]int16
+		digitalRollBuffer  [][]int16
 	)
 
 	callbackStream := func(handle int16, noOfSamples int32, startIndex uint32, overflow int16, triggeredAt uint32, triggered, autoStop int16, param any) (err error) {
@@ -39,9 +41,27 @@ func streamMode(psControl *PscDesc) state {
 				// Copy back to display/receive buffer for the GUI/RefreshCallback
 				copy(psControl.receiveBuffer[chIndex], buf)
 			}
+			
+			for i := 0; i < 2; i++ {
+				if !psControl.digitalPortsEnabled[i].Load() {
+					continue
+				}
+				newSamples := digitalDriverBuffer[i][startIndex : startIndex+uint32(noOfSamples)]
+				buf := digitalRollBuffer[i]
+				n := int(noOfSamples)
+				if len(buf) > 0 {
+					if n >= len(buf) {
+						copy(buf, newSamples[n-len(buf):])
+					} else {
+						copy(buf, buf[n:])
+						copy(buf[len(buf)-n:], newSamples)
+					}
+					copy(psControl.digitalReceiveBuffer[i], buf)
+				}
+			}
 
 			psControl.checkOverflow(overflow)
-			psControl.RefreshCallback(psControl.receiveBuffer, nil, nil, 0, 0, psControl.SamplingTimeInterval)
+			psControl.RefreshCallback(psControl.receiveBuffer, nil, psControl.digitalReceiveBuffer, 0, 0, psControl.SamplingTimeInterval)
 		}
 
 		select {
@@ -65,8 +85,15 @@ func streamMode(psControl *PscDesc) state {
 
 		// Setup scrolling display buffers
 		rollBuffer = make([][]int16, len(psControl.receiveBuffer))
-		for i := range rollBuffer {
-			rollBuffer[i] = make([]int16, psControl.SampleCountRequired)
+		for chIndex := range rollBuffer {
+			rollBuffer[chIndex] = make([]int16, psControl.SampleCountRequired)
+		}
+		digitalRollBuffer = make([][]int16, 2)
+		for i := 0; i < 2; i++ {
+			if !psControl.digitalPortsEnabled[i].Load() {
+				continue
+			}
+			digitalRollBuffer[i] = make([]int16, psControl.SampleCountRequired)
 		}
 
 		// Adjust receiveBuffer size
@@ -75,6 +102,16 @@ func streamMode(psControl *PscDesc) state {
 				psControl.receiveBuffer[chIndex] = make([]int16, psControl.SampleCountRequired)
 			} else {
 				psControl.receiveBuffer[chIndex] = psControl.receiveBuffer[chIndex][:psControl.SampleCountRequired]
+			}
+		}
+		for i := 0; i < 2; i++ {
+			if !psControl.digitalPortsEnabled[i].Load() {
+				continue
+			}
+			if len(psControl.digitalReceiveBuffer[i]) < int(psControl.SampleCountRequired) {
+				psControl.digitalReceiveBuffer[i] = make([]int16, psControl.SampleCountRequired)
+			} else {
+				psControl.digitalReceiveBuffer[i] = psControl.digitalReceiveBuffer[i][:psControl.SampleCountRequired]
 			}
 		}
 
@@ -87,6 +124,18 @@ func streamMode(psControl *PscDesc) state {
 			if err != nil {
 				slog.Error("stream prepare SetDataBuffer", "err", err)
 				return
+			}
+		}
+		digitalDriverBuffer = make([][]int16, 2)
+		for i := 0; i < 2; i++ {
+			if !psControl.digitalPortsEnabled[i].Load() {
+				continue
+			}
+			digitalDriverBuffer[i] = make([]int16, psControl.SampleCountRequired)
+			err = psControl.Con.SetDataBuffer(genericps.ChannelId(genericps.Port0+genericps.DigitalPort(i)),
+				digitalDriverBuffer[i], 0, psControl.downSampleRatioMode)
+			if err != nil {
+				slog.Error("stream prepare SetDataBuffer digital", "err", err)
 			}
 		}
 

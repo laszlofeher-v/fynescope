@@ -448,7 +448,7 @@ func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandM
 
 func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 	err := fmt.Errorf("Not Supported on ps3000")
-	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
+	response := m.Rsp().(*genericps.SetDigitalPortRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

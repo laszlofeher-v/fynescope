@@ -19,7 +19,8 @@ func (scp *ScpDesc) applyDemoDigitalGenSettings() {
 		set := scp.Settings.DigitalDemoGenPanel
 		go func(set settings.DigitalDemoGenSettings) {
 			_ = scp.psControl.Con.SetDemoDigitalGen(
-				set.Port,
+				set.Port0Enabled,
+				set.Port1Enabled,
 				set.Frequency,
 				set.Direction,
 				set.Encoding,
@@ -66,21 +67,20 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		})
 	}
 
-	// Port Selector
-	portOptions := []string{"Port0", "Port1"}
-	portSelect := selectscroll.NewSelectScroll(portOptions, func(s string, ex selectscroll.Exception) {
-		if s == "Port0" {
-			settings.Port = genericps.Port0
-		} else {
-			settings.Port = genericps.Port1
-		}
+	// Port Checkboxes
+	port0Check := widget.NewCheck("Port0", func(checked bool) {
+		settings.Port0Enabled = checked
 		scp.applyDemoDigitalGenSettings()
-	}, "Port")
-	if settings.Port == genericps.Port1 {
-		portSelect.SilentSetSelected("Port1")
-	} else {
-		portSelect.SilentSetSelected("Port0")
-	}
+	})
+	port0Check.SetChecked(settings.Port0Enabled)
+
+	port1Check := widget.NewCheck("Port1", func(checked bool) {
+		settings.Port1Enabled = checked
+		scp.applyDemoDigitalGenSettings()
+	})
+	port1Check.SetChecked(settings.Port1Enabled)
+
+	portGroup := container.NewHBox(port0Check, port1Check)
 
 	// Frequency
 	freqLabel := widget.NewLabel("Frequency:")
@@ -113,6 +113,8 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		dirSelect.SilentSetSelected("Up")
 	}
 
+	var updateVisibility func()
+
 	// Encoding Selector
 	encOptions := []string{"Binary", "Gray"}
 	encSelect := selectscroll.NewSelectScroll(encOptions, func(s string, ex selectscroll.Exception) {
@@ -120,6 +122,9 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 			settings.Encoding = genericps.DigitalDemoGenEncodingBinary
 		} else {
 			settings.Encoding = genericps.DigitalDemoGenEncodingGray
+		}
+		if updateVisibility != nil {
+			updateVisibility()
 		}
 		scp.applyDemoDigitalGenSettings()
 	}, "Encoding")
@@ -136,6 +141,9 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 			settings.Mode = genericps.DigitalDemoGenModeSynchronous
 		} else {
 			settings.Mode = genericps.DigitalDemoGenModeAsynchronous
+		}
+		if updateVisibility != nil {
+			updateVisibility()
 		}
 		scp.applyDemoDigitalGenSettings()
 	}, "Mode")
@@ -160,10 +168,29 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		scp.applyDemoDigitalGenSettings()
 	}
 
+	updateVisibility = func() {
+		if settings.Encoding == genericps.DigitalDemoGenEncodingGray {
+			modeSelect.Hide()
+			settings.Mode = genericps.DigitalDemoGenModeSynchronous
+			modeSelect.SilentSetSelected("Synchronous")
+		} else {
+			modeSelect.Show()
+		}
+
+		if settings.Mode == genericps.DigitalDemoGenModeSynchronous {
+			bitDelayLabel.Hide()
+			bitDelayDisp.Hide()
+		} else {
+			bitDelayLabel.Show()
+			bitDelayDisp.Show()
+		}
+	}
+	updateVisibility()
+
 	if undockable {
 		box = container.NewVBox(
 			undockButton,
-			portSelect,
+			portGroup,
 			freqLabel,
 			freqDisp,
 			dirSelect,
@@ -174,7 +201,7 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		)
 	} else {
 		box = container.NewVBox(
-			portSelect,
+			portGroup,
 			freqLabel,
 			freqDisp,
 			dirSelect,

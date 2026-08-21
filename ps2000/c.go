@@ -15,6 +15,12 @@ void lpStreamingReady2000(
   int16_t   auto_stop,
   uint32_t  nValues
 );
+
+typedef struct tPS2000_DIGITAL_CHANNEL_DIRECTIONS PS2000_DIGITAL_CHANNEL_DIRECTIONS;
+typedef int16_t PS2000_DIGITAL_PORT;
+
+int16_t ps2000SetTriggerDigitalPortProperties(int16_t handle, PS2000_DIGITAL_CHANNEL_DIRECTIONS *directions, int16_t nDirections);
+int16_t ps2000SetDigitalPort(int16_t handle, PS2000_DIGITAL_PORT port, int16_t enabled, int16_t logicLevel);
 */
 import "C"
 
@@ -306,5 +312,56 @@ func ps2000IsReady(handle int16) (ready int16, err error) {
 	slog.Debug("ps2000IsReady", "handle", handle)
 	r := C.ps2000_ready((C.short)(handle))
 	ready = int16(r)
+	return
+}
+
+func ps2000SetAdvTriggerChannelConditions(handle int16, conds []genericps.TriggerConditions) (err error) {
+	slog.Debug("ps2000SetAdvTriggerChannelConditions")
+	if len(conds) == 0 {
+		return
+	}
+	cConds := make([]C.PS2000_TRIGGER_CONDITIONS, len(conds))
+	for i, c := range conds {
+		cConds[i].channelA = C.PS2000_TRIGGER_STATE(c.ChannelA)
+		cConds[i].channelB = C.PS2000_TRIGGER_STATE(c.ChannelB)
+		cConds[i].channelC = C.PS2000_TRIGGER_STATE(c.ChannelC)
+		cConds[i].channelD = C.PS2000_TRIGGER_STATE(c.ChannelD)
+		cConds[i].external = C.PS2000_TRIGGER_STATE(c.External)
+		cConds[i].pulseWidthQualifier = C.PS2000_TRIGGER_STATE(c.PulseWidthQualifier)
+	}
+	stat := C.ps2000SetAdvTriggerChannelConditions((C.short)(handle), &cConds[0], (C.short)(len(conds)))
+	if stat == 0 {
+		err = fmt.Errorf("SetAdvTriggerChannelConditions failed")
+	}
+	return
+}
+
+func ps2000SetTriggerDigitalPortProperties(handle int16, directions []genericps.DigitalChannelDirections) (err error) {
+	slog.Debug("ps2000SetTriggerDigitalPortProperties")
+	if len(directions) == 0 {
+		return
+	}
+	cDirs := make([]C.PS2000_DIGITAL_CHANNEL_DIRECTIONS, len(directions))
+	for i, d := range directions {
+		cDirs[i].channel = (C.short)(d.Channel)
+		cDirs[i].direction = (C.short)(d.Direction)
+	}
+	stat := C.ps2000SetTriggerDigitalPortProperties((C.short)(handle), &cDirs[0], (C.short)(len(directions)))
+	if stat == 0 {
+		err = fmt.Errorf("SetTriggerDigitalPortProperties failed")
+	}
+	return
+}
+
+func ps2000SetDigitalPort(handle int16, port genericps.DigitalPort, enabled bool, logicLevel int16) (err error) {
+	slog.Debug("ps2000SetDigitalPort")
+	en := C.short(0)
+	if enabled {
+		en = 1
+	}
+	stat := C.ps2000SetDigitalPort((C.short)(handle), (C.PS2000_DIGITAL_PORT)(port), en, (C.short)(logicLevel))
+	if stat == 0 {
+		err = fmt.Errorf("SetDigitalPort failed")
+	}
 	return
 }

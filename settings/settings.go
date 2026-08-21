@@ -155,7 +155,8 @@ type (
 		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
 	DigitalDemoGenSettings struct {
-		Port      genericps.DigitalPort             `yaml:"port"`
+		Port0Enabled bool                              `yaml:"port0_enabled"`
+		Port1Enabled bool                              `yaml:"port1_enabled"`
 		Frequency float64                           `yaml:"frequency"`
 		Direction genericps.DigitalDemoGenDirection `yaml:"direction"`
 		Encoding  genericps.DigitalDemoGenEncoding  `yaml:"encoding"`

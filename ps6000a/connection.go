@@ -596,7 +596,7 @@ func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 		err error
 	)
 	err = ps6000aSetDigitalPort(m.Handle(), DigitalPort(m.Port), m.Enabled, m.Logiclevel)
-	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
+	response := m.Rsp().(*genericps.SetDigitalPortRsp)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

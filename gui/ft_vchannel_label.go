@@ -163,23 +163,34 @@ func (cl *ftVChannelLabelViewer) draw() {
 	}
 	left, _, right, _ := cl.scp.boundString(unitName)
 	dv := startValue / 5.0
-	dy := float32(yBounds.Dy()-1.0) / 10.0
+	effectiveH := float32(yBounds.Dy())
+	dy := (effectiveH - 1.0) / 10.0
 	xoffset := left - right
 	if !cl.leftLabel {
 		xoffset = -float32(xBounds.Dx())
 	}
 	yOffset := cl.scp.offsetNToFtY(vch.DisplayVOffset)
 	if yOffset >= 0 {
+		firstY := cl.scp.ftDivsY[0]
 		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-			int(math.Round(float64(cl.scp.ftDivsY[0])+yOffset+float64(dy+fontSize)/2)),
+			int(math.Round(float64(firstY)+yOffset+float64(dy+fontSize)/2)),
 			unitName, vch.Col[cl.scp.Settings.ChannelColorIndex])
 	} else {
+		lastY := cl.scp.ftDivsY[0]
+		for _, yVal := range cl.scp.ftDivsY {
+			if yVal >= 0 {
+				lastY = yVal
+			}
+		}
 		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-			int(math.Round(float64(cl.scp.ftDivsY[len(cl.scp.ftDivsY)-1])+yOffset-float64(dy-fontSize)/2)),
+			int(math.Round(float64(lastY)+yOffset-float64(dy-fontSize)/2)),
 			unitName, vch.Col[cl.scp.Settings.ChannelColorIndex])
 	}
 	v := startValue
 	for _, y_px := range cl.scp.ftDivsY {
+		if y_px < 0 {
+			continue
+		}
 		if float64(y_px)+yOffset > float64(yBounds.Max.Y) {
 			break
 		}

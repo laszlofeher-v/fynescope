@@ -1187,6 +1187,7 @@ func (scp *ScpDesc) snapYToFtN(y float64) int {
 	return n
 }
 
+
 func (scp *ScpDesc) offsetNToFtY(n int) float64 {
 	h := float64(scp.ftScopeSignalScreen.Bounds().Dy())
 	yRasterDiv := (h / float64(numberOfDivs)) / 5.0
@@ -1200,7 +1201,10 @@ func (scp *ScpDesc) setFtVDivsY() {
 	bounds := scp.ftScopeSignalScreen.Bounds()
 	h := float32(bounds.Dy())
 	dh := (h - 1) / numberOfDivs
-	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y); i, y = i+1, y+dh {
+	for i := range scp.ftDivsY {
+		scp.ftDivsY[i] = -1.0
+	}
+	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y) && i < len(scp.ftDivsY); i, y = i+1, y+dh {
 		scp.ftDivsY[i] = y
 	}
 }
@@ -1237,6 +1241,9 @@ func (scp *ScpDesc) drawFtDivisions() {
 	drawDivs := func(yOffset float32, col color.Color) {
 		draw.Draw(scp.ftScopeFullScreen, bounds, &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
 		for _, v := range scp.ftDivsY {
+			if v < 0 {
+				continue
+			}
 			counter := 0
 			for x := float64(bounds.Min.X); x <= float64(bounds.Max.X); x = x + 1.0 {
 				if counter%10 < 4 {
@@ -1290,7 +1297,10 @@ func (scp *ScpDesc) setTzVDivsY() {
 	bounds := scp.timeZoomScopeSignalScreen.Bounds()
 	h := float32(bounds.Dy())
 	dh := (h - 1) / numberOfDivs
-	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y); i, y = i+1, y+dh {
+	for i := range scp.timeZoomDivsY {
+		scp.timeZoomDivsY[i] = -1.0
+	}
+	for i, y := 0, float32(bounds.Min.Y); y <= float32(bounds.Max.Y) && i < len(scp.timeZoomDivsY); i, y = i+1, y+dh {
 		scp.timeZoomDivsY[i] = y
 	}
 }
@@ -1321,6 +1331,9 @@ func (scp *ScpDesc) drawTzDivisions() {
 	drawDivs := func(yOffset float32, col color.Color) {
 		draw.Draw(scp.timeZoomScopeFullScreen, bounds, &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
 		for _, v := range scp.timeZoomDivsY {
+			if v < 0 {
+				continue
+			}
 			counter := 0
 			for x := float64(bounds.Min.X); x <= float64(bounds.Max.X); x = x + 1.0 {
 				if counter%10 < 4 {

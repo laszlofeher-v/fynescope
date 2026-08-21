@@ -75,6 +75,45 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 			return
 		}
 	}
+	
+	for i := 0; i < 2; i++ {
+		if !psControl.digitalPortsEnabled[i].Load() {
+			continue
+		}
+		if len(psControl.digitalReceiveBuffer[i]) < int(sampleCount) {
+			if cap(psControl.digitalReceiveBuffer[i]) < int(sampleCount) {
+				psControl.digitalReceiveBuffer[i] = make([]int16, sampleCount)
+			} else {
+				psControl.digitalReceiveBuffer[i] = psControl.digitalReceiveBuffer[i][:sampleCount]
+			}
+		} else {
+			psControl.digitalReceiveBuffer[i] = psControl.digitalReceiveBuffer[i][:sampleCount]
+		}
+		minMax := psControl.downSampleRatioMode == genericps.RatioModeAggregate
+		if minMax {
+			if len(psControl.digitalReceiveBufferMin[i]) < int(sampleCount) {
+				if cap(psControl.digitalReceiveBufferMin[i]) < int(sampleCount) {
+					psControl.digitalReceiveBufferMin[i] = make([]int16, sampleCount)
+				} else {
+					psControl.digitalReceiveBufferMin[i] = psControl.digitalReceiveBufferMin[i][:sampleCount]
+				}
+			} else {
+				psControl.digitalReceiveBufferMin[i] = psControl.digitalReceiveBufferMin[i][:sampleCount]
+			}
+			err = psControl.Con.SetDataBuffers(genericps.ChannelId(genericps.Port0+genericps.DigitalPort(i)),
+				psControl.digitalReceiveBuffer[i][:sampleCount],
+				psControl.digitalReceiveBufferMin[i][:sampleCount],
+				uint32(segmentIndex),
+				psControl.downSampleRatioMode)
+		} else {
+			err = psControl.Con.SetDataBuffer(genericps.ChannelId(genericps.Port0+genericps.DigitalPort(i)),
+				psControl.digitalReceiveBuffer[i][:sampleCount], segmentIndex,
+				psControl.downSampleRatioMode)
+		}
+		if err != nil {
+			slog.Error("SetDataBuffer digital", "error:", err)
+		}
+	}
 	return
 }
 
@@ -135,7 +174,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 			psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
 				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
-		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, nil, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
+		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, psControl.digitalReceiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return
 }
