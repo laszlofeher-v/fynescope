@@ -460,8 +460,8 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		})
 		addToTest(awgEditorBtn, "genAwgEditorBtn", genTabIndex)
 		if undockable {
-			top = container.New(layout.NewHBoxLayout(), show, check,
-				container.New(layout.NewVBoxLayout(), waveType), undockButton)
+			top = container.New(layout.NewVBoxLayout(), undockButton,
+				container.New(layout.NewHBoxLayout(), show, check, waveType))
 		} else {
 			top = container.New(layout.NewHBoxLayout(), show, check,
 				container.New(layout.NewVBoxLayout(), waveType))
