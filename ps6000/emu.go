@@ -23,7 +23,12 @@ PICO_STATUS ps6000GetValuesAsync(int16_t handle, uint32_t startIndex, uint32_t n
 PICO_STATUS ps6000GetValues(int16_t handle, uint32_t startIndex, uint32_t *noOfSamples, uint32_t downSampleRatio, PS6000_RATIO_MODE downSampleRatioMode, uint32_t segmentIndex, int16_t *overflow) { return 0; }
 PICO_STATUS ps6000GetValuesBulk(int16_t handle, uint32_t *noOfSamples, uint32_t fromSegmentIndex, uint32_t toSegmentIndex, uint32_t downSampleRatio, PS6000_RATIO_MODE downSampleRatioMode, int16_t *overflow) { return 0; }
 
-PICO_STATUS ps6000GetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggreatedSamples, uint32_t *maxDownSampleRatio, PS6000_RATIO_MODE downSampleRatioMode, uint32_t segmentIndex) { return 0; }
+PICO_STATUS ps6000GetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggreatedSamples, uint32_t *maxDownSampleRatio, PS6000_RATIO_MODE downSampleRatioMode, uint32_t segmentIndex) {
+    if (maxDownSampleRatio) {
+        *maxDownSampleRatio = noOfUnaggreatedSamples;
+    }
+    return 0;
+}
 PICO_STATUS ps6000GetNoOfCaptures(int16_t handle, uint32_t *nCaptures) { return 0; }
 PICO_STATUS ps6000GetNoOfProcessedCaptures(int16_t handle, uint32_t *nCaptures) { return 0; }
 PICO_STATUS ps6000GetStreamingLatestValues(int16_t handle, ps6000StreamingReady lpPs6000Ready, void *pParameter) { return 0; }

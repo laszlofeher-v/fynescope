@@ -711,7 +711,7 @@ func (scp *ScpDesc) refreshRasters() {
 	}
 	fyne.Do(func() {
 		targetFunction := scp.Settings.Window.Function
-		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == digGenTabIndex {
+		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -877,7 +877,6 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.controlTab.Selected() == scp.genTab ||
 			scp.controlTab.Selected() == scp.filterTab ||
 			scp.controlTab.Selected() == scp.extgenTab ||
-			scp.controlTab.Selected() == scp.digGenTab ||
 			scp.controlTab.Selected() == scp.vchTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
@@ -963,8 +962,7 @@ func (scp *ScpDesc) build2000Gui() {
 	targetFunctionInit := scp.Settings.Window.Function
 	if scp.Settings.Window.Function == genTabIndex ||
 		scp.Settings.Window.Function == filterTabIndex ||
-		scp.Settings.Window.Function == extgenTabIndex ||
-		scp.Settings.Window.Function == digGenTabIndex {
+		scp.Settings.Window.Function == extgenTabIndex {
 		scp.controlTab.SelectTabIndex(scp.Settings.Window.LastDispFunction)
 	}
 	switch targetFunctionInit {
@@ -1174,7 +1172,9 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.digitalRaster.refresh()
 			}
 			if scp.psControl != nil {
-				scp.psControl.Con.SetDigitalPort(genericps.Port0, scp.Settings.Digital.Ports[0].Enabled, 5000)
+				go func(p settings.DigitalPortSettings) {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+				}(scp.Settings.Digital.Ports[0])
 			}
 		})
 		scp.d815Button = widget.NewButton("D8-15", func() {
@@ -1185,9 +1185,18 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.digitalRaster.refresh()
 			}
 			if scp.psControl != nil {
-				scp.psControl.Con.SetDigitalPort(genericps.Port1, scp.Settings.Digital.Ports[1].Enabled, 5000)
+				go func(p settings.DigitalPortSettings) {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+				}(scp.Settings.Digital.Ports[1])
 			}
 		})
+
+		if scp.psControl != nil {
+			go func(p0, p1 settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p0}
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p1}
+			}(scp.Settings.Digital.Ports[0], scp.Settings.Digital.Ports[1])
+		}
 	}
 	changeSideFunc := func() {
 		if changeSide.Icon == theme.NavigateBackIcon() {

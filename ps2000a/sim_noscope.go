@@ -5,6 +5,7 @@ package ps2000a
 import (
 	"fynescope/demo"
 	"fynescope/genericps"
+	"log/slog"
 
 	"math"
 	"math/rand"
@@ -22,7 +23,8 @@ var (
 	channels         [4]channelDesc
 	triggerDetector  *demo.TriggerDetector
 	buffers          [4][]int16
-	digitalBuffers   = make(map[int][]int16)
+	buffersMin       [4][]int16
+	digitalBuffers   [256][]int16
 	running          bool
 	isReady          bool
 	timeBaseSet      uint32
@@ -39,6 +41,9 @@ var (
 	etsEnabled              bool
 	etsTimeBuffer           []int64
 	timeIntervalPicoSeconds float64
+
+	// Set by SetDataBuffer/SetDataBuffers; used by simRunBlock for aggregation
+	downSampleMode int32 // 0=None, 1=Aggregate(ED), 2=Decimate, 4=Average(High-Res)
 )
 
 const maxValue = 32767
@@ -96,6 +101,22 @@ func simSetDataBuffer(handle int16, channel int, buffer []int16, segmentIndex ui
 	}
 }
 
+func simSetDataBufferWithMode(handle int16, channel int, buffer []int16, segmentIndex uint32, mode int32) {
+	simSetDataBuffer(handle, channel, buffer, segmentIndex)
+	downSampleMode = mode
+}
+
+func simSetDataBufferMinWithMode(handle int16, channel int, bufMin []int16, segmentIndex uint32, mode int32) {
+	if channel >= 0 && channel < 4 {
+		buffersMin[channel] = bufMin
+	}
+	downSampleMode = mode
+}
+
+func simSetDigitalPort(handle int16, port int, enabled bool, logicLevel int16) {
+	// No-op for sim_noscope; simRunBlock relies on digitalBuffers being non-nil.
+}
+
 func calculateSampleLevelAtTime(t float64, ch int) float64 {
 	chDesc := &channels[ch]
 
@@ -143,8 +164,8 @@ func calculateSampleLevelAtTime(t float64, ch int) float64 {
 	genOffset := float64(0)
 
 	if genOn {
-		a = float64(genPkToPk/2000) / rangeMv
-		genOffset = float64(genOffsetVoltage/1000) / rangeMv
+		a = float64(genPkToPk) / 2000.0 / rangeMv
+		genOffset = float64(genOffsetVoltage) / 1000.0 / rangeMv
 	}
 
 	chOffset := (chDesc.offset * 1000.0) / rangeMv
@@ -161,6 +182,27 @@ func calculateSampleLevelAtTime(t float64, ch int) float64 {
 	return levelFloat
 }
 
+// simTimebaseToNs converts a PS2000A timebase index to the corresponding
+// sample interval in nanoseconds, matching the real hardware formula and the
+// dt computation used inside simRunBlock.
+//
+//	timebase 0  → 1 ns   (500 MS/s, 1 channel)
+//	timebase 1  → 2 ns   (250 MS/s)
+//	timebase 2  → 4 ns   (125 MS/s)
+//	timebase n≥3 → 1000*(n-2)/125 ns  (increments of 8 ns)
+func simTimebaseToNs(timebase uint32) float64 {
+	switch {
+	case timebase == 0:
+		return 1
+	case timebase == 1:
+		return 2
+	case timebase == 2:
+		return 4
+	default:
+		return 1000.0 * (float64(timebase) - 2.0) / 125.0
+	}
+}
+
 func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCallback func(handle int16, status int32)) {
 	running = true
 	isReady = false
@@ -175,14 +217,8 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		switch {
 		case etsEnabled:
 			dt = timeIntervalPicoSeconds / 1e12
-		case timebase == 0:
-			dt = 1e-9
-		case timebase == 1:
-			dt = 2e-9
-		case timebase == 2:
-			dt = 4e-9
 		default:
-			dt = (1000.0 * (float64(timebase) - 2.0) / 125.0) * 1e-9
+			dt = simTimebaseToNs(timebase) * 1e-9
 		}
 
 		signalFunc := func(t float64, ch demo.ChannelId) float64 {
@@ -194,50 +230,120 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		if found {
 			for ch := 0; ch < 4; ch++ {
 				buf := buffers[ch]
-				if channels[ch].enabled && buf != nil {
-					length := int(pre + post)
-					if length > len(buf) {
-						length = len(buf)
-					}
-					for i := 0; i < length; i++ {
-						rt := (float64(i)-float64(pre))*dt + triggerTime
+				if !channels[ch].enabled || buf == nil {
+					continue
+				}
+
+				bufLen := len(buf)
+				if bufLen == 0 {
+					continue
+				}
+
+				// Calculate the downSampleRatio from raw vs output sample counts
+				// pre+post are raw samples; buf is sized for output samples
+				rawTotal := int(pre + post)
+				downSampleRatio := rawTotal / bufLen
+				if downSampleRatio < 1 {
+					downSampleRatio = 1
+				}
+
+				for i := 0; i < bufLen; i++ {
+					// Output sample i corresponds to raw samples [i*ratio .. (i+1)*ratio-1]
+					// relative to trigger, pre-samples are to the left
+					var aggSum float64
+					var aggMin float64 = math.MaxFloat64
+					var aggMax float64 = -math.MaxFloat64
+					var decimateVal float64
+
+					for r := 0; r < downSampleRatio; r++ {
+						rawIdx := i*downSampleRatio + r
+						rt := (float64(rawIdx)-float64(pre))*dt + triggerTime
 
 						if etsEnabled && ch == 0 {
 							t0Fs := 1e15 * float64(pre) * dt
-							rteFs := float64(i) * dt * 1e15
+							rteFs := float64(rawIdx) * dt * 1e15
 							if i < len(etsTimeBuffer) {
 								etsTimeBuffer[i] = int64(rteFs - t0Fs)
 							}
 						}
 
 						val := calculateSampleLevelAtTime(rt, ch)
-
-						var level int16
-						if val > maxValue {
-							level = maxValue
-						} else if val < -maxValue {
-							level = -maxValue
-						} else {
-							level = int16(math.Round(val))
+						aggSum += val
+						if val < aggMin {
+							aggMin = val
 						}
-						buf[i] = level
+						if val > aggMax {
+							aggMax = val
+						}
+						if r == 0 {
+							decimateVal = val
+						}
+					}
+
+					// Apply the correct aggregation based on the downSampleMode stored at SetDataBuffer time:
+					//   0 = None (ratio will be 1, avgerage = single sample)
+					//   1 = Aggregate / ED: use min AND max; we write max to bufMax here
+					//   2 = Decimate: take first raw sample
+					//   4 = Average / High-Res: arithmetic mean
+					var finalVal float64
+					switch downSampleMode {
+					case 2: // Decimate
+						finalVal = decimateVal
+					case 1: // Aggregate / ED – write aggMax to the max buffer (bufMax); aggMin goes to bufMin
+						finalVal = aggMax // simSetDataBuffers writes aggMin to bufMin separately if needed
+					default: // 0 (None) or 4 (Average/High-Res)
+						finalVal = aggSum / float64(downSampleRatio)
+					}
+
+					var level int16
+					if finalVal > maxValue {
+						level = maxValue
+					} else if finalVal < -maxValue {
+						level = -maxValue
+					} else {
+						level = int16(math.Round(finalVal))
+					}
+					buf[i] = level
+
+					// For Aggregate/ED mode, also fill the min buffer with aggMin
+					if downSampleMode == 1 && buffersMin[ch] != nil && i < len(buffersMin[ch]) {
+						minVal := aggMin
+						var levelMin int16
+						if minVal > maxValue {
+							levelMin = maxValue
+						} else if minVal < -maxValue {
+							levelMin = -maxValue
+						} else {
+							levelMin = int16(math.Round(minVal))
+						}
+						buffersMin[ch][i] = levelMin
 					}
 				}
 			}
-			
+
 			// Digital buffers
 			p0Buf := digitalBuffers[128]
 			p1Buf := digitalBuffers[129]
 			if p0Buf != nil || p1Buf != nil {
-				length := int(pre + post)
-				if p0Buf != nil && length > len(p0Buf) {
+				// Determine output length from whichever digital buffer exists
+				length := 0
+				if p0Buf != nil {
 					length = len(p0Buf)
 				}
-				if p1Buf != nil && length > len(p1Buf) {
+				if p1Buf != nil && (length == 0 || len(p1Buf) < length) {
 					length = len(p1Buf)
 				}
+
+				// Infer downSampleRatio from raw vs output counts
+				rawTotal := int(pre + post)
+				downSampleRatio := rawTotal / length
+				if downSampleRatio < 1 {
+					downSampleRatio = 1
+				}
+
 				for i := 0; i < length; i++ {
-					rt := (float64(i)-float64(pre))*dt + triggerTime
+					rawIdx := i * downSampleRatio
+					rt := (float64(rawIdx)-float64(pre))*dt + triggerTime
 					p0Val, p1Val, p0En, p1En := demo.GetDemoDigitalGenValue(rt)
 					if p0Buf != nil && p0En {
 						p0Buf[i] = p0Val
@@ -277,6 +383,7 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveT
 		genWaveFunction = demo.NewWaveformGenerator(demo.WaveTypeEnum(waveType))
 	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
+	slog.Debug("simSetSigGenBuiltIn", "startFreq", startFreq, "stopFreq", stopFreq)
 	sweepController = demo.NewSweepController(startFreq, stopFreq, increment, demo.SweepTypeEnum(sweepType), dwellDuration)
 }
 

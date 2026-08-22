@@ -29,10 +29,14 @@ func (psControl *PscDesc) digitalPortMonitor() {
 	var changedSet [2]bool
 	
 	storeSettings := func(setMsg *DigitalPortMsg) (nextFunc eventHandlerFunc) {
-		psControl.digitalPortsEnabled[int(setMsg.Port)].Store(setMsg.Settings.Enabled)
-		if oldChDesc[int(setMsg.Port)] != setMsg.Settings {
-			oldChDesc[int(setMsg.Port)] = setMsg.Settings
-			changedSet[int(setMsg.Port)] = true
+		portIdx := int(setMsg.Port - genericps.Port0)
+		if portIdx < 0 || portIdx > 1 {
+			return unchanged
+		}
+		psControl.digitalPortsEnabled[portIdx].Store(setMsg.Settings.Enabled)
+		if oldChDesc[portIdx] != setMsg.Settings {
+			oldChDesc[portIdx] = setMsg.Settings
+			changedSet[portIdx] = true
 			return changed
 		}
 		return unchanged
@@ -61,7 +65,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 			for i := range changedSet {
 				if changedSet[i] {
 					portSettings := DigitalPortMsg{
-						Port:     genericps.DigitalPort(i),
+						Port:     genericps.Port0 + genericps.DigitalPort(i),
 						Settings: oldChDesc[i],
 					}
 					getMsg.portSettings = &portSettings
