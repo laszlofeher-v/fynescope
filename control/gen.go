@@ -1,9 +1,8 @@
 package control
 
 import (
-	"log/slog"
 	"fynescope/genericps"
-	// "fynescope/psi"
+	"log/slog"
 )
 
 func (psControl *PscDesc) setGenerator() (err error) {
@@ -18,7 +17,7 @@ func (psControl *PscDesc) setGenerator() (err error) {
 			startPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StartFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
 			stopPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StopFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
 			incPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.Increment, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
-			
+
 			psControl.Con.SetSigGenArbitrary(psControl.getGenerator.generatorSettings.OffsetVoltage,
 				psControl.getGenerator.generatorSettings.PkToPK,
 				startPhase, stopPhase, incPhase,
@@ -57,11 +56,10 @@ func (psControl *PscDesc) generatorMonitor() {
 		eventHandlerFunc func() (nextFunc eventHandlerFunc)
 	)
 	var (
-		unchanged, changed  eventHandlerFunc
-		storedSetting GeneratorDesc
+		unchanged, changed eventHandlerFunc
+		storedSetting      GeneratorDesc
 	)
 	storeSettings := func(msg *GeneratorDescMsg) (nextFunc eventHandlerFunc) {
-		// slog.Debug("storeSettings", "*msg", *msg)
 		if !storedSetting.Equals(&msg.GeneratorDesc) {
 			storedSetting = msg.GeneratorDesc
 			psControl.requestRestart() // restart the running state machine
@@ -74,7 +72,6 @@ func (psControl *PscDesc) generatorMonitor() {
 		case <-psControl.shutdownCh:
 			return nil
 		case msg := <-psControl.SetGeneratorCh:
-			// slog.Debug("generatorMonitor unchanged set received", "*msg", *msg)
 			return storeSettings(msg)
 		case getMsg := <-psControl.getGeneratorCh:
 			getMsg.newSetting <- false

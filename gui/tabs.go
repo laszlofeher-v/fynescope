@@ -97,7 +97,7 @@ func (scp *ScpDesc) shouldDrawRaster(targetTabIndex int) bool {
 	if sel == targetTab {
 		return true
 	}
-	if targetTab == scp.ftTab && (sel == scp.rlcTab || sel == scp.decodeTab) {
+	if targetTab == scp.ftTab && (sel == scp.rlcTab || sel == scp.decodeTab || sel == scp.digGenTab) {
 		return true
 	}
 	if scp.Settings.Window.LastDispFunction == targetTabIndex {

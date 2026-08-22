@@ -32,3 +32,4 @@ scratch/*
 waveform*.bin
 *.csv
 fynescope_bin
+fynescope_hw

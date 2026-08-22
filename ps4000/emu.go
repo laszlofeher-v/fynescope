@@ -23,7 +23,12 @@ PICO_STATUS ps4000GetValuesAsync(int16_t handle, uint32_t startIndex, uint32_t n
 PICO_STATUS ps4000GetValues(int16_t handle, uint32_t startIndex, uint32_t *noOfSamples, uint32_t downSampleRatio, int16_t downSampleRatioMode, uint16_t segmentIndex, int16_t *overflow) { return 0; }
 PICO_STATUS ps4000GetValuesBulk(int16_t handle, uint32_t *noOfSamples, uint16_t fromSegmentIndex, uint16_t toSegmentIndex, int16_t *overflow) { return 0; }
 PICO_STATUS ps4000GetChannelInformation(int16_t handle, PS4000_CHANNEL_INFO info, int32_t probe, int32_t *ranges, int32_t *length, int32_t channels) { return 0; }
-PICO_STATUS ps4000GetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggreatedSamples, uint32_t *maxDownSampleRatio, int16_t downSampleRatioMode, uint16_t segmentIndex) { return 0; }
+PICO_STATUS ps4000GetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggreatedSamples, uint32_t *maxDownSampleRatio, int16_t downSampleRatioMode, uint16_t segmentIndex) {
+    if (maxDownSampleRatio) {
+        *maxDownSampleRatio = noOfUnaggreatedSamples;
+    }
+    return 0;
+}
 PICO_STATUS ps4000GetNoOfCaptures(int16_t handle, uint16_t *nCaptures) { return 0; }
 PICO_STATUS ps4000GetStreamingLatestValues(int16_t handle, ps4000StreamingReady lpPs4000Ready, void *pParameter) { return 0; }
 PICO_STATUS ps4000GetTimebase(int16_t handle, uint32_t timebase, int32_t noSamples, int32_t *timeIntervalNanoseconds, int16_t oversample, int32_t *maxSamples, uint16_t segmentIndex) {

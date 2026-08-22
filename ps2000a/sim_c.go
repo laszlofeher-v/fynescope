@@ -41,6 +41,8 @@ extern uint32_t Gops2000aSetDataBuffers(int16_t handle, int32_t channelOrPort, i
 extern uint32_t Gops2000aIsTriggerOrPulseWidthQualifierEnabled(int16_t handle, int16_t *triggerEnabled, int16_t *pulseWidthQualifierEnabled);
 extern uint32_t Gops2000aSetPulseWidthQualifier(int16_t handle, void *conditions, int16_t nConditions, int32_t direction, uint32_t lower, uint32_t upper, int32_t type);
 extern uint32_t Gops2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, int32_t *timeUnits, uint32_t segmentIndex);
+extern uint32_t Gops2000aGetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggregatedSamples, uint32_t *maxDownSampleRatio, int32_t downSampleRatioMode, uint32_t segmentIndex);
+extern uint32_t Gops2000aSetDigitalPort(int16_t handle, int32_t port, int16_t enabled, int16_t logicLevel);
 
 // Static helper to invoke a ps2000aBlockReady function pointer from Go.
 static inline void call_ps2000aBlockReady(ps2000aBlockReady fp, int16_t handle, PICO_STATUS status, void *pParameter) {
@@ -118,7 +120,7 @@ func Gops2000aSetSimpleTrigger(handle C.int16_t, enable C.int16_t, source C.int3
 //export Gops2000aSetDataBuffer
 func Gops2000aSetDataBuffer(handle C.int16_t, channel C.int32_t, buffer *C.int16_t, bufferLth C.int32_t, segmentIndex C.uint32_t, mode C.int32_t) C.uint32_t {
 	slice := unsafe.Slice((*int16)(unsafe.Pointer(buffer)), int(bufferLth))
-	simSetDataBuffer(int16(handle), int(channel), slice, uint32(segmentIndex))
+	simSetDataBufferWithMode(int16(handle), int(channel), slice, uint32(segmentIndex), int32(mode))
 	return 0
 }
 
@@ -182,7 +184,7 @@ func Gops2000aMinimumValue(handle C.int16_t, value *C.int16_t) C.uint32_t {
 //export Gops2000aGetTimebase2
 func Gops2000aGetTimebase2(handle C.int16_t, timebase C.uint32_t, noSamples C.int32_t, timeIntervalNanoseconds *C.float, oversample C.int16_t, maxSamples *C.int32_t, segmentIndex C.uint32_t) C.uint32_t {
 	if timeIntervalNanoseconds != nil {
-		*timeIntervalNanoseconds = C.float(timebase + 1)
+		*timeIntervalNanoseconds = C.float(simTimebaseToNs(uint32(timebase)))
 	}
 	if maxSamples != nil {
 		*maxSamples = 1000000
@@ -317,7 +319,11 @@ func Gops2000aSetTriggerDelay(handle C.int16_t, delay C.uint32_t) C.uint32_t {
 func Gops2000aSetDataBuffers(handle C.int16_t, channelOrPort C.int32_t, bufferMax *C.int16_t, bufferMin *C.int16_t, bufferLth C.int32_t, segmentIndex C.uint32_t, mode C.int32_t) C.uint32_t {
 	if bufferMax != nil {
 		slice := unsafe.Slice((*int16)(unsafe.Pointer(bufferMax)), int(bufferLth))
-		simSetDataBuffer(int16(handle), int(channelOrPort), slice, uint32(segmentIndex))
+		simSetDataBufferWithMode(int16(handle), int(channelOrPort), slice, uint32(segmentIndex), int32(mode))
+	}
+	if bufferMin != nil {
+		sliceMin := unsafe.Slice((*int16)(unsafe.Pointer(bufferMin)), int(bufferLth))
+		simSetDataBufferMinWithMode(int16(handle), int(channelOrPort), sliceMin, uint32(segmentIndex), int32(mode))
 	}
 	return 0
 }
@@ -336,7 +342,7 @@ func Gops2000aIsTriggerOrPulseWidthQualifierEnabled(handle C.int16_t, triggerEna
 //export Gops2000aGetTimebase
 func Gops2000aGetTimebase(handle C.int16_t, timebase C.uint32_t, noSamples C.int32_t, timeIntervalNanoseconds *C.int32_t, oversample C.int16_t, maxSamples *C.int32_t, segmentIndex C.uint32_t) C.uint32_t {
 	if timeIntervalNanoseconds != nil {
-		*timeIntervalNanoseconds = C.int32_t(timebase + 1)
+		*timeIntervalNanoseconds = C.int32_t(simTimebaseToNs(uint32(timebase)))
 	}
 	if maxSamples != nil {
 		*maxSamples = 1000000
@@ -369,5 +375,19 @@ func Gops2000aSetPulseWidthQualifier(handle C.int16_t, conditions unsafe.Pointer
 
 //export Gops2000aGetTriggerTimeOffset64
 func Gops2000aGetTriggerTimeOffset64(handle C.int16_t, time *C.int64_t, timeUnits *C.int32_t, segmentIndex C.uint32_t) C.uint32_t {
+	return 0
+}
+
+//export Gops2000aGetMaxDownSampleRatio
+func Gops2000aGetMaxDownSampleRatio(handle C.int16_t, noOfUnaggregatedSamples C.uint32_t, maxDownSampleRatio *C.uint32_t, downSampleRatioMode C.int32_t, segmentIndex C.uint32_t) C.uint32_t {
+	if maxDownSampleRatio != nil {
+		*maxDownSampleRatio = noOfUnaggregatedSamples
+	}
+	return 0
+}
+
+//export Gops2000aSetDigitalPort
+func Gops2000aSetDigitalPort(handle C.int16_t, port C.int32_t, enabled C.int16_t, logicLevel C.int16_t) C.uint32_t {
+	simSetDigitalPort(int16(handle), int(port), enabled != 0, int16(logicLevel))
 	return 0
 }

@@ -42,6 +42,8 @@ extern uint32_t Gops2000aIsTriggerOrPulseWidthQualifierEnabled(int16_t handle, i
 extern uint32_t Gops2000aSetPulseWidthQualifier(int16_t handle, void *conditions, int16_t nConditions, int32_t direction, uint32_t lower, uint32_t upper, int32_t type);
 extern uint32_t Gops2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t * nMaxSamples);
 extern uint32_t Gops2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, int32_t *timeUnits, uint32_t segmentIndex);
+extern uint32_t Gops2000aGetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggregatedSamples, uint32_t *maxDownSampleRatio, int32_t downSampleRatioMode, uint32_t segmentIndex);
+extern uint32_t Gops2000aSetDigitalPort(int16_t handle, int32_t port, int16_t enabled, int16_t logicLevel);
 
 // C implementations - each ps2000a API function delegates to its Go counterpart.
 PICO_STATUS ps2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t * nMaxSamples){
@@ -174,5 +176,14 @@ PICO_STATUS ps2000aSetPulseWidthQualifier(int16_t handle, PS2000A_PWQ_CONDITIONS
 PICO_STATUS ps2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, PS2000A_TIME_UNITS *timeUnits, uint32_t segmentIndex) {
     return Gops2000aGetTriggerTimeOffset64(handle, time, (int32_t *)timeUnits, segmentIndex);
 }
+
+PICO_STATUS ps2000aGetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggregatedSamples, uint32_t *maxDownSampleRatio, PS2000A_RATIO_MODE downSampleRatioMode, uint32_t segmentIndex) {
+    return Gops2000aGetMaxDownSampleRatio(handle, noOfUnaggregatedSamples, maxDownSampleRatio, (int32_t)downSampleRatioMode, segmentIndex);
+}
+
+PICO_STATUS ps2000aSetDigitalPort(int16_t handle, PS2000A_DIGITAL_PORT port, int16_t enabled, int16_t logicLevel) {
+	return Gops2000aSetDigitalPort(handle, (int32_t)port, enabled, logicLevel);
+}
+
 */
 import "C"
