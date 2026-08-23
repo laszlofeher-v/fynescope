@@ -140,9 +140,13 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		}
 	}
 
-	ch1Label := "Channel 1 (Rx/CLK)"
+	ch1Label := "Channel 1"
 	if settings.Protocol == "I2C" {
 		ch1Label = "Channel 1 (SCL)"
+	} else if settings.Protocol == "UART" {
+		ch1Label = "Channel 1 (Rx)"
+	} else if settings.Protocol == "SPI" {
+		ch1Label = "Channel 1 (CLK)"
 	}
 
 	form := widget.NewForm(
