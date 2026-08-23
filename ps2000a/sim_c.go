@@ -15,6 +15,7 @@ extern uint32_t Gops2000aOpenUnitAsync(int16_t *status, int8_t *serial);
 extern uint32_t Gops2000aCloseUnit(int16_t handle);
 extern uint32_t Gops2000aGetUnitInfo(int16_t handle, int8_t *stringData, int16_t stringLength, int16_t *requiredSize, uint32_t info);
 extern uint32_t Gops2000aSetChannel(int16_t handle, int32_t channel, int16_t enabled, int32_t type, int32_t range, float analogOffset);
+extern uint32_t Gops2000aGetAnalogueOffset(int16_t handle, int32_t range, int32_t coupling, float *maximumOffset, float *minimumOffset);
 extern uint32_t Gops2000aSetSimpleTrigger(int16_t handle, int16_t enable, int32_t source, int16_t threshold, int32_t direction, uint32_t delay, int16_t autoTrigger_ms);
 extern uint32_t Gops2000aSetDataBuffer(int16_t handle, int32_t channel, int16_t *buffer, int32_t bufferLth, uint32_t segmentIndex, int32_t mode);
 extern uint32_t Gops2000aRunBlock(int16_t handle, int32_t noOfPreTriggerSamples, int32_t noOfPostTriggerSamples, uint32_t timebase, int16_t oversample, int32_t *timeIndisposedMs, uint32_t segmentIndex, ps2000aBlockReady lpReady, void *pParameter);
@@ -108,6 +109,21 @@ func Gops2000aGetUnitInfo(handle C.int16_t, stringData *C.int8_t, stringLength C
 //export Gops2000aSetChannel
 func Gops2000aSetChannel(handle C.int16_t, channel C.int32_t, enabled C.int16_t, dc C.int32_t, rangeEnum C.int32_t, analogOffset C.float) C.uint32_t {
 	simSetChannel(int16(handle), int(channel), enabled != 0, int(dc), int(rangeEnum), float32(analogOffset))
+	return 0
+}
+
+//export Gops2000aGetAnalogueOffset
+func Gops2000aGetAnalogueOffset(handle C.int16_t, rangeEnum C.int32_t, coupling C.int32_t, maximumOffset *C.float, minimumOffset *C.float) C.uint32_t {
+	maxOff, minOff, err := simGetAnalogueOffset(int16(handle), int(rangeEnum), Coupling(coupling))
+	if err != nil {
+		return 0x08
+	}
+	if maximumOffset != nil {
+		*maximumOffset = C.float(maxOff)
+	}
+	if minimumOffset != nil {
+		*minimumOffset = C.float(minOff)
+	}
 	return 0
 }
 

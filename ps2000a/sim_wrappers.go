@@ -15,6 +15,7 @@ extern uint32_t Gops2000aOpenUnitAsync(int16_t *status, int8_t *serial);
 extern uint32_t Gops2000aCloseUnit(int16_t handle);
 extern uint32_t Gops2000aGetUnitInfo(int16_t handle, int8_t *stringData, int16_t stringLength, int16_t *requiredSize, uint32_t info);
 extern uint32_t Gops2000aSetChannel(int16_t handle, int32_t channel, int16_t enabled, int32_t type, int32_t range, float analogOffset);
+extern uint32_t Gops2000aGetAnalogueOffset(int16_t handle, int32_t range, int32_t coupling, float *maximumOffset, float *minimumOffset);
 extern uint32_t Gops2000aSetSimpleTrigger(int16_t handle, int16_t enable, int32_t source, int16_t threshold, int32_t direction, uint32_t delay, int16_t autoTrigger_ms);
 extern uint32_t Gops2000aSetDataBuffer(int16_t handle, int32_t channel, int16_t *buffer, int32_t bufferLth, uint32_t segmentIndex, int32_t mode);
 extern uint32_t Gops2000aRunBlock(int16_t handle, int32_t noOfPreTriggerSamples, int32_t noOfPostTriggerSamples, uint32_t timebase, int16_t oversample, int32_t *timeIndisposedMs, uint32_t segmentIndex, ps2000aBlockReady lpReady, void *pParameter);
@@ -71,6 +72,10 @@ PICO_STATUS ps2000aGetUnitInfo(int16_t handle, int8_t *stringData, int16_t strin
 
 PICO_STATUS ps2000aSetChannel(int16_t handle, PS2000A_CHANNEL channel, int16_t enabled, PS2000A_COUPLING type, PS2000A_RANGE range, float analogOffset) {
     return Gops2000aSetChannel(handle, channel, enabled, type, range, analogOffset);
+}
+
+PICO_STATUS ps2000aGetAnalogueOffset(int16_t handle, PS2000A_RANGE range, PS2000A_COUPLING coupling, float *maximumVoltage, float *minimumVoltage) {
+    return Gops2000aGetAnalogueOffset(handle, range, coupling, maximumVoltage, minimumVoltage);
 }
 
 PICO_STATUS ps2000aSetSimpleTrigger(int16_t handle, int16_t enable, PS2000A_CHANNEL source, int16_t threshold, PS2000A_THRESHOLD_DIRECTION direction, uint32_t delay, int16_t autoTrigger_ms) {
