@@ -3,6 +3,7 @@
 package ps2000a
 
 import (
+	"fmt"
 	"fynescope/demo"
 	"fynescope/genericps"
 	"log/slog"
@@ -59,6 +60,14 @@ func simSetChannel(handle int16, channel int, enabled bool, dc int, rangeEnum in
 		channels[channel].vrange = rangeEnum
 		channels[channel].offset = float64(analogOffset)
 	}
+}
+
+func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error) {
+	maximumVoltage, minimumVoltage = 20, -20
+	if handle <= 0 {
+		err = fmt.Errorf("invalid handle")
+	}
+	return
 }
 
 func simSetSimpleTrigger(handle int16, enable bool, source int, threshold int16, direction int, delay uint32, autoTriggerMs int16) {
