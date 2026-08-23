@@ -96,7 +96,7 @@ func Gops2000aGetUnitInfo(handle C.int16_t, stringData *C.int8_t, stringLength C
 		*requiredSize = 8
 	}
 	if stringData != nil && stringLength >= 8 {
-		str := "2407SIM"
+		str := "2207SIM"
 		ptr := (*[1 << 20]C.int8_t)(unsafe.Pointer(stringData))
 		for i := 0; i < len(str); i++ {
 			ptr[i] = C.int8_t(str[i])
@@ -305,18 +305,30 @@ func Gops2000aSetTriggerChannelConditions(handle C.int16_t, conditions unsafe.Po
 
 func cDirToDemoDir(dir C.int32_t) demo.ThresholdDirection {
 	switch dir {
-	case C.PS2000A_ABOVE: return demo.TriggerAbove
-	case C.PS2000A_BELOW: return demo.TriggerBelow
-	case C.PS2000A_RISING: return demo.TriggerRising
-	case C.PS2000A_FALLING: return demo.TriggerFalling
-	case C.PS2000A_RISING_OR_FALLING: return demo.TriggerRisingOrFalling
-	case C.PS2000A_ABOVE_LOWER: return demo.TriggerAboveLower
-	case C.PS2000A_BELOW_LOWER: return demo.TriggerBelowLower
-	case C.PS2000A_RISING_LOWER: return demo.TriggerRisingLower
-	case C.PS2000A_FALLING_LOWER: return demo.TriggerFallingLower
-	case C.PS2000A_POSITIVE_RUNT: return demo.TriggerPositiveRunt
-	case C.PS2000A_NEGATIVE_RUNT: return demo.TriggerNegativeRunt
-	default: return demo.TriggerNone
+	case C.PS2000A_ABOVE:
+		return demo.TriggerAbove
+	case C.PS2000A_BELOW:
+		return demo.TriggerBelow
+	case C.PS2000A_RISING:
+		return demo.TriggerRising
+	case C.PS2000A_FALLING:
+		return demo.TriggerFalling
+	case C.PS2000A_RISING_OR_FALLING:
+		return demo.TriggerRisingOrFalling
+	case C.PS2000A_ABOVE_LOWER:
+		return demo.TriggerAboveLower
+	case C.PS2000A_BELOW_LOWER:
+		return demo.TriggerBelowLower
+	case C.PS2000A_RISING_LOWER:
+		return demo.TriggerRisingLower
+	case C.PS2000A_FALLING_LOWER:
+		return demo.TriggerFallingLower
+	case C.PS2000A_POSITIVE_RUNT:
+		return demo.TriggerPositiveRunt
+	case C.PS2000A_NEGATIVE_RUNT:
+		return demo.TriggerNegativeRunt
+	default:
+		return demo.TriggerNone
 	}
 }
 
