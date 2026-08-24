@@ -11,7 +11,9 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 	"golang.org/x/image/draw"
 
 	"fynescope/checkcolorpick"
@@ -24,6 +26,10 @@ type digitalRaster struct {
 	rightPanel   *fyne.Container
 	pickers      []*checkcolorpick.CheckColorPick
 	enabledPorts int
+
+	showInspector bool
+	mouseX        float32
+	mouseY        float32
 }
 
 func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digitalRaster) {
@@ -37,7 +43,9 @@ func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digi
 	dr.rightPanel = container.NewMax()
 	dr.updateColorPickers()
 
-	return container.NewBorder(nil, nil, nil, dr.rightPanel, container.NewClip(dr.raster)), dr
+	tappable := newTappableDigitalRaster(dr)
+
+	return container.NewBorder(nil, nil, nil, dr.rightPanel, container.NewClip(tappable)), dr
 }
 
 func (dr *digitalRaster) updateColorPickers() {
@@ -87,7 +95,7 @@ func (dr *digitalRaster) updateColorPickers() {
 						dr.scp.SaveSettings()
 					}
 				}(chIdx), col, fyne.NewSize(20, 20))
-				
+
 				if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
 					ccp.SetVal(true)
 				} else {
@@ -299,5 +307,168 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		}
 	}
 
+	if dr.showInspector {
+		crosscol := color.RGBA{180, 180, 180, 180}
+		mx := int(dr.mouseX)
+
+		for i := 0; i < h; i++ {
+			img.Set(mx, i, crosscol)
+		}
+
+		idxF := (float64(mx) - float64(minX) - t0) / deltaT
+		idx := int(math.Round(idxF))
+
+		timeAtCursor := (float64(idx) - leftPadding) * dr.scp.controlSamplingTimeInterval
+		timeStr := formatTime(timeAtCursor)
+
+		var binStrLSB, binStrMSB string
+		var hexVal uint16
+		var bits int
+
+		for port := 0; port < 2; port++ {
+			if !dr.scp.Settings.Digital.Ports[port].Enabled {
+				continue
+			}
+			var buf []uint8
+			if len(dr.scp.digitalDisplayBuffer) > port {
+				buf = dr.scp.digitalDisplayBuffer[port]
+			}
+			if idx >= 0 && idx < len(buf) {
+				portVal := buf[idx]
+				for c := 0; c < 8; c++ {
+					chIdx := port*8 + c
+					if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
+						bitVal := (portVal >> c) & 1
+						hexVal |= (uint16(bitVal) << bits)
+						bits++
+					}
+				}
+			}
+		}
+
+		if bits > 0 {
+			for i := 0; i < bits; i++ {
+				b := (hexVal >> i) & 1
+				binStrLSB += fmt.Sprintf("%d", b)
+				binStrMSB = fmt.Sprintf("%d", b) + binStrMSB
+			}
+		} else {
+			binStrLSB = "0"
+			binStrMSB = "0"
+		}
+
+		var info []struct {
+			text string
+			col  color.Color
+		}
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"T: " + timeStr, color.White})
+
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{fmt.Sprintf("Hexa: 0x%X", hexVal), color.White})
+
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"LSB: " + binStrLSB, color.White})
+
+		info = append(info, struct {
+			text string
+			col  color.Color
+		}{"MSB: " + binStrMSB, color.White})
+
+		// Draw the box
+		lineHeight := 20
+		maxW := float32(0)
+		for _, item := range info {
+			left, _, right, _ := dr.scp.boundString(item.text)
+			if right-left > maxW {
+				maxW = right - left
+			}
+		}
+		boxWidth := int(maxW) + 15
+		boxHeight := len(info)*lineHeight + 10
+
+		x := int(dr.mouseX) + 20
+		y := int(dr.mouseY) + 20
+
+		if x+boxWidth > w-2 {
+			x = int(dr.mouseX) - boxWidth - 20
+		}
+		if x < 2 {
+			x = 2
+		}
+		if y+boxHeight > h-2 {
+			y = int(dr.mouseY) - boxHeight - 20
+		}
+		if y < 2 {
+			y = 2
+		}
+
+		rect := image.Rect(x, y, x+boxWidth, y+boxHeight)
+		draw.Draw(img, rect, &image.Uniform{color.RGBA{20, 20, 20, 220}}, image.ZP, draw.Over)
+
+		for i := 0; i < boxWidth; i++ {
+			img.Set(x+i, y, color.White)
+			img.Set(x+i, y+boxHeight-1, color.White)
+		}
+		for i := 0; i < boxHeight; i++ {
+			img.Set(x, y+i, color.White)
+			img.Set(x+boxWidth-1, y+i, color.White)
+		}
+
+		for i, item := range info {
+			dr.scp.addLabel(img, x+5, y+5+(i+1)*lineHeight-5, item.text, item.col)
+		}
+	}
+
 	return img
 }
+
+type tappableDigitalRaster struct {
+	widget.BaseWidget
+	dr *digitalRaster
+}
+
+func newTappableDigitalRaster(dr *digitalRaster) *tappableDigitalRaster {
+	t := &tappableDigitalRaster{dr: dr}
+	t.ExtendBaseWidget(t)
+	return t
+}
+
+func (t *tappableDigitalRaster) CreateRenderer() fyne.WidgetRenderer {
+	return widget.NewSimpleRenderer(t.dr.raster)
+}
+
+func (t *tappableDigitalRaster) Tapped(event *fyne.PointEvent) {}
+
+func (t *tappableDigitalRaster) TappedSecondary(event *fyne.PointEvent) {
+	t.dr.showInspector = !t.dr.showInspector
+	if t.dr.showInspector {
+		t.dr.mouseX = event.Position.X
+		t.dr.mouseY = event.Position.Y
+	}
+	t.dr.raster.Refresh()
+}
+
+func (t *tappableDigitalRaster) MouseMoved(event *desktop.MouseEvent) {
+	if t.dr.showInspector {
+		t.dr.mouseX = event.Position.X
+		t.dr.mouseY = event.Position.Y
+		t.dr.raster.Refresh()
+	}
+}
+
+func (t *tappableDigitalRaster) MouseIn(event *desktop.MouseEvent) {
+	if t.dr.showInspector {
+		t.dr.mouseX = event.Position.X
+		t.dr.mouseY = event.Position.Y
+		t.dr.raster.Refresh()
+	}
+}
+
+func (t *tappableDigitalRaster) MouseOut() {}
