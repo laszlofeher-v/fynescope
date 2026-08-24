@@ -1228,7 +1228,15 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 				c = digitalGenCounter
 			}
 			if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
-				c = 0xFFFF - c
+				if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
+					mask := uint16(0xFFFF)
+					if !digitalGenPort1Enabled {
+						mask = 0xFF
+					}
+					c = mask - (c & mask)
+				} else {
+					c = 0xFFFF - c
+				}
 			}
 			if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
 				c = c ^ (c >> 1)
@@ -1242,7 +1250,15 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			finalVal = digitalGenCounter
 		}
 		if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
-			finalVal = 0xFFFF - finalVal
+			if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
+				mask := uint16(0xFFFF)
+				if !digitalGenPort1Enabled {
+					mask = 0xFF
+				}
+				finalVal = mask - (finalVal & mask)
+			} else {
+				finalVal = 0xFFFF - finalVal
+			}
 		}
 		if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
 			finalVal = finalVal ^ (finalVal >> 1)
