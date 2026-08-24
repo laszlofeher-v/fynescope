@@ -302,6 +302,9 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	if tp.scp.ftRaster != nil {
 		tp.scp.ftRaster.Refresh()
 	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
+	}
 }
 
 func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx int) {
@@ -344,6 +347,9 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 
 	if tp.raster() != nil {
 		tp.raster().Refresh()
+	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
 	}
 }
 

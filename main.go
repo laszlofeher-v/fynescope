@@ -245,10 +245,16 @@ func startProfile(n int) error {
 //
 //	-loglevel: Sets logging verbosity (debug, info, warning, error)
 //	-profile:  Enables CPU profiling when set to true
-//	-demo:      Runs in demo-only mode when set to true
+//	-demo:  Runs in demo-only mode when set to true
+//  -sim: Runs in simulator mode when set to true
 //	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
 //	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
-//	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
+//	-webport-novoice:  starts web server without voice control on specified port
+//  -webauth: credentials for full access, voice + stream
+//  -webauth-view: credentials for read-only stream access
+//  -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
+//  -gif: enables GIF generation button
+//  -ff-auto-range: enables auto ranging during Bode sweep
 func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange, simOnly *bool) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
@@ -310,6 +316,7 @@ func connectToDevice(device *genericps.DeviceInfo) (*genericps.Connection, error
 		slog.Debug("Open", "con.Handle", con.Handle)
 	}
 	con.ID = device.Id
+	// con.Serial = device.Serial
 	if err != nil {
 		return nil, fmt.Errorf("failed to open device: %w", err)
 	}

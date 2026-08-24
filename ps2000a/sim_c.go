@@ -93,10 +93,10 @@ func Gops2000aCloseUnit(handle C.int16_t) C.uint32_t {
 //export Gops2000aGetUnitInfo
 func Gops2000aGetUnitInfo(handle C.int16_t, stringData *C.int8_t, stringLength C.int16_t, requiredSize *C.int16_t, info C.uint32_t) C.uint32_t {
 	if requiredSize != nil {
-		*requiredSize = 8
+		*requiredSize = C.int16_t(len(demo.ScopeSimVariantInfo)) + 1
 	}
 	if stringData != nil && stringLength >= 8 {
-		str := "2207SIM"
+		str := demo.ScopeSimVariantInfo
 		ptr := (*[1 << 20]C.int8_t)(unsafe.Pointer(stringData))
 		for i := 0; i < len(str); i++ {
 			ptr[i] = C.int8_t(str[i])

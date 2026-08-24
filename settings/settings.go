@@ -148,34 +148,35 @@ type (
 		NoiseAmplitude       float64                   `yaml:"noise_amplitude"`
 		PhaseNoiseDegree     float64                   `yaml:"phase_noise_degree"`
 		Phase                float64                   `yaml:"phase"`
-		ImpedanceMode        string                    `yaml:"impedance_mode"` // "ohms", "INFinity", "MINimum", "MAXimum"
-		ImpedanceOhms        int                       `yaml:"impedance_ohms"` // 1–10000, used when ImpedanceMode == "ohms"
-		SpiDataValue         uint32                    `yaml:"spi_data_value"` // used for SpiData generator
+		ImpedanceMode        string                    `yaml:"impedance_mode"`    // "ohms", "INFinity", "MINimum", "MAXimum"
+		ImpedanceOhms        int                       `yaml:"impedance_ohms"`    // 1–10000, used when ImpedanceMode == "ohms"
+		SpiDataValue         uint32                    `yaml:"spi_data_value"`    // used for SpiData generator
 		I2cAddressValue      uint32                    `yaml:"i2c_address_value"` // used for I2cData generator
 		ArbitraryWaveform    []int16                   `yaml:"-"`
 	}
 	DigitalDemoGenSettings struct {
 		Port0Enabled bool                              `yaml:"port0_enabled"`
 		Port1Enabled bool                              `yaml:"port1_enabled"`
-		Frequency float64                           `yaml:"frequency"`
-		Direction genericps.DigitalDemoGenDirection `yaml:"direction"`
-		Encoding  genericps.DigitalDemoGenEncoding  `yaml:"encoding"`
-		Mode      genericps.DigitalDemoGenMode      `yaml:"mode"`
-		BitDelay  float64                           `yaml:"bitdelay"`
+		Frequency    float64                           `yaml:"frequency"`
+		Direction    genericps.DigitalDemoGenDirection `yaml:"direction"`
+		Encoding     genericps.DigitalDemoGenEncoding  `yaml:"encoding"`
+		Mode         genericps.DigitalDemoGenMode      `yaml:"mode"`
+		BitDelay     float64                           `yaml:"bitdelay"`
 	}
 	DigitalPortSettings struct {
 		Enabled   bool  `yaml:"enabled"`
 		Threshold int16 `yaml:"threshold"`
 	}
 	DigitalTriggerSettings struct {
-		Enabled    bool                               `yaml:"enabled"`
-		Logic      string                             `yaml:"logic"` // "AND", "OR", etc.
-		Directions [16]genericps.DigitalDirection     `yaml:"directions"`
+		Enabled    bool                           `yaml:"enabled"`
+		Logic      string                         `yaml:"logic"` // "AND", "OR", etc.
+		Directions [16]genericps.DigitalDirection `yaml:"directions"`
 	}
 	DigitalSettings struct {
-		Ports   [2]DigitalPortSettings `yaml:"ports"`
-		Trigger DigitalTriggerSettings `yaml:"trigger"`
-		HexView bool                   `yaml:"hexview"`
+		Ports         [2]DigitalPortSettings `yaml:"ports"`
+		ChannelColors [16]color.NRGBA        `yaml:"channelcolors"`
+		Trigger       DigitalTriggerSettings `yaml:"trigger"`
+		HexView       bool                   `yaml:"hexview"`
 	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`
@@ -359,12 +360,18 @@ func NewDefaultSettings() *PsSettings {
 			Threshold:    0,
 			Hysteresis:   100,
 		},
-		Dft:           DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
-		Ff:            FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
+		Dft: DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
+		Ff:  FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Digital: DigitalSettings{
 			Ports: [2]DigitalPortSettings{
 				{Enabled: false, Threshold: 1500},
 				{Enabled: false, Threshold: 1500},
+			},
+			ChannelColors: [16]color.NRGBA{
+				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
+				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
+				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
+				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
 			},
 			Trigger: DigitalTriggerSettings{
 				Enabled: false,

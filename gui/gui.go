@@ -17,6 +17,7 @@ SCOPE
 import (
 	"fmt"
 	"fynescope/control"
+	"fynescope/demo"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
@@ -101,6 +102,7 @@ type (
 
 	ScpDesc struct {
 		Measure                             MeasureDesc
+		runningMode                         genericps.RunningModeType
 		running                             bool
 		GifEnabled                          bool
 		repartition, themeChanged           chan struct{}
@@ -839,13 +841,13 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab)
 
-	if scp.psControl != nil && scp.psControl.Con.ID != genericps.DemoId {
+	if scp.runningMode != genericps.DemoMode {
 		scp.controlTab.Remove(scp.rlcTab)
 	}
 	if !scp.ExtGenEnabled {
 		scp.controlTab.Remove(scp.extgenTab)
 	}
-	if scp.psControl == nil || !(strings.HasSuffix(scp.psControl.Info, "SIM") || strings.HasSuffix(scp.psControl.Info, "DEMO")) {
+	if scp.runningMode == genericps.ScopeMode {
 		scp.controlTab.Remove(scp.digGenTab)
 	}
 
@@ -1163,7 +1165,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.initStatus()
 	var saveRasterButton, saveWindowButton *widget.Button
 	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
-	if scp.psControl != nil && (strings.HasSuffix(scp.psControl.Info, "SIM") || strings.HasSuffix(scp.psControl.Info, "DEMO")) {
+	if scp.runningMode != genericps.ScopeMode {
 		scp.d07Button = widget.NewButton("D0-7", func() {
 			scp.Settings.Digital.Ports[0].Enabled = !scp.Settings.Digital.Ports[0].Enabled
 			scp.SaveSettings()
@@ -1481,7 +1483,7 @@ func (scp *ScpDesc) build2407Gui() {
 	scp.newGenPanel(scp.genLayout)
 }
 
-func (scp *ScpDesc) build2000SIMGui() {
+func (scp *ScpDesc) build2000DemoGui() {
 
 	scp.build2000Gui()
 	scp.newDemoGenPanel(scp.genLayout, true)
@@ -1540,20 +1542,14 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
 	switch scp.psControl.Info {
-	case "2107SIM", "2207SIM", "2307SIM", "2407SIM":
+	case demo.ScopeSimVariantInfo:
+		scp.runningMode=genericps.SimMode
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	case "2407DEMO":
+	case demo.ScopeDemoVariantInfo:
+		scp.runningMode=genericps.DemoMode
 		scp.maxSamplingRate = maxSampling1G
-		scp.build2000SIMGui()
-	case "2204A":
-		slog.Warn("2204A not tested")
-		scp.maxSamplingRate = maxSampling100M
-		scp.build2407Gui()
-	case "2205A":
-		slog.Warn("2205A not tested")
-		scp.maxSamplingRate = maxSampling200M
-		scp.build2407Gui()
+		scp.build2000DemoGui()
 	case "2206B":
 		slog.Warn("2206B not tested")
 		scp.maxSamplingRate = maxSampling500M
@@ -1608,8 +1604,6 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		slog.Warn("PS2407B via PS3000a driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	// case "2205MSO":
-	// case "2205AMSO":
 	// case "2206BMSO":
 	// case "2207BMSO":
 	// case "2208BMSO":

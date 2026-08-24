@@ -43,9 +43,9 @@ func TestEnumerateUnits(t *testing.T) {
 		wantSerialLth int16
 		wantErr       bool
 	}{
-		{"normal", normal, 1, scopeBathAndSerialInfo, int16(len(scopeBathAndSerialInfo)), false},
+		{"normal", normal, 1, scopeBatchAndSerialInfo, int16(len(scopeBatchAndSerialInfo)), false},
 		{"faulty", faulty, 0, "", 0, true},
-		{"timeoutNormal", timeoutNormal, 1, scopeBathAndSerialInfo, int16(len(scopeBathAndSerialInfo)), false},
+		{"timeoutNormal", timeoutNormal, 1, scopeBatchAndSerialInfo, int16(len(scopeBatchAndSerialInfo)), false},
 		{"timeoutfaulty", timeoutfaulty, 0, "", 0, true},
 	}
 	for _, tt := range tests {

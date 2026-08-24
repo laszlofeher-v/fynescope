@@ -1,4 +1,4 @@
-//go:build demo || sim
+//go:build sim
 
 package main
 

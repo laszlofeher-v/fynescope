@@ -352,16 +352,17 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	// Generator controls container
 	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
-	isSim := false
-	if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
-		isSim = true
-	}
+	// isSim := false
+	// if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+	// 	isSim = true
+	// }
 
 	var genPanel *fyne.Container
 	var genErr error
-	if isSim {
+	// if isSim {
+	if scp.runningMode == genericps.DemoMode {
 		genPanel, genErr = scp.newFfDemoGenPanel()
-	} else {
+	} else { // ScopeMode or SimMode
 		genPanel, genErr = scp.newFfGenPanel()
 	}
 	if genErr != nil {

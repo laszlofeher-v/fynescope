@@ -71,8 +71,24 @@ func abs(x int) int {
 }
 
 func drawHorizontalLine(img draw.Image, xf0, xf1, yf float32, c color.Color) {
+	drawLine(img, xf0, yf, xf1, yf, c)
 }
+
 func drawVerticalLine(img draw.Image, xf, yf0, yf1 float32, c color.Color) {
+	drawLine(img, xf, yf0, xf, yf1, c)
+}
+
+func drawVerticalDashedLine(img draw.Image, xf, yf0, yf1 float32, c color.Color, dashLen, gapLen float32) {
+	if yf0 > yf1 {
+		yf0, yf1 = yf1, yf0
+	}
+	for y := yf0; y < yf1; y += dashLen + gapLen {
+		yEnd := y + dashLen
+		if yEnd > yf1 {
+			yEnd = yf1
+		}
+		drawLine(img, xf, y, xf, yEnd, c)
+	}
 }
 func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err error) {
 
