@@ -122,7 +122,7 @@ var uniqueHandle = nextInt16()
 func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
 	nf := func() {
 		count = 1
-		serials = scopeBathAndSerialInfo
+		serials = scopeBatchAndSerialInfo
 		serialLth = int16(len(serials))
 		err = nil
 	}
@@ -230,9 +230,9 @@ func simCloseUnit(handle int16) (err error) {
 func simGetUnitInfo(handle int16, info PicoInfo) (infoString string, err error) {
 	switch info {
 	case PicoVariantInfo:
-		infoString = scopeVariantInfo
+		infoString = ScopeDemoVariantInfo
 	case PicoBatchAndSerial:
-		infoString = scopeBathAndSerialInfo
+		infoString = scopeBatchAndSerialInfo
 	default:
 		infoString = "?"
 	}
@@ -1214,13 +1214,16 @@ func (s *SimDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float6
 
 func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enabled bool) {
 	var finalVal uint16
+	// Multiply frequency by 2: the binary counter LSB (D0) toggles at freq/2,
+	// so doubling the rate makes D0 match the user-set frequency.
+	counterFreq := digitalGenFrequency * 2
 	if digitalGenMode == genericps.DigitalDemoGenModeAsynchronous && digitalGenBitDelay > 0 {
 		for bit := 0; bit < 16; bit++ {
 			delay := float64(bit) * digitalGenBitDelay
 			shiftedRt := rt - delay
 			c := uint16(0)
-			if digitalGenFrequency > 0 {
-				c = uint16(uint64(math.Abs(shiftedRt*digitalGenFrequency)) & 0xFFFF)
+			if counterFreq > 0 {
+				c = uint16(uint64(math.Abs(shiftedRt*counterFreq)) & 0xFFFF)
 			} else {
 				c = digitalGenCounter
 			}
@@ -1233,8 +1236,8 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			finalVal |= (c & (1 << bit))
 		}
 	} else {
-		if digitalGenFrequency > 0 {
-			finalVal = uint16(uint64(math.Abs(rt*digitalGenFrequency)) & 0xFFFF)
+		if counterFreq > 0 {
+			finalVal = uint16(uint64(math.Abs(rt*counterFreq)) & 0xFFFF)
 		} else {
 			finalVal = digitalGenCounter
 		}
@@ -1662,8 +1665,8 @@ func SetChannelCount(n int, explicit bool) error {
 		return fmt.Errorf("Invalid channel number")
 	}
 	numberOfChannels = n
-	scopeVariantInfo = fmt.Sprintf("2%d07SIM", n)
-	scopeBathAndSerialInfo = fmt.Sprintf("SIM/CH%d", n)
+	ScopeSimVariantInfo = fmt.Sprintf("2%d07SIM", n)
+	scopeBatchAndSerialInfo = fmt.Sprintf("SIM/CH%d", n)
 	return nil
 }
 

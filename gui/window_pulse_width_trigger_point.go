@@ -175,6 +175,9 @@ func (tp *windowPulseWidthTriggerPointViewer) setLowerDispOffset(dx, x, y float3
 	if tp.raster() != nil {
 		tp.raster().Refresh()
 	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
+	}
 }
 
 // setLowerHysteresisDispOffset adjusts the lower threshold hysteresis in response

@@ -203,6 +203,9 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	if tp.raster() != nil {
 		tp.raster().Refresh()
 	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
+	}
 }
 func (tp *triggerPointViewer) dragged(dx, dy, x, y float32) {
 	if tp.scp.triggerSource < 0 || int(tp.scp.triggerSource) >= len(tp.scp.Settings.Channels) {

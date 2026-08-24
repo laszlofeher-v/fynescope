@@ -174,6 +174,9 @@ func (tp *runtTriggerPointViewer) setLowerDispOffset(dx, x, y float32) {
 	if tp.raster() != nil {
 		tp.raster().Refresh()
 	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
+	}
 }
 
 func (tp *runtTriggerPointViewer) dragged(dx, dy, x, y float32) {

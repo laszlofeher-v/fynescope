@@ -175,6 +175,9 @@ func (tp *windowDropoutTriggerPointViewer) setLowerDispOffset(dx, x, y float32) 
 	if tp.raster() != nil {
 		tp.raster().Refresh()
 	}
+	if tp.scp.digitalRaster != nil {
+		tp.scp.digitalRaster.refresh()
+	}
 }
 
 // setLowerHysteresisDispOffset adjusts the lower threshold hysteresis in response

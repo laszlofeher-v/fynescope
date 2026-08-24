@@ -11,8 +11,8 @@ const (
 
 type (
 	DeviceInfo struct {
-		Id     string // Handler ID (e.g., "ps2000a", "sim")
-		Serial string // Serial number (empty for demo)
+		Id     string // Handler ID (e.g., "2407B", "2407BDEMO","2207BSIM")
+		Serial string // Serial number (empty for demo, and sim)
 		IsDemo bool
 	}
 )
@@ -77,6 +77,7 @@ func OpenDemo(con *Connection, id string) (handle int16, err error) {
 	}
 	return 0, fmt.Errorf("Demo not found")
 }
+
 func OpenUnit(con *Connection, id, serial string, resolution int) (handle int16, err error) {
 	for i := range implementedScopeHandlers {
 		slog.Debug("OpenUnit", "implementedScopeHandlers", implementedScopeHandlers)

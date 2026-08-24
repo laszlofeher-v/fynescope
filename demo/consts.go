@@ -21,10 +21,11 @@ const (
 )
 
 var (
-	numberOfChannels       = 4
-	scopeVariantInfo       = "2407DEMO"
-	scopeBathAndSerialInfo = "1/1"
-	MaxChannelBuffers      = 8
+	numberOfChannels        = 4
+	ScopeDemoVariantInfo    = "2407DEMO"
+	ScopeSimVariantInfo     = "2207SIM"
+	scopeBatchAndSerialInfo = "1/1"
+	MaxChannelBuffers       = 8
 )
 
 var (

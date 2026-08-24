@@ -26,6 +26,17 @@ const (
 )
 
 type (
+	RunningModeType int
+)
+
+const (
+	ScopeMode RunningModeType = iota
+	SimMode
+	DemoMode
+)
+
+type (
+	RunningMode        RunningModeType
 	RatioMode          int
 	ChannelId          int
 	Coupling           int
@@ -115,8 +126,9 @@ type (
 	Connection struct {
 		Handle int16
 		ID     string
-		MsgCh  chan Message
-		RspCh  chan struct{}
+		// Serial string
+		MsgCh chan Message
+		RspCh chan struct{}
 	}
 
 	NullMsg struct {
@@ -566,9 +578,9 @@ type (
 		RespBase
 	}
 
-	DigitalDemoGenMode int
+	DigitalDemoGenMode      int
 	DigitalDemoGenDirection int
-	DigitalDemoGenEncoding int
+	DigitalDemoGenEncoding  int
 )
 
 const (
@@ -587,16 +599,15 @@ const (
 )
 
 type (
-
 	SetDemoDigitalGenMsg struct {
 		MsgBase
 		Port0Enabled bool
 		Port1Enabled bool
-		Frequency float64
-		Direction DigitalDemoGenDirection
-		Encoding  DigitalDemoGenEncoding
-		Mode      DigitalDemoGenMode
-		BitDelay  float64
+		Frequency    float64
+		Direction    DigitalDemoGenDirection
+		Encoding     DigitalDemoGenEncoding
+		Mode         DigitalDemoGenMode
+		BitDelay     float64
 	}
 	SetDemoDigitalGenRsp struct {
 		RespBase
@@ -909,11 +920,11 @@ var (
 	PwTypeInRange, PwTypeOutOfRange PulseWidthType
 	Sine, Square, Triangle, RampUp, RampDown,
 	SinC, Gaussian, HalfSine, DcVoltage WaveTypeEnum
-	Arbitrary                           WaveTypeEnum = 999
-	SpiClock                            WaveTypeEnum = 1000
-	SpiData                             WaveTypeEnum = 1001
-	I2cClock                            WaveTypeEnum = 1002
-	I2cData                             WaveTypeEnum = 1003
+	Arbitrary         WaveTypeEnum = 999
+	SpiClock          WaveTypeEnum = 1000
+	SpiData           WaveTypeEnum = 1001
+	I2cClock          WaveTypeEnum = 1002
+	I2cData           WaveTypeEnum = 1003
 	InputRanges       []int32
 	ChannelInfoRanges int16
 	RangeValuesMv     map[RangeEnum]float64
@@ -1481,10 +1492,10 @@ func (c Connection) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq floa
 		Port0Enabled: port0Enabled,
 		Port1Enabled: port1Enabled,
 		Frequency:    freq,
-		Direction: dir,
-		Encoding:  enc,
-		Mode:      mode,
-		BitDelay:  bitDelay,
+		Direction:    dir,
+		Encoding:     enc,
+		Mode:         mode,
+		BitDelay:     bitDelay,
 	}
 	msg.rsp = &SetDemoDigitalGenRsp{}
 	c.Send(msg)
