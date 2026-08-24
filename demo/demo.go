@@ -1223,7 +1223,7 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			shiftedRt := rt - delay
 			c := uint16(0)
 			if counterFreq > 0 {
-				c = uint16(uint64(math.Abs(shiftedRt*counterFreq)) & 0xFFFF)
+				c = uint16(int64(math.Floor(shiftedRt*counterFreq))) & 0xFFFF
 			} else {
 				c = digitalGenCounter
 			}
@@ -1245,7 +1245,7 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 		}
 	} else {
 		if counterFreq > 0 {
-			finalVal = uint16(uint64(math.Abs(rt*counterFreq)) & 0xFFFF)
+			finalVal = uint16(int64(math.Floor(rt*counterFreq))) & 0xFFFF
 		} else {
 			finalVal = digitalGenCounter
 		}
