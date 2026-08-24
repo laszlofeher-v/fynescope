@@ -173,10 +173,11 @@ type (
 		Directions [16]genericps.DigitalDirection `yaml:"directions"`
 	}
 	DigitalSettings struct {
-		Ports         [2]DigitalPortSettings `yaml:"ports"`
-		ChannelColors [16]color.NRGBA        `yaml:"channelcolors"`
-		Trigger       DigitalTriggerSettings `yaml:"trigger"`
-		HexView       bool                   `yaml:"hexview"`
+		Ports           [2]DigitalPortSettings `yaml:"ports"`
+		ChannelColors   [16]color.NRGBA        `yaml:"channelcolors"`
+		ChannelsEnabled [16]bool               `yaml:"channelsenabled"`
+		Trigger         DigitalTriggerSettings `yaml:"trigger"`
+		HexView         bool                   `yaml:"hexview"`
 	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`
@@ -373,6 +374,10 @@ func NewDefaultSettings() *PsSettings {
 				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
 				{255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255}, {255, 255, 0, 255},
 			},
+			ChannelsEnabled: [16]bool{
+				true, true, true, true, true, true, true, true,
+				true, true, true, true, true, true, true, true,
+			},
 			Trigger: DigitalTriggerSettings{
 				Enabled: false,
 				Logic:   "AND",
@@ -445,6 +450,19 @@ func Load(fileName string) (*PsSettings, error) {
 		}
 		if df.BandstopFc2 == 0 {
 			df.BandstopFc2 = 1100.0
+		}
+	}
+
+	allDigitalDisabled := true
+	for i := range settings.Digital.ChannelsEnabled {
+		if settings.Digital.ChannelsEnabled[i] {
+			allDigitalDisabled = false
+			break
+		}
+	}
+	if allDigitalDisabled {
+		for i := range settings.Digital.ChannelsEnabled {
+			settings.Digital.ChannelsEnabled[i] = true
 		}
 	}
 

@@ -77,6 +77,11 @@ func (ccp *CheckColorPick) Set() {
 	ccp.changed(ccp.Val, ccp.col)
 	canvas.Refresh(ccp)
 }
+func (ccp *CheckColorPick) SetVal(val bool) {
+	ccp.Val = val
+	ccp.changed(ccp.Val, ccp.col)
+	canvas.Refresh(ccp)
+}
 func (ccp *CheckColorPick) Tapped(event *fyne.PointEvent) {
 	ccp.Val = !ccp.Val
 	ccp.changed(ccp.Val, ccp.col)

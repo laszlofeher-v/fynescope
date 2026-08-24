@@ -18,16 +18,19 @@ import (
 )
 
 type digitalRaster struct {
-	scp        *ScpDesc
-	raster     *canvas.Raster
-	window     fyne.Window
-	rightPanel *fyne.Container
+	scp          *ScpDesc
+	raster       *canvas.Raster
+	window       fyne.Window
+	rightPanel   *fyne.Container
+	pickers      []*checkcolorpick.CheckColorPick
+	enabledPorts int
 }
 
 func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digitalRaster) {
 	dr := &digitalRaster{
-		scp:    scp,
-		window: window,
+		scp:          scp,
+		window:       window,
+		enabledPorts: -1,
 	}
 
 	dr.raster = canvas.NewRaster(dr.generate)
@@ -43,47 +46,83 @@ func (dr *digitalRaster) updateColorPickers() {
 	}
 
 	activeChannels := 0
+	enabledPorts := 0
 	if dr.scp.Settings.Digital.Ports[0].Enabled {
 		activeChannels += 8
+		enabledPorts |= 1
 	}
 	if dr.scp.Settings.Digital.Ports[1].Enabled {
 		activeChannels += 8
+		enabledPorts |= 2
 	}
 
-	if activeChannels == 0 {
-		dr.rightPanel.Objects = nil
-		dr.rightPanel.Refresh()
-		return
-	}
+	if enabledPorts != dr.enabledPorts {
+		dr.enabledPorts = enabledPorts
+		dr.pickers = nil
 
-	grid := container.NewGridWithRows(activeChannels)
-
-	for port := 0; port < 2; port++ {
-		if !dr.scp.Settings.Digital.Ports[port].Enabled {
-			continue
+		if activeChannels == 0 {
+			dr.rightPanel.Objects = nil
+			dr.rightPanel.Refresh()
+			return
 		}
-		for c := 0; c < 8; c++ {
-			chIdx := port*8 + c
-			col := dr.scp.Settings.Digital.ChannelColors[chIdx]
 
-			ccp := checkcolorpick.NewCheckColorPick(dr.window, func(ch int) func(v bool, col color.Color) {
-				return func(v bool, col color.Color) {
-					nrgba := color.NRGBAModel.Convert(col).(color.NRGBA)
-					dr.scp.Settings.Digital.ChannelColors[ch] = nrgba
-					if dr.raster != nil {
-						canvas.Refresh(dr.raster)
+		grid := container.NewGridWithRows(activeChannels)
+
+		for port := 0; port < 2; port++ {
+			if !dr.scp.Settings.Digital.Ports[port].Enabled {
+				continue
+			}
+			for c := 0; c < 8; c++ {
+				chIdx := port*8 + c
+				col := dr.scp.Settings.Digital.ChannelColors[chIdx]
+
+				ccp := checkcolorpick.NewCheckColorPick(dr.window, func(ch int) func(v bool, col color.Color) {
+					return func(v bool, col color.Color) {
+						nrgba := color.NRGBAModel.Convert(col).(color.NRGBA)
+						dr.scp.Settings.Digital.ChannelColors[ch] = nrgba
+						dr.scp.Settings.Digital.ChannelsEnabled[ch] = v
+						if dr.raster != nil {
+							canvas.Refresh(dr.raster)
+						}
+						dr.scp.SaveSettings()
 					}
+				}(chIdx), col, fyne.NewSize(20, 20))
+				
+				if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
+					ccp.SetVal(true)
+				} else {
+					ccp.SetVal(false)
 				}
-			}(chIdx), col, fyne.NewSize(20, 20))
-			// Start them checked (visual preference, it doesn't do anything else here)
-			ccp.Set()
 
-			grid.Add(container.NewCenter(ccp))
+				dr.pickers = append(dr.pickers, ccp)
+				grid.Add(container.NewCenter(ccp))
+			}
+		}
+
+		dr.rightPanel.Objects = []fyne.CanvasObject{grid}
+		dr.rightPanel.Refresh()
+	} else {
+		// Just update properties if changed externally (e.g., settings load)
+		pickerIdx := 0
+		for port := 0; port < 2; port++ {
+			if !dr.scp.Settings.Digital.Ports[port].Enabled {
+				continue
+			}
+			for c := 0; c < 8; c++ {
+				chIdx := port*8 + c
+				if pickerIdx < len(dr.pickers) {
+					ccp := dr.pickers[pickerIdx]
+					enabled := dr.scp.Settings.Digital.ChannelsEnabled[chIdx]
+					if ccp.Val != enabled {
+						ccp.SetVal(enabled)
+					}
+					// Note: color might have changed, but SetColor also calls changed which saves settings
+					// For now we assume color picker UI itself manages color changes during runtime.
+				}
+				pickerIdx++
+			}
 		}
 	}
-
-	dr.rightPanel.Objects = []fyne.CanvasObject{grid}
-	dr.rightPanel.Refresh()
 }
 
 func (dr *digitalRaster) refresh() {
@@ -194,6 +233,11 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		samples := len(buf)
 
 		for c := 0; c < 8; c++ {
+			if !dr.scp.Settings.Digital.ChannelsEnabled[port*8+c] {
+				chIdx++
+				continue
+			}
+
 			yBase := float64(chIdx) * channelHeight
 			yHigh := int(math.Round(yBase + channelHeight*0.2))
 			yLow := int(math.Round(yBase + channelHeight*0.8))
