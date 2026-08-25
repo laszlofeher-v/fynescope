@@ -61,8 +61,8 @@ var (
 	digitalPortsEnabled       map[genericps.DigitalPort]bool
 	digitalBuffers            map[int][]int16
 	digitalBuffersMin         map[int][]int16
-	digitalGenPort0Enabled    bool
-	digitalGenPort1Enabled    bool
+	digitalGenPort0Enabled    atomic.Bool
+	digitalGenPort1Enabled    atomic.Bool
 	digitalGenFrequency       float64
 	digitalGenDirection       genericps.DigitalDemoGenDirection
 	digitalGenEncoding        genericps.DigitalDemoGenEncoding
@@ -1201,9 +1201,17 @@ func simSetSigGenBuiltInV2(handle int16, offsetVoltage int32, pkToPK uint32, wav
 	return
 }
 
+// SetDigitalGenPortEnabled sets the port-enabled flags atomically so that the
+// change takes effect immediately on the next sample generation, without
+// waiting for the message-queue round-trip of SetDemoDigitalGen.
+func SetDigitalGenPortEnabled(port0, port1 bool) {
+	digitalGenPort0Enabled.Store(port0)
+	digitalGenPort1Enabled.Store(port1)
+}
+
 func (s *SimDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64, dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error {
-	digitalGenPort0Enabled = port0Enabled
-	digitalGenPort1Enabled = port1Enabled
+	digitalGenPort0Enabled.Store(port0Enabled)
+	digitalGenPort1Enabled.Store(port1Enabled)
 	digitalGenFrequency = freq
 	digitalGenDirection = dir
 	digitalGenEncoding = enc
@@ -1230,7 +1238,7 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
 				if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
 					mask := uint16(0xFFFF)
-					if !digitalGenPort1Enabled {
+					if !digitalGenPort1Enabled.Load() {
 						mask = 0xFF
 					}
 					c = mask - (c & mask)
@@ -1252,7 +1260,7 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 		if digitalGenDirection == genericps.DigitalDemoGenDirectionDown {
 			if digitalGenEncoding == genericps.DigitalDemoGenEncodingGray {
 				mask := uint16(0xFFFF)
-				if !digitalGenPort1Enabled {
+				if !digitalGenPort1Enabled.Load() {
 					mask = 0xFF
 				}
 				finalVal = mask - (finalVal & mask)
@@ -1264,7 +1272,7 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			finalVal = finalVal ^ (finalVal >> 1)
 		}
 	}
-	return int16(finalVal & 0xFF), int16((finalVal >> 8) & 0xFF), digitalGenPort0Enabled, digitalGenPort1Enabled
+	return int16(finalVal & 0xFF), int16((finalVal >> 8) & 0xFF), digitalGenPort0Enabled.Load(), digitalGenPort1Enabled.Load()
 }
 
 func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
