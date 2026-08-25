@@ -150,14 +150,21 @@ func blockMode(psControl *PscDesc) state {
 			leftRightRange := (float64(psControl.SampleCountRequired) - displayRange) / 2
 			psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset/
 				psControl.SamplingTimeInterval + leftRightRange))
+			if psControl.NPre > psControl.SampleCountRequired {
+				psControl.NPre = psControl.SampleCountRequired
+			}
 			psControl.NPro = psControl.SampleCountRequired - psControl.NPre
 			psControl.XRoundError = psControl.triggerSetting.XOffset -
 				psControl.SamplingTimeInterval*(float64(psControl.NPre)-
 					float64(leftRightRange))
 		} else {
 			psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset/psControl.SamplingTimeInterval))*psControl.downSampleRatio + LeftOut*psControl.downSampleRatio
-			if psControl.SampleCountRequired*psControl.downSampleRatio > psControl.NPre {
-				psControl.NPro = psControl.SampleCountRequired*psControl.downSampleRatio - psControl.NPre
+			maxPre := psControl.SampleCountRequired * psControl.downSampleRatio
+			if psControl.NPre > maxPre {
+				psControl.NPre = maxPre
+			}
+			if maxPre > psControl.NPre {
+				psControl.NPro = maxPre - psControl.NPre
 			} else {
 				psControl.NPro = 0
 			}

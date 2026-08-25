@@ -47,11 +47,20 @@ extern uint32_t Gops2000aSetDigitalPort(int16_t handle, int32_t port, int16_t en
 extern uint32_t Gops2000aSetTriggerDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
 extern uint32_t Gops2000aSetDigitalAnalogTriggerOperand(int16_t handle, int32_t operand);
 extern uint32_t Gops2000aSetPulseWidthDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
+extern uint32_t Gops2000aRunStreaming(int16_t handle, uint32_t *sampleInterval, int32_t timeUnits, uint32_t maxPreTriggerSamples, uint32_t maxPostTriggerSamples, int16_t autoStop, uint32_t downSampleRatio, int32_t downSampleRatioMode, uint32_t overviewBufferSize);
+extern uint32_t Gops2000aGetStreamingLatestValues(int16_t handle, void *lpDataReady, void *pParameter);
+extern uint32_t Gops2000aNoOfStreamingValues(int16_t handle, uint32_t *noOfValues);
 
 // Static helper to invoke a ps2000aBlockReady function pointer from Go.
 static inline void call_ps2000aBlockReady(ps2000aBlockReady fp, int16_t handle, PICO_STATUS status, void *pParameter) {
     if (fp != NULL) {
         fp(handle, status, pParameter);
+    }
+}
+
+static inline void call_ps2000aStreamingReady(ps2000aStreamingReady fp, int16_t handle, int32_t noOfSamples, uint32_t startIndex, int16_t overflow, uint32_t triggerAt, int16_t triggered, int16_t autoStop, void *pParameter) {
+    if (fp != NULL) {
+        fp(handle, noOfSamples, startIndex, overflow, triggerAt, triggered, autoStop, pParameter);
     }
 }
 */
@@ -451,4 +460,46 @@ func Gops2000aSetDigitalAnalogTriggerOperand(handle C.int16_t, operand C.int32_t
 func Gops2000aSetPulseWidthDigitalPortProperties(handle C.int16_t, directions unsafe.Pointer, nDirections C.int16_t) C.uint32_t {
 	return 0
 }
+
+//export Gops2000aRunStreaming
+func Gops2000aRunStreaming(handle C.int16_t, sampleInterval *C.uint32_t, timeUnits C.int32_t, maxPreTriggerSamples, maxPostTriggerSamples C.uint32_t, autoStop C.int16_t, downSampleRatio C.uint32_t, downSampleRatioMode C.int32_t, overviewBufferSize C.uint32_t) C.uint32_t {
+	var reqSi uint32
+	if sampleInterval != nil {
+		reqSi = uint32(*sampleInterval)
+	}
+	si, err := simRunStreaming(int16(handle), reqSi, TimeUnits(timeUnits), uint32(maxPreTriggerSamples), uint32(maxPostTriggerSamples), autoStop != 0, uint32(downSampleRatio), RatioMode(downSampleRatioMode), uint32(overviewBufferSize))
+	if err != nil {
+		return 0x0000002A // PICO_INVALID_HANDLE
+	}
+	if sampleInterval != nil {
+		*sampleInterval = C.uint32_t(si)
+	}
+	return 0 // PICO_OK
+}
+
+//export Gops2000aGetStreamingLatestValues
+func Gops2000aGetStreamingLatestValues(handle C.int16_t, lpDataReady unsafe.Pointer, pParameter unsafe.Pointer) C.uint32_t {
+	cb := C.ps2000aStreamingReady(lpDataReady)
+	goCb := func(h int16, noOfSamples int32, startIndex uint32, overflow int16, triggerAt uint32, triggered, autoStop int16, param any) {
+		C.call_ps2000aStreamingReady(cb, C.int16_t(h), C.int32_t(noOfSamples), C.uint32_t(startIndex), C.int16_t(overflow), C.uint32_t(triggerAt), C.int16_t(triggered), C.int16_t(autoStop), pParameter)
+	}
+	err := simGetStreamingLatestValues(int16(handle), goCb, pParameter)
+	if err != nil {
+		return 0x0000002A
+	}
+	return 0
+}
+
+//export Gops2000aNoOfStreamingValues
+func Gops2000aNoOfStreamingValues(handle C.int16_t, noOfValues *C.uint32_t) C.uint32_t {
+	n, err := simNoOfStreamingValues(int16(handle))
+	if err != nil {
+		return 0x0000002A
+	}
+	if noOfValues != nil {
+		*noOfValues = C.uint32_t(n)
+	}
+	return 0
+}
+
 

@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"fynescope/genericps"
 	"fynescope/gui"
 	"fynescope/settings"
 	"fynescope/web"
@@ -28,7 +27,7 @@ func TestMain(m *testing.M) {
 
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	con, err := openDemo(genericps.DemoId)
+	con, err := openSim()
 	if err != nil {
 		log.Fatalf("failed to open simulator: %v", err)
 	}

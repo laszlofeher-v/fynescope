@@ -286,12 +286,16 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 					scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genTab.Content)
 					check.Checked = scp.Settings.GenPanel.On
 					stepFreq.SilentSetFloatValue(scp.Settings.GenPanel.Increment, fractionWidth)
-					dwellTime.SilentSetValue(int(scp.Settings.GenPanel.Dwelltime * dwellTimeScale))
+					scp.genWindow = nil
 					startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency * float64(pow10tab[fractionWidth])))
 					stopFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StopFrequency * float64(pow10tab[fractionWidth])))
 					scp.dockTab(scp.genTab)
 					scp.controlTab.SelectIndex(ftTabIndex)
 					fyne.Do(scp.genTab.Content.Refresh)
+				}
+				if scp.genWindow != nil {
+					scp.genWindow.RequestFocus()
+					return
 				}
 				scp.genWindow = scp.App.NewWindow("gen")
 				var genPanel *fyne.Container

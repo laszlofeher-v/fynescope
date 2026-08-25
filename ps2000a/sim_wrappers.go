@@ -48,6 +48,9 @@ extern uint32_t Gops2000aSetDigitalPort(int16_t handle, int32_t port, int16_t en
 extern uint32_t Gops2000aSetTriggerDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
 extern uint32_t Gops2000aSetDigitalAnalogTriggerOperand(int16_t handle, int32_t operand);
 extern uint32_t Gops2000aSetPulseWidthDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
+extern uint32_t Gops2000aRunStreaming(int16_t handle, uint32_t *sampleInterval, int32_t timeUnits, uint32_t maxPreTriggerSamples, uint32_t maxPostTriggerSamples, int16_t autoStop, uint32_t downSampleRatio, int32_t downSampleRatioMode, uint32_t overviewBufferSize);
+extern uint32_t Gops2000aGetStreamingLatestValues(int16_t handle, void *lpDataReady, void *pParameter);
+extern uint32_t Gops2000aNoOfStreamingValues(int16_t handle, uint32_t *noOfValues);
 
 // C implementations - each ps2000a API function delegates to its Go counterpart.
 PICO_STATUS ps2000aMemorySegments(int16_t handle, uint32_t nSegments, int32_t * nMaxSamples){
@@ -203,6 +206,18 @@ PICO_STATUS ps2000aSetDigitalAnalogTriggerOperand(int16_t handle, PS2000A_TRIGGE
 
 PICO_STATUS ps2000aSetPulseWidthDigitalPortProperties(int16_t handle, PS2000A_DIGITAL_CHANNEL_DIRECTIONS *directions, int16_t nDirections) {
 	return Gops2000aSetPulseWidthDigitalPortProperties(handle, directions, nDirections);
+}
+
+PICO_STATUS ps2000aRunStreaming(int16_t handle, uint32_t *sampleInterval, PS2000A_TIME_UNITS timeUnits, uint32_t maxPreTriggerSamples, uint32_t maxPostTriggerSamples, int16_t autoStop, uint32_t downSampleRatio, PS2000A_RATIO_MODE downSampleRatioMode, uint32_t overviewBufferSize) {
+	return Gops2000aRunStreaming(handle, sampleInterval, (int32_t)timeUnits, maxPreTriggerSamples, maxPostTriggerSamples, autoStop, downSampleRatio, (int32_t)downSampleRatioMode, overviewBufferSize);
+}
+
+PICO_STATUS ps2000aGetStreamingLatestValues(int16_t handle, ps2000aStreamingReady lpDataReady, void *pParameter) {
+	return Gops2000aGetStreamingLatestValues(handle, (void *)lpDataReady, pParameter);
+}
+
+PICO_STATUS ps2000aNoOfStreamingValues(int16_t handle, uint32_t *noOfValues) {
+	return Gops2000aNoOfStreamingValues(handle, noOfValues);
 }
 
 */

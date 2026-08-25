@@ -329,6 +329,20 @@ func openDemo(id string) (*genericps.Connection, error) {
 	return connectToDevice(&genericps.DeviceInfo{Id: id, IsDemo: true})
 }
 
+// openSim is a helper function for tests to open a simulated connection.
+// It attempts to connect to the ps2000a simulator, falling back to demo mode if not compiled with -tags="sim".
+func openSim() (*genericps.Connection, error) {
+	con, err := connectToDevice(&genericps.DeviceInfo{
+		Id:     "ps2000a",
+		Serial: "SIM",
+		IsDemo: false,
+	})
+	if err != nil {
+		return openDemo(genericps.DemoId)
+	}
+	return con, nil
+}
+
 // setupSettingsFile configures the settings filename based on device info.
 // It retrieves the device's batch and serial number and uses it to create
 // a unique settings filename for this specific device.

@@ -357,6 +357,10 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	var undockBtn *widget.Button
 	if undockable {
 		undockBtn = widget.NewButtonWithIcon(vchUndockLabel, theme.ViewFullScreenIcon(), func() {
+			if scp.virtualChWindow != nil {
+				scp.virtualChWindow.RequestFocus()
+				return
+			}
 			onWindowClose := func() {
 				scp.virtualChWindow = nil
 				scp.dockTab(scp.vchTab)
