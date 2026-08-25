@@ -322,7 +322,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		timeStr := formatTime(timeAtCursor)
 
 		var binStrLSB, binStrMSB string
-		var hexVal uint16
+		var hexValLSB, hexValMSB uint16
 		var bits int
 
 		for port := 0; port < 2; port++ {
@@ -338,8 +338,10 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				for c := 0; c < 8; c++ {
 					chIdx := port*8 + c
 					if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
-						bitVal := (portVal >> c) & 1
-						hexVal |= (uint16(bitVal) << bits)
+						bitValLSB := (portVal >> c) & 1
+						bitValMSB := (portVal >> (7 - c)) & 1
+						hexValLSB |= (uint16(bitValLSB) << bits)
+						hexValMSB |= (uint16(bitValMSB) << bits)
 						bits++
 					}
 				}
@@ -348,7 +350,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 		if bits > 0 {
 			for i := 0; i < bits; i++ {
-				b := (hexVal >> i) & 1
+				b := (hexValLSB >> i) & 1
 				binStrLSB += fmt.Sprintf("%d", b)
 				binStrMSB = fmt.Sprintf("%d", b) + binStrMSB
 			}
@@ -369,7 +371,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		info = append(info, struct {
 			text string
 			col  color.Color
-		}{fmt.Sprintf("Hexa: 0x%X", hexVal), color.White})
+		}{fmt.Sprintf("Hexa LSB: 0x%X MSB: 0x%X", hexValLSB, hexValMSB), color.White})
 
 		info = append(info, struct {
 			text string
