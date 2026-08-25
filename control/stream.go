@@ -227,7 +227,8 @@ func streamMode(psControl *PscDesc) state {
 				default:
 					err := psControl.Con.GetStreamingLatestValues(callbackStream, nil)
 					if err != nil {
-						if !strings.Contains(err.Error(), "streaming not") {
+						errMsg := err.Error()
+						if !strings.Contains(errMsg, "streaming not") && !strings.Contains(errMsg, "PICO_INFO_UNAVAILABLE") && !strings.Contains(errMsg, "PICO_NOT_USING_STREAMING") {
 							slog.Error("GetStreamingLatestValues failed", "err", err)
 							psControl.DisplayStatus(err.Error(), Fatal)
 						} else {

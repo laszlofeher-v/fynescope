@@ -657,14 +657,18 @@ func ps2000aSetPulseWidthQualifier(handle int16, conditions []PwqConditions, dir
 	return
 }
 func ps2000aSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
-	cDigitalDirections := make([]C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS, len(digitalDirections))
-	for i := range digitalDirections {
-		cDigitalDirections[i].channel = (C.PS2000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
-		cDigitalDirections[i].direction = (C.PS2000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
+	var pcDigitalDirections *C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS
+	if len(digitalDirections) > 0 {
+		cDigitalDirections := make([]C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS, len(digitalDirections))
+		for i := range digitalDirections {
+			cDigitalDirections[i].channel = (C.PS2000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
+			cDigitalDirections[i].direction = (C.PS2000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
+		}
+		pcDigitalDirections = &cDigitalDirections[0]
 	}
 	slog.Debug("ps2000aSetTriggerDigitalPortProperties", "handle", handle, "digitalDirections", digitalDirections)
 	stat := C.ps2000aSetTriggerDigitalPortProperties((C.short)(handle),
-		(*C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS)(&cDigitalDirections[0]), (C.short)(len(digitalDirections)))
+		pcDigitalDirections, (C.short)(len(digitalDirections)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetTriggerDigitalPortProperties:  %s", psc.StatStr(int(stat)))
 	}
@@ -901,14 +905,18 @@ func ps2000aSetOutputEdgeDetect(handle int16, state int16) (err error) {
 }
 
 func ps2000aSetPulseWidthDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
-	cDigitalDirections := make([]C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS, len(digitalDirections))
-	for i := range digitalDirections {
-		cDigitalDirections[i].channel = (C.PS2000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
-		cDigitalDirections[i].direction = (C.PS2000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
+	var pcDigitalDirections *C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS
+	if len(digitalDirections) > 0 {
+		cDigitalDirections := make([]C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS, len(digitalDirections))
+		for i := range digitalDirections {
+			cDigitalDirections[i].channel = (C.PS2000A_DIGITAL_CHANNEL)(digitalDirections[i].Channel)
+			cDigitalDirections[i].direction = (C.PS2000A_DIGITAL_DIRECTION)(digitalDirections[i].Direction)
+		}
+		pcDigitalDirections = &cDigitalDirections[0]
 	}
 	slog.Debug("ps2000aSetPulseWidthDigitalPortProperties", "handle", handle, "digitalDirections", digitalDirections)
 	stat := C.ps2000aSetPulseWidthDigitalPortProperties((C.short)(handle),
-		(*C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS)(&cDigitalDirections[0]), (C.short)(len(digitalDirections)))
+		pcDigitalDirections, (C.short)(len(digitalDirections)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetPulseWidthDigitalPortProperties:  %s", psc.StatStr(int(stat)))
 	}

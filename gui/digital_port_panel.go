@@ -124,6 +124,10 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	var undockBtn *widget.Button
 	if undockable {
 		undockBtn = widget.NewButtonWithIcon("Undock", theme.ViewFullScreenIcon(), func() {
+			if scp.digPortWindow != nil {
+				scp.digPortWindow.RequestFocus()
+				return
+			}
 			onWindowClose := func() {
 				scp.digPortWindow = nil
 				scp.dockTab(scp.digPortTab)
@@ -176,11 +180,14 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		operandSelect,
 	)
 
-	if undockable {
+	if undockable && undockBtn != nil {
+		addToTest(undockBtn, "digPortUndockBtn", digPortTabIndex)
 		mainBox.Add(container.NewVBox(undockBtn, layout.NewSpacer(), title, trigHeader))
 	} else {
 		mainBox.Add(container.NewVBox(title, trigHeader))
 	}
+	addToTest(trigEnableCheck, "digPortTrigEnable", digPortTabIndex)
+	addToTest(operandSelect, "digPortOperandSelect", digPortTabIndex)
 
 	port0Box := container.NewVBox()
 	port1Box := container.NewVBox()
@@ -206,6 +213,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 				scp.digitalRaster.refresh()
 			}
 		}
+		addToTest(labelEntry, fmt.Sprintf("digPortLabelEntry_%d", chIdx), digPortTabIndex)
 
 		// 2. Color & Enable picker
 		col := scp.Settings.Digital.ChannelColors[chIdx]
@@ -220,6 +228,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			scp.updateDigitalTrigger()
 		}, col, fyne.NewSize(20, 20))
 		ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
+		addToTest(ccp, fmt.Sprintf("digPortCheckColorPick_%d", chIdx), digPortTabIndex)
 
 		// 3. Trigger mode
 		initialDirStr := dirReverseMap[scp.Settings.Digital.Trigger.Directions[chIdx]]
@@ -234,6 +243,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		}, upDown)
 		trigSelect.SetSelected(initialDirStr)
+		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
 
 		row := container.NewHBox(
 			dnLabel,
@@ -254,6 +264,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		container.NewTabItem("Port 0 (D0-D7)", port0Box),
 		container.NewTabItem("Port 1 (D8-D15)", port1Box),
 	)
+	addToTest(portTabs, "digPortSubTabs", digPortTabIndex)
 	mainBox.Add(portTabs)
 
 	return container.NewVBox(mainBox, layout.NewSpacer())

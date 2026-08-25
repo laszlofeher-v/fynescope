@@ -65,8 +65,12 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	undock := "Undock"
 	if undockable {
 		undockButton = widget.NewButtonWithIcon(undock, theme.ViewFullScreenIcon(), func() {
+			if scp.digGenWindow != nil {
+				scp.digGenWindow.RequestFocus()
+				return
+			}
 			onWindowClose := func() {
-				scp.digGenWindow.Hide()
+				scp.digGenWindow = nil
 				undockButton.Text = undock
 				undockButton.Show()
 				scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.digGenTab.Content)
@@ -193,6 +197,17 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 		settings.BitDelay = f / 1000000000.0
 		scp.applyDemoDigitalGenSettings()
 	}
+
+	if undockable && undockButton != nil {
+		addToTest(undockButton, "digGenUndockBtn", digGenTabIndex)
+	}
+	addToTest(port0Check, "digGenPort0Check", digGenTabIndex)
+	addToTest(port1Check, "digGenPort1Check", digGenTabIndex)
+	addToTest(freqDisp, "digGenFreqDisp", digGenTabIndex)
+	addToTest(dirSelect, "digGenDirSelect", digGenTabIndex)
+	addToTest(encSelect, "digGenEncSelect", digGenTabIndex)
+	addToTest(modeSelect, "digGenModeSelect", digGenTabIndex)
+	addToTest(bitDelayDisp, "digGenBitDelayDisp", digGenTabIndex)
 
 	updateVisibility = func() {
 		if settings.Encoding == genericps.DigitalDemoGenEncodingGray {

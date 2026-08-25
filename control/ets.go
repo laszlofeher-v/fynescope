@@ -13,8 +13,8 @@ const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) etsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
 	switch psControl.Info {
-	case "2407B", "2407SIM", "2407DEMO":
-		// Specification for 2407B:
+	case "2407B", "2407SIM", "2407DEMO", "2207B", "2207SIM", "2207DEMO", "2207", "2207BMSO", "2208B", "2208BMSO", "2408B":
+		// Specification for 2407B / 2207B / 2000a:
 		// Sample time = 2000 / EtsInterleave
 		// EtsCycles >= EtsInterleave
 		// EtsCycles <= EtsInterleave * 10 + 9
@@ -155,6 +155,9 @@ func etsBlockMode(psControl *PscDesc) state {
 		// and have to modify triggerTimeOffset
 		// etscallback also needs triggerTimeOffset
 		psControl.NPre = uint64(math.Round(psControl.triggerSetting.XOffset / psControl.SamplingTimeInterval))
+		if psControl.NPre > psControl.SampleCountRequired {
+			psControl.NPre = psControl.SampleCountRequired
+		}
 		psControl.NPro = psControl.SampleCountRequired - psControl.NPre
 		slog.Debug("pre", "SamplingTimeInterval", psControl.SamplingTimeInterval)
 		psControl.XRoundError = psControl.triggerSetting.XOffset - psControl.SamplingTimeInterval*(float64(psControl.NPre)-1.0)

@@ -128,6 +128,9 @@ const (
 	rlcFuncId      = "rlcFunc"
 	extgenFuncId   = "extgenFunc"
 	digPortFuncId  = "digPortFunc"
+	digGenFuncId   = "digGenFunc"
+	vchFuncId      = "vchFunc"
+	decodeFuncId   = "decodeFunc"
 	rlcEnableId    = "rlcEnable"
 	rlcTypeId      = "rlcType"
 	rlcGenSourceId = "rlcGenSource"
@@ -258,6 +261,17 @@ func randKey(name string) bool {
 				c.TypedRune(r)
 			}
 		})
+	case *framelessEntry:
+		slog.Debug("randKey", "name", name)
+		doEvent(func() {
+			if rand.Float32() < 0.2 && len(c.Text) > 0 {
+				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
+			} else {
+				runes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+				r := runes[rand.Intn(len(runes))]
+				c.TypedRune(r)
+			}
+		})
 	default:
 		return false
 	}
@@ -296,12 +310,25 @@ func internalTap(name string, isFuzzer bool) bool {
 				targetText = "f(f)"
 			case rlcFuncId:
 				targetText = "RLC"
-			case filterFuncId:
-				targetText = "filter"
+			case digPortFuncId:
+				targetText = "digital"
 			case genFuncId:
 				targetText = "gen"
 			case extgenFuncId:
 				targetText = "extgen"
+			case digGenFuncId:
+				targetText = "digGen"
+			case vchFuncId:
+				targetText = "vch"
+			case decodeFuncId:
+				targetText = "Decode"
+			case filterFuncId:
+				targetText = "filter"
+			default:
+				if len(c.Items) > 0 {
+					c.SelectIndex(rand.Intn(len(c.Items)))
+				}
+				return
 			}
 			if targetText != "" {
 				for idx, item := range c.Items {
@@ -572,6 +599,23 @@ func (scp *ScpDesc) Test() {
 
 		wait()
 	}
+
+	tap(digPortFuncId)
+	tap("d07Button")
+	tap("d815Button")
+	tap("digPortTrigEnable")
+	scroll("digPortOperandSelect", 1)
+	tap("digPortCheckColorPick_0")
+	scroll("digPortTrigSelect_0", 1)
+	tap("digPortCheckColorPick_1")
+	scroll("digPortTrigSelect_1", 2)
+	tap(digGenFuncId)
+	tap("digGenPort0Check")
+	tap("digGenPort1Check")
+	scroll("digGenDirSelect", 1)
+	scroll("digGenEncSelect", 1)
+	scroll("digGenModeSelect", 1)
+	wait()
 
 	fyne.Do(func() {
 		// Ensure Channels A and B are enabled and Signal Generator is ON for Bode plot sweep and signal drawing

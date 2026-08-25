@@ -39,6 +39,16 @@ func TestEtsTimes_2407B(t *testing.T) {
 	}
 }
 
+func TestEtsTimes_2207SIM(t *testing.T) {
+	ps := &PscDesc{
+		Info: "2207SIM",
+	}
+	cycles, inter, err := ps.etsTimes(200)
+	assert.NoError(t, err)
+	assert.Equal(t, int16(10), inter)
+	assert.Equal(t, int16(20), cycles)
+}
+
 func TestEtsTimes_Unknown(t *testing.T) {
 	ps := &PscDesc{
 		Info: "UNKNOWN",

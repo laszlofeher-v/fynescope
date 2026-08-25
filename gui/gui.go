@@ -1009,10 +1009,13 @@ func (scp *ScpDesc) build2000Gui() {
 	addToTest(scp.controlTab, dftFuncId, -1)
 	addToTest(scp.controlTab, ffFuncId, -1)
 	addToTest(scp.controlTab, rlcFuncId, -1)
-	addToTest(scp.controlTab, genFuncId, -1)
-	addToTest(scp.controlTab, filterFuncId, -1)
-	addToTest(scp.controlTab, extgenFuncId, -1)
 	addToTest(scp.controlTab, digPortFuncId, -1)
+	addToTest(scp.controlTab, genFuncId, -1)
+	addToTest(scp.controlTab, extgenFuncId, -1)
+	addToTest(scp.controlTab, digGenFuncId, -1)
+	addToTest(scp.controlTab, vchFuncId, -1)
+	addToTest(scp.controlTab, decodeFuncId, -1)
+	addToTest(scp.controlTab, filterFuncId, -1)
 	scp.newChannelPanels(ftLayout)
 	scp.newSetTimeDivPanel(ftLayout)
 	scp.updateTriggerUIForType()
@@ -1213,6 +1216,8 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p1}
 			}(scp.Settings.Digital.Ports[0], scp.Settings.Digital.Ports[1])
 		}
+		addToTest(scp.d07Button, "d07Button", -1)
+		addToTest(scp.d815Button, "d815Button", -1)
 	}
 	changeSideFunc := func() {
 		if changeSide.Icon == theme.NavigateBackIcon() {
