@@ -127,6 +127,7 @@ const (
 	ffVRangeId     = "ffVRange"
 	rlcFuncId      = "rlcFunc"
 	extgenFuncId   = "extgenFunc"
+	digPortFuncId  = "digPortFunc"
 	rlcEnableId    = "rlcEnable"
 	rlcTypeId      = "rlcType"
 	rlcGenSourceId = "rlcGenSource"

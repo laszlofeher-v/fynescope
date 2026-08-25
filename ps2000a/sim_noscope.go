@@ -126,6 +126,20 @@ func simSetDigitalPort(handle int16, port int, enabled bool, logicLevel int16) {
 	// No-op for sim_noscope; simRunBlock relies on digitalBuffers being non-nil.
 }
 
+func simSetTriggerDigitalPortProperties(handle int16, dirs []demo.DigitalChannelDirections) {
+	if triggerDetector == nil {
+		triggerDetector = demo.NewTriggerDetector(true, 0, 0, demo.TriggerNone, demo.ChA)
+	}
+	triggerDetector.SetDigitalPortProperties(dirs)
+}
+
+func simSetDigitalAnalogTriggerOperand(handle int16, operand demo.TriggerOperand) {
+	if triggerDetector == nil {
+		triggerDetector = demo.NewTriggerDetector(true, 0, 0, demo.TriggerNone, demo.ChA)
+	}
+	triggerDetector.SetDigitalAnalogTriggerOperand(operand)
+}
+
 func calculateSampleLevelAtTime(t float64, ch int) float64 {
 	chDesc := &channels[ch]
 

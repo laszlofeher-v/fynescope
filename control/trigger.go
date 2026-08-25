@@ -42,6 +42,16 @@ func (psControl *PscDesc) triggerMonitor() {
 		triggerSetting     TriggerDesc
 	)
 	triggerDescChanged := func(a, b TriggerDesc) bool {
+		if a.DigitalTriggerEnabled != b.DigitalTriggerEnabled ||
+			a.DigitalAnalogOperand != b.DigitalAnalogOperand ||
+			len(a.DigitalDirections) != len(b.DigitalDirections) {
+			return true
+		}
+		for i := range a.DigitalDirections {
+			if a.DigitalDirections[i] != b.DigitalDirections[i] {
+				return true
+			}
+		}
 		return a.Enabled != b.Enabled ||
 			a.TriggerADC != b.TriggerADC ||
 			a.HysteresisADC != b.HysteresisADC ||
@@ -111,7 +121,62 @@ func (psControl *PscDesc) triggerMonitor() {
 	}
 }
 
+func (psControl *PscDesc) applyDigitalTrigger() (err error) {
+	if psControl.triggerSetting.DigitalTriggerEnabled {
+		err = psControl.Con.SetTriggerDigitalPortProperties(psControl.triggerSetting.DigitalDirections)
+		if err != nil {
+			slog.Error("applyDigitalTrigger SetTriggerDigitalPortProperties:", "error:", err)
+			return
+		}
+		err = psControl.Con.SetDigitalAnalogTriggerOperand(psControl.triggerSetting.DigitalAnalogOperand)
+		if err != nil {
+			slog.Error("applyDigitalTrigger SetDigitalAnalogTriggerOperand:", "error:", err)
+			return
+		}
+	}
+	return
+}
+
+func (psControl *PscDesc) sendDigitalTrigger() (err error) {
+	at := psControl.autoTriggerMilliseconds32()
+	err = psControl.applyDigitalTrigger()
+	if err != nil {
+		return
+	}
+
+	triggerConditions := []genericps.TriggerConditions{{
+		ChannelA:            genericps.CondDontCare,
+		ChannelB:            genericps.CondDontCare,
+		ChannelC:            genericps.CondDontCare,
+		ChannelD:            genericps.CondDontCare,
+		External:            genericps.CondDontCare,
+		Aux:                 genericps.CondDontCare,
+		PulseWidthQualifier: genericps.CondDontCare,
+		Digital:             genericps.CondTrue,
+	}}
+	channelProperties := []genericps.TriggerChannelProperties{{
+		Channel: genericps.ChA,
+	}}
+	_ = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+
+	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
+	if err != nil {
+		slog.Error("sendDigitalTrigger SetTriggerChannelConditions:", "error:", err)
+		return
+	}
+	err = psControl.Con.SetTriggerChannelDirections(genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone, genericps.TriggerNone)
+	if err != nil {
+		slog.Error("sendDigitalTrigger SetTriggerChannelDirections:", "error:", err)
+		return
+	}
+	_ = psControl.disablePwq(genericps.TriggerRising)
+	return
+}
+
 func (psControl *PscDesc) sendSimpleTrigger() (err error) {
+	if psControl.triggerSetting.DigitalTriggerEnabled {
+		return psControl.sendAdvancedTrigger()
+	}
 	at := int16(0)
 	if psControl.triggerSetting.Mode == Auto {
 		at = autoTriggerMs
@@ -159,6 +224,7 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 }
 
 func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := psControl.autoTriggerMilliseconds32()
 	channelProperties := psControl.getValidTriggerProperties()
 	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondDontCare)
@@ -191,6 +257,7 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendWindowTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := psControl.autoTriggerMilliseconds32()
 	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondDontCare)
 	channelProperties := psControl.getValidTriggerProperties()
@@ -223,6 +290,7 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendRuntTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := psControl.autoTriggerMilliseconds32()
 	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondDontCare)
 	channelProperties := psControl.getValidTriggerProperties()
@@ -255,6 +323,7 @@ func (psControl *PscDesc) sendRuntTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendIntervalTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -310,6 +379,7 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -367,6 +437,7 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -420,6 +491,7 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendDropOutTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -469,6 +541,7 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendComplexTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 
 	at := int32(0)
 	if psControl.triggerSetting.Mode == Auto {
@@ -499,6 +572,7 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -557,6 +631,7 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 // window (i.e. the transition time between the two thresholds).
 //
 func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
+	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
@@ -616,16 +691,20 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 // on the trigger source channel and pwqCond on the PulseWidthQualifier field; all other
 // channels are set to CondDontCare.
 func (psControl *PscDesc) buildTriggerConditions(condMain, pwqCond genericps.TriggerRespBase) []genericps.TriggerConditions {
+	digCond := genericps.CondDontCare
+	if psControl.triggerSetting.DigitalTriggerEnabled {
+		digCond = genericps.CondTrue
+	}
 	var triggerConditions []genericps.TriggerConditions
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
 	case genericps.ChB:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
 	case genericps.ChC:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
 	case genericps.ChD:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: genericps.CondDontCare}}
+		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
 	}
 	return triggerConditions
 }

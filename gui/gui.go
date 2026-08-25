@@ -69,16 +69,17 @@ const (
 	dftTabIndex
 	ffTabIndex
 	rlcTabIndex
-	filterTabIndex
+	digPortTabIndex
 	genTabIndex
 	extgenTabIndex
 	digGenTabIndex
 	vchTabIndex
 	decodeTabIndex
+	filterTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "filter", "gen", "extgen", "digGen", "vch", "Decode"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "Decode", "filter"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -182,6 +183,8 @@ type (
 		vchTab                       *container.TabItem
 		decodeTab                    *container.TabItem
 		decodeLayout                 *fyne.Container
+		digPortTab                   *container.TabItem
+		digPortLayout                *fyne.Container
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
 		psControl                    *control.PscDesc
@@ -215,6 +218,7 @@ type (
 		patternWindow                fyne.Window
 		virtualChWindow              fyne.Window
 		decodeWindow                 fyne.Window
+		digPortWindow                fyne.Window
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
 		ftRaster                     *screenRaster
@@ -838,8 +842,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.decodeLayout = container.NewMax()
 	scp.refreshDecodeTab()
 	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
+	scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(true))
+	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.filterTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab)
 
 	if scp.runningMode != genericps.DemoMode {
 		scp.controlTab.Remove(scp.rlcTab)
@@ -849,6 +855,9 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 	if scp.runningMode == genericps.ScopeMode {
 		scp.controlTab.Remove(scp.digGenTab)
+	}
+	if !strings.Contains(scp.psControl.Info, "MSO") && scp.runningMode != genericps.DemoMode && scp.runningMode != genericps.SimMode {
+		scp.controlTab.Remove(scp.digPortTab)
 	}
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
@@ -860,6 +869,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.mainSplit.Offset = 1.0
 	}
 	scp.updateDigitalSplit()
+	scp.updateDigitalTrigger()
 
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
@@ -879,7 +889,8 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.controlTab.Selected() == scp.genTab ||
 			scp.controlTab.Selected() == scp.filterTab ||
 			scp.controlTab.Selected() == scp.extgenTab ||
-			scp.controlTab.Selected() == scp.vchTab {
+			scp.controlTab.Selected() == scp.vchTab ||
+			scp.controlTab.Selected() == scp.digPortTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -989,7 +1000,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
-	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex {
+	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex {
 		scp.timeZoomButton.Hide()
 	}
 
@@ -1001,6 +1012,7 @@ func (scp *ScpDesc) build2000Gui() {
 	addToTest(scp.controlTab, genFuncId, -1)
 	addToTest(scp.controlTab, filterFuncId, -1)
 	addToTest(scp.controlTab, extgenFuncId, -1)
+	addToTest(scp.controlTab, digPortFuncId, -1)
 	scp.newChannelPanels(ftLayout)
 	scp.newSetTimeDivPanel(ftLayout)
 	scp.updateTriggerUIForType()

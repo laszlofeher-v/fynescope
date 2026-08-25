@@ -170,12 +170,14 @@ type (
 	DigitalTriggerSettings struct {
 		Enabled    bool                           `yaml:"enabled"`
 		Logic      string                         `yaml:"logic"` // "AND", "OR", etc.
+		Operand    genericps.TriggerOperand       `yaml:"operand"`
 		Directions [16]genericps.DigitalDirection `yaml:"directions"`
 	}
 	DigitalSettings struct {
 		Ports           [2]DigitalPortSettings `yaml:"ports"`
 		ChannelColors   [16]color.NRGBA        `yaml:"channelcolors"`
 		ChannelsEnabled [16]bool               `yaml:"channelsenabled"`
+		ChannelLabels   [16]string             `yaml:"channellabels"`
 		Trigger         DigitalTriggerSettings `yaml:"trigger"`
 		HexView         bool                   `yaml:"hexview"`
 	}
@@ -392,9 +394,14 @@ func NewDefaultSettings() *PsSettings {
 				true, true, true, true, true, true, true, true,
 				true, true, true, true, true, true, true, true,
 			},
+			ChannelLabels: [16]string{
+				"", "", "", "", "", "", "", "",
+				"", "", "", "", "", "", "", "",
+			},
 			Trigger: DigitalTriggerSettings{
 				Enabled: false,
-				Logic:   "AND",
+				Logic:   "OR",
+				Operand: genericps.OperandOr,
 			},
 			HexView: false,
 		},
