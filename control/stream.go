@@ -43,7 +43,7 @@ func streamMode(psControl *PscDesc) state {
 			}
 			
 			for i := 0; i < 2; i++ {
-				if !psControl.digitalPortsEnabled[i].Load() {
+				if !psControl.digitalPortsEnabled[i].Load() || len(digitalDriverBuffer) <= i || len(digitalDriverBuffer[i]) == 0 {
 					continue
 				}
 				newSamples := digitalDriverBuffer[i][startIndex : startIndex+uint32(noOfSamples)]
