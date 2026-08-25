@@ -1182,6 +1182,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.Settings.Digital.Ports[0].Enabled = !scp.Settings.Digital.Ports[0].Enabled
 			scp.SaveSettings()
 			scp.updateDigitalSplit()
+			scp.updateDigitalTrigger()
 			if scp.digitalRaster != nil {
 				scp.digitalRaster.refresh()
 			}
@@ -1195,6 +1196,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.Settings.Digital.Ports[1].Enabled = !scp.Settings.Digital.Ports[1].Enabled
 			scp.SaveSettings()
 			scp.updateDigitalSplit()
+			scp.updateDigitalTrigger()
 			if scp.digitalRaster != nil {
 				scp.digitalRaster.refresh()
 			}

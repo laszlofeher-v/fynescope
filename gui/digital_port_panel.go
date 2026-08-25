@@ -65,6 +65,10 @@ const (
 func (scp *ScpDesc) updateDigitalTrigger() {
 	var dirs []genericps.DigitalChannelDirections
 	for i := 0; i < 16; i++ {
+		portIdx := i / 8
+		if !scp.Settings.Digital.ChannelsEnabled[i] || !scp.Settings.Digital.Ports[portIdx].Enabled {
+			continue
+		}
 		d := scp.Settings.Digital.Trigger.Directions[i]
 		if d != genericps.DigitalDontCare {
 			dirs = append(dirs, genericps.DigitalChannelDirections{
@@ -213,6 +217,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 				scp.digitalRaster.refresh()
 			}
 			scp.SaveSettings()
+			scp.updateDigitalTrigger()
 		}, col, fyne.NewSize(20, 20))
 		ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
 
