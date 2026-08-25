@@ -318,7 +318,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		idxF := (float64(mx) - float64(minX) - t0) / deltaT
 		idx := int(math.Round(idxF))
 
-		timeAtCursor := (float64(idx) - leftPadding) * dr.scp.controlSamplingTimeInterval
+		timeAtCursor := (float64(idx)-leftPadding)*dr.scp.controlSamplingTimeInterval - dr.scp.Settings.Time.TriggerTimeOffset
 		timeStr := formatTime(timeAtCursor)
 
 		var binStrLSB, binStrMSB string

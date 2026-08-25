@@ -1014,16 +1014,16 @@ func formatFreq(f float64) string {
 }
 
 func formatTime(t float64) string {
-	if t >= 1.0 {
+	if math.Abs(t) >= 1.0 {
 		return fmt.Sprintf("%+.3gs", t)
 	}
-	if t >= 1e-3 {
+	if math.Abs(t) >= 1e-3 {
 		return fmt.Sprintf("%+.3gms", t*1e3)
 	}
-	if t >= 1e-6 {
+	if math.Abs(t) >= 1e-6 {
 		return fmt.Sprintf("%.3gµs", t*1e6)
 	}
-	if t >= 1e-9 {
+	if math.Abs(t) >= 1e-9 {
 		return fmt.Sprintf("%+.3gns", t*1e9)
 	}
 	return fmt.Sprintf("%+.3gps", t*1e12)
