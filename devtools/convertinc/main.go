@@ -66,25 +66,30 @@ func main() {
 	fmt.Println(")")
 	fmt.Println("\nvar statMap = map[int]string{")
 	
+	startedStatus := false
 	for i, line := range lines {
 		if bytes.Contains([]byte(line), []byte(define)) {
 			fields := bytes.Fields([]byte(line))
 			if len(fields) >= 3 {
 				name := string(fields[1])
-				if strings.HasPrefix(name, "PICO_") {
+				if name == "PICO_OK" {
+					startedStatus = true
+				}
+				if startedStatus && strings.HasPrefix(name, "PICO_") {
 					if i > 0 && bytes.Contains([]byte(lines[i-1]), []byte(comment)) {
 						j := i - 1
 						for j >= 0 && bytes.Contains([]byte(lines[j]), []byte(comment)) {
 							j--
 						}
-						fmt.Printf("\t%s: \"%s ", name, name)
+						fmt.Printf("\t%s: \"%s  ", name, name)
+						var comments []string
 						for k := j + 1; k < i; k++ {
 							cmt := bytes.TrimSpace(bytes.TrimPrefix(bytes.TrimSpace([]byte(lines[k])), []byte("//")))
 							if len(cmt) > 0 {
-								fmt.Printf("%s ", string(cmt))
+								comments = append(comments, string(cmt))
 							}
 						}
-						fmt.Printf("\",\n")
+						fmt.Printf("%s\",\n", strings.Join(comments, " "))
 					} else {
 						fmt.Printf("\t%s: \"%s\",\n", name, name)
 					}
