@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/demo"
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
@@ -17,6 +18,31 @@ import (
 func (scp *ScpDesc) applyDemoDigitalGenSettings() {
 	if scp.psControl != nil && scp.psControl.Con != nil {
 		set := scp.Settings.DigitalDemoGenPanel
+		// Set port-enable flags atomically and immediately so the next
+		// acquisition cycle outputs low on disabled ports right away,
+		// without waiting for the goroutine below to be scheduled.
+		demo.SetDigitalGenPortEnabled(set.Port0Enabled, set.Port1Enabled)
+
+		// Also zero the display buffer for any disabled port right now so
+		// the raster shows low level immediately, not on the next acquisition.
+		if scp.digitalRaster != nil {
+			scp.screenLocker.Lock()
+			if !set.Port0Enabled && len(scp.digitalDisplayBuffer) > 0 {
+				buf := scp.digitalDisplayBuffer[0]
+				for i := range buf {
+					buf[i] = 0
+				}
+			}
+			if !set.Port1Enabled && len(scp.digitalDisplayBuffer) > 1 {
+				buf := scp.digitalDisplayBuffer[1]
+				for i := range buf {
+					buf[i] = 0
+				}
+			}
+			scp.screenLocker.Unlock()
+			scp.digitalRaster.refresh()
+		}
+
 		go func(set settings.DigitalDemoGenSettings) {
 			_ = scp.psControl.Con.SetDemoDigitalGen(
 				set.Port0Enabled,
