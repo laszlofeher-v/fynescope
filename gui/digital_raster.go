@@ -15,17 +15,13 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"golang.org/x/image/draw"
-
-	"fynescope/checkcolorpick"
+	// "fynescope/checkcolorpick"
 )
 
 type digitalRaster struct {
-	scp          *ScpDesc
-	raster       *canvas.Raster
-	window       fyne.Window
-	rightPanel   *fyne.Container
-	pickers      []*checkcolorpick.CheckColorPick
-	enabledPorts int
+	scp    *ScpDesc
+	raster *canvas.Raster
+	window fyne.Window
 
 	showInspector bool
 	mouseX        float32
@@ -34,107 +30,20 @@ type digitalRaster struct {
 
 func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digitalRaster) {
 	dr := &digitalRaster{
-		scp:          scp,
-		window:       window,
-		enabledPorts: -1,
+		scp:    scp,
+		window: window,
 	}
 
 	dr.raster = canvas.NewRaster(dr.generate)
-	dr.rightPanel = container.NewMax()
-	dr.updateColorPickers()
-
 	tappable := newTappableDigitalRaster(dr)
 
-	return container.NewBorder(nil, nil, nil, dr.rightPanel, container.NewClip(tappable)), dr
+	return container.NewMax(container.NewClip(tappable)), dr
 }
 
 func (dr *digitalRaster) updateColorPickers() {
-	if dr.rightPanel == nil {
-		return
-	}
-
-	activeChannels := 0
-	enabledPorts := 0
-	if dr.scp.Settings.Digital.Ports[0].Enabled {
-		activeChannels += 8
-		enabledPorts |= 1
-	}
-	if dr.scp.Settings.Digital.Ports[1].Enabled {
-		activeChannels += 8
-		enabledPorts |= 2
-	}
-
-	if enabledPorts != dr.enabledPorts {
-		dr.enabledPorts = enabledPorts
-		dr.pickers = nil
-
-		if activeChannels == 0 {
-			dr.rightPanel.Objects = nil
-			dr.rightPanel.Refresh()
-			return
-		}
-
-		grid := container.NewGridWithRows(activeChannels)
-
-		for port := 0; port < 2; port++ {
-			if !dr.scp.Settings.Digital.Ports[port].Enabled {
-				continue
-			}
-			for c := 0; c < 8; c++ {
-				chIdx := port*8 + c
-				col := dr.scp.Settings.Digital.ChannelColors[chIdx]
-
-				ccp := checkcolorpick.NewCheckColorPick(dr.window, func(ch int) func(v bool, col color.Color) {
-					return func(v bool, col color.Color) {
-						nrgba := color.NRGBAModel.Convert(col).(color.NRGBA)
-						dr.scp.Settings.Digital.ChannelColors[ch] = nrgba
-						dr.scp.Settings.Digital.ChannelsEnabled[ch] = v
-						if dr.raster != nil {
-							canvas.Refresh(dr.raster)
-						}
-						dr.scp.SaveSettings()
-					}
-				}(chIdx), col, fyne.NewSize(20, 20))
-
-				if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
-					ccp.SetVal(true)
-				} else {
-					ccp.SetVal(false)
-				}
-
-				dr.pickers = append(dr.pickers, ccp)
-				grid.Add(container.NewCenter(ccp))
-			}
-		}
-
-		dr.rightPanel.Objects = []fyne.CanvasObject{grid}
-		dr.rightPanel.Refresh()
-	} else {
-		// Just update properties if changed externally (e.g., settings load)
-		pickerIdx := 0
-		for port := 0; port < 2; port++ {
-			if !dr.scp.Settings.Digital.Ports[port].Enabled {
-				continue
-			}
-			for c := 0; c < 8; c++ {
-				chIdx := port*8 + c
-				if pickerIdx < len(dr.pickers) {
-					ccp := dr.pickers[pickerIdx]
-					enabled := dr.scp.Settings.Digital.ChannelsEnabled[chIdx]
-					if ccp.Val != enabled {
-						ccp.SetVal(enabled)
-					}
-					// Note: color might have changed, but SetColor also calls changed which saves settings
-					// For now we assume color picker UI itself manages color changes during runtime.
-				}
-				pickerIdx++
-			}
-		}
-	}
 }
 
 func (dr *digitalRaster) refresh() {
-	dr.updateColorPickers()
 	if dr.raster != nil {
 		canvas.Refresh(dr.raster)
 	}
@@ -257,6 +166,13 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 			// Draw channel label on the left margin if space is available
 			if minX >= 25 {
 				label := fmt.Sprintf("D%d", port*8+c)
+				if l := dr.scp.Settings.Digital.ChannelLabels[port*8+c]; l != "" {
+					runes := []rune(l)
+					if len(runes) > 6 {
+						l = string(runes[:6])
+					}
+					label += " " + l
+				}
 				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label)
 				_ = lblLeft
 				_ = lblRight
@@ -322,7 +238,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		timeStr := formatTime(timeAtCursor)
 
 		var binStrLSB, binStrMSB string
-		var hexValLSB, hexValMSB uint16
+		var hexValLSBD0, hexValMSBD0 uint16
 		var bits int
 
 		for port := 0; port < 2; port++ {
@@ -340,8 +256,8 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
 						bitValLSB := (portVal >> c) & 1
 						bitValMSB := (portVal >> (7 - c)) & 1
-						hexValLSB |= (uint16(bitValLSB) << bits)
-						hexValMSB |= (uint16(bitValMSB) << bits)
+						hexValLSBD0 |= (uint16(bitValLSB) << bits)
+						hexValMSBD0 |= (uint16(bitValMSB) << bits)
 						bits++
 					}
 				}
@@ -350,7 +266,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 		if bits > 0 {
 			for i := 0; i < bits; i++ {
-				b := (hexValLSB >> i) & 1
+				b := (hexValMSBD0 >> i) & 1
 				binStrLSB += fmt.Sprintf("%d", b)
 				binStrMSB = fmt.Sprintf("%d", b) + binStrMSB
 			}
@@ -371,7 +287,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		info = append(info, struct {
 			text string
 			col  color.Color
-		}{fmt.Sprintf("Hexa LSB: 0x%X MSB: 0x%X", hexValLSB, hexValMSB), color.White})
+		}{fmt.Sprintf("Hexa LSBD0: 0x%X MSBD0: 0x%X", hexValLSBD0, hexValMSBD0), color.White})
 
 		info = append(info, struct {
 			text string

@@ -44,6 +44,9 @@ extern uint32_t Gops2000aSetPulseWidthQualifier(int16_t handle, void *conditions
 extern uint32_t Gops2000aGetTriggerTimeOffset64(int16_t handle, int64_t *time, int32_t *timeUnits, uint32_t segmentIndex);
 extern uint32_t Gops2000aGetMaxDownSampleRatio(int16_t handle, uint32_t noOfUnaggregatedSamples, uint32_t *maxDownSampleRatio, int32_t downSampleRatioMode, uint32_t segmentIndex);
 extern uint32_t Gops2000aSetDigitalPort(int16_t handle, int32_t port, int16_t enabled, int16_t logicLevel);
+extern uint32_t Gops2000aSetTriggerDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
+extern uint32_t Gops2000aSetDigitalAnalogTriggerOperand(int16_t handle, int32_t operand);
+extern uint32_t Gops2000aSetPulseWidthDigitalPortProperties(int16_t handle, void *directions, int16_t nDirections);
 
 // Static helper to invoke a ps2000aBlockReady function pointer from Go.
 static inline void call_ps2000aBlockReady(ps2000aBlockReady fp, int16_t handle, PICO_STATUS status, void *pParameter) {
@@ -419,3 +422,33 @@ func Gops2000aSetDigitalPort(handle C.int16_t, port C.int32_t, enabled C.int16_t
 	simSetDigitalPort(int16(handle), int(port), enabled != 0, int16(logicLevel))
 	return 0
 }
+
+//export Gops2000aSetTriggerDigitalPortProperties
+func Gops2000aSetTriggerDigitalPortProperties(handle C.int16_t, directions unsafe.Pointer, nDirections C.int16_t) C.uint32_t {
+	if directions != nil && nDirections > 0 {
+		cDirs := unsafe.Slice((*C.PS2000A_DIGITAL_CHANNEL_DIRECTIONS)(directions), int(nDirections))
+		var dirs []demo.DigitalChannelDirections
+		for _, d := range cDirs {
+			dirs = append(dirs, demo.DigitalChannelDirections{
+				Channel:   demo.DigitalChannel(d.channel),
+				Direction: demo.DigitalDirection(d.direction),
+			})
+		}
+		simSetTriggerDigitalPortProperties(int16(handle), dirs)
+	} else {
+		simSetTriggerDigitalPortProperties(int16(handle), nil)
+	}
+	return 0
+}
+
+//export Gops2000aSetDigitalAnalogTriggerOperand
+func Gops2000aSetDigitalAnalogTriggerOperand(handle C.int16_t, operand C.int32_t) C.uint32_t {
+	simSetDigitalAnalogTriggerOperand(int16(handle), demo.TriggerOperand(operand))
+	return 0
+}
+
+//export Gops2000aSetPulseWidthDigitalPortProperties
+func Gops2000aSetPulseWidthDigitalPortProperties(handle C.int16_t, directions unsafe.Pointer, nDirections C.int16_t) C.uint32_t {
+	return 0
+}
+

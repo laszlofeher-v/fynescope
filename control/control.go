@@ -68,10 +68,13 @@ type (
 		ComplexConditions  []genericps.TriggerConditions
 		ComplexDirections  []TriggerDirections
 		IntervalType       genericps.PulseWidthType
-		IntervalTimeLower  float64
-		IntervalTimeUpper  float64
-		XOffset            float64
-		AutoTriggerMs      int16
+		IntervalTimeLower     float64
+		IntervalTimeUpper     float64
+		XOffset               float64
+		AutoTriggerMs         int16
+		DigitalTriggerEnabled bool
+		DigitalDirections     []genericps.DigitalChannelDirections
+		DigitalAnalogOperand  genericps.TriggerOperand
 	}
 	TriggerDescMsg struct {
 		TriggerDesc
@@ -363,6 +366,9 @@ func (psControl *PscDesc) setEverything() (err error) {
 
 func (psControl *PscDesc) sendTrigger() (err error) {
 	if !psControl.triggerSetting.Enabled {
+		if psControl.triggerSetting.DigitalTriggerEnabled {
+			return psControl.sendDigitalTrigger()
+		}
 		return psControl.sendSimpleTrigger()
 	}
 

@@ -22,6 +22,14 @@ type TriggerDetector struct {
 	isComplex              bool
 	channels               [4]TriggerChannelConfig
 	pwqConfig              PwqConfig
+	digitalChannels        [16]DigitalChannelTriggerConfig
+	digitalTriggerEnabled  bool
+	digitalCondition       TriggerState
+	digitalAnalogOperand   TriggerOperand
+}
+
+type DigitalChannelTriggerConfig struct {
+	Direction DigitalDirection
 }
 
 type PwqConfig struct {
@@ -128,15 +136,20 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	found = false
 	anyEnabled := false
 	for _, cfg := range td.channels {
-		if cfg.Enabled {
+		if cfg.Enabled && (cfg.Condition != CondDontCare || cfg.Direction != TriggerNone) {
 			anyEnabled = true
 			break
 		}
 	}
+	if !anyEnabled && td.pwqConfig.Enabled {
+		anyEnabled = true
+	}
 
-	if !anyEnabled {
+	digitalActive := td.digitalTriggerEnabled && (td.digitalCondition == CondTrue || td.digitalCondition == CondDontCare)
+
+	if !anyEnabled && !digitalActive {
 		found = true
-		triggerTime = rand.Float64() * float64(reqSamples)
+		triggerTime = rand.Float64() * float64(reqSamples) * dt
 		return
 	}
 
@@ -151,6 +164,56 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 
 	t := float64(0)
 	for t < maxTime {
+		// Evaluate digital conditions at time t
+		digitalMatched := true
+		if digitalActive {
+			p0, p1, _, _ := GetDemoDigitalGenValue(t)
+			prevP0, prevP1, _, _ := GetDemoDigitalGenValue(t - dt)
+			currWord := uint16(p0&0xFF) | (uint16(p1&0xFF) << 8)
+			prevWord := uint16(prevP0&0xFF) | (uint16(prevP1&0xFF) << 8)
+
+			for ch := 0; ch < 16; ch++ {
+				dir := td.digitalChannels[ch].Direction
+				if dir == DigitalDontCare {
+					continue
+				}
+				currBit := (currWord >> ch) & 1
+				prevBit := (prevWord >> ch) & 1
+				matched := false
+				switch dir {
+				case DigitalDirectionLow:
+					matched = (currBit == 0)
+				case DigitalDirectionHigh:
+					matched = (currBit == 1)
+				case DigitalDirectionRising:
+					matched = (prevBit == 0 && currBit == 1)
+				case DigitalDirectionFalling:
+					matched = (prevBit == 1 && currBit == 0)
+				case DigitalDirectionRisingOrFalling:
+					matched = (prevBit != currBit)
+				default:
+					matched = true
+				}
+				if !matched {
+					digitalMatched = false
+					break
+				}
+			}
+		} else {
+			digitalMatched = false
+		}
+
+		if digitalActive && !anyEnabled {
+			if digitalMatched {
+				SetTriggerTimeOffset(0)
+				found = true
+				triggerTime = t
+				return
+			}
+			t += dt
+			continue
+		}
+
 		allConditionsMet := true
 		var edgeTriggerTime float64 = t - dt // Default trigger time if no edge triggers are used
 
@@ -255,6 +318,10 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 			}
 		}
 
+		// Combined Trigger Logic
+		analogFired := false
+		analogTriggerTime := edgeTriggerTime
+
 		// 3. Track Interval and Trigger
 		if td.pwqConfig.Enabled {
 			if mainEdgeFired && pwqEdgeFired {
@@ -287,10 +354,8 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 							isInside := insideStates[intervalSourceCh].UpperState == TriggerStateArmedFalling &&
 								insideStates[intervalSourceCh].LowerState == TriggerStateArmedRising
 							if isInside {
-								SetTriggerTimeOffset(0)
-								found = true
-								triggerTime = t
-								return
+								analogFired = true
+								analogTriggerTime = t
 							}
 						}
 					}
@@ -344,10 +409,8 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 					}
 
 					if intervalSatisfied && allConditionsMet {
-						SetTriggerTimeOffset(0) // Simple boolean logic doesn't support sub-sample interpolation yet
-						found = true
-						triggerTime = edgeTriggerTime
-						return
+						analogFired = true
+						analogTriggerTime = edgeTriggerTime
 					}
 					intervalActive = false
 				}
@@ -366,14 +429,40 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 				}
 			}
 
-
 		} else {
 			if allConditionsMet {
-				SetTriggerTimeOffset(0)
-				found = true
-				triggerTime = edgeTriggerTime
-				return
+				analogFired = true
+				analogTriggerTime = edgeTriggerTime
 			}
+		}
+
+		if digitalActive && anyEnabled {
+			if td.digitalAnalogOperand == OperandAnd {
+				if analogFired && digitalMatched {
+					SetTriggerTimeOffset(0)
+					found = true
+					triggerTime = analogTriggerTime
+					return
+				}
+			} else { // OperandOr
+				if digitalMatched {
+					SetTriggerTimeOffset(0)
+					found = true
+					triggerTime = t
+					return
+				}
+				if analogFired {
+					SetTriggerTimeOffset(0)
+					found = true
+					triggerTime = analogTriggerTime
+					return
+				}
+			}
+		} else if analogFired {
+			SetTriggerTimeOffset(0)
+			found = true
+			triggerTime = analogTriggerTime
+			return
 		}
 
 		t += dt
@@ -384,6 +473,27 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		found = true
 	}
 	return
+}
+
+func (td *TriggerDetector) SetDigitalPortProperties(dirs []DigitalChannelDirections) {
+	for i := range td.digitalChannels {
+		td.digitalChannels[i].Direction = DigitalDontCare
+	}
+	hasActive := false
+	for _, d := range dirs {
+		ch := int(d.Channel)
+		if ch >= 0 && ch < len(td.digitalChannels) {
+			td.digitalChannels[ch].Direction = d.Direction
+			if d.Direction != DigitalDontCare {
+				hasActive = true
+			}
+		}
+	}
+	td.digitalTriggerEnabled = hasActive
+}
+
+func (td *TriggerDetector) SetDigitalAnalogTriggerOperand(operand TriggerOperand) {
+	td.digitalAnalogOperand = operand
 }
 
 func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state *TriggerArmedState, level float64) (conditionMet bool, fired bool) {
@@ -626,6 +736,7 @@ func (td *TriggerDetector) SetChannelConditions(conds []TriggerConditions) {
 	td.channels[ChB].Condition = cond.ChannelB
 	td.channels[ChC].Condition = cond.ChannelC
 	td.channels[ChD].Condition = cond.ChannelD
+	td.digitalCondition = cond.Digital
 }
 
 // SetChannelDirections sets the multi-channel trigger directions.

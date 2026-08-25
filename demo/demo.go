@@ -1152,10 +1152,13 @@ func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, directi
 }
 func simSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
 	}
-	err = fmt.Errorf("%w; %s", err, notImplemented)
-	return
+	if triggerDetector == nil {
+		triggerDetector = NewTriggerDetector(true, 0, 0, TriggerNone, ChA)
+	}
+	triggerDetector.SetDigitalPortProperties(digitalDirections)
+	return nil
 }
 
 func simStop(handle int16) (err error) {
@@ -1446,10 +1449,13 @@ func simQueryOutputEdgeDetect(handle int16) (state int16, err error) {
 
 func simSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
 	}
-	err = fmt.Errorf("%w; %s", err, notImplemented)
-	return
+	if triggerDetector == nil {
+		triggerDetector = NewTriggerDetector(true, 0, 0, TriggerNone, ChA)
+	}
+	triggerDetector.SetDigitalAnalogTriggerOperand(operand)
+	return nil
 }
 
 func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
