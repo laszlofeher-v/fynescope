@@ -255,7 +255,7 @@ func startProfile(n int) error {
 //  -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
 //  -gif: enables GIF generation button
 //  -ff-auto-range: enables auto ranging during Bode sweep
-func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange, simOnly *bool) {
+func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	demoOnly = flag.Bool("demo", false, "-demo=true")
@@ -270,7 +270,7 @@ func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCo
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
 	gifEnabled = flag.Bool("gif", false, "-gif=true (enables GIF generation button)")
 	ffAutoRange = flag.Bool("ff-auto-range", false, "-ff-auto-range=true (enables auto ranging during Bode sweep)")
-	simOnly = registerSimFlag()
+	simName = registerSimFlag()
 
 	flag.Parse()
 
@@ -331,10 +331,15 @@ func openDemo(id string) (*genericps.Connection, error) {
 
 // openSim is a helper function for tests to open a simulated connection.
 // It attempts to connect to the ps2000a simulator, falling back to demo mode if not compiled with -tags="sim".
-func openSim() (*genericps.Connection, error) {
+func openSim(simName string) (*genericps.Connection, error) {
+	serial := "SIM"
+	if simName != "" {
+		serial = simName + "SIM"
+		demo.ScopeSimVariantInfo = serial
+	}
 	con, err := connectToDevice(&genericps.DeviceInfo{
 		Id:     "ps2000a",
-		Serial: "SIM",
+		Serial: serial,
 		IsDemo: false,
 	})
 	if err != nil {
@@ -517,7 +522,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simOnly := parseFlags()
+	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simName := parseFlags()
 	setLogging(logLevel)
 
 	err = demo.SetChannelCount(*chCount, chCountExplicit)
@@ -558,8 +563,8 @@ func main() {
 	}
 
 	// Determine which devices to show in the selection dialog
-	if *simOnly && *demoOnly {
-		fmt.Fprintf(os.Stderr, "cannot specify both -sim=true and -demo=true\n")
+	if *simName != "" && *demoOnly {
+		fmt.Fprintf(os.Stderr, "cannot specify both -sim and -demo=true\n")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -583,12 +588,13 @@ func main() {
 				},
 			}
 		}
-	} else if *simOnly {
+	} else if *simName != "" {
 		// Simulator mode: use the ps2000a simulator
+		demo.ScopeSimVariantInfo = *simName + "SIM"
 		devices = []genericps.DeviceInfo{
 			{
 				Id:     "ps2000a",
-				Serial: "SIM",
+				Serial: *simName + "SIM",
 				IsDemo: false,
 			},
 		}
