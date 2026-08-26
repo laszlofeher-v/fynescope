@@ -1635,7 +1635,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 }
 
 func (scp *ScpDesc) setRangeMargin() {
-	left, _, right, _ := scp.boundString("W-500.0")
+	left, _, right, _ := scp.boundString("-50.0")
 	scp.rangeMargin = right - left
 }
 

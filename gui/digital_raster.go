@@ -176,7 +176,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label)
 				_ = lblLeft
 				_ = lblRight
-				dr.scp.addLabel(img, 6, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol)
+				dr.scp.addLabel(img, 3, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, 12)
 			}
 
 			for x := minX; x <= maxX && x < w; x++ {
