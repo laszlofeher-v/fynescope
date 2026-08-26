@@ -2,7 +2,7 @@
 
 package main
 
-func registerSimFlag() *bool {
-	b := false
-	return &b
+func registerSimFlag() *string {
+	s := ""
+	return &s
 }
