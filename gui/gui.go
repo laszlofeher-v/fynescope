@@ -1562,11 +1562,11 @@ func (scp *ScpDesc) SetVariant() (err error) {
 
 	switch scp.psControl.Info {
 	case demo.ScopeSimVariantInfo:
-		scp.runningMode=genericps.SimMode
+		scp.runningMode = genericps.SimMode
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	case demo.ScopeDemoVariantInfo:
-		scp.runningMode=genericps.DemoMode
+		scp.runningMode = genericps.DemoMode
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2000DemoGui()
 	case "2206B":
@@ -1581,7 +1581,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		slog.Warn("2208B not tested")
 		scp.maxSamplingRate = maxSampling1G
 	case "2405A":
-		slog.Warn("2208B not tested")
+		slog.Warn("2405A not tested")
 		scp.maxSamplingRate = maxSampling500M
 		scp.build2407Gui()
 	case "2406B":
