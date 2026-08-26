@@ -827,80 +827,119 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	))
 	statusWin.Show()
 
+	// writeFuzzerRecord writes a snapshot of the current fuzzer state to path.
+	// completed indicates whether the fuzzer ran to its full deadline.
+	// It returns the settings file path that was saved alongside the log, so the
+	// caller can include it in the tarball.
+	writeFuzzerRecord := func(path string, completed bool) {
+		f, err := os.Create(path)
+		if err != nil {
+			log.Printf("Failed to create fuzzer record %s: %v", path, err)
+			return
+		}
+		defer f.Close()
+
+		uptime := time.Since(startTime)
+
+		logBuildDate := buildDate
+		if logBuildDate == "" {
+			logBuildDate = startTime.Format("2006-01-02")
+		}
+
+		fmt.Fprintf(f, "Commit ID: %s\n", commitID)
+		fmt.Fprintf(f, "Version: %s\n", programVersion)
+		fmt.Fprintf(f, "Build Date: %s\n", logBuildDate)
+		if webport != "" {
+			fmt.Fprintf(f, "Webport: %s\n", webport)
+		}
+		fmt.Fprintf(f, "Settings File: %s\n", settingsFileName)
+
+		tags := "none"
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, s := range info.Settings {
+				if s.Key == "-tags" {
+					tags = s.Value
+					break
+				}
+			}
+		}
+		fmt.Fprintf(f, "Build Tags: %s\n", tags)
+
+		remaining := duration - uptime
+		if remaining < 0 {
+			remaining = 0
+		}
+		fmt.Fprintf(f, "Uptime: %v\n", uptime.Round(time.Second))
+		fmt.Fprintf(f, "Remaining: %v\n", remaining.Round(time.Second))
+		fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
+		fmt.Fprintf(f, "Errors: %d\n", atomic.LoadUint64(&errorCount))
+		if !completed {
+			fmt.Fprintf(f, "Status: interrupted\n")
+		}
+
+		customWriter.errorsMutex.Lock()
+		if len(customWriter.firstErrors) > 0 {
+			fmt.Fprintf(f, "\n--- First %d Errors ---\n", len(customWriter.firstErrors))
+			for _, errStr := range customWriter.firstErrors {
+				fmt.Fprint(f, errStr)
+				if !strings.HasSuffix(errStr, "\n") {
+					fmt.Fprintln(f)
+				}
+			}
+			totalErrors := atomic.LoadUint64(&errorCount)
+			if totalErrors > maxLoggedErrors {
+				fmt.Fprintf(f, "\n... and %d more uncollected errors.\n", totalErrors-maxLoggedErrors)
+			}
+		}
+		customWriter.errorsMutex.Unlock()
+	}
+
+	// inProgressPath is written every 60 seconds so that even an OS SIGKILL
+	// (which bypasses all deferred functions) leaves the latest snapshot on disk.
+	inProgressPath := fmt.Sprintf("fuzzer_inprogress_%s.log", startTime.Format("200601021504"))
+	flushStop := make(chan struct{})
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				writeFuzzerRecord(inProgressPath, false)
+			case <-flushStop:
+				return
+			}
+		}
+	}()
+
 	defer func() {
+		// Stop the periodic flush goroutine and wait for it to exit.
+		close(flushStop)
+		<-flushDone
+
 		fileName := fmt.Sprintf("fuzzer_%s.log", startTime.Format("200601021504"))
 		if !completed {
 			fileName = fmt.Sprintf("fuzzer_interrupted_%s.log", startTime.Format("200601021504"))
 		}
-		f, err := os.Create(fileName)
-		if err == nil {
-			uptime := time.Since(startTime)
+		writeFuzzerRecord(fileName, completed)
 
-			logBuildDate := buildDate
-			if logBuildDate == "" {
-				logBuildDate = startTime.Format("2006-01-02")
-			}
+		// Remove the in-progress snapshot now that the final record is written.
+		os.Remove(inProgressPath)
 
-			fmt.Fprintf(f, "Commit ID: %s\n", commitID)
-			fmt.Fprintf(f, "Version: %s\n", programVersion)
-			fmt.Fprintf(f, "Build Date: %s\n", logBuildDate)
-			if webport != "" {
-				fmt.Fprintf(f, "Webport: %s\n", webport)
-			}
-			fmt.Fprintf(f, "Settings File: %s\n", settingsFileName)
+		scp.settingsLocker.Lock()
+		_ = settings.Save(settingsFileName, scp.Settings)
+		scp.SettingFileName = ""
+		scp.settingsLocker.Unlock()
 
-			tags := "none"
-			if info, ok := debug.ReadBuildInfo(); ok {
-				for _, s := range info.Settings {
-					if s.Key == "-tags" {
-						tags = s.Value
-						break
-					}
-				}
-			}
-			fmt.Fprintf(f, "Build Tags: %s\n", tags)
-
-			remaining := duration - uptime
-			if remaining < 0 {
-				remaining = 0
-			}
-			fmt.Fprintf(f, "Uptime: %v\n", uptime.Round(time.Second))
-			fmt.Fprintf(f, "Remaining: %v\n", remaining.Round(time.Second))
-			fmt.Fprintf(f, "Events: %d\n", atomic.LoadUint64(&eventCount))
-			fmt.Fprintf(f, "Errors: %d\n", atomic.LoadUint64(&errorCount))
-
-			customWriter.errorsMutex.Lock()
-			if len(customWriter.firstErrors) > 0 {
-				fmt.Fprintf(f, "\n--- First %d Errors ---\n", len(customWriter.firstErrors))
-				for _, errStr := range customWriter.firstErrors {
-					fmt.Fprint(f, errStr)
-					if !strings.HasSuffix(errStr, "\n") {
-						fmt.Fprintln(f)
-					}
-				}
-				totalErrors := atomic.LoadUint64(&errorCount)
-				if totalErrors > maxLoggedErrors {
-					fmt.Fprintf(f, "\n... and %d more uncollected errors.\n", totalErrors-maxLoggedErrors)
-				}
-			}
-			customWriter.errorsMutex.Unlock()
-
-			f.Close()
-
-			scp.settingsLocker.Lock()
-			_ = settings.Save(settingsFileName, scp.Settings)
-			scp.SettingFileName = ""
-			scp.settingsLocker.Unlock()
-
-			tarFileName := fmt.Sprintf("fuzzer_report_%s.tar.gz", startTime.Format("200601021504"))
-			cmd := exec.Command("tar", "-czf", tarFileName, fileName, settingsFileName)
-			if err := cmd.Run(); err != nil {
-				log.Printf("Failed to create fuzzer report tarball: %v", err)
-			} else {
-				log.Printf("Created fuzzer report tarball: %s", tarFileName)
-				os.Remove(fileName)
-				os.Remove(settingsFileName)
-			}
+		tarFileName := fmt.Sprintf("fuzzer_report_%s.tar.gz", startTime.Format("200601021504"))
+		cmd := exec.Command("tar", "-czf", tarFileName, fileName, settingsFileName)
+		if err := cmd.Run(); err != nil {
+			log.Printf("Failed to create fuzzer report tarball: %v", err)
+		} else {
+			log.Printf("Created fuzzer report tarball: %s", tarFileName)
+			os.Remove(fileName)
+			os.Remove(settingsFileName)
 		}
 	}()
 

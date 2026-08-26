@@ -1,3 +1,4 @@
+echo "Use CTRL C to cancel"
 go clean -testcache
 #go test -timeout 99999s
 #go test -v
