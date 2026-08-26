@@ -40,7 +40,6 @@ const (
 	SincWMultiplier    = 5
 	initialBufferSize  = 2048
 	startTimeout       = 1000 * time.Millisecond
-	haltTimeout        = 1000 * time.Millisecond
 	etsCallbackTimeout = 100000 * time.Millisecond
 	StreamThreshold    = 2.1 // seconds total screen time
 )
@@ -493,11 +492,9 @@ func (psControl *PscDesc) MinMaxValues() (min, max int32, err error) {
 func (psControl *PscDesc) Stop() (err error) {
 	select {
 	case psControl.stopChannel <- struct{}{}:
-	case <-time.After(haltTimeout):
-		err = fmt.Errorf("Halt send timeout")
-		slog.Error("Halt send timeout", "error", err)
-		_ = psControl.Con.Stop() // Try to stop anyway
-		return
+	default:
+		// A stop request is already pending.
+		slog.Debug("Stop request already pending")
 	}
 	return
 }
