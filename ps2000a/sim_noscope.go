@@ -7,8 +7,8 @@ import (
 	"fynescope/demo"
 	"fynescope/genericps"
 	"log/slog"
-
 	"math"
+
 	"math/rand"
 	"time"
 )
@@ -31,6 +31,7 @@ var (
 	timeBaseSet      uint32
 	nOfPreTrSamples  int32
 	nOfPostTrSamples int32
+	blockOverflow    int16
 
 	// Single channel generator
 	genOn            bool
@@ -239,6 +240,7 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 	nOfPreTrSamples = pre
 	nOfPostTrSamples = post
 	timeBaseSet = timebase
+	blockOverflow = 0
 	demo.AdvancePRBS()
 
 	go func() {
@@ -326,10 +328,12 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 					}
 
 					var level int16
-					if finalVal > maxValue {
+					if finalVal > float64(maxValue) {
 						level = maxValue
-					} else if finalVal < -maxValue {
+						blockOverflow |= (1 << ch)
+					} else if finalVal < -float64(maxValue) {
 						level = -maxValue
+						blockOverflow |= (1 << ch)
 					} else {
 						level = int16(math.Round(finalVal))
 					}
@@ -455,6 +459,7 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar func(handle
 		writeCount = activeBufLen - streamingWriteIndex
 	}
 
+	var overflow int16 = 0
 	if writeCount > 0 {
 		for ch := 0; ch < 4; ch++ {
 			if channels[ch].enabled && len(buffers[ch]) > 0 {
@@ -465,8 +470,10 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar func(handle
 					var level int16
 					if val > float64(maxValue) {
 						level = maxValue
+						overflow |= (1 << ch)
 					} else if val < -float64(maxValue) {
 						level = -maxValue
+						overflow |= (1 << ch)
 					} else {
 						level = int16(math.Round(val))
 					}
@@ -482,7 +489,7 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar func(handle
 		if sweepController != nil {
 			sweepController.Update()
 		}
-		lpStreamingReadyGoPar(handle, writeCount, uint32(streamingWriteIndex), 0, 0, 0, 0, param)
+		lpStreamingReadyGoPar(handle, writeCount, uint32(streamingWriteIndex), overflow, 0, 0, 0, param)
 		streamingWriteIndex = (streamingWriteIndex + writeCount) % activeBufLen
 		streamingLastReadTime = streamingLastReadTime.Add(time.Duration(float64(writeCount)*streamingIntervalNs) * time.Nanosecond)
 	} else {
@@ -497,6 +504,41 @@ func simNoOfStreamingValues(handle int16) (noOfValues uint64, err error) {
 		return 0, fmt.Errorf("invalid handle")
 	}
 	return uint64(totalSamplesGenerated), nil
+}
+
+func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPk uint32, startDeltaPhase uint32, stopDeltaPhase uint32, deltaPhaseIncrement uint32, dwellCount uint32, arbitraryWaveform []int16, sweepType int, operation int, indexMode int, shots uint32, sweeps uint32, triggerType int, triggerSource int, extInThreshold int16) {
+	genOn = true
+	genOffsetVoltage = offsetVoltage
+	genPkToPk = pkToPk
+
+	genWaveFunction = demo.NewArbitraryWaveformGenerator(arbitraryWaveform)
+
+	// Derive the playback frequency from startDeltaPhase.
+	// The PicoScope AWG phase accumulator formula is:
+	//   deltaPhase = frequency * 2^32 / awgUpdateRate
+	// so: frequency = deltaPhase * awgUpdateRate / 2^32
+	cfg := GetSimConfig()
+	awgRate := cfg.AwgUpdateRate
+	if awgRate == 0 {
+		awgRate = 20e6 // fallback
+	}
+	bufLen := uint32(len(arbitraryWaveform))
+	if bufLen == 0 {
+		bufLen = 1
+	}
+	var startFreq float64
+	if startDeltaPhase > 0 {
+		// indexMode 0 (Single): phase steps through buffer once per cycle
+		// indexMode 1 (Dual): phase steps through buffer twice per cycle
+		// indexMode 2 (Quad): phase steps through buffer four times per cycle
+		indexMult := math.Pow(2, float64(indexMode))
+		startFreq = float64(startDeltaPhase) * awgRate / (math.MaxUint32 + 1) / float64(bufLen) * indexMult
+	} else {
+		startFreq = 1000.0 // 1 kHz default
+	}
+
+	dwellDuration := time.Duration(dwellCount) * time.Nanosecond
+	sweepController = demo.NewSweepController(startFreq, startFreq, 0, demo.SweepTypeEnum(sweepType), dwellDuration)
 }
 
 func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveType int, startFreq float64, stopFreq float64, increment float64, dwellTime float64, sweepType int, operation int) {
@@ -515,12 +557,35 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveT
 	sweepController = demo.NewSweepController(startFreq, stopFreq, increment, demo.SweepTypeEnum(sweepType), dwellDuration)
 }
 
+// simSigGenFrequencyToPhase converts a generator frequency (Hz) into the
+// 32-bit delta-phase value that the PicoScope AWG phase accumulator uses.
+// Formula: deltaPhase = frequency * 2^32 / awgUpdateRate / bufferLength * indexMult
+func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode int, bufferLength uint32) uint32 {
+	cfg := GetSimConfig()
+	awgRate := cfg.AwgUpdateRate
+	if awgRate == 0 {
+		awgRate = 20e6
+	}
+	if bufferLength == 0 {
+		bufferLength = 1
+	}
+	indexMult := math.Pow(2, float64(indexMode))
+	phase := frequency * (math.MaxUint32 + 1) / awgRate * float64(bufferLength) / indexMult
+	if phase < 0 {
+		phase = 0
+	}
+	if phase > math.MaxUint32 {
+		phase = math.MaxUint32
+	}
+	return uint32(phase)
+}
+
 func simIsReady(handle int16) bool {
 	return isReady
 }
 
 func simGetValues(handle int16, startIndex uint32, noOfSamples uint32) (uint32, int16) {
-	return noOfSamples, 0
+	return noOfSamples, blockOverflow
 }
 
 func simSetEts(handle int16, mode int, etsCycles int16, etsInterLeave int16, sampleTimePicoseconds *int32) {

@@ -1,4 +1,4 @@
-//go:build !demo && ps2000 && !emu
+//go:build !demo && ps2000 && !emu && !sim
 
 package ps2000
 

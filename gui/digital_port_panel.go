@@ -8,6 +8,7 @@ import (
 	"fynescope/control"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
+	"fynescope/settings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -191,6 +192,40 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 
 	port0Box := container.NewVBox()
 	port1Box := container.NewVBox()
+
+	port0EnableCheck := widget.NewCheck("Enable Port 0 (D0-D7)", func(v bool) {
+		scp.Settings.Digital.Ports[0].Enabled = v
+		scp.SaveSettings()
+		scp.updateDigitalSplit()
+		scp.updateDigitalTrigger()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+		if scp.psControl != nil {
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+			}(scp.Settings.Digital.Ports[0])
+		}
+	})
+	port0EnableCheck.SetChecked(scp.Settings.Digital.Ports[0].Enabled)
+	port0Box.Add(port0EnableCheck)
+
+	port1EnableCheck := widget.NewCheck("Enable Port 1 (D8-D15)", func(v bool) {
+		scp.Settings.Digital.Ports[1].Enabled = v
+		scp.SaveSettings()
+		scp.updateDigitalSplit()
+		scp.updateDigitalTrigger()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+		if scp.psControl != nil {
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+			}(scp.Settings.Digital.Ports[1])
+		}
+	})
+	port1EnableCheck.SetChecked(scp.Settings.Digital.Ports[1].Enabled)
+	port1Box.Add(port1EnableCheck)
 
 	for i := 0; i < 16; i++ {
 		chIdx := i

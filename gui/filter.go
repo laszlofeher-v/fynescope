@@ -1,11 +1,13 @@
 package gui
 
 import (
-	"math"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
 	"fynescope/settings"
+	"math"
 	"strconv"
+
+	"fyne.io/fyne/v2/theme"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -103,7 +105,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		if filter.HighpassEnabled {
 			fc := filter.HighpassFc
 			if fc < fs/2 {
-				alpha := math.Exp(-2.0*math.Pi*fc*samplingTimeInterval)
+				alpha := math.Exp(-2.0 * math.Pi * fc * samplingTimeInterval)
 				x1 := float64(data[0])
 				y1 := float64(0)
 				b0 := (1.0 + alpha) / 2.0
@@ -251,7 +253,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 	copy(buf, padded[padlen:padlen+n])
 }
 
-func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
+func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool) {
 	channelTabs := container.NewAppTabs()
 
 	for i := 0; i < int(scp.channelCount); i++ {
@@ -543,10 +545,39 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container) {
 		scp.SaveSettings()
 	}
 
-	panel.Add(channelTabs)
+	var mainContent fyne.CanvasObject = channelTabs
+
+	if undockable {
+		undockBtn := widget.NewButtonWithIcon("Undock", theme.ViewFullScreenIcon(), func() {
+			if scp.filterWindow != nil {
+				scp.filterWindow.RequestFocus()
+				return
+			}
+			onWindowClose := func() {
+				scp.filterWindow = nil
+				scp.dockTab(scp.filterTab)
+				scp.controlTab.SelectIndex(ftTabIndex)
+				fyne.Do(scp.filterTab.Content.Refresh)
+			}
+			scp.filterWindow = scp.App.NewWindow("Digital Filters")
+			winContent := container.NewMax()
+			scp.newDigitalFilterPanel(winContent, false)
+			scp.controlTab.Remove(scp.filterTab)
+			scp.filterWindow.SetContent(winContent)
+			scp.filterWindow.SetOnClosed(onWindowClose)
+			scp.filterWindow.Resize(fyne.NewSize(500, 600))
+			scp.controlTab.SelectIndex(ftTabIndex)
+			scp.filterWindow.Show()
+			fyne.Do(winContent.Refresh)
+		})
+		addToTest(undockBtn, "filterUndockBtn", filterTabIndex)
+		mainContent = container.NewBorder(container.NewVBox(undockBtn, widget.NewSeparator()), nil, nil, nil, channelTabs)
+	}
+
+	panel.Objects = []fyne.CanvasObject{mainContent}
+	panel.Refresh()
 }
 
 func (scp *ScpDesc) notifyDigitalFilter(chIdx int) {
 	scp.refreshFilterWarning(genericps.ChannelId(chIdx))
 }
-
