@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"log"
 	"math"
+	"sync"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomono"
@@ -17,25 +18,45 @@ import (
 const dscp = 72
 
 var (
-	face     font.Face
+	faceCache = make(map[float64]font.Face)
+	faceMutex sync.Mutex
+	parsedFont *opentype.Font
 	labelSrc = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
 )
 
-func init() {
-	f, err := opentype.Parse(gomono.TTF)
-	if err != nil {
-		log.Printf("Parse: %v", err)
-		panic(9)
+func getFace(size float64) font.Face {
+	faceMutex.Lock()
+	defer faceMutex.Unlock()
+	
+	if f, ok := faceCache[size]; ok {
+		return f
 	}
-	face, err = opentype.NewFace(f, &opentype.FaceOptions{
-		Size:    fontSize,
+	
+	if parsedFont == nil {
+		f, err := opentype.Parse(gomono.TTF)
+		if err != nil {
+			log.Printf("Parse: %v", err)
+			panic(9)
+		}
+		parsedFont = f
+	}
+	
+	f, err := opentype.NewFace(parsedFont, &opentype.FaceOptions{
+		Size:    size,
 		DPI:     dscp,
 		Hinting: font.HintingNone,
 	})
 	if err != nil {
 		log.Fatalf("NewFace: %v", err)
 	}
+	faceCache[size] = f
+	return f
 }
+
+func init() {
+	getFace(fontSize)
+}
+
 func i26_6ToFloat64(i fixed.Int26_6) float64 {
 	return float64(i>>6) + float64(i&0x3f)/float64(1000000)
 }
@@ -43,8 +64,12 @@ func i26_6ToFloat32(i fixed.Int26_6) float32 {
 	return float32(i26_6ToFloat64(i))
 }
 
-func (scp *ScpDesc) boundString(s string) (left, top, right, bottom float32) {
-	bound26_6, _ := font.BoundString(face, s)
+func (scp *ScpDesc) boundString(s string, size ...float64) (left, top, right, bottom float32) {
+	sz := float64(fontSize)
+	if len(size) > 0 {
+		sz = size[0]
+	}
+	bound26_6, _ := font.BoundString(getFace(sz), s)
 	left = i26_6ToFloat32(bound26_6.Min.X)
 	right = i26_6ToFloat32(bound26_6.Max.X)
 	top = i26_6ToFloat32(bound26_6.Min.Y)
@@ -52,12 +77,16 @@ func (scp *ScpDesc) boundString(s string) (left, top, right, bottom float32) {
 	return
 }
 
-func (scp *ScpDesc) addLabel(dst rasterImage, x, y int, label string, textColor color.Color) {
+func (scp *ScpDesc) addLabel(dst rasterImage, x, y int, label string, textColor color.Color, size ...float64) {
+	sz := float64(fontSize)
+	if len(size) > 0 {
+		sz = size[0]
+	}
 	labelSrc.C = textColor
 	d := font.Drawer{ // Not thread safe
 		Dst:  dst,
 		Src:  labelSrc,
-		Face: face,
+		Face: getFace(sz),
 		Dot:  fixed.P(x, y),
 	}
 	d.DrawString(label)
