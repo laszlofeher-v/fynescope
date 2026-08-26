@@ -161,7 +161,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 			chColor := dr.scp.Settings.Digital.ChannelColors[port*8+c]
 			lineCol := color.RGBA{R: chColor.R, G: chColor.G, B: chColor.B, A: 255}
-			hatchCol := color.RGBA{R: uint8(float64(chColor.R) * 0.6), G: uint8(float64(chColor.G) * 0.6), B: uint8(float64(chColor.B) * 0.6), A: 255}
+			hatchCol := color.RGBA{R: uint8(float64(chColor.R) * 0.6), G: uint8(float64(chColor.G) * 0.6), B: uint8(float64(chColor.B) * 0.6), A: 8}
 
 			// Draw channel label on the left margin if space is available
 			if minX >= 25 {
@@ -176,7 +176,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label)
 				_ = lblLeft
 				_ = lblRight
-				dr.scp.addLabel(img, 3, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, 12)
+				dr.scp.addLabel(img, 6, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, 12)
 			}
 
 			for x := minX; x <= maxX && x < w; x++ {
@@ -198,7 +198,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				// Draw diagonal hatches under high level signal
 				if isHigh {
 					for y := yHigh + 1; y <= yLow; y++ {
-						if (x+y)%6 == 0 {
+						if (x+y)%8 == 0 {
 							img.Set(x, y, hatchCol)
 						}
 					}
