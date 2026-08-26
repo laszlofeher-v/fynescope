@@ -72,7 +72,8 @@ import (
 
 //export Gops2000aMemorySegments
 func Gops2000aMemorySegments(handle C.int16_t, nSegments C.uint32_t, nMaxSamples *C.int32_t) C.uint32_t {
-	*nMaxSamples = 64000000
+	cfg := GetSimConfig()
+	*nMaxSamples = C.int32_t(cfg.MaxMemorySamples)
 	return 0
 }
 
@@ -126,10 +127,8 @@ func Gops2000aSetChannel(handle C.int16_t, channel C.int32_t, enabled C.int16_t,
 
 //export Gops2000aGetAnalogueOffset
 func Gops2000aGetAnalogueOffset(handle C.int16_t, rangeEnum C.int32_t, coupling C.int32_t, maximumOffset *C.float, minimumOffset *C.float) C.uint32_t {
-	maxOff, minOff, err := simGetAnalogueOffset(int16(handle), int(rangeEnum), Coupling(coupling))
-	if err != nil {
-		return 0x08
-	}
+	cfg := GetSimConfig()
+	maxOff, minOff := cfg.GetAnalogueOffsetVals(int32(rangeEnum), Coupling(coupling))
 	if maximumOffset != nil {
 		*maximumOffset = C.float(maxOff)
 	}
@@ -178,6 +177,22 @@ func Gops2000aSetSigGenBuiltInV2(handle C.int16_t, offsetVoltage C.int32_t, pkTo
 	return 0
 }
 
+//export Gops2000aSetSigGenArbitrary
+func Gops2000aSetSigGenArbitrary(handle C.int16_t, offsetVoltage C.int32_t, pkToPk C.uint32_t, startDeltaPhase C.uint32_t, stopDeltaPhase C.uint32_t, deltaPhaseIncrement C.uint32_t, dwellCount C.uint32_t, arbitraryWaveform *C.int16_t, arbitraryWaveformSize C.int32_t, sweepType C.int32_t, operation C.int32_t, indexMode C.int32_t, shots C.uint32_t, sweeps C.uint32_t, triggerType C.int32_t, triggerSource C.int32_t, extInThreshold C.int16_t) C.uint32_t {
+	slice := unsafe.Slice((*int16)(arbitraryWaveform), int(arbitraryWaveformSize))
+	wfCopy := make([]int16, len(slice))
+	copy(wfCopy, slice)
+	simSetSigGenArbitrary(int16(handle), int32(offsetVoltage), uint32(pkToPk), uint32(startDeltaPhase), uint32(stopDeltaPhase), uint32(deltaPhaseIncrement), uint32(dwellCount), wfCopy, int(sweepType), int(operation), int(indexMode), uint32(shots), uint32(sweeps), int(triggerType), int(triggerSource), int16(extInThreshold))
+	return 0
+}
+
+//export Gops2000aSigGenFrequencyToPhase
+func Gops2000aSigGenFrequencyToPhase(handle C.int16_t, frequency C.double, indexMode C.int32_t, bufferLength C.uint32_t, phase *C.uint32_t) C.uint32_t {
+	p := simSigGenFrequencyToPhase(int16(handle), float64(frequency), int(indexMode), uint32(bufferLength))
+	*phase = C.uint32_t(p)
+	return 0
+}
+
 //export Gops2000aIsReady
 func Gops2000aIsReady(handle C.int16_t, ready *C.int16_t) C.uint32_t {
 	r := simIsReady(int16(handle))
@@ -211,11 +226,12 @@ func Gops2000aMinimumValue(handle C.int16_t, value *C.int16_t) C.uint32_t {
 
 //export Gops2000aGetTimebase2
 func Gops2000aGetTimebase2(handle C.int16_t, timebase C.uint32_t, noSamples C.int32_t, timeIntervalNanoseconds *C.float, oversample C.int16_t, maxSamples *C.int32_t, segmentIndex C.uint32_t) C.uint32_t {
+	cfg := GetSimConfig()
 	if timeIntervalNanoseconds != nil {
-		*timeIntervalNanoseconds = C.float(simTimebaseToNs(uint32(timebase)))
+		*timeIntervalNanoseconds = C.float(cfg.TimebaseToNs(uint32(timebase)))
 	}
 	if maxSamples != nil {
-		*maxSamples = 1000000
+		*maxSamples = C.int32_t(cfg.MaxSamples)
 	}
 	return 0
 }
@@ -227,8 +243,8 @@ func Gops2000aFlashLed(handle C.int16_t, start C.int16_t) C.uint32_t {
 
 //export Gops2000aGetChannelInformation
 func Gops2000aGetChannelInformation(handle C.int16_t, info C.int32_t, probe C.int32_t, ranges *C.int32_t, length *C.int32_t, channels C.int32_t) C.uint32_t {
-	// PS2407B supports all 12 ranges: 10mV(0) through 50V(11)
-	numRanges := C.int32_t(12)
+	cfg := GetSimConfig()
+	numRanges := C.int32_t(cfg.MaxRange - cfg.MinRange + 1)
 	if ranges == nil {
 		// Just report how many ranges are available
 		*length = numRanges
@@ -240,7 +256,7 @@ func Gops2000aGetChannelInformation(handle C.int16_t, info C.int32_t, probe C.in
 	}
 	slice := unsafe.Slice(ranges, int(*length))
 	for i := C.int32_t(0); i < *length; i++ {
-		slice[i] = C.int32_t(i) // PS2000A_10MV=0 .. PS2000A_50V=11
+		slice[i] = C.int32_t(cfg.MinRange + int32(i))
 	}
 	return 0
 }

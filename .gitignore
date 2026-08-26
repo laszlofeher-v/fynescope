@@ -14,6 +14,7 @@ fynescope
 *.nogo
 *.py
 *.pcapng
+*.pdf
 decoder.go
 PicoStatus.h
 ps2000aApi.h
@@ -33,3 +34,4 @@ waveform*.bin
 *.csv
 fynescope_bin
 fynescope_hw
+ps2000/emu.go

@@ -79,7 +79,7 @@ const (
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "Decode", "filter"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -102,20 +102,20 @@ type (
 	}
 
 	ScpDesc struct {
-		Measure                             MeasureDesc
-		runningMode                         genericps.RunningModeType
-		running                             bool
-		GifEnabled                          bool
-		repartition, themeChanged           chan struct{}
-		triggerSettingMsg                   control.TriggerDescMsg
-		rangeMargin                         float32
-		controlSamplingTimeInterval         float64
-		controlXRoundError                  float64
-		maxScreenTime                       float64
-		signalTime                          float64
-		App                                 fyne.App
-		d07Button                           *widget.Button
-		d815Button                          *widget.Button
+		Measure                     MeasureDesc
+		runningMode                 genericps.RunningModeType
+		running                     bool
+		GifEnabled                  bool
+		IsMSO                       bool
+		repartition, themeChanged   chan struct{}
+		triggerSettingMsg           control.TriggerDescMsg
+		rangeMargin                 float32
+		controlSamplingTimeInterval float64
+		controlXRoundError          float64
+		maxScreenTime               float64
+		signalTime                  float64
+		App                         fyne.App
+
 		theme                               fyne.Theme
 		Window, genWindow, digGenWindow     fyne.Window
 		MaxChannel, triggerSource           genericps.ChannelId
@@ -214,6 +214,7 @@ type (
 		extgenLayout                 *fyne.Container
 		statusCheckCount             int
 		extgenWindow                 fyne.Window
+		filterWindow                 fyne.Window
 		awgWindow                    fyne.Window
 		patternWindow                fyne.Window
 		virtualChWindow              fyne.Window
@@ -831,22 +832,25 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.rlcTab = container.NewTabItem(tabNames[rlcTabIndex], scp.rlcLayout)
 	scp.filterLayout = container.NewMax()
 	scp.filterTab = container.NewTabItem(tabNames[filterTabIndex], scp.filterLayout)
-	scp.digGenLayout = container.NewVBox()
-	digGenPanel, _ := scp.newDemoDigGenPanel(true)
-	scp.digGenLayout.Add(digGenPanel)
-	scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.digGenLayout)
 	scp.extgenLayout = container.New(layout.NewVBoxLayout())
 	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.extgenLayout)
 	scp.vchMeasureIndex = -1
 	scp.vchTab = container.NewTabItem(tabNames[vchTabIndex], scp.buildVirtualChannelContent(true))
 	scp.decodeLayout = container.NewMax()
 	scp.refreshDecodeTab()
+	scp.digGenLayout = container.NewVBox()
+	digGenPanel, _ := scp.newDemoDigGenPanel(true)
+	scp.digGenLayout.Add(digGenPanel)
+	scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.digGenLayout)
 	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
 	scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(true))
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab)
-
+	if !scp.IsMSO {
+		scp.controlTab.Remove(scp.digPortTab)
+		scp.controlTab.Remove(scp.digGenTab)
+	}
 	if scp.runningMode != genericps.DemoMode {
 		scp.controlTab.Remove(scp.rlcTab)
 	}
@@ -855,9 +859,6 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 	if scp.runningMode == genericps.ScopeMode {
 		scp.controlTab.Remove(scp.digGenTab)
-	}
-	if !strings.Contains(scp.psControl.Info, "MSO") && scp.runningMode != genericps.DemoMode && scp.runningMode != genericps.SimMode {
-		scp.controlTab.Remove(scp.digPortTab)
 	}
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
@@ -903,10 +904,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
-			if scp.d07Button != nil {
-				scp.d07Button.Hide()
-				scp.d815Button.Hide()
-			}
+
 		case fvTabIndex:
 			scp.ftRaster.Hide()
 			scp.dftRaster.Hide()
@@ -915,10 +913,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
-			if scp.d07Button != nil {
-				scp.d07Button.Hide()
-				scp.d815Button.Hide()
-			}
+
 		case ffTabIndex:
 			scp.ftRaster.Hide()
 			scp.dftRaster.Hide()
@@ -927,10 +922,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
-			if scp.d07Button != nil {
-				scp.d07Button.Hide()
-				scp.d815Button.Hide()
-			}
+
 		case rlcTabIndex:
 			scp.ftRaster.Show()
 			scp.dftRaster.Hide()
@@ -939,10 +931,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Show()
 			}
-			if scp.d07Button != nil {
-				scp.d07Button.Hide()
-				scp.d815Button.Hide()
-			}
+
 		default:
 			scp.dftRaster.Hide()
 			scp.fvRaster.Hide()
@@ -951,10 +940,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Show()
 			}
-			if scp.d07Button != nil {
-				scp.d07Button.Show()
-				scp.d815Button.Show()
-			}
+
 		}
 
 		scp.updateAcquisitionParameters()
@@ -1024,7 +1010,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.newDftPanel(dftLayout)
 	scp.newFfPanel(ffLayout)
 	scp.newRlcPanel(scp.rlcLayout)
-	scp.newDigitalFilterPanel(scp.filterLayout)
+	scp.newDigitalFilterPanel(scp.filterLayout, true)
 	if scp.ExtGenEnabled {
 		scp.extgenLayout.Add(scp.newExtGenTab(true))
 	}
@@ -1181,43 +1167,12 @@ func (scp *ScpDesc) build2000Gui() {
 	var saveRasterButton, saveWindowButton *widget.Button
 	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
 	if scp.runningMode != genericps.ScopeMode {
-		scp.d07Button = widget.NewButton("D0-7", func() {
-			scp.Settings.Digital.Ports[0].Enabled = !scp.Settings.Digital.Ports[0].Enabled
-			scp.SaveSettings()
-			scp.updateDigitalSplit()
-			scp.updateDigitalTrigger()
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-			if scp.psControl != nil {
-				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
-				}(scp.Settings.Digital.Ports[0])
-			}
-		})
-		scp.d815Button = widget.NewButton("D8-15", func() {
-			scp.Settings.Digital.Ports[1].Enabled = !scp.Settings.Digital.Ports[1].Enabled
-			scp.SaveSettings()
-			scp.updateDigitalSplit()
-			scp.updateDigitalTrigger()
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-			if scp.psControl != nil {
-				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
-				}(scp.Settings.Digital.Ports[1])
-			}
-		})
-
 		if scp.psControl != nil {
 			go func(p0, p1 settings.DigitalPortSettings) {
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p0}
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p1}
 			}(scp.Settings.Digital.Ports[0], scp.Settings.Digital.Ports[1])
 		}
-		addToTest(scp.d07Button, "d07Button", -1)
-		addToTest(scp.d815Button, "d815Button", -1)
 	}
 	changeSideFunc := func() {
 		if changeSide.Icon == theme.NavigateBackIcon() {
@@ -1229,10 +1184,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.GifEnabled {
 				scp.toolbar.Add(scp.recordGifButton)
 			}
-			if scp.d07Button != nil {
-				scp.toolbar.Add(scp.d07Button)
-				scp.toolbar.Add(scp.d815Button)
-			}
+
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
@@ -1255,10 +1207,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.GifEnabled {
 				scp.toolbar.Add(scp.recordGifButton)
 			}
-			if scp.d07Button != nil {
-				scp.toolbar.Add(scp.d07Button)
-				scp.toolbar.Add(scp.d815Button)
-			}
+
 			scp.toolbar.Add(saveRasterButton)
 			scp.toolbar.Add(saveWindowButton)
 			scp.toolbar.Add(fullScreen)
@@ -1306,10 +1255,7 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
-		if scp.d07Button != nil {
-			scp.toolbar.Add(scp.d07Button)
-			scp.toolbar.Add(scp.d815Button)
-		}
+
 		scp.toolbar.Add(saveRasterButton)
 		scp.toolbar.Add(saveWindowButton)
 		scp.toolbar.Add(fullScreen)
@@ -1325,10 +1271,7 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
-		if scp.d07Button != nil {
-			scp.toolbar.Add(scp.d07Button)
-			scp.toolbar.Add(scp.d815Button)
-		}
+
 		scp.toolbar.Add(saveRasterButton)
 		scp.toolbar.Add(saveWindowButton)
 		scp.toolbar.Add(fullScreen)
@@ -1465,7 +1408,7 @@ func (scp *ScpDesc) updateDigitalSplit() {
 	if scp.mainSplit == nil {
 		return
 	}
-	if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+	if scp.IsMSO && (scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled) {
 		scp.mainSplit.Offset = 0.7
 		if scp.digitalRasterContainer != nil {
 			scp.digitalRasterContainer.Show()
@@ -1512,6 +1455,7 @@ func (scp *ScpDesc) build2000DemoGui() {
 func (scp *ScpDesc) SetVariant() (err error) {
 	scp.psControl.Info, err = scp.psControl.UnitVariantInfo()
 	slog.Debug("scope ", "info string", scp.psControl.Info)
+	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO")
 	// TODO select preconfigured gui description, including
 	// channel count
 	// e.g. ETS mode is available, voltage, frequency ranges

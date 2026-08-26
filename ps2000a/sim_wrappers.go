@@ -22,6 +22,8 @@ extern uint32_t Gops2000aRunBlock(int16_t handle, int32_t noOfPreTriggerSamples,
 extern uint32_t Gops2000aStop(int16_t handle);
 extern uint32_t Gops2000aSetSigGenBuiltIn(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, int16_t waveType, float startFrequency, float stopFrequency, float increment, float dwellTime, int32_t sweepType, int32_t operation, uint32_t shots, uint32_t sweeps, int32_t triggerType, int32_t triggerSource, int16_t extInThreshold);
 extern uint32_t Gops2000aSetSigGenBuiltInV2(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, int16_t waveType, double startFrequency, double stopFrequency, double increment, double dwellTime, int32_t sweepType, int32_t operation, uint32_t shots, uint32_t sweeps, int32_t triggerType, int32_t triggerSource, int16_t extInThreshold);
+extern uint32_t Gops2000aSetSigGenArbitrary(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, uint32_t startDeltaPhase, uint32_t stopDeltaPhase, uint32_t deltaPhaseIncrement, uint32_t dwellCount, int16_t *arbitraryWaveform, int32_t arbitraryWaveformSize, int32_t sweepType, int32_t operation, int32_t indexMode, uint32_t shots, uint32_t sweeps, int32_t triggerType, int32_t triggerSource, int16_t extInThreshold);
+extern uint32_t Gops2000aSigGenFrequencyToPhase(int16_t handle, double frequency, int32_t indexMode, uint32_t bufferLength, uint32_t *phase);
 extern uint32_t Gops2000aIsReady(int16_t handle, int16_t *ready);
 extern uint32_t Gops2000aGetValues(int16_t handle, uint32_t startIndex, uint32_t *noOfSamples, uint32_t downSampleRatio, int32_t downSampleRatioMode, uint32_t segmentIndex, int16_t *overflow);
 extern uint32_t Gops2000aMaximumValue(int16_t handle, int16_t *value);
@@ -106,6 +108,14 @@ PICO_STATUS ps2000aSetSigGenBuiltIn(int16_t handle, int32_t offsetVoltage, uint3
 
 PICO_STATUS ps2000aSetSigGenBuiltInV2(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, int16_t waveType, double startFrequency, double stopFrequency, double increment, double dwellTime, PS2000A_SWEEP_TYPE sweepType, PS2000A_EXTRA_OPERATIONS operation, uint32_t shots, uint32_t sweeps, PS2000A_SIGGEN_TRIG_TYPE triggerType, PS2000A_SIGGEN_TRIG_SOURCE triggerSource, int16_t extInThreshold) {
     return Gops2000aSetSigGenBuiltInV2(handle, offsetVoltage, pkToPk, waveType, startFrequency, stopFrequency, increment, dwellTime, sweepType, operation, shots, sweeps, triggerType, triggerSource, extInThreshold);
+}
+
+PICO_STATUS ps2000aSetSigGenArbitrary(int16_t handle, int32_t offsetVoltage, uint32_t pkToPk, uint32_t startDeltaPhase, uint32_t stopDeltaPhase, uint32_t deltaPhaseIncrement, uint32_t dwellCount, int16_t *arbitraryWaveform, int32_t arbitraryWaveformSize, PS2000A_SWEEP_TYPE sweepType, PS2000A_EXTRA_OPERATIONS operation, PS2000A_INDEX_MODE indexMode, uint32_t shots, uint32_t sweeps, PS2000A_SIGGEN_TRIG_TYPE triggerType, PS2000A_SIGGEN_TRIG_SOURCE triggerSource, int16_t extInThreshold) {
+    return Gops2000aSetSigGenArbitrary(handle, offsetVoltage, pkToPk, startDeltaPhase, stopDeltaPhase, deltaPhaseIncrement, dwellCount, arbitraryWaveform, arbitraryWaveformSize, sweepType, operation, indexMode, shots, sweeps, triggerType, triggerSource, extInThreshold);
+}
+
+PICO_STATUS ps2000aSigGenFrequencyToPhase(int16_t handle, double frequency, PS2000A_INDEX_MODE indexMode, uint32_t bufferLength, uint32_t *phase) {
+    return Gops2000aSigGenFrequencyToPhase(handle, frequency, (int32_t)indexMode, bufferLength, phase);
 }
 
 PICO_STATUS ps2000aIsReady(int16_t handle, int16_t *ready) {
