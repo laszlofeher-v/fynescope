@@ -249,6 +249,10 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 	blockOverflow = 0
 	demo.AdvancePRBS()
 
+	if simPhaseAcc != nil {
+		simPhaseAcc.PrepareCapture()
+	}
+
 	go func() {
 		// Fill buffers
 		var dt float64
@@ -431,6 +435,10 @@ func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeU
 	streamingWriteIndex = 0
 	totalSamplesGenerated = 0
 
+	if simPhaseAcc != nil {
+		simPhaseAcc.PrepareCapture()
+	}
+
 	return reqSampleInterval, nil
 }
 
@@ -512,7 +520,11 @@ func simNoOfStreamingValues(handle int16) (noOfValues uint64, err error) {
 	return uint64(totalSamplesGenerated), nil
 }
 
-func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPk uint32, startDeltaPhase uint32, stopDeltaPhase uint32, deltaPhaseIncrement uint32, dwellCount uint32, arbitraryWaveform []int16, sweepType int, operation int, indexMode int, shots uint32, sweeps uint32, triggerType int, triggerSource int, extInThreshold int16) {
+func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPk uint32,
+	startDeltaPhase uint32, stopDeltaPhase uint32, deltaPhaseIncrement uint32,
+	dwellCount uint32, arbitraryWaveform []int16, sweepType int, operation int,
+	indexMode int, shots uint32, sweeps uint32, triggerType int, triggerSource int,
+	extInThreshold int16) {
 	genOn = true
 	genOffsetVoltage = offsetVoltage
 	genPkToPk = pkToPk
@@ -542,13 +554,17 @@ func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPk uint32, sta
 		deltaPhaseIncrement:   deltaPhaseIncrement,
 		dwellCount:            dwellCount,
 		sweepType:             sweepType,
+		triggerSource:         triggerSource,
+		startTime:             time.Now(),
 	}
-	
+
 	// We no longer rely on sweepController for arbitrary waveform playback.
 	sweepController = nil
 }
 
-func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveType int, startFreq float64, stopFreq float64, increment float64, dwellTime float64, sweepType int, operation int) {
+func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32,
+	waveType int, startFreq float64, stopFreq float64, increment float64,
+	dwellTime float64, sweepType int, operation int) {
 	genOn = true
 	genOffsetVoltage = offsetVoltage
 	genPkToPk = pkToPk
@@ -562,13 +578,15 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveT
 	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
 	slog.Debug("simSetSigGenBuiltIn", "startFreq", startFreq, "stopFreq", stopFreq)
-	sweepController = demo.NewSweepController(startFreq, stopFreq, increment, demo.SweepTypeEnum(sweepType), dwellDuration)
+	sweepController = demo.NewSweepController(startFreq, stopFreq, increment,
+		demo.SweepTypeEnum(sweepType), dwellDuration)
 }
 
 // simSigGenFrequencyToPhase converts a generator frequency (Hz) into the
 // 32-bit delta-phase value that the PicoScope AWG phase accumulator uses.
 // Formula: deltaPhase = frequency * 2^32 * arbitraryWaveformSize / (awgUpdateRate * awgBufferSize)
-func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode int, bufferLength uint32) uint32 {
+func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode int,
+	bufferLength uint32) uint32 {
 	cfg := GetSimConfig()
 	awgRate := cfg.AwgUpdateRate
 	if awgRate == 0 {
@@ -581,17 +599,18 @@ func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode int, b
 	if bufferLength == 0 {
 		bufferLength = 1
 	}
-	
-	// indexMult is handled in the original wrapper by adjusting the frequency/buffer length if necessary, 
+	slog.Debug("simSigGenFrequencyToPhase", "cfg", cfg)
+	// indexMult is handled in the original wrapper by adjusting the frequency/buffer length if necessary,
 	// but strictly following the manual's delta phase formula:
 	phase := frequency * (math.MaxUint32 + 1) * float64(bufferLength) / (awgRate * float64(awgBufferSz))
-	
+
 	if phase < 0 {
 		phase = 0
 	}
 	if phase > math.MaxUint32 {
 		phase = math.MaxUint32
 	}
+	slog.Debug("simSigGenFrequencyToPhase", "phase", phase)
 	return uint32(phase)
 }
 
@@ -633,6 +652,16 @@ type simPhaseAccumulator struct {
 	deltaPhaseIncrement   uint32
 	dwellCount            uint32
 	sweepType             int
+	triggerSource         int
+	startTime             time.Time
+	captureTimeOffset     float64
+}
+
+func (p *simPhaseAccumulator) PrepareCapture() {
+	if p.startTime.IsZero() {
+		p.startTime = time.Now()
+	}
+	p.captureTimeOffset = time.Since(p.startTime).Seconds()
 }
 
 func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
@@ -640,13 +669,38 @@ func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
 		return 0
 	}
 
-	ticksFloat := t * p.ddsFrequency
+	var absoluteTime float64
+	if p.triggerSource == 0 {
+		// Free-running
+		absoluteTime = p.captureTimeOffset + t
+	} else {
+		// Triggered by scope
+		absoluteTime = t
+	}
+
+	ticksFloat := absoluteTime * p.ddsFrequency
 	ticksInt := int64(ticksFloat)
 
 	var currentDeltaPhase uint64 = uint64(p.startDeltaPhase)
 	var accumulatedPhase uint64 = 0
 
 	if p.deltaPhaseIncrement > 0 && p.dwellCount > 0 && p.stopDeltaPhase > p.startDeltaPhase {
+		// Handle pre-trigger wait state for triggered sweeps
+		if ticksInt < 0 && p.triggerSource != 0 {
+			var waitDeltaPhase uint64
+			if p.sweepType == 0 || p.sweepType == 2 {
+				waitDeltaPhase = uint64(p.startDeltaPhase)
+			} else {
+				waitDeltaPhase = uint64(p.stopDeltaPhase)
+			}
+			accumulatedPhase = uint64(ticksInt) * waitDeltaPhase
+
+			acc32 := uint32(accumulatedPhase & 0xFFFFFFFF)
+			effectiveIndex := float64(acc32) * float64(p.awgBufferSize) / (math.MaxUint32 + 1.0)
+			effectiveIndex = math.Mod(effectiveIndex, float64(p.arbitraryWaveformSize))
+			return (effectiveIndex / float64(p.arbitraryWaveformSize)) * 2 * math.Pi
+		}
+
 		// Number of steps in one sweep UP from start to stop
 		steps := uint64((p.stopDeltaPhase - p.startDeltaPhase) / p.deltaPhaseIncrement)
 		C := steps + 1
@@ -748,13 +802,13 @@ func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
 				sumPartial += downStep*startDown - uint64(p.deltaPhaseIncrement)*(downStep*(downStep-1))/2
 				currentDeltaPhase = startDown - downStep*uint64(p.deltaPhaseIncrement)
 			}
-			
+
 			phasePartial := sumPartial * uint64(p.dwellCount)
 			phaseRemainder := remainderTicks * currentDeltaPhase
-			
+
 			accumulatedPhase = phaseFullCycles + phasePartial + phaseRemainder
 			accumulatedPhase -= shiftCycles * phasePerCycle
-			
+
 			// Adjust back if we shifted for SweepDownUp to keep accumulatedPhase contiguous
 			if p.sweepType == 3 {
 				// Offset is the phase accumulated over (CHalf - 1) intervals in the UP sweep.
@@ -778,11 +832,11 @@ func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
 	acc32 := uint32(accumulatedPhase & 0xFFFFFFFF)
 
 	effectiveIndex := float64(acc32) * float64(p.awgBufferSize) / (math.MaxUint32 + 1.0)
-	
+
 	if p.arbitraryWaveformSize == 0 {
 		p.arbitraryWaveformSize = 1
 	}
-	
+
 	effectiveIndex = math.Mod(effectiveIndex, float64(p.arbitraryWaveformSize))
 	phase := (effectiveIndex / float64(p.arbitraryWaveformSize)) * 2 * math.Pi
 
