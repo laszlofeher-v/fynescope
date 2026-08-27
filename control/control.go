@@ -219,6 +219,7 @@ type (
 		DisplayStatus      func(s string, errorType ScopeError)
 		refreshTime        time.Time
 		Info               string
+		ScopeModel         ScopeType
 		MaxSamplingRate    uint32
 		StreamEnabled      atomic.Bool
 	}

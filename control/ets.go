@@ -12,8 +12,8 @@ import (
 const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) etsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
-	switch psControl.Info {
-	case "2407B", "2407SIM", "2407DEMO", "2207B", "2207SIM", "2207DEMO", "2207", "2207BMSO", "2208B", "2208BMSO", "2408B":
+	switch psControl.ScopeModel {
+	case Scope2407B, Scope2407SIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
 		// Specification for 2407B / 2207B / 2000a:
 		// Sample time = 2000 / EtsInterleave
 		// EtsCycles >= EtsInterleave
