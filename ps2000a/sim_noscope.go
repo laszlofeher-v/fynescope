@@ -39,6 +39,7 @@ var (
 	genOffsetVoltage int32
 	genWaveFunction  demo.WaveformGenerator
 	sweepController  *demo.SweepController
+	simPhaseAcc      *simPhaseAccumulator
 
 	etsEnabled              bool
 	etsTimeBuffer           []int64
@@ -152,11 +153,16 @@ func calculateSampleLevelAtTime(t float64, ch int) float64 {
 	chDesc := &channels[ch]
 
 	freq := float64(0)
-	if sweepController != nil {
-		freq = sweepController.GetCurrentFrequency()
-	}
+	var phase float64
 
-	phase := (t * freq) * math.Pi * 2
+	if simPhaseAcc != nil {
+		phase = simPhaseAcc.GetPhaseAtTime(t)
+	} else {
+		if sweepController != nil {
+			freq = sweepController.GetCurrentFrequency()
+		}
+		phase = (t * freq) * math.Pi * 2
+	}
 
 	if pnd := demo.GetPhaseNoiseDegree(ch); pnd > 0 {
 		phase += (rand.Float64()*2 - 1) * pnd * math.Pi / 180.0
@@ -513,38 +519,40 @@ func simSetSigGenArbitrary(handle int16, offsetVoltage int32, pkToPk uint32, sta
 
 	genWaveFunction = demo.NewArbitraryWaveformGenerator(arbitraryWaveform)
 
-	// Derive the playback frequency from startDeltaPhase.
-	// The PicoScope AWG phase accumulator formula is:
-	//   deltaPhase = frequency * 2^32 / awgUpdateRate
-	// so: frequency = deltaPhase * awgUpdateRate / 2^32
 	cfg := GetSimConfig()
 	awgRate := cfg.AwgUpdateRate
 	if awgRate == 0 {
 		awgRate = 20e6 // fallback
 	}
+	awgBufferSz := cfg.AwgBufferSize
+	if awgBufferSz == 0 {
+		awgBufferSz = 8192
+	}
 	bufLen := uint32(len(arbitraryWaveform))
 	if bufLen == 0 {
 		bufLen = 1
 	}
-	var startFreq float64
-	if startDeltaPhase > 0 {
-		// indexMode 0 (Single): phase steps through buffer once per cycle
-		// indexMode 1 (Dual): phase steps through buffer twice per cycle
-		// indexMode 2 (Quad): phase steps through buffer four times per cycle
-		indexMult := math.Pow(2, float64(indexMode))
-		startFreq = float64(startDeltaPhase) * awgRate / (math.MaxUint32 + 1) / float64(bufLen) * indexMult
-	} else {
-		startFreq = 1000.0 // 1 kHz default
-	}
 
-	dwellDuration := time.Duration(dwellCount) * time.Nanosecond
-	sweepController = demo.NewSweepController(startFreq, startFreq, 0, demo.SweepTypeEnum(sweepType), dwellDuration)
+	simPhaseAcc = &simPhaseAccumulator{
+		ddsFrequency:          awgRate,
+		awgBufferSize:         uint32(awgBufferSz),
+		arbitraryWaveformSize: bufLen,
+		startDeltaPhase:       startDeltaPhase,
+		stopDeltaPhase:        stopDeltaPhase,
+		deltaPhaseIncrement:   deltaPhaseIncrement,
+		dwellCount:            dwellCount,
+		sweepType:             sweepType,
+	}
+	
+	// We no longer rely on sweepController for arbitrary waveform playback.
+	sweepController = nil
 }
 
 func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveType int, startFreq float64, stopFreq float64, increment float64, dwellTime float64, sweepType int, operation int) {
 	genOn = true
 	genOffsetVoltage = offsetVoltage
 	genPkToPk = pkToPk
+	simPhaseAcc = nil
 	if operation == int(genericps.Prbs) {
 		genWaveFunction = demo.NewPrbsGenerator()
 	} else if operation == int(genericps.WhiteNoise) {
@@ -559,18 +567,25 @@ func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPk uint32, waveT
 
 // simSigGenFrequencyToPhase converts a generator frequency (Hz) into the
 // 32-bit delta-phase value that the PicoScope AWG phase accumulator uses.
-// Formula: deltaPhase = frequency * 2^32 / awgUpdateRate / bufferLength * indexMult
+// Formula: deltaPhase = frequency * 2^32 * arbitraryWaveformSize / (awgUpdateRate * awgBufferSize)
 func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode int, bufferLength uint32) uint32 {
 	cfg := GetSimConfig()
 	awgRate := cfg.AwgUpdateRate
 	if awgRate == 0 {
 		awgRate = 20e6
 	}
+	awgBufferSz := cfg.AwgBufferSize
+	if awgBufferSz == 0 {
+		awgBufferSz = 8192
+	}
 	if bufferLength == 0 {
 		bufferLength = 1
 	}
-	indexMult := math.Pow(2, float64(indexMode))
-	phase := frequency * (math.MaxUint32 + 1) / awgRate * float64(bufferLength) / indexMult
+	
+	// indexMult is handled in the original wrapper by adjusting the frequency/buffer length if necessary, 
+	// but strictly following the manual's delta phase formula:
+	phase := frequency * (math.MaxUint32 + 1) * float64(bufferLength) / (awgRate * float64(awgBufferSz))
+	
 	if phase < 0 {
 		phase = 0
 	}
@@ -609,3 +624,61 @@ func simSetEtsTimeBuffer(handle int16, buffer []int64) {
 func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) {
 }
 
+type simPhaseAccumulator struct {
+	ddsFrequency          float64
+	awgBufferSize         uint32
+	arbitraryWaveformSize uint32
+	startDeltaPhase       uint32
+	stopDeltaPhase        uint32
+	deltaPhaseIncrement   uint32
+	dwellCount            uint32
+	sweepType             int
+}
+
+func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
+	if p.ddsFrequency <= 0 {
+		return 0
+	}
+
+	ticksFloat := t * p.ddsFrequency
+	ticks := uint64(ticksFloat)
+
+	var currentDeltaPhase uint64 = uint64(p.startDeltaPhase)
+	var accumulatedPhase uint64 = 0
+
+	if p.deltaPhaseIncrement > 0 && p.dwellCount > 0 {
+		numIntervals := ticks / uint64(p.dwellCount)
+		remainderTicks := ticks % uint64(p.dwellCount)
+
+		maxIntervals := uint64(0)
+		if p.stopDeltaPhase > p.startDeltaPhase {
+			maxIntervals = uint64((p.stopDeltaPhase - p.startDeltaPhase) / p.deltaPhaseIncrement)
+		}
+
+		if numIntervals > maxIntervals {
+			phaseUpToMax := uint64(p.dwellCount) * (maxIntervals*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(maxIntervals-1)*maxIntervals/2)
+			currentDeltaPhase = uint64(p.stopDeltaPhase)
+			ticksAfterMax := ticks - (maxIntervals * uint64(p.dwellCount))
+			accumulatedPhase = phaseUpToMax + ticksAfterMax*currentDeltaPhase
+		} else {
+			accumulatedPhase = uint64(p.dwellCount) * (numIntervals*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(numIntervals-1)*numIntervals/2)
+			currentDeltaPhase = uint64(p.startDeltaPhase) + numIntervals*uint64(p.deltaPhaseIncrement)
+			accumulatedPhase += remainderTicks * currentDeltaPhase
+		}
+	} else {
+		accumulatedPhase = ticks * currentDeltaPhase
+	}
+
+	acc32 := uint32(accumulatedPhase & 0xFFFFFFFF)
+
+	effectiveIndex := float64(acc32) * float64(p.awgBufferSize) / (math.MaxUint32 + 1.0)
+	
+	if p.arbitraryWaveformSize == 0 {
+		p.arbitraryWaveformSize = 1
+	}
+	
+	effectiveIndex = math.Mod(effectiveIndex, float64(p.arbitraryWaveformSize))
+	phase := (effectiveIndex / float64(p.arbitraryWaveformSize)) * 2 * math.Pi
+
+	return phase
+}
