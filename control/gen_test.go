@@ -297,3 +297,56 @@ func TestSetGenerator_WhenUnchanged(t *testing.T) {
 	// Wait for the monitor goroutine to finish responding
 	wg.Wait()
 }
+
+func TestSetGenerator_ArbitraryWaveformSweep(t *testing.T) {
+	psControl, con := setupPscDescForGenTest()
+
+	storedSetting := GeneratorDesc{
+		OffsetVoltage:     50,
+		PkToPK:            1500,
+		WaveType:          genericps.Arbitrary,
+		StartFrequency:    1000,
+		StopFrequency:     10000,
+		Increment:         500,
+		DwellTime:         0.01, // 10 ms -> 200,000 clock cycles at 20MHz
+		SweepType:         genericps.SweepUp,
+		Operation:         genericps.EsOff,
+		ArbitraryWaveform: []int16{0, 1000, 0, -1000},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		select {
+		case msg := <-con.MsgCh:
+			arbMsg, ok := msg.(*genericps.SetSigGenArbitraryMsg)
+			if !ok {
+				t.Errorf("Expected SetSigGenArbitraryMsg, got %T", msg)
+			} else {
+				assert.Equal(t, uint32(200000), arbMsg.DwellCount, "DwellCount should be correctly converted from DwellTime (0.01s * 20MHz = 200000)")
+				assert.Equal(t, storedSetting.SweepType, arbMsg.SweepType)
+			}
+			msg.RspCh() <- struct{}{}
+		case <-time.After(1 * time.Second):
+			t.Error("Timeout waiting for SetSigGenArbitraryMsg on Con.MsgCh")
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		select {
+		case req := <-psControl.getGeneratorCh:
+			req.generatorSettings = &storedSetting
+			req.newSetting <- true
+		case <-time.After(200 * time.Millisecond):
+			t.Error("Timeout waiting for setGenerator to request data")
+		}
+	}()
+
+	err := psControl.setGenerator()
+	assert.NoError(t, err)
+	wg.Wait()
+}
+

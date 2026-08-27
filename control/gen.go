@@ -14,14 +14,20 @@ func (psControl *PscDesc) setGenerator() (err error) {
 			if len(waveform) == 0 {
 				waveform = make([]int16, 8192)
 			}
-			startPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StartFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
-			stopPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StopFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
-			incPhase, _ := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.Increment, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
+			startPhase, err1 := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StartFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
+			stopPhase, err2 := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.StopFrequency, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
+			incPhase, err3 := psControl.Con.SigGenFrequencyToPhase(psControl.getGenerator.generatorSettings.Increment, psControl.getGenerator.generatorSettings.IndexMode, uint32(len(waveform)))
+			slog.Info("AWG Sweep Phases", "startPhase", startPhase, "err1", err1, "stopPhase", stopPhase, "err2", err2, "incPhase", incPhase, "err3", err3)
+
+			dwellCount := uint32(psControl.getGenerator.generatorSettings.DwellTime * 20_000_000)
+			if dwellCount == 0 {
+				dwellCount = 1
+			}
 
 			psControl.Con.SetSigGenArbitrary(psControl.getGenerator.generatorSettings.OffsetVoltage,
 				psControl.getGenerator.generatorSettings.PkToPK,
 				startPhase, stopPhase, incPhase,
-				uint32(psControl.getGenerator.generatorSettings.DwellTime),
+				dwellCount,
 				waveform,
 				psControl.getGenerator.generatorSettings.SweepType,
 				psControl.getGenerator.generatorSettings.Operation,
