@@ -1454,6 +1454,7 @@ func (scp *ScpDesc) build2000DemoGui() {
 
 func (scp *ScpDesc) SetVariant() (err error) {
 	scp.psControl.Info, err = scp.psControl.UnitVariantInfo()
+	scp.psControl.ScopeModel = control.StringToScopeType(scp.psControl.Info)
 	slog.Debug("scope ", "info string", scp.psControl.Info)
 	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO")
 	// TODO select preconfigured gui description, including
