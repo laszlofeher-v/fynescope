@@ -8,7 +8,8 @@ import (
 
 func TestEtsTimes_2407B(t *testing.T) {
 	ps := &PscDesc{
-		Info: "2407B",
+		Info:       "2407B",
+		ScopeModel: StringToScopeType("2407B"),
 	}
 
 	tests := []struct {
@@ -41,7 +42,8 @@ func TestEtsTimes_2407B(t *testing.T) {
 
 func TestEtsTimes_2207SIM(t *testing.T) {
 	ps := &PscDesc{
-		Info: "2207SIM",
+		Info:       "2207SIM",
+		ScopeModel: StringToScopeType("2207SIM"),
 	}
 	cycles, inter, err := ps.etsTimes(200)
 	assert.NoError(t, err)
@@ -51,7 +53,8 @@ func TestEtsTimes_2207SIM(t *testing.T) {
 
 func TestEtsTimes_Unknown(t *testing.T) {
 	ps := &PscDesc{
-		Info: "UNKNOWN",
+		Info:       "UNKNOWN",
+		ScopeModel: StringToScopeType("UNKNOWN"),
 	}
 
 	_, _, err := ps.etsTimes(200)
