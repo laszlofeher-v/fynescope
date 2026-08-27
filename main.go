@@ -60,7 +60,7 @@ var (
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
 		"ps2000a/c.go":                       false,
-		"ps2000a/sim_noscope.go":             false,
+		"ps2000a/sim_noscope.go":             true,
 		"ps3000a/c.go":                       false,
 		"ps2000a/callbacks.go":               false,
 		"ps3000a/callbacks.go":               false,
@@ -243,18 +243,18 @@ func startProfile(n int) error {
 // parseFlags processes command-line arguments and returns pointers to flag values.
 // Supported flags:
 //
-//	-loglevel: Sets logging verbosity (debug, info, warning, error)
-//	-profile:  Enables CPU profiling when set to true
-//	-demo:  Runs in demo-only mode when set to true
-//  -sim: Runs in simulator mode when set to true
-//	-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
-//	-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
-//	-webport-novoice:  starts web server without voice control on specified port
-//  -webauth: credentials for full access, voice + stream
-//  -webauth-view: credentials for read-only stream access
-//  -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
-//  -gif: enables GIF generation button
-//  -ff-auto-range: enables auto ranging during Bode sweep
+//		-loglevel: Sets logging verbosity (debug, info, warning, error)
+//		-profile:  Enables CPU profiling when set to true
+//		-demo:  Runs in demo-only mode when set to true
+//	 -sim: Runs in simulator mode when set to true
+//		-screensize: Sets the screen size scaling (e.g. 1920x1080, 1366x768, 1280x720, 1024x768)
+//		-webport:  Starts a read-only MJPEG stream of the GUI on the specified port
+//		-webport-novoice:  starts web server without voice control on specified port
+//	 -webauth: credentials for full access, voice + stream
+//	 -webauth-view: credentials for read-only stream access
+//	 -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
+//	 -gif: enables GIF generation button
+//	 -ff-auto-range: enables auto ranging during Bode sweep
 func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
