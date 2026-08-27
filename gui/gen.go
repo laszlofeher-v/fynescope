@@ -139,6 +139,34 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 	}
 
 	var newGenSettings func(undockable bool) (box *fyne.Container, err error)
+	sortWaveTypes()
+
+	fractionWidth := 2
+	var incStep float32 = 1
+	minAllowedFreq := 0.03
+	maxAllowedFreq := 1000000.0
+
+	const (
+		operationNormal     = "Normal"
+		operationPrbs       = "PRBS"
+		operationWhiteNoise = "White Noise"
+	)
+	operationMap := map[string]genericps.ExtraOperations{
+		operationNormal:     genericps.EsOff,
+		operationPrbs:       genericps.Prbs,
+		operationWhiteNoise: genericps.WhiteNoise,
+	}
+	operationOptions := []string{operationNormal, operationPrbs, operationWhiteNoise}
+
+	if scp.psControl != nil {
+		switch scp.psControl.ScopeModel {
+		case control.Scope2204A, control.Scope2205A:
+			operationOptions = []string{operationNormal}
+			minAllowedFreq = 0.1
+			maxAllowedFreq = 100000.0
+			incStep = 2
+		}
+	}
 	newGenSettings = func(undockable bool) (box *fyne.Container, err error) {
 		var (
 			top, analog, digital, sweepBox, frqBox *fyne.Container
@@ -245,17 +273,6 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			scp.applyInternalGenSettings(check.Checked)
 		}
 
-		const (
-			operationNormal     = "Normal"
-			operationPrbs       = "PRBS"
-			operationWhiteNoise = "White Noise"
-		)
-		operationMap := map[string]genericps.ExtraOperations{
-			operationNormal:     genericps.EsOff,
-			operationPrbs:       genericps.Prbs,
-			operationWhiteNoise: genericps.WhiteNoise,
-		}
-		operationOptions := []string{operationNormal, operationPrbs, operationWhiteNoise}
 		operationChanged := func(option string, e selectscroll.Exception) {
 			scp.Settings.GenPanel.Operation = operationMap[option]
 			scp.applyInternalGenSettings(check.Checked)
@@ -317,7 +334,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			})
 			addToTest(undockButton, "genUndockBtn", genTabIndex)
 		}
-		freqSetAnalog = sliderscroll.NewSliderScroll(genericps.MinFrequency, genericps.SineMaxFrequency)
+		freqSetAnalog = sliderscroll.NewSliderScroll(minAllowedFreq, maxAllowedFreq)
 		addToTest(freqSetAnalog, genFreqSetId, genTabIndex)
 		freqSetAnalog.OnChanged = freqChanged
 		ampSetAnalog = sliderscroll.NewSliderScroll(0, maxV)
@@ -325,22 +342,22 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		addToTest(ampSetAnalog, genAmpdSetId, genTabIndex)
 		ampSetAnalog.OnChanged = ampChanged
 		disp7Width := fractionWidth
-		f := int(math.Round(genericps.SineMaxFrequency))
+		f := int(math.Round(maxAllowedFreq))
 		for f > 0 {
 			f /= 10
 			disp7Width++
 		}
-		minAllowedFreq := int(genericps.MinFrequency) * pow10tab[fractionWidth]
-		if minAllowedFreq <= 0 {
-			minAllowedFreq = 1
+		minAllowedFreqInt := int(minAllowedFreq * float64(pow10tab[fractionWidth]))
+		if minAllowedFreqInt <= 0 {
+			minAllowedFreqInt = 1
 		}
 		frequency, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
-			minAllowedFreq,
+			int(maxAllowedFreq)*pow10tab[fractionWidth],
+			minAllowedFreqInt,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
+			disp7.DeafultDigitHeight, incStep,
 			disp7.DefaultVCursorSpace, "Frq : ", " Hz")
 		if err != nil {
 			return
@@ -364,12 +381,12 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		addToTest(dwellTime, genDwellTimeId, genTabIndex)
 
 		startFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*pow10tab[fractionWidth],
-			minAllowedFreq,
+			int(maxAllowedFreq)*pow10tab[fractionWidth],
+			minAllowedFreqInt,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
+			disp7.DeafultDigitHeight, incStep,
 			disp7.DefaultVCursorSpace, "Low :", " Hz")
 		if err != nil {
 			return
@@ -378,11 +395,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		startFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StartFrequency) * pow10tab[fractionWidth])
 		addToTest(startFrqDisp, genMinFrqId, genTabIndex)
 		stopFrqDisp, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*100, minAllowedFreq,
+			int(maxAllowedFreq)*pow10tab[fractionWidth], minAllowedFreqInt,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
+			disp7.DeafultDigitHeight, incStep,
 			disp7.DefaultVCursorSpace, "High:", " Hz")
 		if err != nil {
 			return
@@ -391,11 +408,11 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		stopFrqDisp.OnChanged = stopFreqChanged
 		stopFrqDisp.SilentSetValue(int(scp.Settings.GenPanel.StopFrequency) * pow10tab[fractionWidth])
 		stepFreq, err = disp7.NewCustomDisp7Array(disp7Width, fractionWidth,
-			int(genericps.SineMaxFrequency)*100, 0,
+			int(maxAllowedFreq)*pow10tab[fractionWidth], 0,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
-			disp7.DeafultDigitHeight, 1,
+			disp7.DeafultDigitHeight, incStep,
 			disp7.DefaultVCursorSpace, "Step :", " Hz")
 		if err != nil {
 			return
