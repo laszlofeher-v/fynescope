@@ -263,7 +263,7 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	psControl := &PscDesc{Con: con}
 	psControl.shutdownCh = make(chan struct{})
 	psControl.StreamEnabled.Store(true)
-	psControl.stateChannel = make(chan state)
+	psControl.stateChannel = make(chan state, 1)
 	psControl.restartChannel = make(chan struct{}, 1) // non blocking
 	psControl.stopChannel = make(chan struct{}, 1)    // non blocking
 
@@ -503,6 +503,10 @@ func (psControl *PscDesc) Stop() (err error) {
 func (psControl *PscDesc) SetETSMode() (err error) {
 	_ = psControl.Stop()
 	select {
+	case <-psControl.stateChannel:
+	default:
+	}
+	select {
 	case psControl.stateChannel <- etsBlockMode:
 	case <-time.After(startTimeout):
 		err = fmt.Errorf("Could not start ETS mode")
@@ -512,6 +516,10 @@ func (psControl *PscDesc) SetETSMode() (err error) {
 
 func (psControl *PscDesc) SetBlockMode() (err error) {
 	_ = psControl.Stop()
+	select {
+	case <-psControl.stateChannel:
+	default:
+	}
 	select {
 	case psControl.stateChannel <- blockMode:
 	case <-time.After(startTimeout):
