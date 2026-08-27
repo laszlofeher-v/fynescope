@@ -82,12 +82,13 @@ func (sc *SweepController) Update() {
 }
 
 // updateSweepUp handles sweep up logic.
+// When reaching stopFreq, wraps back to startFreq for continuous (sawtooth) sweeping.
 func (sc *SweepController) updateSweepUp() {
 	if sc.currentFreq+sc.stepFreq < sc.stopFreq {
 		sc.currentFreq += sc.stepFreq
 		sc.lastStepTime = time.Now()
 	} else {
-		sc.currentFreq = sc.stopFreq
+		sc.currentFreq = sc.startFreq // wrap around for continuous sweep
 		sc.lastStepTime = time.Now()
 	}
 }
@@ -107,12 +108,13 @@ func (sc *SweepController) updateSweepUpDown() {
 }
 
 // updateSweepDown handles sweep down logic.
+// When reaching startFreq, wraps back to stopFreq for continuous (sawtooth) sweeping.
 func (sc *SweepController) updateSweepDown() {
 	if sc.currentFreq-sc.stepFreq > sc.startFreq {
 		sc.currentFreq -= sc.stepFreq
 		sc.lastStepTime = time.Now()
 	} else {
-		sc.currentFreq = sc.startFreq
+		sc.currentFreq = sc.stopFreq // wrap around for continuous sweep
 		sc.lastStepTime = time.Now()
 	}
 }

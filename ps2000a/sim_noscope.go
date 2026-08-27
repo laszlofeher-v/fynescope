@@ -641,34 +641,140 @@ func (p *simPhaseAccumulator) GetPhaseAtTime(t float64) float64 {
 	}
 
 	ticksFloat := t * p.ddsFrequency
-	ticks := uint64(ticksFloat)
+	ticksInt := int64(ticksFloat)
 
 	var currentDeltaPhase uint64 = uint64(p.startDeltaPhase)
 	var accumulatedPhase uint64 = 0
 
-	if p.deltaPhaseIncrement > 0 && p.dwellCount > 0 {
+	if p.deltaPhaseIncrement > 0 && p.dwellCount > 0 && p.stopDeltaPhase > p.startDeltaPhase {
+		// Number of steps in one sweep UP from start to stop
+		steps := uint64((p.stopDeltaPhase - p.startDeltaPhase) / p.deltaPhaseIncrement)
+		C := steps + 1
+
+		var CTotal uint64
+		switch p.sweepType {
+		case 0, 1:
+			CTotal = C
+		case 2, 3:
+			CTotal = C*2 - 2
+			if CTotal == 0 {
+				CTotal = 1
+			}
+		}
+
+		cycleTicks := CTotal * uint64(p.dwellCount)
+
+		var ticks uint64
+		var shiftCycles uint64
+		if ticksInt < 0 {
+			absTicks := uint64(-ticksInt)
+			shiftCycles = (absTicks / cycleTicks) + 1
+			ticks = (shiftCycles * cycleTicks) - absTicks
+		} else {
+			ticks = uint64(ticksInt)
+			shiftCycles = 0
+		}
+
 		numIntervals := ticks / uint64(p.dwellCount)
 		remainderTicks := ticks % uint64(p.dwellCount)
 
-		maxIntervals := uint64(0)
-		if p.stopDeltaPhase > p.startDeltaPhase {
-			maxIntervals = uint64((p.stopDeltaPhase - p.startDeltaPhase) / p.deltaPhaseIncrement)
-		}
+		var phasePerCycle uint64
 
-		if numIntervals > maxIntervals {
-			phaseUpToMax := uint64(p.dwellCount) * (maxIntervals*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(maxIntervals-1)*maxIntervals/2)
-			currentDeltaPhase = uint64(p.stopDeltaPhase)
-			ticksAfterMax := ticks - (maxIntervals * uint64(p.dwellCount))
-			accumulatedPhase = phaseUpToMax + ticksAfterMax*currentDeltaPhase
-		} else {
-			accumulatedPhase = uint64(p.dwellCount) * (numIntervals*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(numIntervals-1)*numIntervals/2)
-			currentDeltaPhase = uint64(p.startDeltaPhase) + numIntervals*uint64(p.deltaPhaseIncrement)
-			accumulatedPhase += remainderTicks * currentDeltaPhase
+		switch p.sweepType {
+		case 0: // SweepUp
+			numCycles := numIntervals / C
+			step := numIntervals % C
+
+			sumFullCycle := C*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(C*(C-1))/2
+			phasePerCycle = sumFullCycle * uint64(p.dwellCount)
+			phaseFullCycles := numCycles * phasePerCycle
+
+			sumPartial := step*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(step*(step-1))/2
+			phasePartial := sumPartial * uint64(p.dwellCount)
+
+			currentDeltaPhase = uint64(p.startDeltaPhase) + step*uint64(p.deltaPhaseIncrement)
+			phaseRemainder := remainderTicks * currentDeltaPhase
+
+			accumulatedPhase = phaseFullCycles + phasePartial + phaseRemainder
+			accumulatedPhase -= shiftCycles * phasePerCycle
+
+		case 1: // SweepDown
+			numCycles := numIntervals / C
+			step := numIntervals % C
+
+			sumFullCycle := C*uint64(p.stopDeltaPhase) - uint64(p.deltaPhaseIncrement)*(C*(C-1))/2
+			phasePerCycle = sumFullCycle * uint64(p.dwellCount)
+			phaseFullCycles := numCycles * phasePerCycle
+
+			sumPartial := step*uint64(p.stopDeltaPhase) - uint64(p.deltaPhaseIncrement)*(step*(step-1))/2
+			phasePartial := sumPartial * uint64(p.dwellCount)
+
+			currentDeltaPhase = uint64(p.stopDeltaPhase) - step*uint64(p.deltaPhaseIncrement)
+			phaseRemainder := remainderTicks * currentDeltaPhase
+
+			accumulatedPhase = phaseFullCycles + phasePartial + phaseRemainder
+			accumulatedPhase -= shiftCycles * phasePerCycle
+
+		case 2, 3: // SweepUpDown, SweepDownUp
+			CHalf := C
+
+			// If SweepDownUp, we can just shift the numIntervals by CHalf - 1
+			if p.sweepType == 3 {
+				numIntervals += CHalf - 1
+			}
+
+			numCycles := numIntervals / CTotal
+			step := numIntervals % CTotal
+
+			sumUp := CHalf*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(CHalf*(CHalf-1))/2
+			var sumDown uint64 = 0
+			if CHalf > 2 {
+				stepsDown := CHalf - 2
+				startDown := uint64(p.stopDeltaPhase - p.deltaPhaseIncrement)
+				sumDown = stepsDown*startDown - uint64(p.deltaPhaseIncrement)*(stepsDown*(stepsDown-1))/2
+			}
+			sumFullCycle := sumUp + sumDown
+			phasePerCycle = sumFullCycle * uint64(p.dwellCount)
+			phaseFullCycles := numCycles * phasePerCycle
+
+			var sumPartial uint64 = 0
+			if step < CHalf {
+				sumPartial = step*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(step*(step-1))/2
+				currentDeltaPhase = uint64(p.startDeltaPhase) + step*uint64(p.deltaPhaseIncrement)
+			} else {
+				sumPartial = sumUp
+				downStep := step - CHalf
+				startDown := uint64(p.stopDeltaPhase - p.deltaPhaseIncrement)
+				sumPartial += downStep*startDown - uint64(p.deltaPhaseIncrement)*(downStep*(downStep-1))/2
+				currentDeltaPhase = startDown - downStep*uint64(p.deltaPhaseIncrement)
+			}
+			
+			phasePartial := sumPartial * uint64(p.dwellCount)
+			phaseRemainder := remainderTicks * currentDeltaPhase
+			
+			accumulatedPhase = phaseFullCycles + phasePartial + phaseRemainder
+			accumulatedPhase -= shiftCycles * phasePerCycle
+			
+			// Adjust back if we shifted for SweepDownUp to keep accumulatedPhase contiguous
+			if p.sweepType == 3 {
+				// Offset is the phase accumulated over (CHalf - 1) intervals in the UP sweep.
+				stepOffset := CHalf - 1
+				sumOffset := stepOffset*uint64(p.startDeltaPhase) + uint64(p.deltaPhaseIncrement)*(stepOffset*(stepOffset-1))/2
+				phaseOffset := sumOffset * uint64(p.dwellCount)
+				accumulatedPhase -= phaseOffset
+			}
 		}
 	} else {
+		var ticks uint64
+		if ticksInt < 0 {
+			ticks = uint64(ticksInt)
+		} else {
+			ticks = uint64(ticksInt)
+		}
 		accumulatedPhase = ticks * currentDeltaPhase
 	}
 
+	// Downcast to 32 bits and calculate the phase exactly as the PicoScope AWG does.
 	acc32 := uint32(accumulatedPhase & 0xFFFFFFFF)
 
 	effectiveIndex := float64(acc32) * float64(p.awgBufferSize) / (math.MaxUint32 + 1.0)
