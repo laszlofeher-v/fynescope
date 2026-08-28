@@ -13,7 +13,7 @@ const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
 	switch psControl.ScopeModel {
-	case Scope2407B, Scope2407SIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
+	case Scope2407B, Scope2407BSIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
 		// Specification for 2407B / 2207B / 2000a:
 		// Sample time = 2000 / EtsInterleave
 		// EtsCycles >= EtsInterleave
@@ -23,7 +23,7 @@ func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 			desiredEffectiveRate := 1e12 / float64(sampleTimeInPicoSeconds)
 			interleaveFloat := desiredEffectiveRate / float64(psControl.MaxSamplingRate)
 			EtsInterleave = int16(math.Round(interleaveFloat))
-			
+
 			maxInterleave, maxCycles := psControl.GetEtsLimits()
 			if EtsInterleave > maxInterleave {
 				EtsInterleave = maxInterleave
@@ -31,9 +31,9 @@ func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 			if EtsInterleave < 1 {
 				EtsInterleave = 1
 			}
-			
+
 			EtsCycles = 2 * EtsInterleave
-			
+
 			if EtsCycles > maxCycles {
 				EtsCycles = maxCycles
 			}
@@ -48,7 +48,7 @@ func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 
 func (psControl *PscDesc) GetEtsLimits() (maxInterleave, maxCycles int16) {
 	switch psControl.ScopeModel {
-	case Scope2407B, Scope2407SIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
+	case Scope2407B, Scope2407BSIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
 		maxInterleave = 40
 		maxCycles = 500
 	default:
@@ -105,7 +105,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 
 		sugCycles, sugInterleave, err := psControl.EtsTimes(int32(minSampleTimeInPicoseconds))
-		
+
 		etsInterleave := sugInterleave
 		etsCycles := sugCycles
 
@@ -114,13 +114,13 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		if userInterleave > 0 && userCycles > 0 {
 			maxInterleave, maxCycles := psControl.GetEtsLimits()
-			
+
 			// Clamp interleave
 			etsInterleave = userInterleave
 			if etsInterleave > maxInterleave {
 				etsInterleave = maxInterleave
 			}
-			
+
 			// Re-evaluate max cycles based on the rule
 			dynMaxCycles := etsInterleave * 5
 			if maxCycles != 1000 { // If not the generic default
@@ -132,7 +132,7 @@ func etsBlockMode(psControl *PscDesc) state {
 			// Clamp cycles
 			etsCycles = userCycles
 			if etsCycles < etsInterleave*2 {
-				etsCycles = etsInterleave*2
+				etsCycles = etsInterleave * 2
 			} else if etsCycles > maxCycles {
 				etsCycles = maxCycles
 			}
