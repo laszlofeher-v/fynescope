@@ -32,7 +32,7 @@ func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 				EtsInterleave = 1
 			}
 			
-			EtsCycles = 3 * EtsInterleave
+			EtsCycles = 2 * EtsInterleave
 			
 			if EtsCycles > maxCycles {
 				EtsCycles = maxCycles
