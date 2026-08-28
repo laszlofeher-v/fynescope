@@ -81,7 +81,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	var err error
 	scp.vchMaxV, err = disp7.NewCustomDisp7Array(5, 3, 99999, -99999, disp7.Signed,
 		disp7.NoTrailingZeroes, scp.Window, defaultCol,
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, " Max:", " V ")
 	if err != nil {
 		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch maxV)")
@@ -89,7 +89,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 
 	scp.vchMinV, err = disp7.NewCustomDisp7Array(5, 3, 99999, -99999, disp7.Signed,
 		disp7.NoTrailingZeroes, scp.Window, defaultCol,
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, " Min:", " V ")
 	if err != nil {
 		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch minV)")
@@ -97,7 +97,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 
 	scp.vchFrq, err = disp7.NewCustomDisp7Array(4, 2, 9999, 0, disp7.UnSigned,
 		disp7.NoTrailingZeroes, scp.Window, defaultCol,
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "Frq:", " MHz")
 	if err != nil {
 		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch frq)")
@@ -105,7 +105,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 
 	scp.vchPeriod, err = disp7.NewCustomDisp7Array(4, 2, 9999, 0, disp7.UnSigned,
 		disp7.NoTrailingZeroes, scp.Window, defaultCol,
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "  T:", " ms")
 	if err != nil {
 		panic(err.Error() + " error from disp7.NewCustomDisp7Array (vch period)")

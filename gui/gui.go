@@ -242,6 +242,7 @@ type (
 		streamEnableButton           *widget.Button
 		etsInterleaveDisp            *disp7.DigitArray
 		etsCyclesDisp                *disp7.DigitArray
+		etsSamplingRateDisp          *disp7.DigitArray
 		boxEtsSettings               *fyne.Container
 		// actualSampleTime                    *widget.Label
 
@@ -809,6 +810,7 @@ func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 }
 
 func (scp *ScpDesc) build2000Gui() {
+	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	initMaps()
 	sortInputRanges()
 	var (
@@ -1492,7 +1494,6 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.displayBuffersMin = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.bodeBuffers = make([][]bodePoint, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.digitalDisplayBuffer = make([][]uint8, 2)
-	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
 
 	scp.virtualChannelEngines = make([]*VirtualChannelEngine, len(scp.Settings.VirtualChannels))
