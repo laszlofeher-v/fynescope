@@ -365,6 +365,12 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 					}
 					offsetFloat := float64(zeroOffset) + yOffset
 					prevX := startX
+					switch {
+					case prevX > fMaxX:
+						prevX = fMaxX
+					case prevX < fMinX:
+						prevX = fMinX
+					}
 					s := displayBuffer[0]
 					if channel.Inverted {
 						s = -s
@@ -397,14 +403,12 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 						}
 						err := drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
 						if err != nil {
-							slog.Debug("ets", "x", x, "y", y, "fMinX", fMinX, "fMaxX", fMaxX, "fMinY", fMinY, "fMaxY", fMaxY)
-							panic("draw error")
+							slog.Debug("ets draw error 1", "err", err, "x", x, "y", y, "prevX", prevX, "prevY", prevY)
 						}
 						err = drawLine(targetImg, float32(x), float32(prevY), float32(x), float32(y), col)
 						prevX = x
 						if err != nil {
-							slog.Debug("ets", "x", x, "y", y, "fMinX", fMinX, "fMaxX", fMaxX)
-							panic("draw error")
+							slog.Debug("ets draw error 2", "err", err, "x", x, "y", y, "prevX", prevX, "prevY", prevY)
 						}
 						prevY = y
 					}
@@ -418,19 +422,46 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 					}
 					offsetFloat := float64(zeroOffset) + yOffset
 					prevX := startX
+					switch {
+					case prevX > fMaxX:
+						prevX = fMaxX
+					case prevX < fMinX:
+						prevX = fMinX
+					}
 					s := displayBuffer[0]
 					if channel.Inverted {
 						s = -s
 					}
 					prevY := -yScale*float64(s) + offsetFloat
+					switch {
+					case prevY > fMaxY:
+						prevY = fMaxY
+					case prevY < fMinY:
+						prevY = fMinY
+					}
 					for i := 1; i < len(sv.scp.etsBuffer) && i < len(displayBuffer); i = i + 1 {
 						s := displayBuffer[i]
 						if channel.Inverted {
 							s = -s
 						}
 						y := -yScale*float64(s) + offsetFloat
+						switch {
+						case y > fMaxY:
+							y = fMaxY
+						case y < fMinY:
+							y = fMinY
+						}
 						x := sv.scp.Settings.Time.TriggerTimeOffset*unit + (float64(sv.scp.etsBuffer[i]))*etsDx + startX
-						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
+						switch {
+						case x > fMaxX:
+							x = fMaxX
+						case x < fMinX:
+							x = fMinX
+						}
+						err := drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
+						if err != nil {
+							slog.Debug("ets draw error linear", "err", err, "x", x, "y", y)
+						}
 						prevX = x
 						prevY = y
 					}
