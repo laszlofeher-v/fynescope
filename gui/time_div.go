@@ -1747,7 +1747,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		// Update Effective Sampling Rate Display
 		if scp.etsSamplingRateDisp != nil {
 			rateGSs := v * float64(scp.psControl.MaxSamplingRate) / 1e9
-			scp.etsSamplingRateDisp.SilentSetValue(int(rateGSs * 10))
+			scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 		}
 		
 		triggerCopy := scp.triggerSettingMsg
@@ -1799,7 +1799,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		return nil, err
 	}
 	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.MaxSamplingRate) / 1e9
-	scp.etsSamplingRateDisp.SilentSetValue(int(rateGSs * 10))
+	scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 
 	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
 	if triggerModes[scp.Settings.Trigger.Mode] != control.ETS {
