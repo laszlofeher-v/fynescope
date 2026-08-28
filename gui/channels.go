@@ -308,7 +308,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 	scp.channelViewers[chIndex].frq, err = disp7.NewCustomDisp7Array(4, 2,
 		maxFrqDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
 		scp.Window, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, "Frq:", " MHz")
 	if err != nil {
@@ -317,7 +317,7 @@ func (scp *ScpDesc) frqPeriodDisp(chIndex genericps.ChannelId) (
 	scp.channelViewers[chIndex].period, err = disp7.NewCustomDisp7Array(4, 2,
 		maxPeriodDisp, 0, disp7.UnSigned, disp7.NoTrailingZeroes,
 		scp.Window, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1, fontScale*disp7.DefaultVCursorSpace, "  T:", " ms")
 	if err != nil {
 		panic(errDisp7NewArray)
@@ -335,7 +335,7 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 	scp.channelViewers[chIndex].maxV, err = disp7.NewCustomDisp7Array(5, 3,
 		20000, -20000, disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 		scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, " Max:", " V ")
 	if err != nil {
@@ -344,7 +344,7 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 	scp.channelViewers[chIndex].minV, err = disp7.NewCustomDisp7Array(5, 3,
 		20000, -20000, disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 		scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
-		disp7.ReaOnly, fontScale*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, fontScale*disp7.DefaultDigitWidth,
 		fontScale*disp7.DeafultDigitHeight, 1,
 		fontScale*disp7.DefaultVCursorSpace, " Min:", " V ")
 	if err != nil {

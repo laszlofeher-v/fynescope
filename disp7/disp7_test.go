@@ -157,7 +157,7 @@ func TestNewCustomDisp7Array(t *testing.T) {
 			minValue:            -9999,
 			signed:              Signed,
 			trailingZeroes:      NoTrailingZeroes,
-			readOnly:            ReaOnly,
+			readOnly:            ReadOnly,
 			label:               "",
 			unit:                "",
 			expectError:         false,
@@ -209,7 +209,7 @@ func TestNewCustomDisp7Array(t *testing.T) {
 func TestNewDisp7Array(t *testing.T) {
 	a := test.NewApp()
 	w := a.NewWindow("Test")
-	disp, err := NewDisp7Array(4, 1, 1000, -1000, Signed, w, color.Black, ReaOnly)
+	disp, err := NewDisp7Array(4, 1, 1000, -1000, Signed, w, color.Black, ReadOnly)
 	assert.NoError(t, err)
 	assert.NotNil(t, disp)
 	assert.Equal(t, 4, len(disp.digits))

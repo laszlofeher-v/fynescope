@@ -691,6 +691,9 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Show()
 			}
+			if scp.etsSamplingRateDisp != nil {
+				scp.etsSamplingRateDisp.Show()
+			}
 			for i := range scp.channelViewers { // Uncheck and disable all channels
 				scp.channelViewers[i].triggerCheckbox.SetChecked(false)
 				scp.channelViewers[i].triggerCheckbox.Disable()
@@ -731,6 +734,9 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			scp.setNotETSTimeDiv()
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Hide()
+			}
+			if scp.etsSamplingRateDisp != nil {
+				scp.etsSamplingRateDisp.Hide()
 			}
 			if scp.triggerTypeSelect != nil {
 				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple,
@@ -1700,8 +1706,10 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.updateIntervalTimeGUI()
 	}
 
+	maxInterleave, maxCycles := scp.psControl.GetEtsLimits()
+
 	// ETS Settings
-	scp.etsInterleaveDisp, err = disp7.NewCustomDisp7Array(4, 0, 100, 1,
+	scp.etsInterleaveDisp, err = disp7.NewCustomDisp7Array(4, 0, int(maxInterleave), 1,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
 		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
 		1, disp7.DefaultVCursorSpace, "Intlv:", "")
@@ -1709,14 +1717,47 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		return nil, err
 	}
 	scp.etsInterleaveDisp.OnChanged = func(v float64) {
+		if v < 1 {
+			v = 1
+			scp.etsInterleaveDisp.SilentSetValue(1)
+		}
 		scp.Settings.Time.EtsInterleave = int16(v)
 		scp.triggerSettingMsg.EtsInterleave = int16(v)
+		
+		minC := int(2 * v)
+		maxC := int(5 * v)
+		if maxC > int(maxCycles) {
+			maxC = int(maxCycles)
+		}
+		scp.etsCyclesDisp.SetMinMax(minC, maxC)
+		
+		cycles := int(scp.Settings.Time.EtsCycles)
+		if cycles < minC {
+			scp.etsCyclesDisp.SetValue(minC)
+		} else if cycles > maxC {
+			scp.etsCyclesDisp.SetValue(maxC)
+		}
+		
+		// Update Effective Sampling Rate Display
+		if scp.etsSamplingRateDisp != nil {
+			rateGSs := v * float64(scp.psControl.MaxSamplingRate) / 1e9
+			scp.etsSamplingRateDisp.SilentSetValue(int(rateGSs * 10))
+		}
+		
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+			scp.psControl.RequestRestart()
+		}(triggerCopy)
+		scp.SaveSettings()
 	}
 	scp.triggerSettingMsg.EtsInterleave = scp.Settings.Time.EtsInterleave
 	scp.etsInterleaveDisp.SilentSetValue(int(scp.Settings.Time.EtsInterleave))
 	addToTest(scp.etsInterleaveDisp, etsInterleaveDispId, -1)
 
-	scp.etsCyclesDisp, err = disp7.NewCustomDisp7Array(4, 0, 1000, 1,
+	scp.etsCyclesDisp, err = disp7.NewCustomDisp7Array(4, 0, int(maxCycles), 1,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
 		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
 		1, disp7.DefaultVCursorSpace, "Cycls:", "")
@@ -1726,18 +1767,38 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.etsCyclesDisp.OnChanged = func(v float64) {
 		scp.Settings.Time.EtsCycles = int16(v)
 		scp.triggerSettingMsg.EtsCycles = int16(v)
+		
+		triggerCopy := scp.triggerSettingMsg
+		triggerCopy.Done = make(chan struct{}, 1)
+		go func(t control.TriggerDescMsg) {
+			scp.psControl.SetTriggerCh <- &t
+			<-t.Done
+			scp.psControl.RequestRestart()
+		}(triggerCopy)
+		scp.SaveSettings()
 	}
 	scp.triggerSettingMsg.EtsCycles = scp.Settings.Time.EtsCycles
 	scp.etsCyclesDisp.SilentSetValue(int(scp.Settings.Time.EtsCycles))
 	addToTest(scp.etsCyclesDisp, etsCyclesDispId, -1)
 
+	scp.etsSamplingRateDisp, err = disp7.NewCustomDisp7Array(4, 1, 9999, 0,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadOnly,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Eff:", "GS/s")
+	if err != nil {
+		return nil, err
+	}
+	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.MaxSamplingRate) / 1e9
+	scp.etsSamplingRateDisp.SilentSetValue(int(rateGSs * 10))
+
 	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
 	if triggerModes[scp.Settings.Trigger.Mode] != control.ETS {
 		scp.boxEtsSettings.Hide()
+		scp.etsSamplingRateDisp.Hide()
 	}
 
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
-	boxThresh := container.New(&tightHBoxLayout{gap: -25}, scp.triggerThresholdDisp, scp.triggerLowerThresholdDisp)
+	boxThresh := container.New(&tightHBoxLayout{gap: -25}, scp.triggerThresholdDisp, scp.triggerLowerThresholdDisp, scp.etsSamplingRateDisp)
 	scp.triggerDisplays = container.New(&fixedVBoxLayout{}, boxMode, scp.boxEtsSettings, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerIntervalDisp)
 	return scp.triggerDisplays, nil
 }

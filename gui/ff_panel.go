@@ -203,7 +203,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		int(genericps.MinFrequency)*pow10tab[numOfFractionDigits],
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		refCol,
-		disp7.ReaOnly, size*disp7.DefaultDigitWidth,
+		disp7.ReadOnly, size*disp7.DefaultDigitWidth,
 		disp7.DeafultDigitHeight, 1,
 		disp7.DefaultVCursorSpace, "Freq :", " Hz")
 	scp.updateFfCurrentFreq()

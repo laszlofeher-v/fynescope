@@ -20,7 +20,7 @@ type (
 )
 
 const (
-	ReaOnly accessModeType = iota
+	ReadOnly accessModeType = iota
 	ReadWrite
 )
 const (
@@ -166,7 +166,7 @@ func NewCustomDisp7Array(numOfDigits int, numOfFractionDigits, maxValue,
 	disp.minValue = minValue
 	disp.Window = w
 	disp.digitCursor = digitCursorOut
-	disp.Readonly = readOnly == ReaOnly
+	disp.Readonly = readOnly == ReadOnly
 	return
 }
 
@@ -231,6 +231,7 @@ func (d7 *DigitArray) SilentSetValue(v int) {
 	d7.lock.Lock()
 	defer d7.lock.Unlock()
 	d7.silentSetValue(v)
+	d7.Refresh()
 }
 
 func (d7 *DigitArray) silentSetValue(v int) {
@@ -264,6 +265,7 @@ func (d7 *DigitArray) SetValue(v int) {
 	if onChanged != nil {
 		onChanged(val)
 	}
+	d7.Refresh()
 }
 
 func (d7 *DigitArray) SetUnit(unitName string) {
