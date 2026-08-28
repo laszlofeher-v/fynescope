@@ -240,7 +240,9 @@ type (
 		runblockButton               *widget.Button
 		toolbar                      *fyne.Container
 		streamEnableButton           *widget.Button
-		etsCycles                    *widget.Entry
+		etsInterleaveDisp            *disp7.DigitArray
+		etsCyclesDisp                *disp7.DigitArray
+		boxEtsSettings               *fyne.Container
 		// actualSampleTime                    *widget.Label
 
 		triggerCheck               []*widget.Check

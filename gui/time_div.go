@@ -688,6 +688,9 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	if triggerModes[option] == control.ETS {
 		if prev != control.ETS {
 			scp.setETSTimeDiv()
+			if scp.boxEtsSettings != nil {
+				scp.boxEtsSettings.Show()
+			}
 			for i := range scp.channelViewers { // Uncheck and disable all channels
 				scp.channelViewers[i].triggerCheckbox.SetChecked(false)
 				scp.channelViewers[i].triggerCheckbox.Disable()
@@ -726,6 +729,9 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	} else {
 		if prev == control.ETS {
 			scp.setNotETSTimeDiv()
+			if scp.boxEtsSettings != nil {
+				scp.boxEtsSettings.Hide()
+			}
 			if scp.triggerTypeSelect != nil {
 				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple,
 					settings.TriggerTypeAdvanced, settings.TriggerTypeWindow,
@@ -1694,9 +1700,45 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.updateIntervalTimeGUI()
 	}
 
+	// ETS Settings
+	scp.etsInterleaveDisp, err = disp7.NewCustomDisp7Array(4, 0, 100, 1,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Intlv:", "")
+	if err != nil {
+		return nil, err
+	}
+	scp.etsInterleaveDisp.OnChanged = func(v float64) {
+		scp.Settings.Time.EtsInterleave = int16(v)
+		scp.triggerSettingMsg.EtsInterleave = int16(v)
+	}
+	scp.triggerSettingMsg.EtsInterleave = scp.Settings.Time.EtsInterleave
+	scp.etsInterleaveDisp.SilentSetValue(int(scp.Settings.Time.EtsInterleave))
+	addToTest(scp.etsInterleaveDisp, etsInterleaveDispId, -1)
+
+	scp.etsCyclesDisp, err = disp7.NewCustomDisp7Array(4, 0, 1000, 1,
+		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Cycls:", "")
+	if err != nil {
+		return nil, err
+	}
+	scp.etsCyclesDisp.OnChanged = func(v float64) {
+		scp.Settings.Time.EtsCycles = int16(v)
+		scp.triggerSettingMsg.EtsCycles = int16(v)
+	}
+	scp.triggerSettingMsg.EtsCycles = scp.Settings.Time.EtsCycles
+	scp.etsCyclesDisp.SilentSetValue(int(scp.Settings.Time.EtsCycles))
+	addToTest(scp.etsCyclesDisp, etsCyclesDispId, -1)
+
+	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
+	if triggerModes[scp.Settings.Trigger.Mode] != control.ETS {
+		scp.boxEtsSettings.Hide()
+	}
+
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
 	boxThresh := container.New(&tightHBoxLayout{gap: -25}, scp.triggerThresholdDisp, scp.triggerLowerThresholdDisp)
-	scp.triggerDisplays = container.New(&fixedVBoxLayout{}, boxMode, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerIntervalDisp)
+	scp.triggerDisplays = container.New(&fixedVBoxLayout{}, boxMode, scp.boxEtsSettings, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerIntervalDisp)
 	return scp.triggerDisplays, nil
 }
 

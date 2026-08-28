@@ -84,6 +84,8 @@ const (
 	intervalTimeLowerDispId        = "intervalTimeLowerDisp"
 	intervalTimeUpperDispId        = "intervalTimeUpperDisp"
 	intervalTimeSingleDispId       = "intervalTimeSingleDisp"
+	etsInterleaveDispId            = "etsInterleaveDisp"
+	etsCyclesDispId                = "etsCyclesDisp"
 	dftEnableId                    = "dftEnable"
 	dftPersId                      = "dftPers"
 	dftVRangeId                    = "dftVRange"

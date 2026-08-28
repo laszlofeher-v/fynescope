@@ -74,6 +74,8 @@ type (
 		DigitalTriggerEnabled bool
 		DigitalDirections     []genericps.DigitalChannelDirections
 		DigitalAnalogOperand  genericps.TriggerOperand
+		EtsInterleave         int16
+		EtsCycles             int16
 	}
 	TriggerDescMsg struct {
 		TriggerDesc

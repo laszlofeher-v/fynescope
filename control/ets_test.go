@@ -29,7 +29,7 @@ func TestEtsTimes_2407B(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		cycles, inter, err := ps.etsTimes(tt.sampleTime)
+		cycles, inter, err := ps.EtsTimes(tt.sampleTime)
 		if tt.wantErr {
 			assert.Error(t, err)
 		} else {
@@ -45,7 +45,7 @@ func TestEtsTimes_2207SIM(t *testing.T) {
 		Info:       "2207SIM",
 		ScopeModel: StringToScopeType("2207SIM"),
 	}
-	cycles, inter, err := ps.etsTimes(200)
+	cycles, inter, err := ps.EtsTimes(200)
 	assert.NoError(t, err)
 	assert.Equal(t, int16(10), inter)
 	assert.Equal(t, int16(20), cycles)
@@ -57,6 +57,6 @@ func TestEtsTimes_Unknown(t *testing.T) {
 		ScopeModel: StringToScopeType("UNKNOWN"),
 	}
 
-	_, _, err := ps.etsTimes(200)
+	_, _, err := ps.EtsTimes(200)
 	assert.Error(t, err)
 }

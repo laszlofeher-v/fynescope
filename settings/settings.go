@@ -123,6 +123,8 @@ type (
 		SampleRate        string            `yaml:"samplerate"`
 		SampleRateUnit    string            `yaml:"samplerateunits"`
 		ResolutionMode    string            `yaml:"resolutionmode"`
+		EtsInterleave     int16             `yaml:"etsinterleave"`
+		EtsCycles         int16             `yaml:"etscycles"`
 	}
 	TriggerSettings struct {
 		Mode            string `yaml:"triggermode"`
