@@ -213,9 +213,8 @@ type (
 		scopeScreenWidth            float64
 		timeBaseDec                 uint64
 		minValue                    int32
-		RefreshCallback             func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64,
-			xRoundError, samplingTimeInterval float64)
-		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64)
+		RefreshCallback    func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64, xRoundError float64, samplingTimeInterval float64)
+		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)
 		BufferCallback     func(size int)
 		EtsBufferCallback  func(size int)
 		DisplayStatus      func(s string, errorType ScopeError)

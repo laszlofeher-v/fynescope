@@ -1322,9 +1322,9 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 	}
 
-	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64) {
+	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64, samplingTimeInterval float64) {
 		copy(scp.etsBuffer, etsInBuffer)
-		scp.psControl.RefreshCallback(buffers, nil, nil, 0, xRoundError, 0)
+		scp.psControl.RefreshCallback(buffers, nil, nil, 0, xRoundError, samplingTimeInterval)
 	}
 
 	scp.psControl.RefreshCallback = func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
@@ -1332,6 +1332,11 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
 		scp.controlSamplingTimeInterval = samplingTimeInterval
+
+		if scp.triggerSettingMsg.Mode == control.ETS && scp.etsSamplingRateDisp != nil && samplingTimeInterval > 0 {
+			rateGSs := (1.0 / samplingTimeInterval) / 1e9
+			scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
+		}
 
 		for i := range digitalBuffers {
 			if len(scp.digitalDisplayBuffer) > i {

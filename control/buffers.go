@@ -162,7 +162,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 
 	if ets {
 		psControl.triggerTimeOffset = 0
-		psControl.RefreshEtsCallback(psControl.receiveBuffer, psControl.EtsInBuffer[:psControl.numOfSamplesAcquired], psControl.XRoundError)
+		psControl.RefreshEtsCallback(psControl.receiveBuffer, psControl.EtsInBuffer[:psControl.numOfSamplesAcquired], psControl.XRoundError, psControl.SamplingTimeInterval)
 	} else {
 		triggerTimeOffset, timeUnits, err := psControl.Con.GetTriggerTimeOffset64(segmentIndex)
 		if err != nil {
