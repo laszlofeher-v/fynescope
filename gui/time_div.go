@@ -685,7 +685,12 @@ func (scp *ScpDesc) setNotETSTimeDiv() {
 func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception) {
 	prev := scp.triggerSettingMsg.Mode
 	scp.Settings.Trigger.Mode = option
-	if triggerModes[option] == control.ETS {
+	newMode := triggerModes[option]
+	
+	wasRunning := scp.running
+	scp.triggerSettingMsg.Mode = newMode
+	
+	if newMode == control.ETS {
 		if prev != control.ETS {
 			scp.setETSTimeDiv()
 			if scp.boxEtsSettings != nil {
@@ -716,18 +721,6 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			scp.setTrigger(true, genericps.ChA, channel.Trigger.Mv,
 				channel.Trigger.TriggerDirection, autoTriggerMs,
 				float64(scp.Settings.Time.TriggerTimeOffset))
-			if scp.running {
-				err := scp.psControl.Stop()
-				if err != nil {
-					slog.Error("onTriggerModeChange", "stop error:", err)
-					return
-				}
-				err = scp.psControl.SetETSMode()
-				if err != nil {
-					slog.Error("onTriggerModeChange", "SetETSMode error:", err)
-					return
-				}
-			}
 		}
 	} else {
 		if prev == control.ETS {
@@ -750,36 +743,50 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			for i := range scp.channelViewers {
 				scp.channelViewers[i].triggerCheckbox.Enable()
 			}
-			err := scp.psControl.Stop()
-			if err != nil {
-				slog.Error("onTriggerModeChange", "stop error:", err)
-				return
-			}
-			err = scp.psControl.SetBlockMode()
-			if err != nil {
-				slog.Error("onTriggerModeChange", "SetBlockMode error:", err)
-				return
-			}
 		}
-		if triggerModes[option] == control.Single {
+		if newMode == control.Single {
 			if scp.running {
-				err := scp.psControl.Stop()
-				if err != nil {
-					slog.Error("onTriggerModeChange", "stop error:", err)
-					return
-				}
 				scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 				scp.running = false
 			}
 		}
 	}
-	scp.triggerSettingMsg.Mode = triggerModes[option]
+
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
-	go func(t control.TriggerDescMsg) {
+
+	go func(t control.TriggerDescMsg, mode control.TriggerModes, p control.TriggerModes, running bool) {
 		scp.psControl.SetTriggerCh <- &t
 		<-t.Done
-	}(triggerCopy)
+
+		if mode == control.ETS {
+			if p != control.ETS && running {
+				err := scp.psControl.Stop()
+				if err == nil {
+					err = scp.psControl.SetETSMode()
+				}
+				if err != nil {
+					slog.Error("onTriggerModeChange", "ETS error:", err)
+				}
+			}
+		} else {
+			if p == control.ETS && running {
+				err := scp.psControl.Stop()
+				if err == nil {
+					err = scp.psControl.SetBlockMode()
+				}
+				if err != nil {
+					slog.Error("onTriggerModeChange", "BlockMode error:", err)
+				}
+			} else if mode == control.Single && running {
+				err := scp.psControl.Stop()
+				if err != nil {
+					slog.Error("onTriggerModeChange", "stop error:", err)
+				}
+			}
+		}
+	}(triggerCopy, newMode, prev, wasRunning)
+
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
