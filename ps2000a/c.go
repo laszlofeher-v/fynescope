@@ -520,7 +520,7 @@ func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	nSamples := noOfPreTriggerSamples + noOfPostTriggerSamples
-	if nSamples > 1<<25 { // avoid exception in cgo
+	if nSamples > 1<<29 { // avoid exception in cgo
 		err = fmt.Errorf("RunBlock:  too many required samples %d", nSamples)
 		return
 	}
