@@ -75,6 +75,10 @@ func etsBlockMode(psControl *PscDesc) state {
 			return err
 		}
 
+		// Fetch the latest trigger settings from triggerMonitor so we have up-to-date EtsInterleave/EtsCycles
+		psControl.getTriggerCh <- &psControl.getTrigger
+		<-psControl.getTrigger.newSettings
+
 		psControl.refreshTime = time.Now()
 		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
 		slog.Debug("prepare", "psControl.scopeScreenWidth", psControl.scopeScreenWidth)

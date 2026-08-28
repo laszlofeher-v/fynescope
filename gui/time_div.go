@@ -1733,9 +1733,15 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		
 		cycles := int(scp.Settings.Time.EtsCycles)
 		if cycles < minC {
-			scp.etsCyclesDisp.SetValue(minC)
+			cycles = minC
+			scp.Settings.Time.EtsCycles = int16(cycles)
+			scp.triggerSettingMsg.EtsCycles = int16(cycles)
+			scp.etsCyclesDisp.SilentSetValue(cycles)
 		} else if cycles > maxC {
-			scp.etsCyclesDisp.SetValue(maxC)
+			cycles = maxC
+			scp.Settings.Time.EtsCycles = int16(cycles)
+			scp.triggerSettingMsg.EtsCycles = int16(cycles)
+			scp.etsCyclesDisp.SilentSetValue(cycles)
 		}
 		
 		// Update Effective Sampling Rate Display
@@ -1747,9 +1753,11 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-			scp.psControl.RequestRestart()
+			if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+				scp.psControl.RequestRestart()
+			}
 		}(triggerCopy)
 		scp.SaveSettings()
 	}
@@ -1771,9 +1779,11 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-			scp.psControl.RequestRestart()
+			if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+				scp.psControl.RequestRestart()
+			}
 		}(triggerCopy)
 		scp.SaveSettings()
 	}

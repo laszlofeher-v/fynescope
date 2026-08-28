@@ -71,6 +71,8 @@ func (psControl *PscDesc) triggerMonitor() {
 			a.IntervalType != b.IntervalType ||
 			a.IntervalTimeLower != b.IntervalTimeLower ||
 			a.IntervalTimeUpper != b.IntervalTimeUpper ||
+			a.EtsCycles != b.EtsCycles ||
+			a.EtsInterleave != b.EtsInterleave ||
 			// For complex triggers, check slice lengths and pointer equality to detect updates
 			len(a.ComplexProperties) != len(b.ComplexProperties) ||
 			len(a.ComplexConditions) != len(b.ComplexConditions) ||
@@ -629,7 +631,6 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 // Qualifier (PWQ) in Window mode. The voltage window is defined by the lower and upper
 // ADC threshold values, and the PWQ constrains how long the signal may spend inside that
 // window (i.e. the transition time between the two thresholds).
-//
 func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 	_ = psControl.applyDigitalTrigger()
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
