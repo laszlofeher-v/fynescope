@@ -77,7 +77,7 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		// Fetch the latest trigger settings from triggerMonitor so we have up-to-date EtsInterleave/EtsCycles
 		psControl.getTriggerCh <- &psControl.getTrigger
-		<-psControl.getTrigger.newSettings
+		newSettings := <-psControl.getTrigger.newSettings
 
 		psControl.refreshTime = time.Now()
 		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
@@ -182,10 +182,16 @@ func etsBlockMode(psControl *PscDesc) state {
 		psControl.SamplingTimeInterval = float64(sampleTimePicoseconds) * 1e-12
 		slog.Debug("ETS", "TimeInterval", psControl.SamplingTimeInterval, "psControl.maxScreenTime", psControl.maxScreenTime)
 
-		err = psControl.setTrigger()
-		if err != nil {
-			slog.Error("ETS prepare setTrigger failed", "error", err)
-			return err
+		samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
+		timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout || psControl.triggerSetting.Type == WindowPulseWidth || psControl.triggerSetting.Type == RiseFall
+		if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
+			err = psControl.sendTrigger()
+			if err != nil {
+				slog.Error("ETS prepare sendTrigger failed", "error", err)
+				return err
+			}
+			psControl.initialTriggerSet = true
+			psControl.lastTriggerSamplingInterval = psControl.SamplingTimeInterval
 		}
 
 		rawSampleCount := uint64(math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval))
