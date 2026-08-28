@@ -65,7 +65,7 @@ const (
 	Scope6428E_D
 	Scope6804E
 	Scope6824E
-	Scope2407SIM
+	Scope2407BSIM
 	Scope2407DEMO
 	Scope2207SIM
 	Scope2207DEMO
@@ -198,8 +198,8 @@ func StringToScopeType(s string) ScopeType {
 		return Scope6804E
 	case "6824E":
 		return Scope6824E
-	case "2407SIM":
-		return Scope2407SIM
+	case "2407BSIM":
+		return Scope2407BSIM
 	case "2407DEMO":
 		return Scope2407DEMO
 	case "2207SIM":
@@ -337,8 +337,8 @@ func (t ScopeType) String() string {
 		return "6804E"
 	case Scope6824E:
 		return "6824E"
-	case Scope2407SIM:
-		return "2407SIM"
+	case Scope2407BSIM:
+		return "2407BSIM"
 	case Scope2407DEMO:
 		return "2407DEMO"
 	case Scope2207SIM:
