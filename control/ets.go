@@ -11,7 +11,7 @@ import (
 
 const minEtsRefreshTime = 100 * time.Millisecond
 
-func (psControl *PscDesc) etsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
+func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
 	switch psControl.ScopeModel {
 	case Scope2407B, Scope2407SIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
 		// Specification for 2407B / 2207B / 2000a:
@@ -21,12 +21,28 @@ func (psControl *PscDesc) etsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 		// EtsInterleave <= 40
 		if sampleTimeInPicoSeconds >= 50 && sampleTimeInPicoSeconds <= 1000 {
 			EtsInterleave = int16(math.Round(float64(2000 / sampleTimeInPicoSeconds)))
+			if EtsInterleave > 40 {
+				EtsInterleave = 40
+			}
 			EtsCycles = 2 * EtsInterleave
 		} else {
 			err = fmt.Errorf("etsTimes: sampleTimeInPicoSeconds %d must be between 50 and 1000 for %s", sampleTimeInPicoSeconds, psControl.Info)
 		}
 	default:
 		err = fmt.Errorf("etsTimes: not implemented for variant %s", psControl.Info)
+	}
+	return
+}
+
+func (psControl *PscDesc) GetEtsLimits() (maxInterleave, maxCycles int16) {
+	switch psControl.ScopeModel {
+	case Scope2407B, Scope2407SIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
+		maxInterleave = 40
+		// Since EtsCycles <= EtsInterleave * 10 + 9, maximum possible cycles is:
+		maxCycles = maxInterleave*10 + 9
+	default:
+		maxInterleave = 100
+		maxCycles = 1000
 	}
 	return
 }
@@ -73,7 +89,43 @@ func etsBlockMode(psControl *PscDesc) state {
 			minSampleTimeInPicoseconds = 50
 		}
 
-		etsCycles, etsInterleave, err := psControl.etsTimes(int32(minSampleTimeInPicoseconds))
+		sugCycles, sugInterleave, err := psControl.EtsTimes(int32(minSampleTimeInPicoseconds))
+		
+		etsInterleave := sugInterleave
+		etsCycles := sugCycles
+
+		userInterleave := psControl.triggerSetting.EtsInterleave
+		userCycles := psControl.triggerSetting.EtsCycles
+
+		if userInterleave > 0 && userCycles > 0 {
+			maxInterleave, maxCycles := psControl.GetEtsLimits()
+			
+			// Clamp interleave
+			etsInterleave = userInterleave
+			if etsInterleave > maxInterleave {
+				etsInterleave = maxInterleave
+			}
+			
+			// Re-evaluate max cycles based on the rule for 2000a series: 
+			// EtsCycles <= EtsInterleave * 10 + 9
+			// Note: this rule applies mainly to those specific scope models, 
+			// but we can enforce it if maxCycles is derived this way.
+			dynMaxCycles := etsInterleave*10 + 9
+			if maxCycles != 1000 { // If not the generic default
+				if dynMaxCycles < maxCycles {
+					maxCycles = dynMaxCycles
+				}
+			}
+
+			// Clamp cycles
+			etsCycles = userCycles
+			if etsCycles < etsInterleave {
+				etsCycles = etsInterleave
+			} else if etsCycles > maxCycles {
+				etsCycles = maxCycles
+			}
+		}
+
 		slog.Debug("prepare", "etsCycles", etsCycles, "etsInterleave", etsInterleave, "err", err)
 		if err != nil {
 			slog.Error("ETS prepare: etsTimes failed", "error", err)

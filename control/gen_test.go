@@ -319,18 +319,25 @@ func TestSetGenerator_ArbitraryWaveformSweep(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		select {
-		case msg := <-con.MsgCh:
-			arbMsg, ok := msg.(*genericps.SetSigGenArbitraryMsg)
-			if !ok {
-				t.Errorf("Expected SetSigGenArbitraryMsg, got %T", msg)
-			} else {
-				assert.Equal(t, uint32(200000), arbMsg.DwellCount, "DwellCount should be correctly converted from DwellTime (0.01s * 20MHz = 200000)")
-				assert.Equal(t, storedSetting.SweepType, arbMsg.SweepType)
+		for {
+			select {
+			case msg := <-con.MsgCh:
+				if arbMsg, ok := msg.(*genericps.SetSigGenArbitraryMsg); ok {
+					assert.Equal(t, uint32(200000), arbMsg.DwellCount, "DwellCount should be correctly converted from DwellTime (0.01s * 20MHz = 200000)")
+					assert.Equal(t, storedSetting.SweepType, arbMsg.SweepType)
+					msg.RspCh() <- struct{}{}
+					return
+				} else if _, ok := msg.(*genericps.SigGenFrequencyToPhasenMsg); ok {
+					msg.RspCh() <- struct{}{}
+				} else {
+					t.Errorf("Expected SetSigGenArbitraryMsg, got %T", msg)
+					msg.RspCh() <- struct{}{}
+					return
+				}
+			case <-time.After(1 * time.Second):
+				t.Error("Timeout waiting for SetSigGenArbitraryMsg on Con.MsgCh")
+				return
 			}
-			msg.RspCh() <- struct{}{}
-		case <-time.After(1 * time.Second):
-			t.Error("Timeout waiting for SetSigGenArbitraryMsg on Con.MsgCh")
 		}
 	}()
 
