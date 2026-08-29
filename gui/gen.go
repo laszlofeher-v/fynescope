@@ -159,7 +159,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 	operationOptions := []string{operationNormal, operationPrbs, operationWhiteNoise}
 
 	if scp.psControl != nil {
-		switch scp.psControl.ScopeModel {
+		switch scp.psControl.ScopeModel.Base() {
 		case control.Scope2204A, control.Scope2205A:
 			operationOptions = []string{operationNormal}
 			minAllowedFreq = 0.1

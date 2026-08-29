@@ -65,17 +65,46 @@ const (
 	Scope6428E_D
 	Scope6804E
 	Scope6824E
-	Scope2407BSIM
-	Scope2407DEMO
-	Scope2207SIM
-	Scope2207DEMO
-	Scope2207
-	Scope2207BMSO
-	Scope2208BMSO
 )
 
+const ScopeSimulatedOffset ScopeType = 1000
+
 func StringToScopeType(s string) ScopeType {
-	// Replace " MSO" with "_MSO" and "-" with "_" to match enum names
+	isSim := false
+
+	if strings.HasSuffix(s, "SIM") {
+		isSim = true
+		s = strings.TrimSuffix(s, "SIM")
+		if strings.HasSuffix(s, "MSO") {
+			s = strings.TrimSuffix(s, "MSO")
+			if !strings.HasSuffix(s, "_") && !strings.HasSuffix(s, " ") && !strings.HasSuffix(s, "-") {
+				s += "_"
+			}
+			s += "MSO"
+		}
+	} else if strings.HasSuffix(s, "DEMO") {
+		isSim = true
+		s = strings.TrimSuffix(s, "DEMO")
+	}
+
+	s = strings.ReplaceAll(s, " MSO", "_MSO")
+	s = strings.ReplaceAll(s, "-", "_")
+	s = strings.ReplaceAll(s, " ", "_")
+
+	base := parseBaseScopeType(s)
+	
+	// Fallback for legacy demo/sim names like "2407" or "2207" which are missing the "B"
+	if isSim && base == ScopeUnknown {
+		base = parseBaseScopeType(s + "B")
+	}
+	
+	if isSim && base != ScopeUnknown {
+		return base + ScopeSimulatedOffset
+	}
+	return base
+}
+
+func parseBaseScopeType(s string) ScopeType {
 	s = strings.ReplaceAll(s, " MSO", "_MSO")
 	s = strings.ReplaceAll(s, "-", "_")
 	s = strings.ReplaceAll(s, " ", "_")
@@ -198,26 +227,32 @@ func StringToScopeType(s string) ScopeType {
 		return Scope6804E
 	case "6824E":
 		return Scope6824E
-	case "2407BSIM":
-		return Scope2407BSIM
-	case "2407DEMO":
-		return Scope2407DEMO
-	case "2207SIM":
-		return Scope2207SIM
-	case "2207DEMO":
-		return Scope2207DEMO
-	case "2207":
-		return Scope2207
-	case "2207BMSO":
-		return Scope2207BMSO
-	case "2208BMSO":
-		return Scope2208BMSO
+
 	default:
 		return ScopeUnknown
 	}
 }
 
 func (t ScopeType) String() string {
+	isSim := false
+	if t >= ScopeSimulatedOffset {
+		isSim = true
+		t -= ScopeSimulatedOffset
+	}
+
+	str := formatBaseScopeType(t)
+
+	if isSim && str != "Unknown" {
+		if strings.HasSuffix(str, " MSO") {
+			str = strings.ReplaceAll(str, " MSO", "MSO") + "SIM"
+		} else {
+			str += "SIM"
+		}
+	}
+	return str
+}
+
+func formatBaseScopeType(t ScopeType) string {
 	switch t {
 	case Scope2204A:
 		return "2204A"
@@ -337,21 +372,50 @@ func (t ScopeType) String() string {
 		return "6804E"
 	case Scope6824E:
 		return "6824E"
-	case Scope2407BSIM:
-		return "2407BSIM"
-	case Scope2407DEMO:
-		return "2407DEMO"
-	case Scope2207SIM:
-		return "2207SIM"
-	case Scope2207DEMO:
-		return "2207DEMO"
-	case Scope2207:
-		return "2207"
-	case Scope2207BMSO:
-		return "2207BMSO"
-	case Scope2208BMSO:
-		return "2208BMSO"
+
 	default:
 		return "Unknown"
+	}
+}
+
+// Base returns the underlying real scope model if the type is a simulated or demo version.
+// For real scopes, it returns the scope type itself.
+func (t ScopeType) Base() ScopeType {
+	if t >= ScopeSimulatedOffset {
+		return t - ScopeSimulatedOffset
+	}
+	
+	s := formatBaseScopeType(t)
+	if !strings.Contains(s, "SIM") && !strings.Contains(s, "DEMO") {
+		return t
+	}
+
+	s = strings.ReplaceAll(s, "SIM", "")
+	if strings.HasSuffix(s, "DEMO") {
+		s = strings.ReplaceAll(s, "DEMO", "B")
+	}
+	
+	// Ensure MSO suffix is properly formatted for StringToScopeType
+	s = strings.ReplaceAll(s, "BMSO", "B MSO")
+
+	base := StringToScopeType(s)
+	if base == ScopeUnknown {
+		return t
+	}
+	return base
+}
+
+// IsETSCapable returns true if the scope type supports Equivalent Time Sampling (ETS).
+// This includes simulated and MSO versions of ETS-capable scopes.
+func (t ScopeType) IsETSCapable() bool {
+	switch t.Base() {
+	case Scope2407B, Scope2207B, Scope2408B, Scope2208B:
+		return true
+	default:
+		s := t.Base().String()
+		if strings.Contains(s, "2407") || strings.Contains(s, "2207") || strings.Contains(s, "2408") || strings.Contains(s, "2208") {
+			return true
+		}
+		return false
 	}
 }
