@@ -299,7 +299,8 @@ type (
 		activeRasterContainer      *fyne.Container
 		digitalRasterContainer     *fyne.Container
 		digitalRaster              *digitalRaster
-		mainSplit                  *container.Split
+		digitalVSplit              *container.Split
+		mainSplit                  *fyne.Container
 		mouseX, mouseY             float32
 		lastSaveDir                fyne.ListableURI
 		gifRecording               bool
@@ -867,12 +868,9 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
 	scp.digitalRasterContainer, scp.digitalRaster = scp.newDigitalRaster(scp.Window)
-	scp.mainSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
-	if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
-		scp.mainSplit.Offset = 0.7
-	} else {
-		scp.mainSplit.Offset = 1.0
-	}
+	scp.digitalVSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
+	scp.digitalVSplit.Offset = 0.7
+	scp.mainSplit = container.NewMax(scp.activeRasterContainer)
 	scp.updateDigitalSplit()
 	scp.updateDigitalTrigger()
 
@@ -1418,16 +1416,17 @@ func (scp *ScpDesc) updateDigitalSplit() {
 		return
 	}
 	if scp.IsMSO && (scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled) {
-		scp.mainSplit.Offset = 0.7
-		if scp.digitalRasterContainer != nil {
-			scp.digitalRasterContainer.Show()
+		// Show the VSplit (analog top + digital bottom, mouse-draggable divider).
+		if scp.digitalVSplit.Offset <= 0 || scp.digitalVSplit.Offset >= 1.0 {
+			scp.digitalVSplit.Offset = 0.7
 		}
+		scp.mainSplit.Objects = []fyne.CanvasObject{scp.digitalVSplit}
 	} else {
-		scp.mainSplit.Offset = 1.0
-		if scp.digitalRasterContainer != nil {
-			scp.digitalRasterContainer.Hide()
-		}
+		// Digital off: analog container fills the entire area, no divider.
+		scp.mainSplit.Objects = []fyne.CanvasObject{scp.activeRasterContainer}
 	}
+	scp.mainSplit.Layout = layout.NewMaxLayout()
+	scp.mainSplit.Refresh()
 	if scp.digitalRaster != nil {
 		scp.digitalRaster.refresh()
 	}
