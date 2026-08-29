@@ -1563,6 +1563,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 
 	scp.boxTriggerHysteresisDisp = container.New(&tightHBoxLayout{gap: -25},
 		scp.triggerHysteresisDisp, scp.triggerLowerHysteresisDisp)
+	scp.boxTriggerHysteresisDisp.MinSize() // pre-measure before any hide
 	if triggerTypes[scp.Settings.Trigger.Type] == control.Simple {
 		scp.boxTriggerHysteresisDisp.Hide()
 	}
@@ -1707,6 +1708,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.boxIntervalTimeSingle = container.New(layout.NewVBoxLayout(), scp.intervalTimeSingleDisp)
 	boxIntervalTimeValues := container.New(&fixedMaxLayout{}, scp.boxIntervalTimeSingle, scp.boxIntervalTimeRange)
 	scp.boxTriggerIntervalDisp = container.New(layout.NewVBoxLayout(), boxIntervalTypeUnit, boxIntervalTimeValues)
+	scp.boxTriggerIntervalDisp.MinSize() // pre-measure before any hide
 	if triggerTypes[scp.Settings.Trigger.Type] != control.Interval && triggerTypes[scp.Settings.Trigger.Type] != control.PulseWidth && triggerTypes[scp.Settings.Trigger.Type] != control.Dropout && triggerTypes[scp.Settings.Trigger.Type] != control.WindowDropout {
 		scp.boxTriggerIntervalDisp.Hide()
 	} else {
@@ -1808,15 +1810,26 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.MaxSamplingRate) / 1e9
 	scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 
-	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
-	if triggerModes[scp.Settings.Trigger.Mode] != control.ETS {
-		scp.boxEtsSettings.Hide()
-		scp.etsSamplingRateDisp.Hide()
-	}
-
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
 	boxThresh := container.New(&tightHBoxLayout{gap: -25}, scp.triggerThresholdDisp, scp.triggerLowerThresholdDisp, scp.etsSamplingRateDisp)
-	scp.triggerDisplays = container.New(&fixedVBoxLayout{}, boxMode, scp.boxEtsSettings, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerIntervalDisp)
+	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
+
+	// Build the stable container with ALL rows visible so that MinSize() is
+	// called while every child can report its full height. The ratchet in
+	// stableVBoxLayout will capture those heights before we hide any rows.
+	scp.triggerDisplays = container.New(&stableVBoxLayout{}, boxMode, scp.boxEtsSettings, boxThresh, scp.boxTriggerHysteresisDisp, scp.boxTriggerIntervalDisp)
+
+	// Temporarily show all optional rows, call MinSize to pre-populate the
+	// ratchet, then hide them all. The caller (newTimeDivSettings) invokes
+	// updateTriggerUIForType() which will set the correct visibility state.
+	scp.boxEtsSettings.Show()
+	scp.boxTriggerHysteresisDisp.Show()
+	scp.boxTriggerIntervalDisp.Show()
+	scp.triggerDisplays.MinSize() // seed ratchet while all rows are visible
+	scp.boxEtsSettings.Hide()
+	scp.etsSamplingRateDisp.Hide()
+	scp.boxTriggerHysteresisDisp.Hide()
+	scp.boxTriggerIntervalDisp.Hide()
 	return scp.triggerDisplays, nil
 }
 
