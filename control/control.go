@@ -424,7 +424,11 @@ func (psControl *PscDesc) SuggestSampleCount(sc uint64) {
 
 func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 	psControl.getNumOfEnabledCh <- &psControl.getNumOfEnabled
-	return <-psControl.getNumOfEnabled.n
+	n = <-psControl.getNumOfEnabled.n
+	if psControl.digitalPortsEnabled[0].Load() || psControl.digitalPortsEnabled[1].Load() {
+		n++
+	}
+	return
 }
 
 func (psControl *PscDesc) NewChannels(numberOfChannels int) {
