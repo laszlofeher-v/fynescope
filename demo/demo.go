@@ -372,6 +372,14 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			maxIter = calcIter
 		}
 	}
+
+	if (digitalGenPort0Enabled.Load() || digitalGenPort1Enabled.Load()) && digitalGenFrequency > 0 && timeIntervalNanoseconds > 0 {
+		samplesPerPeriod := 1.0 / (digitalGenFrequency * timeIntervalNanoseconds * 1e-9)
+		calcIter := int(samplesPerPeriod * 2.5)
+		if calcIter > maxIter {
+			maxIter = calcIter
+		}
+	}
 	if maxIter > maxTriggerTest {
 		maxIter = maxTriggerTest
 	}
