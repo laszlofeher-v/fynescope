@@ -19,9 +19,10 @@ import (
 )
 
 type digitalRaster struct {
-	scp    *ScpDesc
-	raster *canvas.Raster
-	window fyne.Window
+	scp      *ScpDesc
+	raster   *canvas.Raster
+	tappable *tappableDigitalRaster
+	window   fyne.Window
 
 	showInspector bool
 	mouseX        float32
@@ -36,6 +37,7 @@ func (scp *ScpDesc) newDigitalRaster(window fyne.Window) (*fyne.Container, *digi
 
 	dr.raster = canvas.NewRaster(dr.generate)
 	tappable := newTappableDigitalRaster(dr)
+	dr.tappable = tappable
 
 	return container.NewMax(container.NewClip(tappable)), dr
 }

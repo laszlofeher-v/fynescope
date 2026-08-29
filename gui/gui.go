@@ -868,6 +868,9 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)
 	scp.digitalRasterContainer, scp.digitalRaster = scp.newDigitalRaster(scp.Window)
+	if scp.digitalRaster.tappable != nil {
+		addToTest(scp.digitalRaster.tappable, digitalRasterId, ftTabIndex)
+	}
 	scp.digitalVSplit = container.NewVSplit(scp.activeRasterContainer, scp.digitalRasterContainer)
 	scp.digitalVSplit.Offset = 0.7
 	scp.mainSplit = container.NewMax(scp.activeRasterContainer)
