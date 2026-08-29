@@ -72,6 +72,7 @@ const (
 	fvVRangeId                     = "fvVRange"
 	fvX10Id                        = "fvX10"
 	ffRasterId                     = "ffRaster"
+	digitalRasterId                = "digitalRaster"
 	fullScreenId                   = "fullScreen"
 	restoreScreenId                = "restoreScreen"
 	changeSideId                   = "changeSide"
