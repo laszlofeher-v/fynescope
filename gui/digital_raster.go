@@ -223,6 +223,22 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		}
 	}
 
+	if dr.scp.Settings.Digital.Trigger.Enabled {
+		triggerTimeOffset := dr.scp.Settings.Time.TriggerTimeOffset
+		if dr.scp.timeZoomWindow != nil {
+			triggerTimeOffset -= dr.scp.timeZoomBoxOffset
+		}
+		triggerX := float64(minX) + float64(triggerTimeOffset)*signalW/maxScreenTime
+
+		if triggerX >= float64(minX) && triggerX <= float64(maxX) {
+			xInt := int(math.Round(triggerX))
+			lineCol := dr.scp.theme.Color(theme.ColorNameForeground, 0)
+			for y := 0; y < h; y++ {
+				img.Set(xInt, y, lineCol)
+			}
+		}
+	}
+
 	if dr.showInspector {
 		crosscol := color.RGBA{180, 180, 180, 180}
 		mx := int(dr.mouseX)
@@ -390,3 +406,23 @@ func (t *tappableDigitalRaster) MouseIn(event *desktop.MouseEvent) {
 }
 
 func (t *tappableDigitalRaster) MouseOut() {}
+
+func (t *tappableDigitalRaster) Dragged(event *fyne.DragEvent) {
+	if !t.dr.scp.Settings.Digital.Trigger.Enabled {
+		return
+	}
+	dx := event.Dragged.DX
+	t.dr.scp.addFtXOffset(float64(dx))
+	t.dr.scp.setTriggerTime(t.dr.scp.Settings.Time.TriggerTimeOffset)
+	t.dr.scp.clearAllFtPersistentLayers()
+	t.dr.scp.clearAllDftPersistentLayers()
+	if t.dr.scp.ftBottomLabelViewer != nil {
+		t.dr.scp.ftBottomLabelViewer.(*timeLabelViewer).enableRefresh()
+	}
+	if t.dr.scp.timeZoomBottomLabelViewer != nil {
+		t.dr.scp.timeZoomBottomLabelViewer.(*timeLabelViewer).enableRefresh()
+	}
+	t.dr.scp.refreshRasters()
+}
+
+func (t *tappableDigitalRaster) DragEnd() {}
