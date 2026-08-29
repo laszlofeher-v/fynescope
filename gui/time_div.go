@@ -1801,7 +1801,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.etsSamplingRateDisp, err = disp7.NewCustomDisp7Array(4, 1, 9999, 0,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window, triggerColor, disp7.ReadOnly,
 		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
-		1, disp7.DefaultVCursorSpace, "Eff:", "GS/s")
+		1, disp7.DefaultVCursorSpace, "Eff:", " GS/s")
 	if err != nil {
 		return nil, err
 	}
