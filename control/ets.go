@@ -12,8 +12,7 @@ import (
 const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
-	switch psControl.ScopeModel {
-	case Scope2407B, Scope2407BSIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
+	if psControl.ScopeModel.IsETSCapable() {
 		// Specification for 2407B / 2207B / 2000a:
 		// Sample time = 2000 / EtsInterleave
 		// EtsCycles >= EtsInterleave
@@ -40,18 +39,17 @@ func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, Et
 		} else {
 			err = fmt.Errorf("etsTimes: sampleTimeInPicoSeconds %d must be between 50 and 1000 for %s", sampleTimeInPicoSeconds, psControl.Info)
 		}
-	default:
+	} else {
 		err = fmt.Errorf("etsTimes: not implemented for variant %s", psControl.Info)
 	}
 	return
 }
 
 func (psControl *PscDesc) GetEtsLimits() (maxInterleave, maxCycles int16) {
-	switch psControl.ScopeModel {
-	case Scope2407B, Scope2407BSIM, Scope2407DEMO, Scope2207B, Scope2207SIM, Scope2207DEMO, Scope2207, Scope2207BMSO, Scope2208B, Scope2208BMSO, Scope2408B:
+	if psControl.ScopeModel.IsETSCapable() {
 		maxInterleave = 40
 		maxCycles = 500
-	default:
+	} else {
 		maxInterleave = 100
 		maxCycles = 1000
 	}
