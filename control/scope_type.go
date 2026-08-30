@@ -408,14 +408,22 @@ func (t ScopeType) Base() ScopeType {
 // IsETSCapable returns true if the scope type supports Equivalent Time Sampling (ETS).
 // This includes simulated and MSO versions of ETS-capable scopes.
 func (t ScopeType) IsETSCapable() bool {
-	switch t.Base() {
-	case Scope2407B, Scope2207B, Scope2408B, Scope2208B:
-		return true
-	default:
-		s := t.Base().String()
-		if strings.Contains(s, "2407") || strings.Contains(s, "2207") || strings.Contains(s, "2408") || strings.Contains(s, "2208") {
-			return true
-		}
+	base := t.Base()
+	if base == ScopeUnknown {
 		return false
 	}
+	
+	baseStr := base.String()
+	
+	// Disable for 4000 family
+	if strings.HasPrefix(baseStr, "4") {
+		return false
+	}
+	
+	// Disable for non-A/non-B legacy PS2203/PS2204
+	if baseStr == "2203" || baseStr == "2204" {
+		return false
+	}
+	
+	return true
 }

@@ -12,47 +12,38 @@ import (
 const minEtsRefreshTime = 100 * time.Millisecond
 
 func (psControl *PscDesc) EtsTimes(sampleTimeInPicoSeconds int32) (EtsCycles, EtsInterleave int16, err error) {
-	if psControl.ScopeModel.IsETSCapable() {
-		// Specification for 2407B / 2207B / 2000a:
-		// Sample time = 2000 / EtsInterleave
-		// EtsCycles >= EtsInterleave
-		// EtsCycles <= EtsInterleave * 10 + 9
-		// EtsInterleave <= 40
-		if sampleTimeInPicoSeconds >= 50 && sampleTimeInPicoSeconds <= 1000 {
-			desiredEffectiveRate := 1e12 / float64(sampleTimeInPicoSeconds)
-			interleaveFloat := desiredEffectiveRate / float64(psControl.MaxSamplingRate)
-			EtsInterleave = int16(math.Round(interleaveFloat))
+	// Specification for 2407B / 2207B / 2000a:
+	// Sample time = 2000 / EtsInterleave
+	// EtsCycles >= EtsInterleave
+	// EtsCycles <= EtsInterleave * 10 + 9
+	// EtsInterleave <= 40
+	if sampleTimeInPicoSeconds >= 50 && sampleTimeInPicoSeconds <= 1000 {
+		desiredEffectiveRate := 1e12 / float64(sampleTimeInPicoSeconds)
+		interleaveFloat := desiredEffectiveRate / float64(psControl.MaxSamplingRate)
+		EtsInterleave = int16(math.Round(interleaveFloat))
 
-			maxInterleave, maxCycles := psControl.GetEtsLimits()
-			if EtsInterleave > maxInterleave {
-				EtsInterleave = maxInterleave
-			}
-			if EtsInterleave < 1 {
-				EtsInterleave = 1
-			}
+		maxInterleave, maxCycles := psControl.GetEtsLimits()
+		if EtsInterleave > maxInterleave {
+			EtsInterleave = maxInterleave
+		}
+		if EtsInterleave < 1 {
+			EtsInterleave = 1
+		}
 
-			EtsCycles = 2 * EtsInterleave
+		EtsCycles = 2 * EtsInterleave
 
-			if EtsCycles > maxCycles {
-				EtsCycles = maxCycles
-			}
-		} else {
-			err = fmt.Errorf("etsTimes: sampleTimeInPicoSeconds %d must be between 50 and 1000 for %s", sampleTimeInPicoSeconds, psControl.Info)
+		if EtsCycles > maxCycles {
+			EtsCycles = maxCycles
 		}
 	} else {
-		err = fmt.Errorf("etsTimes: not implemented for variant %s", psControl.Info)
+		err = fmt.Errorf("etsTimes: sampleTimeInPicoSeconds %d must be between 50 and 1000 for %s", sampleTimeInPicoSeconds, psControl.Info)
 	}
 	return
 }
 
 func (psControl *PscDesc) GetEtsLimits() (maxInterleave, maxCycles int16) {
-	if psControl.ScopeModel.IsETSCapable() {
-		maxInterleave = 40
-		maxCycles = 500
-	} else {
-		maxInterleave = 100
-		maxCycles = 1000
-	}
+	maxInterleave = 40
+	maxCycles = 500
 	return
 }
 

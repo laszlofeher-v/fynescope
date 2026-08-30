@@ -794,6 +794,35 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	scp.SaveSettings()
 }
 
+func (scp *ScpDesc) updateTriggerModeOptions() {
+	if scp.triggerModeSelect == nil {
+		return
+	}
+
+	isEtsCapable := false
+	if scp.psControl != nil {
+		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
+		if isEtsCapable && scp.psControl.ScopeModel.Base() == control.Scope2205A_MSO {
+			if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+				isEtsCapable = false
+			}
+		}
+	}
+
+	var activeTriggerModes []string
+	if isEtsCapable {
+		activeTriggerModes = triggerModeOptions
+	} else {
+		activeTriggerModes = []string{settings.TriggerModeAuto, settings.TriggerModeRepeat, settings.TriggerModeSingle}
+	}
+
+	scp.triggerModeSelect.SetOptions(activeTriggerModes)
+
+	if !isEtsCapable && scp.Settings.Trigger.Mode == settings.TriggerModeETS {
+		scp.triggerModeSelect.SetSelected(settings.TriggerModeRepeat)
+	}
+}
+
 func (scp *ScpDesc) updateTriggerSourceState(option string) {
 	if scp.triggerSource == dontCare || int(scp.triggerSource) >= len(scp.Settings.Channels) {
 		return
@@ -1576,8 +1605,25 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.triggerLowerHysteresisDisp.Hide()
 	}
 
-	scp.triggerModeSelect = selectscroll.NewSelectScroll(triggerModeOptions,
-		scp.onTriggerModeChange, triggerModeOptions[2])
+	var activeTriggerModes []string
+	isEtsCapable := false
+	if scp.psControl != nil {
+		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
+		if isEtsCapable && scp.psControl.ScopeModel.Base() == control.Scope2205A_MSO {
+			if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+				isEtsCapable = false
+			}
+		}
+	}
+
+	if isEtsCapable {
+		activeTriggerModes = triggerModeOptions
+	} else {
+		activeTriggerModes = []string{settings.TriggerModeAuto, settings.TriggerModeRepeat, settings.TriggerModeSingle}
+	}
+
+	scp.triggerModeSelect = selectscroll.NewSelectScroll(activeTriggerModes,
+		scp.onTriggerModeChange, settings.TriggerModeRepeat)
 	addToTest(scp.triggerModeSelect, triggerModeSelectId, -1)
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
