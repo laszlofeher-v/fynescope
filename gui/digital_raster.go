@@ -143,13 +143,6 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 			}
 		}
 	}
-	// Recompute signal width after possible minX expansion.
-	if maxX > minX {
-		signalW = float64(maxX-minX) - 1
-	}
-	if signalW <= 0 {
-		signalW = 1
-	}
 
 	// Draw vertical time-division grid lines now that minX is finalised.
 	// Lines that fall inside the label margin (x < minX) are suppressed.
@@ -167,7 +160,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		maxScreenTime = 1
 	}
 
-	unit := signalW / maxScreenTime
+	unit := float64(w - 1) / maxScreenTime
 	deltaT := unit * dr.scp.controlSamplingTimeInterval
 
 	leftPadding := float64(control.LeftOut)
@@ -232,7 +225,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				isHigh := false
 				sampleIdx := -1
 				if samples > 0 && deltaT > 0 {
-					sampleIdx = int(math.Round((float64(x) - float64(minX) - t0) / deltaT))
+					sampleIdx = int(math.Round((float64(x) - t0) / deltaT))
 					if sampleIdx >= 0 && sampleIdx < samples {
 						val := buf[sampleIdx]
 						if (val & (1 << c)) != 0 {
@@ -253,7 +246,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				}
 
 				if x > minX && samples > 0 && deltaT > 0 {
-					prevSampleIdx := int(math.Round((float64(x-1) - float64(minX) - t0) / deltaT))
+					prevSampleIdx := int(math.Round((float64(x-1) - t0) / deltaT))
 					if sampleIdx >= 0 && sampleIdx < samples && prevSampleIdx >= 0 && prevSampleIdx < samples {
 						prevVal := buf[prevSampleIdx]
 						val := buf[sampleIdx]
@@ -276,7 +269,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		if dr.scp.timeZoomWindow != nil {
 			triggerTimeOffset -= dr.scp.timeZoomBoxOffset
 		}
-		triggerX := float64(minX) + float64(triggerTimeOffset)*signalW/maxScreenTime
+		triggerX := float64(triggerTimeOffset) * unit
 
 		if triggerX >= float64(minX) && triggerX <= float64(maxX) {
 			xInt := int(math.Round(triggerX))
@@ -295,7 +288,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 			img.Set(mx, i, crosscol)
 		}
 
-		idxF := (float64(mx) - float64(minX) - t0) / deltaT
+		idxF := (float64(mx) - t0) / deltaT
 		idx := int(math.Round(idxF))
 
 		timeAtCursor := (float64(idx)-leftPadding)*dr.scp.controlSamplingTimeInterval - dr.scp.Settings.Time.TriggerTimeOffset
