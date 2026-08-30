@@ -29,6 +29,13 @@ func blockMode(psControl *PscDesc) state {
 	} //end callbackBlock
 
 	prepare := func() (err error) {
+		// Ensure the hardware is stopped before reconfiguring.
+		// quit() is asynchronous; without this explicit Stop the hardware
+		// may still be running (e.g. in ETS mode) when SetEts(Off) is called,
+		// causing PICO_TRIGGER_ERROR on the subsequent RunBlock.
+		if stopErr := psControl.Con.Stop(); stopErr != nil {
+			slog.Debug("prepare Stop", "err", stopErr)
+		}
 		// Disable ETS on hardware BEFORE configuring the trigger.
 		// The SDK raises PICO_TRIGGER_ERROR if trigger properties are set
 		// while ETS is still active (e.g. after returning from ETS mode).
