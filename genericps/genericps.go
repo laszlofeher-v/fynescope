@@ -975,7 +975,7 @@ func (c Connection) Send(msg Message) {
 	// Use a per-call channel to avoid a race where a stale signal in the
 	// shared c.RspCh (capacity 1) could unblock Send() before the worker
 	// has populated the response fields.
-	rspCh := make(chan struct{})
+	rspCh := make(chan struct{}, 1)
 	msg.SetHandle(c.Handle)
 	msg.SetRspCh(rspCh)
 	select {

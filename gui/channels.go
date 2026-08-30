@@ -1021,9 +1021,6 @@ func (scp *ScpDesc) newChannelPanels(container *fyne.Container) {
 	slog.Debug("newChannelPanels")
 	scp.psControl.NewChannels(int(scp.channelCount))
 	for i := range scp.channelViewers {
-		if i > 0 {
-			container.Add(layout.NewSpacer())
-		}
 		container.Add(scp.newChannel(genericps.ChannelId(i)))
 	}
 }
