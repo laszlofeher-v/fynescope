@@ -13,6 +13,7 @@ import (
 func TestStreamModeTransition(t *testing.T) {
 	con := genericps.NewConnection()
 	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	con.Handle = handle
 	if err != nil {
 		t.Fatalf("Failed to open simulator: %v", err)
 	}
