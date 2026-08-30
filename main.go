@@ -56,6 +56,7 @@ var thirdPartyLicenses string
 // This is used for targeted debugging of specific components.
 var (
 	debugOn = map[string]bool{
+		"gui/digital_raster.go":              false,
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
