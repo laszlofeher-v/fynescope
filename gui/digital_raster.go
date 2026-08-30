@@ -114,6 +114,16 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 	channelHeight := float64(h) / float64(activeChannels)
 
+	// Scale the label font so it fits within each channel row.
+	// Use ~65% of the row height, clamped to [8, fontSize].
+	labelFontSize := channelHeight * 0.65
+	if labelFontSize > float64(fontSize) {
+		labelFontSize = float64(fontSize)
+	}
+	if labelFontSize < 8 {
+		labelFontSize = 8
+	}
+
 	maxScreenTime := dr.scp.maxScreenTime
 	if maxScreenTime <= 0 {
 		maxScreenTime = 1
@@ -175,10 +185,10 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					}
 					label += " " + l
 				}
-				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label)
+				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label, labelFontSize)
 				_ = lblLeft
 				_ = lblRight
-				dr.scp.addLabel(img, 6, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, 12)
+				dr.scp.addLabel(img, 6, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, labelFontSize)
 			}
 
 			for x := minX; x <= maxX && x < w; x++ {
