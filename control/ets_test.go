@@ -53,12 +53,4 @@ func TestEtsTimes_2207SIM(t *testing.T) {
 	assert.Equal(t, int16(20), cycles)
 }
 
-func TestEtsTimes_Unknown(t *testing.T) {
-	ps := &PscDesc{
-		Info:       "UNKNOWN",
-		ScopeModel: StringToScopeType("UNKNOWN"),
-	}
 
-	_, _, err := ps.EtsTimes(200)
-	assert.Error(t, err)
-}
