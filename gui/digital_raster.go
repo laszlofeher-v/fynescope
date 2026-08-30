@@ -177,9 +177,9 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		triggerOffsetSeconds = expectedOffset
 	}
 
-	t0 := (-leftPadding*dr.scp.controlSamplingTimeInterval +
-		float64(dr.scp.controlXRoundError) +
-		triggerOffsetSeconds) * unit
+	t0 := (-leftPadding*dr.scp.controlSamplingTimeInterval+
+		float64(dr.scp.controlXRoundError)+
+		triggerOffsetSeconds)*unit + float64(labelOffset)
 
 	if dr.scp.timeZoomWindow != nil {
 		t0 -= dr.scp.timeZoomBoxOffset * unit
