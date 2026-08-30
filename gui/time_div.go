@@ -100,14 +100,14 @@ var (
 		interpolationModeOptions[settings.Dot]:    settings.Dot,
 	}
 	resolutionModeOptions = []string{"Normal", "High-Res", "ED", "Decimate"}
-	intervalTypeOptions = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
+	intervalTypeOptions   = []string{IntervalTypeLessThan, IntervalTypeGreaterThan,
 		IntervalTypeInRange, IntervalTypeOutOfRange}
 	intervalTypes      map[string]genericps.PulseWidthType
 	intervalTypeRevMap map[genericps.PulseWidthType]string
 	// intervalSingleModeTypes are interval types that use a single ΔT value
 	// (only one horizontal trigger point handle and one time disp7 widget).
 	intervalSingleModeTypes map[genericps.PulseWidthType]bool
-	
+
 	resolutionModes map[string]genericps.RatioMode
 )
 
@@ -686,10 +686,10 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	prev := scp.triggerSettingMsg.Mode
 	scp.Settings.Trigger.Mode = option
 	newMode := triggerModes[option]
-	
+
 	wasRunning := scp.running
 	scp.triggerSettingMsg.Mode = newMode
-	
+
 	if newMode == control.ETS {
 		if prev != control.ETS {
 			scp.setETSTimeDiv()
@@ -1778,14 +1778,14 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		}
 		scp.Settings.Time.EtsInterleave = int16(v)
 		scp.triggerSettingMsg.EtsInterleave = int16(v)
-		
+
 		minC := int(2 * v)
 		maxC := int(5 * v)
 		if maxC > int(maxCycles) {
 			maxC = int(maxCycles)
 		}
 		scp.etsCyclesDisp.SetMinMax(minC, maxC)
-		
+
 		cycles := int(scp.Settings.Time.EtsCycles)
 		if cycles < minC {
 			cycles = minC
@@ -1798,13 +1798,13 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 			scp.triggerSettingMsg.EtsCycles = int16(cycles)
 			scp.etsCyclesDisp.SilentSetValue(cycles)
 		}
-		
+
 		// Update Effective Sampling Rate Display
 		if scp.etsSamplingRateDisp != nil {
 			rateGSs := v * float64(scp.psControl.MaxSamplingRate) / 1e9
 			scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 		}
-		
+
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
@@ -1830,7 +1830,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.etsCyclesDisp.OnChanged = func(v float64) {
 		scp.Settings.Time.EtsCycles = int16(v)
 		scp.triggerSettingMsg.EtsCycles = int16(v)
-		
+
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
@@ -1887,23 +1887,21 @@ func (scp *ScpDesc) newTimeDivSettings() (box *fyne.Container, err error) {
 	if err != nil {
 		return nil, err
 	}
-	box = container.New(layout.NewVBoxLayout(), box0 /* box1,*/, triggerUI)
+	box = container.New(layout.NewVBoxLayout(), scp.resSelect, box0, triggerUI)
 	scp.setMaxScreenTime()
 	return box, nil
 }
 
 func (scp *ScpDesc) newSetTimeDivPanel(cnt *fyne.Container) (err error) {
-	cnt.Add(layout.NewSpacer())
 	var timeDivPanel *fyne.Container
 	timeDivPanel, err = scp.newTimeDivSettings()
 
-	overlay := container.New(layout.NewVBoxLayout(),
-		layout.NewSpacer(),
-		container.New(layout.NewHBoxLayout(), layout.NewSpacer(), scp.resSelect),
-	)
-	timeDivPanelWithOverlay := container.NewMax(timeDivPanel, overlay)
-
-	cnt.Add(timeDivPanelWithOverlay)
+	// resBox := container.New(layout.NewHBoxLayout(), layout.NewSpacer(), scp.resSelect)
+	// resBox := container.New(layout.NewHBoxLayout(),  scp.resSelect)
+	// timeDivPanel.Add(scp.resSelect)
+	cnt.Add(timeDivPanel)
+	// cnt.Add(resBox)
+	// cnt.Add(layout.NewSpacer())
 	return
 }
 
