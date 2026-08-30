@@ -271,6 +271,13 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.Settings.Dft.SampleRate = selected
 		scp.syncTimeDivToDft()
 		scp.updateAcquisitionParameters()
+		scp.setDftHDivsX()
+		if scp.dftBottomLabelViewer != nil {
+			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
+		}
+		scp.clearAllDftPersistentLayers()
+		scp.refreshRasters()
+		scp.SaveSettings()
 	}, "100")
 	addToTest(scp.dftSampleRateSelect, dftSampleRateId, dftTabIndex)
 
@@ -294,6 +301,13 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.Settings.Dft.SampleRateUnit = selected
 		scp.syncTimeDivToDft()
 		scp.updateAcquisitionParameters()
+		scp.setDftHDivsX()
+		if scp.dftBottomLabelViewer != nil {
+			scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
+		}
+		scp.clearAllDftPersistentLayers()
+		scp.refreshRasters()
+		scp.SaveSettings()
 	}, selectscroll.UnitMSps)
 	addToTest(scp.dftSampleUnitSelect, dftSampleUnitId, dftTabIndex)
 
