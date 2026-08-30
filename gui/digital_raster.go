@@ -67,39 +67,8 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		return img
 	}
 
-	// Match the horizontal margins and signal area with the analog screen
-	var minX, maxX int
-	var signalW float64
-
-	if dr.scp.ftScopeSignalScreen != nil && dr.scp.ftScopeSignalScreen.Bounds().Dx() > 0 {
-		bounds := dr.scp.ftScopeSignalScreen.Bounds()
-		minX = bounds.Min.X
-		maxX = bounds.Max.X
-		signalW = float64(bounds.Dx()) - 1
-	} else {
-		leftMargin, rightMargin := dr.scp.clipFtChRangeScrs(float32(w), float32(h))
-		minX = int(math.Round(float64(leftMargin)))
-		maxX = int(math.Round(float64(float32(w) - rightMargin)))
-		signalW = float64(maxX-minX) - 1
-	}
-
-	if signalW <= 0 {
-		signalW = 1
-	}
-
-	// Use the same horizontal division positions as the analog raster (ftDivsX).
-	// Because analog and digital rasters have the same total width and same horizontal layout,
-	// ftDivsX contains the exact pixel positions for vertical time lines.
-	dr.scp.setFtHDivsX()
-	gridCol := dr.scp.theme.Color(theme.ColorNameDisabled, 0)
-	for _, divX := range dr.scp.ftDivsX {
-		x := int(math.Round(float64(divX)))
-		if x >= minX && x <= maxX && x >= 0 && x < w {
-			drawVerticalDashedLine(img, float32(x), 0, float32(h), gridCol, 4, 6)
-		}
-	}
-
-	// We have 16 digital channels maximum
+	// Count active channels first — needed for channelHeight/labelFontSize,
+	// which determine how far right minX must be pushed.
 	activeChannels := 0
 	if dr.scp.Settings.Digital.Ports[0].Enabled {
 		activeChannels += 8
@@ -122,6 +91,75 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 	}
 	if labelFontSize < 8 {
 		labelFontSize = 8
+	}
+
+	// Match the horizontal margins and signal area with the analog screen.
+	var minX, maxX int
+	var signalW float64
+
+	if dr.scp.ftScopeSignalScreen != nil && dr.scp.ftScopeSignalScreen.Bounds().Dx() > 0 {
+		bounds := dr.scp.ftScopeSignalScreen.Bounds()
+		minX = bounds.Min.X
+		maxX = bounds.Max.X
+		signalW = float64(bounds.Dx()) - 1
+	} else {
+		leftMargin, rightMargin := dr.scp.clipFtChRangeScrs(float32(w), float32(h))
+		minX = int(math.Round(float64(leftMargin)))
+		maxX = int(math.Round(float64(float32(w) - rightMargin)))
+		signalW = float64(maxX-minX) - 1
+	}
+
+	if signalW <= 0 {
+		signalW = 1
+	}
+
+	// Dynamically expand minX so the widest digital label never overlaps the
+	// signal area.  Labels start at x = labelStartX; we need at least
+	// labelStartX + maxLabelWidth + labelGap pixels of left margin.
+	const (
+		labelStartX = 6
+		labelGap    = 4
+	)
+	for port := 0; port < 2; port++ {
+		if !dr.scp.Settings.Digital.Ports[port].Enabled {
+			continue
+		}
+		for c := 0; c < 8; c++ {
+			if !dr.scp.Settings.Digital.ChannelsEnabled[port*8+c] {
+				continue
+			}
+			lbl := fmt.Sprintf("D%d", port*8+c)
+			if l := dr.scp.Settings.Digital.ChannelLabels[port*8+c]; l != "" {
+				runes := []rune(l)
+				if len(runes) > 6 {
+					l = string(runes[:6])
+				}
+				lbl += " " + l
+			}
+			_, _, lblRight, _ := dr.scp.boundString(lbl, labelFontSize)
+			needed := labelStartX + int(math.Ceil(float64(lblRight))) + labelGap
+			if needed > minX {
+				minX = needed
+			}
+		}
+	}
+	// Recompute signal width after possible minX expansion.
+	if maxX > minX {
+		signalW = float64(maxX-minX) - 1
+	}
+	if signalW <= 0 {
+		signalW = 1
+	}
+
+	// Draw vertical time-division grid lines now that minX is finalised.
+	// Lines that fall inside the label margin (x < minX) are suppressed.
+	dr.scp.setFtHDivsX()
+	gridCol := dr.scp.theme.Color(theme.ColorNameDisabled, 0)
+	for _, divX := range dr.scp.ftDivsX {
+		x := int(math.Round(float64(divX)))
+		if x >= minX && x <= maxX && x >= 0 && x < w {
+			drawVerticalDashedLine(img, float32(x), 0, float32(h), gridCol, 4, 6)
+		}
 	}
 
 	maxScreenTime := dr.scp.maxScreenTime
@@ -175,8 +213,8 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 			lineCol := color.RGBA{R: chColor.R, G: chColor.G, B: chColor.B, A: 255}
 			hatchCol := color.RGBA{R: uint8(float64(chColor.R) * 0.6), G: uint8(float64(chColor.G) * 0.6), B: uint8(float64(chColor.B) * 0.6), A: 8}
 
-			// Draw channel label on the left margin if space is available
-			if minX >= 25 {
+			// Draw channel label; minX has already been expanded to guarantee it fits.
+			if minX > labelStartX {
 				label := fmt.Sprintf("D%d", port*8+c)
 				if l := dr.scp.Settings.Digital.ChannelLabels[port*8+c]; l != "" {
 					runes := []rune(l)
@@ -185,10 +223,8 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					}
 					label += " " + l
 				}
-				lblLeft, lblTop, lblRight, lblBottom := dr.scp.boundString(label, labelFontSize)
-				_ = lblLeft
-				_ = lblRight
-				dr.scp.addLabel(img, 6, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, labelFontSize)
+				_, lblTop, _, lblBottom := dr.scp.boundString(label, labelFontSize)
+				dr.scp.addLabel(img, labelStartX, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, labelFontSize)
 			}
 
 			for x := minX; x <= maxX && x < w; x++ {
