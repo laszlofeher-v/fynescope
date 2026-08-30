@@ -198,6 +198,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		scp.SaveSettings()
 		scp.updateDigitalSplit()
 		scp.updateDigitalTrigger()
+		scp.updateTriggerModeOptions()
 		if scp.digitalRaster != nil {
 			scp.digitalRaster.refresh()
 		}
@@ -208,6 +209,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 	})
 	port0EnableCheck.SetChecked(scp.Settings.Digital.Ports[0].Enabled)
+	addToTest(port0EnableCheck, "digPort0EnableCheck", digPortTabIndex)
 	port0Box.Add(port0EnableCheck)
 
 	port1EnableCheck := widget.NewCheck("Enable Port 1 (D8-D15)", func(v bool) {
@@ -215,6 +217,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		scp.SaveSettings()
 		scp.updateDigitalSplit()
 		scp.updateDigitalTrigger()
+		scp.updateTriggerModeOptions()
 		if scp.digitalRaster != nil {
 			scp.digitalRaster.refresh()
 		}
@@ -225,6 +228,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 	})
 	port1EnableCheck.SetChecked(scp.Settings.Digital.Ports[1].Enabled)
+	addToTest(port1EnableCheck, "digPort1EnableCheck", digPortTabIndex)
 	port1Box.Add(port1EnableCheck)
 
 	for i := 0; i < 16; i++ {
