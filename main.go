@@ -69,6 +69,7 @@ var (
 		"checkcolorpick/check_color_pick.go": false,
 		"genericps/connection.go":            false,
 		"ps2000a/const.go":                   false,
+		"ps2000a/sim_device.go":              false,
 		"ps3000a/const.go":                   false,
 		"ps3000a/connection.go":              false,
 		"settings/consts.go":                 false,

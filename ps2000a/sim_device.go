@@ -2,7 +2,9 @@
 
 package ps2000a
 
-import "fynescope/demo"
+import (
+	"fynescope/demo"
+)
 
 // SimDeviceConfig holds device-specific parameters and behaviors for the simulator.
 type SimDeviceConfig struct {
@@ -22,13 +24,12 @@ func defaultTimebaseToNs(timebase uint32) float32 {
 	return float32(simTimebaseToNs(timebase))
 }
 
-// defaultGetAnalogueOffsetVals matches the logic originally provided.
+// defaultGetAnalogueOffsetVals returns the analogue offset limits for the
+// simulator. The real ps2000aGetAnalogueOffset SDK call is not available in
+// sim mode, so we return the fixed ±20 V limits that simGetAnalogueOffset
+// would produce for a valid handle.
 func defaultGetAnalogueOffsetVals(rangeEnum int32, coupling Coupling) (maxOffset, minOffset float32) {
-	maxOff, minOff, err := simGetAnalogueOffset(0, int(rangeEnum), coupling)
-	if err != nil {
-		return 0.0, 0.0
-	}
-	return float32(maxOff), float32(minOff)
+	return 20.0, -20.0
 }
 
 var defaultSimDeviceConfig = &SimDeviceConfig{

@@ -60,6 +60,12 @@ func etsBlockMode(psControl *PscDesc) state {
 
 	prepare := func() error {
 		slog.Debug("ETS prepare")
+		// Ensure the hardware is stopped before reconfiguring.
+		// quit() is asynchronous; the previous state may still be running
+		// when we call setEverything()/SetEts(Fast).
+		if stopErr := psControl.Con.Stop(); stopErr != nil {
+			slog.Debug("ETS prepare Stop", "err", stopErr)
+		}
 		if err := psControl.setEverything(); err != nil {
 			return err
 		}
