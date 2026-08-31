@@ -302,7 +302,7 @@ func (tp *windowDropoutTriggerPointViewer) scrolled(delta, x, y float32) {
 // threshold, upper hysteresis, and time handles, then calculates hit-test
 // rectangles and draws the lower threshold circle and hysteresis indicator.
 func (tp *windowDropoutTriggerPointViewer) draw() {
-	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
+	if tp.scp.getActiveFunctionIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
 	}
 

@@ -17,7 +17,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 		return
 	}
 
-	if scp.controlTab.SelectedIndex() == ffTabIndex {
+	if scp.getActiveFunctionIndex() == ffTabIndex {
 		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
 			// Simulator mode: only sinus wave, for generators mapped via RLC
 			activeGens := make([]bool, scp.channelCount)

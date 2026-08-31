@@ -297,7 +297,7 @@ func (tl *timeLabelViewer) draw() {
 	if !tl.refreshFlag {
 		return
 	}
-	if tl.scp.controlTab.SelectedIndex() == dftTabIndex {
+	if tl.scp.getActiveFunctionIndex() == dftTabIndex {
 		return
 	}
 	tl.clear()
@@ -1042,7 +1042,7 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 }
 
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
-	if scp.controlTab.SelectedIndex() == ffTabIndex && (option == settings.TriggerTypeInterval ||
+	if scp.getActiveFunctionIndex() == ffTabIndex && (option == settings.TriggerTypeInterval ||
 		option == settings.TriggerTypePulseWidth || option == settings.TriggerTypeDropout || option == settings.TriggerTypeWindowDropout) {
 		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 	} else if scp.status != nil && scp.status.Code() == StatusWrongFfTrigger {

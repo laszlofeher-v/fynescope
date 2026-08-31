@@ -227,7 +227,11 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				_, lblTop, lblRight, lblBottom := dr.scp.boundString(label, labelFontSize)
 				yLbl := int(math.Round(yBase + channelHeight*0.5 - (float64(lblTop+lblBottom) / 2)))
 				dr.scp.addLabel(img, labelStartX, yLbl, label, lineCol, labelFontSize)
-				if dr.scp.Settings.Digital.ChannelNegated[port*8+c] && hasLabel {
+				if dr.scp.Settings.Digital.ChannelNegated[port*8+c] {
+					_, _, dnRight, _ := dr.scp.boundString(dnStr, labelFontSize)
+					drawHorizontalLine(img, float32(labelStartX), float32(labelStartX)+dnRight, float32(yLbl)+lblTop-3, lineCol)
+				}
+				if dr.scp.Settings.Digital.LabelNegated[port*8+c] && hasLabel {
 					_, _, dnRight, _ := dr.scp.boundString(dnStr+"W", labelFontSize)
 					drawHorizontalLine(img, float32(labelStartX)+dnRight, float32(labelStartX)+lblRight, float32(yLbl)+lblTop-3, lineCol)
 				}
@@ -241,9 +245,12 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					sampleIdx = int(math.Round((float64(x) - t0) / deltaT))
 					if sampleIdx >= 0 && sampleIdx < samples {
 						val := buf[sampleIdx]
-						if (val & (1 << c)) != 0 {
+						isHigh = (val & (1 << c)) != 0
+						if dr.scp.Settings.Digital.ChannelNegated[port*8+c] {
+							isHigh = !isHigh
+						}
+						if isHigh {
 							yPos = yHigh
-							isHigh = true
 						}
 					}
 				}

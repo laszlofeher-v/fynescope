@@ -12,7 +12,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 		return
 	}
 
-	effectiveFunction := scp.controlTab.SelectedIndex()
+	effectiveFunction := scp.getActiveFunctionIndex()
 	if scp.controlTab.Selected() == scp.genTab || scp.controlTab.Selected() == scp.filterTab || scp.controlTab.Selected() == scp.extgenTab || scp.controlTab.Selected() == scp.vchTab {
 		effectiveFunction = scp.Settings.Window.LastDispFunction
 	}

@@ -805,7 +805,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 		}
 	}
 
-	if scp.controlTab != nil && scp.controlTab.SelectedIndex() == ffTabIndex {
+	if scp.controlTab != nil && scp.getActiveFunctionIndex() == ffTabIndex {
 		scp.processFfData()
 		if scp.ffRaster != nil {
 			fyne.Do(scp.ffRaster.Refresh)
