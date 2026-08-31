@@ -52,10 +52,10 @@ func TestTimeDiv_SampleUnitUp(t *testing.T) {
 		sampleRateSelect: selectscroll.NewSelectScroll([]string{"1", "2", "3"}, func(s string, e selectscroll.Exception) {}, ""),
 		sampleUnitSelect: selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(s string, e selectscroll.Exception) {}, ""),
 	}
-	
+
 	scp.sampleUnitSelect.SetSelectedIndex(1) // kHz
 	scp.sampleUnitUp()
-	
+
 	assert.Equal(t, 2, scp.sampleRateSelect.SelectedIndex())
 	assert.Equal(t, 0, scp.sampleUnitSelect.SelectedIndex()) // Hz
 }
@@ -66,10 +66,10 @@ func TestTimeDiv_SampleUnitDown(t *testing.T) {
 		sampleRateSelect: selectscroll.NewSelectScroll([]string{"1", "2", "3"}, func(s string, e selectscroll.Exception) {}, ""),
 		sampleUnitSelect: selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(s string, e selectscroll.Exception) {}, ""),
 	}
-	
+
 	scp.sampleUnitSelect.SetSelectedIndex(1) // kHz
 	scp.sampleUnitDown()
-	
+
 	assert.Equal(t, 0, scp.sampleRateSelect.SelectedIndex())
 	assert.Equal(t, 2, scp.sampleUnitSelect.SelectedIndex()) // MHz
 }

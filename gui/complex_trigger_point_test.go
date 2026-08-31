@@ -30,8 +30,8 @@ func setupComplexTriggerScp() *ScpDesc {
 			{displayOffsetInt: 0},
 			{displayOffsetInt: 0},
 		},
-		dftDivsX: []float32{10}, // Just dummy data to prevent nil maps or divisions
-		ftScopeSignalScreen: image.NewRGBA64(image.Rect(0, 0, 800, 600)),
+		dftDivsX:                  []float32{10}, // Just dummy data to prevent nil maps or divisions
+		ftScopeSignalScreen:       image.NewRGBA64(image.Rect(0, 0, 800, 600)),
 		timeZoomScopeSignalScreen: image.NewRGBA64(image.Rect(0, 0, 800, 600)),
 	}
 }

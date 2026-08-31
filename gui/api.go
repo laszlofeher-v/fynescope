@@ -24,10 +24,10 @@ func (scp *ScpDesc) ApplySettingsJSON(data []byte) error {
 	if err := json.Unmarshal(data, scp.Settings); err != nil {
 		return err
 	}
-	
+
 	// Save the new settings to disk.
 	scp.SaveSettings()
-	
+
 	return nil
 }
 

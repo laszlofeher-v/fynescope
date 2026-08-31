@@ -128,7 +128,7 @@ type ChannelTriggerState struct {
 //   - triggerTime: Time offset in seconds where trigger occurred
 func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch ChannelId) float64,
 	reqSamples uint32, maxTime float64, dt float64) (found bool, triggerTime float64) {
-	
+
 	DisablePhaseNoise(true)
 	defer DisablePhaseNoise(false)
 
@@ -370,12 +370,12 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 						exitLevel := signalFunc(t, ChannelId(intervalSourceCh))
 						lower := float64(td.channels[intervalSourceCh].ThresholdLower)
 						upper := float64(td.channels[intervalSourceCh].Threshold)
-						
+
 						enteredFromBelow := intervalEntryLevel < lower
 						enteredFromAbove := intervalEntryLevel > upper
 						exitedToBelow := exitLevel < lower
 						exitedToAbove := exitLevel > upper
-						
+
 						if (enteredFromBelow && exitedToAbove) || (enteredFromAbove && exitedToBelow) {
 							// Ignored! The signal crossed the entire window (full swing).
 							intervalActive = false

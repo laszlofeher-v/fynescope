@@ -10,7 +10,7 @@ import (
 
 func setupPscDescForInterpolationTest() *PscDesc {
 	return &PscDesc{
-		restartChannel: make(chan struct{}, 1),
+		restartChannel:         make(chan struct{}, 1),
 		SetInterpolationModeCh: make(chan settings.InterpolationType),
 		getInterpolationModeCh: make(chan *getInterpolationModeMsg),
 		getInterpolationMode: getInterpolationModeMsg{

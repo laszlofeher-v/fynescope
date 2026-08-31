@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fynescope/genericps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"fynescope/genericps"
 	"strings"
 	"testing"
 )
@@ -115,4 +115,3 @@ func TestSubpackages(t *testing.T) {
 		})
 	}
 }
-

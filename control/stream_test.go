@@ -1,9 +1,9 @@
 package control
 
 import (
+	_ "fynescope/demo"
 	"fynescope/genericps"
 	"fynescope/settings"
-	_ "fynescope/demo"
 	"testing"
 	"time"
 
@@ -44,9 +44,10 @@ func TestStreamModeTransition(t *testing.T) {
 		SetTriggerCh:           make(chan *TriggerDescMsg, 1),
 		getTriggerCh:           make(chan *getTriggerMsg, 1),
 		RefreshCallback: func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
-			xRoundError, samplingTimeInterval float64) {},
-		BufferCallback:         func(size int) {},
-		DisplayStatus:          func(status string, level ScopeError) {},
+			xRoundError, samplingTimeInterval float64) {
+		},
+		BufferCallback: func(size int) {},
+		DisplayStatus:  func(status string, level ScopeError) {},
 	}
 	psControl.StreamEnabled.Store(true)
 	psControl.getChannel.newSettings = make(chan bool, 1)

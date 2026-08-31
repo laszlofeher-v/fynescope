@@ -44,13 +44,13 @@ func TestTriggerPoint_MouseEvents(t *testing.T) {
 	tp.mouseMoved(0, 0) // sets mouseAt = true, but cursor only checks mouseIn(x, y) or selected.
 	_, ok := tp.cursor(0, 0)
 	assert.True(t, ok)
-	
+
 	_, ok = tp.cursor(100, 100)
 	assert.False(t, ok) // not selected and mouse not in
 
 	tp.mouseDown(0, 0, 0, 0)
 	assert.True(t, tp.selected)
-	
+
 	_, ok = tp.cursor(100, 100)
 	assert.True(t, ok) // selected, so cursor should be true even if mouse outside
 
@@ -84,4 +84,3 @@ func TestTriggerPoint_TimeMv2xy(t *testing.T) {
 	assert.NotNil(t, x)
 	assert.NotNil(t, y)
 }
-

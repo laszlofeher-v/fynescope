@@ -16,13 +16,13 @@ import (
 //   - A dedicated lower voltage-threshold trigger point (circle + hysteresis handle)
 //     that defines the bottom boundary of the window, exactly as in windowTriggerPointViewer.
 type windowDropoutTriggerPointViewer struct {
-	intervalTriggerPointViewer        // upper circle + hysteresis + PW time handles
-	lImgRect   image.Rectangle       // lower threshold circle hit-test rect
-	lSelected  bool
-	lMouseAt   bool
-	lhImgRect  image.Rectangle       // lower hysteresis handle hit-test rect
-	lhSelected bool
-	lhMouseAt  bool
+	intervalTriggerPointViewer                 // upper circle + hysteresis + PW time handles
+	lImgRect                   image.Rectangle // lower threshold circle hit-test rect
+	lSelected                  bool
+	lMouseAt                   bool
+	lhImgRect                  image.Rectangle // lower hysteresis handle hit-test rect
+	lhSelected                 bool
+	lhMouseAt                  bool
 }
 
 var (

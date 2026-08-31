@@ -34,7 +34,7 @@ func TestNewWaveformGenerator(t *testing.T) {
 
 func TestWaveforms_Sine(t *testing.T) {
 	gen := NewWaveformGenerator(Sine)
-	
+
 	valZero := gen(0, 1000)
 	if math.Abs(valZero) > 1e-9 {
 		t.Errorf("Sine(0) = %v, expected 0", valZero)
@@ -44,7 +44,7 @@ func TestWaveforms_Sine(t *testing.T) {
 	if math.Abs(valPi2-1.0) > 1e-9 {
 		t.Errorf("Sine(pi/2) = %v, expected 1.0", valPi2)
 	}
-	
+
 	val3Pi2 := gen(3*math.Pi/2, 1000)
 	if math.Abs(val3Pi2-(-1.0)) > 1e-9 {
 		t.Errorf("Sine(3pi/2) = %v, expected -1.0", val3Pi2)
@@ -53,13 +53,13 @@ func TestWaveforms_Sine(t *testing.T) {
 
 func TestWaveforms_HalfSine(t *testing.T) {
 	gen := NewWaveformGenerator(HalfSine)
-	
+
 	// HalfSine uses math.Abs(math.Sin(t/2))
 	valPi := gen(math.Pi, 1000)
 	if math.Abs(valPi-1.0) > 1e-9 {
 		t.Errorf("HalfSine(pi) = %v, expected 1.0", valPi)
 	}
-	
+
 	val3Pi := gen(3*math.Pi, 1000) // math.Sin(3pi/2) is -1, Abs is 1
 	if math.Abs(val3Pi-1.0) > 1e-9 {
 		t.Errorf("HalfSine(3pi) = %v, expected 1.0", val3Pi)
@@ -88,7 +88,7 @@ func TestWaveforms_PrbsGenerator(t *testing.T) {
 	if val0 != 1.0 && val0 != -1.0 {
 		t.Errorf("PRBS generator output must be 1.0 or -1.0, got %v", val0)
 	}
-	
+
 	// Ensure that for the same bit index period, the value is constant
 	val1 := gen(0.5*(2*math.Pi/freq), freq)
 	if val1 != val0 {
@@ -106,7 +106,7 @@ func TestWaveforms_PrbsGenerator(t *testing.T) {
 func TestWaveforms_Square(t *testing.T) {
 	SetRaiseFallTimePercent(0.01) // Ensure default state
 	gen := NewWaveformGenerator(Square)
-	
+
 	valHigh := gen(math.Pi/2, 1000) // In the middle of the high phase
 	if math.Abs(valHigh-(-1.0)) > 1e-9 {
 		t.Errorf("Square(pi/2) = %v, expected -1.0", valHigh)

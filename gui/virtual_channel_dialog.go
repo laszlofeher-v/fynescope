@@ -59,7 +59,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	exprEntry.SetMinRowsVisible(3)
 	errorLabel := widget.NewLabel("")
 	errorLabel.Hide()
-	
+
 	addToTest(nameEntry, vchNameEntryId, vchTabIndex)
 	addToTest(exprEntry, vchExprEntryId, vchTabIndex)
 
@@ -307,7 +307,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		setFlag(scp.tzRepartition)
 		scp.refreshRasters()
 	})
-	
+
 	addToTest(acceptBtn, vchAcceptBtnId, vchTabIndex)
 
 	deleteBtn := widget.NewButton("Delete", func() {
@@ -350,7 +350,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		setFlag(scp.tzRepartition)
 		scp.refreshRasters() // immediately remove the trace from the screen
 	})
-	
+
 	addToTest(deleteBtn, vchDeleteBtnId, vchTabIndex)
 
 	// Undock button: pops the content into a floating window and removes the tab.

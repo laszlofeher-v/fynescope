@@ -66,12 +66,14 @@ const (
 
 // ps2000 doesn't have ThresholdModeId, so use dummy values
 type ThresholdModeId int
+
 const (
 	Level  ThresholdModeId = 0
 	Window ThresholdModeId = 1
 )
 
 type Coupling int
+
 const (
 	Ac Coupling = 0 // C.PS2000_AC // ps2000 actually uses int 0/1 for dc coupling (0 for AC, 1 for DC)
 	Dc Coupling = 1 // C.PS2000_DC
@@ -96,14 +98,14 @@ const (
 type PicoInfo int
 
 const (
-	PicoDriverVersion              PicoInfo = C.PS2000_DRIVER_VERSION
-	PicoUsbVersion                 PicoInfo = C.PS2000_USB_VERSION
-	PicoHardwareVersion            PicoInfo = C.PS2000_HARDWARE_VERSION
-	PicoVariantInfo                PicoInfo = C.PS2000_VARIANT_INFO
-	PicoBatchAndSerial             PicoInfo = C.PS2000_BATCH_AND_SERIAL
-	PicoCalDate                    PicoInfo = C.PS2000_CAL_DATE
-	PicoKernelVersion              PicoInfo = C.PS2000_KERNEL_DRIVER_VERSION
-	PicoDriverPath                 PicoInfo = C.PS2000_DRIVER_PATH
+	PicoDriverVersion   PicoInfo = C.PS2000_DRIVER_VERSION
+	PicoUsbVersion      PicoInfo = C.PS2000_USB_VERSION
+	PicoHardwareVersion PicoInfo = C.PS2000_HARDWARE_VERSION
+	PicoVariantInfo     PicoInfo = C.PS2000_VARIANT_INFO
+	PicoBatchAndSerial  PicoInfo = C.PS2000_BATCH_AND_SERIAL
+	PicoCalDate         PicoInfo = C.PS2000_CAL_DATE
+	PicoKernelVersion   PicoInfo = C.PS2000_KERNEL_DRIVER_VERSION
+	PicoDriverPath      PicoInfo = C.PS2000_DRIVER_PATH
 )
 
 type TimeUnits C.PS2000_TIME_UNITS
@@ -119,6 +121,7 @@ const (
 
 // ps2000 doesn't have ratio modes
 type RatioMode int
+
 const (
 	RatioModeNone      RatioMode = 0
 	RatioModeAggregate RatioMode = 1
@@ -127,10 +130,11 @@ const (
 )
 
 const (
-	MinThresholdDiff       = 100
+	MinThresholdDiff = 100
 )
 
 type TriggerState int
+
 const (
 	CondDontCare TriggerState = C.PS2000_CONDITION_DONT_CARE
 	CondTrue     TriggerState = C.PS2000_CONDITION_TRUE
@@ -139,6 +143,7 @@ const (
 )
 
 type PulseWidthType int
+
 const (
 	PwTypeNone        PulseWidthType = C.PS2000_PW_TYPE_NONE
 	PwTypeLessThan    PulseWidthType = C.PS2000_PW_TYPE_LESS_THAN
@@ -148,6 +153,7 @@ const (
 )
 
 type EtsMode int
+
 const (
 	EtsOff  EtsMode = C.PS2000_ETS_OFF
 	EtsFast EtsMode = C.PS2000_ETS_FAST
@@ -156,16 +162,19 @@ const (
 )
 
 type DigitalChannel int
+
 const (
 	DchMax DigitalChannel = 0
 )
 
 type DigitalDirection int
+
 const (
-	DigitalMaxDirection             DigitalDirection = 0
+	DigitalMaxDirection DigitalDirection = 0
 )
 
 type WaveTypeEnum int32
+
 const (
 	Sine      WaveTypeEnum = C.PS2000_SINE
 	Square    WaveTypeEnum = C.PS2000_SQUARE
@@ -179,6 +188,7 @@ const (
 )
 
 type SweepTypeEnum int32
+
 const (
 	SweepUp       SweepTypeEnum = 0
 	SweepDown     SweepTypeEnum = 1
@@ -188,6 +198,7 @@ const (
 )
 
 type ExtraOperations int
+
 const (
 	EsOff      ExtraOperations = 0
 	WhiteNoise ExtraOperations = 1
@@ -195,6 +206,7 @@ const (
 )
 
 type SigGenTrigType int
+
 const (
 	SigGenRising   SigGenTrigType = 0
 	SigGenFalling  SigGenTrigType = 1
@@ -203,6 +215,7 @@ const (
 )
 
 type SigGenTrigSource int
+
 const (
 	SigGenNone      SigGenTrigSource = 0
 	SigGenScopeTrig SigGenTrigSource = 1
@@ -212,6 +225,7 @@ const (
 )
 
 type IndexMode int
+
 const (
 	Single        IndexMode = 0
 	Dual          IndexMode = 1
@@ -220,12 +234,14 @@ const (
 )
 
 type HoldOffType int
+
 const (
 	HofTime        HoldOffType = 0
 	MaxHoldOffTime HoldOffType = 1
 )
 
 type TriggerOperand int
+
 const (
 	OperandNone TriggerOperand = 0
 	OperandOr   TriggerOperand = 1
@@ -234,6 +250,7 @@ const (
 )
 
 type DigitalPort int
+
 const (
 	Port0           DigitalPort = 0
 	Port1           DigitalPort = 1

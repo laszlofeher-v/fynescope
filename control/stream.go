@@ -10,12 +10,12 @@ import (
 
 func streamMode(psControl *PscDesc) state {
 	var (
-		callbackChannel    chan struct{}
-		nextState          state = idle
-		driverBuffer       [][]int16
+		callbackChannel     chan struct{}
+		nextState           state = idle
+		driverBuffer        [][]int16
 		digitalDriverBuffer [][]int16
-		rollBuffer         [][]int16
-		digitalRollBuffer  [][]int16
+		rollBuffer          [][]int16
+		digitalRollBuffer   [][]int16
 	)
 
 	callbackStream := func(handle int16, noOfSamples int32, startIndex uint32, overflow int16, triggeredAt uint32, triggered, autoStop int16, param any) (err error) {
@@ -41,7 +41,7 @@ func streamMode(psControl *PscDesc) state {
 				// Copy back to display/receive buffer for the GUI/RefreshCallback
 				copy(psControl.receiveBuffer[chIndex], buf)
 			}
-			
+
 			for i := 0; i < 2; i++ {
 				if !psControl.digitalPortsEnabled[i].Load() || len(digitalDriverBuffer) <= i || len(digitalDriverBuffer[i]) == 0 {
 					continue

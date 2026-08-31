@@ -21,7 +21,7 @@ type (
 		selected      bool
 		scp           *ScpDesc
 		isTimeZoom    bool
-		
+
 		displayOffsetFraction float64
 	}
 )

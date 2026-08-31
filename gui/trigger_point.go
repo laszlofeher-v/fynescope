@@ -19,9 +19,9 @@ const triggerPointR = 8
 type (
 	triggerPointViewer struct {
 		rasterPartition
-		scp      *ScpDesc
-		selected bool
-		mouseAt  bool
+		scp        *ScpDesc
+		selected   bool
+		mouseAt    bool
 		isTimeZoom bool
 	}
 )
@@ -161,7 +161,7 @@ func (tp *triggerPointViewer) timeMv2xy(mv int32) (x, y float32) {
 }
 
 func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
-	bounds := tp.signalScreen().Bounds()        // if new position is outside
+	bounds := tp.signalScreen().Bounds()                 // if new position is outside
 	if int(x) < bounds.Min.X || int(x) > bounds.Max.X || // then return
 		int(y) < bounds.Min.Y || int(y) > bounds.Max.Y {
 		return

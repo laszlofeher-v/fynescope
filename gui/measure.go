@@ -635,18 +635,30 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 			}
 		}
 	}
-	
+
 	// Evaluate Virtual Channels
 	var bufA, bufB, bufC, bufD []float32
-	if len(scp.displayBuffers) > 0 { bufA = scp.displayBuffers[0] }
-	if len(scp.displayBuffers) > 1 { bufB = scp.displayBuffers[1] }
-	if len(scp.displayBuffers) > 2 { bufC = scp.displayBuffers[2] }
-	if len(scp.displayBuffers) > 3 { bufD = scp.displayBuffers[3] }
-	
+	if len(scp.displayBuffers) > 0 {
+		bufA = scp.displayBuffers[0]
+	}
+	if len(scp.displayBuffers) > 1 {
+		bufB = scp.displayBuffers[1]
+	}
+	if len(scp.displayBuffers) > 2 {
+		bufC = scp.displayBuffers[2]
+	}
+	if len(scp.displayBuffers) > 3 {
+		bufD = scp.displayBuffers[3]
+	}
+
 	size := 0
-	if len(bufA) > size { size = len(bufA) }
-	if len(bufB) > size { size = len(bufB) }
-	
+	if len(bufA) > size {
+		size = len(bufA)
+	}
+	if len(bufB) > size {
+		size = len(bufB)
+	}
+
 	for i, vch := range scp.Settings.VirtualChannels {
 		if !vch.Enabled || i >= len(scp.virtualChannelEngines) || scp.virtualChannelEngines[i] == nil {
 			continue
@@ -683,7 +695,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 					nf := float32(numberOfMeasurements)
 					avg.min = avg.min / nf
 					avg.max = avg.max / nf
-					
+
 					min = avg.min
 					max = avg.max
 					scp.vchMinV.SilentSetFloatValue(float64(min/1000), 3)

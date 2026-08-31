@@ -97,17 +97,17 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 		for i := 0; i < int(scp.channelCount); i++ {
 			msg := &control.GeneratorDescMsg{
 				GeneratorDesc: control.GeneratorDesc{
-					StartFrequency: f,
-					StopFrequency:  f,
-					Increment:      0,
-					DwellTime:      1,
-					SweepType:      genericps.SweepDown,
-					WaveType:       scp.Settings.DemoGenPanel[i].WaveType,
-					OffsetVoltage:  scp.Settings.DemoGenPanel[i].OffsetVoltage,
-					PkToPK:         scp.Settings.DemoGenPanel[i].Amplitude * 2,
+					StartFrequency:    f,
+					StopFrequency:     f,
+					Increment:         0,
+					DwellTime:         1,
+					SweepType:         genericps.SweepDown,
+					WaveType:          scp.Settings.DemoGenPanel[i].WaveType,
+					OffsetVoltage:     scp.Settings.DemoGenPanel[i].OffsetVoltage,
+					PkToPK:            scp.Settings.DemoGenPanel[i].Amplitude * 2,
 					ArbitraryWaveform: scp.Settings.DemoGenPanel[i].ArbitraryWaveform,
-					Channel:        genericps.ChannelId(i),
-					On:             true,
+					Channel:           genericps.ChannelId(i),
+					On:                true,
 				},
 			}
 			scp.psControl.SetDemoGenCh <- msg
@@ -117,14 +117,14 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 
 	msg := &control.GeneratorDescMsg{
 		GeneratorDesc: control.GeneratorDesc{
-			StartFrequency: f,
-			StopFrequency:  f,
-			Increment:      0,
-			DwellTime:      1,
-			SweepType:      genericps.SweepDown, // No sweep
-			WaveType:       scp.Settings.GenPanel.WaveType,
-			OffsetVoltage:  scp.Settings.GenPanel.OffsetVoltage,
-			PkToPK:         scp.Settings.GenPanel.Amplitude * 2,
+			StartFrequency:    f,
+			StopFrequency:     f,
+			Increment:         0,
+			DwellTime:         1,
+			SweepType:         genericps.SweepDown, // No sweep
+			WaveType:          scp.Settings.GenPanel.WaveType,
+			OffsetVoltage:     scp.Settings.GenPanel.OffsetVoltage,
+			PkToPK:            scp.Settings.GenPanel.Amplitude * 2,
 			ArbitraryWaveform: scp.Settings.GenPanel.ArbitraryWaveform,
 		},
 	}

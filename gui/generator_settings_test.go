@@ -29,10 +29,10 @@ func TestSetGeneratorFreq(t *testing.T) {
 		},
 		controlTab: container.NewAppTabs(container.NewTabItem("Test", container.NewVBox())),
 	}
-	
+
 	// Test normal flow
 	scp.setGeneratorFreq(1000)
-	
+
 	// Check that a message was sent to SetGeneratorCh
 	select {
 	case <-scp.psControl.SetGeneratorCh:
@@ -59,7 +59,7 @@ func TestApplyFfGenSettings(t *testing.T) {
 			SetGeneratorCh: make(chan *control.GeneratorDescMsg, 10),
 		},
 	}
-	
+
 	// Turn on
 	scp.applyFfGenSettings(true)
 	// Turn off
@@ -92,7 +92,7 @@ func TestApplyFfDemoGenSettings(t *testing.T) {
 			SetDemoGenCh: make(chan *control.GeneratorDescMsg, 10),
 		},
 	}
-	
+
 	// Turn on
 	scp.applyFfDemoGenSettings(true)
 	// Turn off

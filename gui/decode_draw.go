@@ -107,7 +107,7 @@ func (scp *ScpDesc) drawDecode(img rasterImage, bounds image.Rectangle, w float6
 		}
 
 		drawBox(result.Value, yPos, bgColor, result.Label)
-		
+
 		if result.HasValue2 {
 			misoColor := color.RGBA{50, 50, 150, 200}
 			if result.Error {

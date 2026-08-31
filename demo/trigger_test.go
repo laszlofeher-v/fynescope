@@ -258,6 +258,3 @@ func TestTriggerDetector_FindTriggerPoint_FallTime(t *testing.T) {
 		t.Errorf("Expected trigger near t=119, got %v", triggerTime)
 	}
 }
-
-
-

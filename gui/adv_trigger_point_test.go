@@ -23,7 +23,7 @@ func TestSetTriggerUpperHysteresis_ValidSource(t *testing.T) {
 			SetTriggerCh: make(chan *control.TriggerDescMsg, 1),
 		},
 	}
-	
+
 	// Force mvToUAdc to use mock/generic genericps behaviors if we were doing a full test,
 	// but here mvToUAdc handles the calculation.
 
@@ -52,12 +52,12 @@ func TestSetTriggerUpperHysteresis_InvalidSource(t *testing.T) {
 			SetTriggerCh: make(chan *control.TriggerDescMsg, 1),
 		},
 	}
-	
+
 	// Should not panic (tests the bounds check fix)
 	scp.SetTriggerUpperHysteresis(200)
 
 	assert.Equal(t, int32(200), scp.triggerSettingMsg.UpperHysteresis)
-	
+
 	// Consume the channel message to verify it was sent
 	select {
 	case msg := <-scp.psControl.SetTriggerCh:
@@ -81,7 +81,7 @@ func TestSetTriggerLowerHysteresis(t *testing.T) {
 			SetTriggerCh: make(chan *control.TriggerDescMsg, 1),
 		},
 	}
-	
+
 	scp.SetTriggerLowerHysteresis(300)
 
 	assert.Equal(t, int32(300), scp.triggerSettingMsg.LowerHysteresis)

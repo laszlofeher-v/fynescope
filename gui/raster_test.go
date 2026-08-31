@@ -36,13 +36,11 @@ func TestScreenRaster_MouseMoved(t *testing.T) {
 			Position: fyne.NewPos(10, 20),
 		},
 	}
-	
+
 	// mock mouseIn=true
 	scr.mouseIn = true
 	scr.MouseMoved(event)
-	
+
 	assert.Equal(t, float32(10), scr.mouseX)
 	assert.Equal(t, float32(20), scr.mouseY)
 }
-
-

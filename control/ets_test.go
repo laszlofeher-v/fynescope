@@ -52,5 +52,3 @@ func TestEtsTimes_2207SIM(t *testing.T) {
 	assert.Equal(t, int16(10), inter)
 	assert.Equal(t, int16(20), cycles)
 }
-
-

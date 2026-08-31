@@ -20,12 +20,12 @@ func main() {
 		return
 	}
 	lines := strings.Split(string(data), "\n")
-	
+
 	fmt.Println("package psc")
 	fmt.Println("// Auto-generated from PicoStatus.h. Do not edit manually.")
 	fmt.Println("// This file contains pure Go constants decoupled from any specific PicoScope driver.")
 	fmt.Println("\nconst (")
-	
+
 	for _, line := range lines {
 		if bytes.Contains([]byte(line), []byte(define)) {
 			fields := bytes.Fields([]byte(line))
@@ -41,7 +41,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	// Add some specific aliases from the old file
 	fmt.Println("\n\tPicoDriverVersion             = PICO_DRIVER_VERSION")
 	fmt.Println("\tPicoUsbVersion                = PICO_USB_VERSION")
@@ -62,10 +62,10 @@ func main() {
 	fmt.Println("\tPicoFrontPanelFirmwareVersion = PICO_FRONT_PANEL_FIRMWARE_VERSION")
 	fmt.Println("\tPicoBootloaderVersion         = PICO_BOOTLOADER_VERSION")
 	fmt.Println("\tPicoOk                        = PICO_OK")
-	
+
 	fmt.Println(")")
 	fmt.Println("\nvar statMap = map[int]string{")
-	
+
 	startedStatus := false
 	for i, line := range lines {
 		if bytes.Contains([]byte(line), []byte(define)) {
@@ -97,7 +97,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	fmt.Println("}")
 	fmt.Println("\nfunc StatStr(code int) string {")
 	fmt.Println("\treturn statMap[code]")

@@ -1,8 +1,8 @@
 package control
 
 import (
-	"log/slog"
 	"fynescope/settings"
+	"log/slog"
 )
 
 func (psControl *PscDesc) interpolationMonitor() {
@@ -11,7 +11,7 @@ func (psControl *PscDesc) interpolationMonitor() {
 	)
 	var (
 		unchanged, changed eventHandlerFunc
-		oldIpMode    settings.InterpolationType
+		oldIpMode          settings.InterpolationType
 	)
 	store := func(ipMode settings.InterpolationType) eventHandlerFunc {
 		newData := false

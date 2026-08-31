@@ -11,9 +11,9 @@ func TestAwgEditor_Clear(t *testing.T) {
 	test.NewApp()
 	editor := newAwgEditorWidget()
 	editor.values = []float64{0.5, -0.5, 1.0, -1.0}
-	
+
 	editor.clear()
-	
+
 	for _, v := range editor.values {
 		assert.Equal(t, 0.0, v)
 	}
@@ -24,7 +24,7 @@ func TestAwgEditor_GenerateWaveform(t *testing.T) {
 	test.NewApp()
 	editor := newAwgEditorWidget()
 	editor.values = make([]float64, 4) // 4 samples for easy validation
-	
+
 	// Test DC
 	editor.generateWaveform("DC")
 	for _, v := range editor.values {
@@ -54,7 +54,7 @@ func TestAwgEditor_ResizeValues(t *testing.T) {
 	// Resize up to 10
 	editor.resizeValues(10)
 	assert.Len(t, editor.values, 10)
-	
+
 	// Check a few linearly interpolated values
 	assert.Equal(t, 0.0, editor.values[0])
 	assert.Equal(t, 1.0, editor.values[4]) // Element 4 maps to origIdx 2 (1.0)

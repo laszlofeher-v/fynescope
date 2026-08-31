@@ -10,7 +10,7 @@ import (
 
 func TestRemoveIndex(t *testing.T) {
 	arr := []string{"A", "B", "C", "D"}
-	
+
 	arr = RemoveIndex(arr, 1)
 	assert.Equal(t, []string{"A", "C", "D"}, arr)
 
@@ -28,9 +28,9 @@ func TestSortMapString(t *testing.T) {
 		"20mV": genericps.RangeEnum(10), // lowest numeric value
 	}
 
-	// This function sorts keys descending by map values. 
+	// This function sorts keys descending by map values.
 	sorted := sortMapString(testMap)
-	
+
 	// Assuming Range10v > Range5v > Range20mv enum-wise
 	assert.Equal(t, "10V", sorted[0])
 	assert.Equal(t, "5V", sorted[1])

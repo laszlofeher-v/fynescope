@@ -38,7 +38,7 @@ func TestVirtualChannelDialog_BuildContent(t *testing.T) {
 	// Open Virtual Channel Dialog
 	scp.vchTab = container.NewTabItem("VCh", content)
 	scp.controlTab.Append(scp.vchTab)
-	
+
 	// Open while docked
 	scp.openVirtualChannelDialog()
 	assert.Equal(t, scp.vchTab, scp.controlTab.Selected())

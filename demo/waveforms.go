@@ -302,12 +302,12 @@ func NewI2cClockGenerator() WaveformGenerator {
 		if period < 0 {
 			period += 29.0
 		}
-		
+
 		idx := int(period)
 		if idx == 0 || idx == 28 {
 			return 1.0 // SCL high during start and stop
 		}
-		
+
 		// SCL pulses high in the middle of data/ACK bits
 		frac := period - float64(idx)
 		if frac >= 0.25 && frac < 0.75 {
@@ -328,10 +328,10 @@ func NewI2cDataGenerator(addr uint32, data uint32) WaveformGenerator {
 		if period < 0 {
 			period += 29.0
 		}
-		
+
 		idx := int(period)
 		frac := period - float64(idx)
-		
+
 		if idx == 0 {
 			// Start condition: SDA goes low in the middle while SCL is high
 			if frac >= 0.5 {

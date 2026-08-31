@@ -190,7 +190,7 @@ func (d7 *DigitArray) SetMinMax(minValue, maxValue int) {
 		defer d7.lock.Unlock()
 		d7.maxValue = maxValue
 		d7.minValue = minValue
-		
+
 		if d7.Value < d7.minValue {
 			d7.silentSetValue(d7.minValue)
 			return true
@@ -200,7 +200,7 @@ func (d7 *DigitArray) SetMinMax(minValue, maxValue int) {
 		}
 		return false
 	}()
-	
+
 	if needsRefresh {
 		d7.Refresh()
 	}
@@ -261,7 +261,7 @@ func (d7 *DigitArray) SetValue(v int) {
 		d7.silentSetValue(v)
 		return float64(d7.Value), d7.OnChanged
 	}()
-	
+
 	if onChanged != nil {
 		onChanged(val)
 	}
@@ -319,7 +319,7 @@ func (d7 *DigitArray) SetFloatValue(v float64, dpPos int) {
 		d7.silentSetFloatValue(v, dpPos)
 		return true, float64(d7.Value), d7.OnChanged
 	}()
-	
+
 	if !valid {
 		return
 	}

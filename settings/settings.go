@@ -374,14 +374,14 @@ func NewDefaultSettings() *PsSettings {
 			},
 			ChannelColors: [16]color.NRGBA{
 				// Port 0 channels 0-7
-				{255, 220, 0, 255},   // ch0 – yellow
-				{0, 200, 255, 255},   // ch1 – cyan
-				{255, 80, 80, 255},   // ch2 – red
-				{80, 255, 80, 255},   // ch3 – lime green
-				{255, 140, 0, 255},   // ch4 – orange
-				{180, 80, 255, 255},  // ch5 – violet
-				{0, 255, 180, 255},   // ch6 – mint
-				{255, 80, 200, 255},  // ch7 – pink
+				{255, 220, 0, 255},  // ch0 – yellow
+				{0, 200, 255, 255},  // ch1 – cyan
+				{255, 80, 80, 255},  // ch2 – red
+				{80, 255, 80, 255},  // ch3 – lime green
+				{255, 140, 0, 255},  // ch4 – orange
+				{180, 80, 255, 255}, // ch5 – violet
+				{0, 255, 180, 255},  // ch6 – mint
+				{255, 80, 200, 255}, // ch7 – pink
 				// Port 1 channels 8-15
 				{200, 255, 0, 255},   // ch8  – yellow-green
 				{0, 140, 255, 255},   // ch9  – sky blue

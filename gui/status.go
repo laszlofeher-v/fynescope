@@ -90,7 +90,7 @@ func (scp *ScpDesc) initStatus() {
 		ErrFrequencyCannotBeDetected:                StatusFrequencyCannotBeDetected,
 		ErrWrongFfTrigger:                           StatusWrongFfTrigger,
 		"Cannot zoom out beyond Time Zoom snapshot": StatusCannotZoomOut,
-		"":                                          StatusNone,
+		"": StatusNone,
 	}
 
 	scp.psControl.DisplayStatus = func(s string, errorType control.ScopeError) {

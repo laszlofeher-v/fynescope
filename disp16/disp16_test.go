@@ -10,7 +10,7 @@ import (
 
 func TestNewHexArray(t *testing.T) {
 	test.NewApp()
-	
+
 	_, err := NewHexArray(0, nil, color.White, false, "Test")
 	assert.Error(t, err)
 
@@ -25,7 +25,7 @@ func TestNewHexArray(t *testing.T) {
 func TestSetValue(t *testing.T) {
 	test.NewApp()
 	disp, _ := NewHexArray(2, nil, color.White, false, "")
-	
+
 	// Value within bounds (2 digits = max 0xFF)
 	disp.SetValue(0x42)
 	assert.Equal(t, uint64(0x42), disp.GetValue())
@@ -42,7 +42,7 @@ func TestSetValue(t *testing.T) {
 func TestOnChanged(t *testing.T) {
 	test.NewApp()
 	disp, _ := NewHexArray(4, nil, color.White, false, "")
-	
+
 	var changedVal uint64
 	disp.OnChanged = func(v uint64) {
 		changedVal = v
