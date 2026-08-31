@@ -60,7 +60,7 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 		t.Errorf("Expected bounds to be swapped to 1000 and 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 
-	// Case 2: lower == upper (should increment upper)
+	// Case 2: lower == upper (should expand window to minimum 256 counts)
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:      500,
 		LowerTriggerADC: 500,
@@ -68,7 +68,19 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	}
 
 	props = psControl.getValidTriggerProperties()
-	if props[0].ThresholdUpper != 501 || props[0].ThresholdLower != 500 {
-		t.Errorf("Expected upper bound to be incremented to 501, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	if props[0].ThresholdUpper != 756 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected upper bound to be expanded to 756, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	}
+
+	// Case 3: lower == upper near max int16 (should decrement lower)
+	psControl.triggerSetting = TriggerDesc{
+		TriggerADC:      32700,
+		LowerTriggerADC: 32700,
+		ThresholdMode:   genericps.Window,
+	}
+
+	props = psControl.getValidTriggerProperties()
+	if props[0].ThresholdUpper != 32700 || props[0].ThresholdLower != 32444 {
+		t.Errorf("Expected lower bound to be decremented to 32444, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 }
