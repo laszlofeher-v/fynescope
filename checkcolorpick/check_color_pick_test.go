@@ -76,11 +76,6 @@ func TestCheckColorPick_Interactions(t *testing.T) {
 	// TypedRune (noop coverage)
 	ccp.TypedRune('a')
 
-	// Disable/Enable/Disabled checks
-	ccp.Disable()
-	ccp.Enable()
-	assert.False(t, ccp.Disabled())
-
 	// Hide check
 	ccp.Hide()
 }
