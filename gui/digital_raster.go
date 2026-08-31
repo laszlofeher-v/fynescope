@@ -213,16 +213,24 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 			// Draw channel label; minX has already been expanded to guarantee it fits.
 			if minX > labelStartX {
-				label := fmt.Sprintf("D%d", port*8+c)
+				dnStr := fmt.Sprintf("D%d", port*8+c)
+				label := dnStr
+				hasLabel := false
 				if l := dr.scp.Settings.Digital.ChannelLabels[port*8+c]; l != "" {
 					runes := []rune(l)
 					if len(runes) > 6 {
 						l = string(runes[:6])
 					}
 					label += " " + l
+					hasLabel = true
 				}
-				_, lblTop, _, lblBottom := dr.scp.boundString(label, labelFontSize)
-				dr.scp.addLabel(img, labelStartX, int(math.Round(yBase+channelHeight*0.5-(float64(lblTop+lblBottom)/2))), label, lineCol, labelFontSize)
+				_, lblTop, lblRight, lblBottom := dr.scp.boundString(label, labelFontSize)
+				yLbl := int(math.Round(yBase + channelHeight*0.5 - (float64(lblTop+lblBottom) / 2)))
+				dr.scp.addLabel(img, labelStartX, yLbl, label, lineCol, labelFontSize)
+				if dr.scp.Settings.Digital.ChannelNegated[port*8+c] && hasLabel {
+					_, _, dnRight, _ := dr.scp.boundString(dnStr+"W", labelFontSize)
+					drawHorizontalLine(img, float32(labelStartX)+dnRight, float32(labelStartX)+lblRight, float32(yLbl)+lblTop-3, lineCol)
+				}
 			}
 
 			for x := minX; x <= maxX && x < w; x++ {
