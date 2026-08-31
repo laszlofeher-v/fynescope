@@ -64,9 +64,6 @@ func NewCheckColorPick(window fyne.Window, changed func(v bool, col color.Color)
 	return ccp
 }
 
-func (ccp *CheckColorPick) Hide() {
-}
-
 func (ccp *CheckColorPick) SetColor(col color.Color) {
 	ccp.col = col
 	ccp.changed(ccp.Val, ccp.col)
