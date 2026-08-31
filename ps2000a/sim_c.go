@@ -517,5 +517,3 @@ func Gops2000aNoOfStreamingValues(handle C.int16_t, noOfValues *C.uint32_t) C.ui
 	}
 	return 0
 }
-
-

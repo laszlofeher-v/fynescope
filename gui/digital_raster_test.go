@@ -28,9 +28,9 @@ func TestDigitalRaster_Generation(t *testing.T) {
 				TriggerTimeOffset: 0.0,
 			},
 		},
-		maxScreenTime:                1.0,
+		maxScreenTime:               1.0,
 		controlSamplingTimeInterval: 0.001,
-		theme:                        theme.DefaultTheme(),
+		theme:                       theme.DefaultTheme(),
 	}
 	scp.ftScopeFullScreen = image.NewRGBA(image.Rect(0, 0, 800, 400))
 	scp.ftScopeSignalScreen = scp.ftScopeFullScreen.(*image.RGBA).SubImage(image.Rect(50, 10, 750, 350)).(rasterImage)

@@ -12,7 +12,7 @@ func TestTriggerDetector_PositiveRunt(t *testing.T) {
 	td.SetChannelProperties([]TriggerChannelProperties{
 		{ThresholdUpper: 50, ThresholdUpperHysteresis: 0, ThresholdLower: 10, ThresholdLowerHysteresis: 0, Channel: ChA},
 	})
-	
+
 	// Set threshold mode to Window so evaluateWindowTrigger is used
 	td.channels[ChA].ThresholdMode = Window
 	td.channels[ChA].ThresholdLower = 10
@@ -69,7 +69,7 @@ func TestTriggerDetector_NegativeRunt(t *testing.T) {
 	td.SetChannelProperties([]TriggerChannelProperties{
 		{ThresholdUpper: -10, ThresholdUpperHysteresis: 0, ThresholdLower: -50, ThresholdLowerHysteresis: 0, Channel: ChA},
 	})
-	
+
 	// Set threshold mode to Window so evaluateWindowTrigger is used
 	td.channels[ChA].ThresholdMode = Window
 	td.channels[ChA].ThresholdLower = -50

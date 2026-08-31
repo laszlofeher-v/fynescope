@@ -1,9 +1,9 @@
 package control
 
 import (
-	"log/slog"
-	"fynescope/settings"
 	"fynescope/genericps"
+	"fynescope/settings"
+	"log/slog"
 )
 
 func (psControl *PscDesc) setDigitalPort() (err error) {
@@ -27,7 +27,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 	var unchanged, changed eventHandlerFunc
 	var oldChDesc [2]settings.DigitalPortSettings
 	var changedSet [2]bool
-	
+
 	storeSettings := func(setMsg *DigitalPortMsg) (nextFunc eventHandlerFunc) {
 		portIdx := int(setMsg.Port - genericps.Port0)
 		if portIdx < 0 || portIdx > 1 {
@@ -53,7 +53,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 			return unchanged
 		}
 	}
-	
+
 	changed = func() (nextFunc eventHandlerFunc) {
 		select {
 		case <-psControl.shutdownCh:

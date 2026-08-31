@@ -33,7 +33,7 @@ func TestDrawLine(t *testing.T) {
 	// Check if starting point is colored
 	pixelColor := img.At(1, 1).(color.RGBA)
 	assert.Equal(t, c, pixelColor)
-	
+
 	// Check if end point is colored
 	pixelColor = img.At(5, 5).(color.RGBA)
 	assert.Equal(t, c, pixelColor)

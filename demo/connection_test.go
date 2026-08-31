@@ -22,7 +22,7 @@ func TestStop(t *testing.T) {
 func TestCloseUnit(t *testing.T) {
 	rspCh := make(chan struct{}, 1)
 	rsp := &genericps.CloseUnitRsp{}
-	
+
 	msg := &genericps.CloseUnitMsg{}
 	msg.SetHandle(1)
 	msg.SetRsp(rsp)
@@ -43,7 +43,7 @@ func TestCloseUnit(t *testing.T) {
 func TestSetChannel(t *testing.T) {
 	rspCh := make(chan struct{}, 1)
 	rsp := &genericps.SetChannelRsp{}
-	
+
 	msg := &genericps.SetChannelMsg{
 		Channel:      0,
 		Enabled:      true,

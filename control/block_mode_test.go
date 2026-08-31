@@ -44,7 +44,8 @@ func TestBlockModeBasic(t *testing.T) {
 		SetTriggerCh:           make(chan *TriggerDescMsg, 1),
 		getTriggerCh:           make(chan *getTriggerMsg, 1),
 		RefreshCallback: func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
-			xRoundError, samplingTimeInterval float64) {},
+			xRoundError, samplingTimeInterval float64) {
+		},
 		BufferCallback: func(size int) {},
 		DisplayStatus:  func(status string, level ScopeError) {},
 	}
@@ -74,12 +75,12 @@ func TestBlockModeBasic(t *testing.T) {
 		blockMode(psControl)
 		close(done)
 	}()
-	
+
 	time.Sleep(50 * time.Millisecond)
 
 	// Stop it
 	psControl.stopChannel <- struct{}{}
-	
+
 	select {
 	case <-done:
 	case <-time.After(1 * time.Second):

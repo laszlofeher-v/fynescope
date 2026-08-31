@@ -7,14 +7,14 @@ import (
 
 func TestPscDesc_checkOverflow(t *testing.T) {
 	psControl := &PscDesc{}
-	
+
 	// Mock 4 channels
 	psControl.chEnabled = make([]atomic.Bool, 4)
-	
+
 	var lastStatusMsg string
 	var lastStatusErr ScopeError
 	var statusCalls int
-	
+
 	psControl.DisplayStatus = func(s string, errorType ScopeError) {
 		lastStatusMsg = s
 		lastStatusErr = errorType

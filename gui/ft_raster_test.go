@@ -55,7 +55,7 @@ func TestSignalViewer_MouseEvents(t *testing.T) {
 	sv.mouseDown(desktop.MouseButtonSecondary, fyne.KeyModifierShift, 15, 25)
 	assert.True(t, sv.refActive)
 	assert.True(t, sv.refDragging)
-	
+
 	sv.mouseUp(desktop.MouseButtonSecondary, fyne.KeyModifierShift, 15, 25)
 	assert.False(t, sv.refDragging)
 	// refActive remains true after mouseUp until deleted
@@ -73,6 +73,6 @@ func TestSignalViewer_TypedKey(t *testing.T) {
 	// Make sure typedKey doesn't panic on a dummy scope
 	sv.typedKey(20, 30, fyne.KeyDown)
 	sv.typedKey(20, 30, fyne.KeyUp)
-	
+
 	assert.True(t, true)
 }

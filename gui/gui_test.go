@@ -50,7 +50,7 @@ func TestAdcConversions(t *testing.T) {
 	// max raw 32767 should be 2000mV
 	// However, the formula is: float64(raw) * float64(InputRanges[chRange]) / float64(scp.MaxValue)
 	// InputRanges[Range_2v] is 2000.
-	
+
 	// Test adcToMv
 	mv := scp.adcToMv(32767, genericps.Range_2v)
 	if mv != 2000 {
@@ -94,7 +94,7 @@ func TestAdcConversions(t *testing.T) {
 	if adc != 32767 {
 		t.Errorf("Expected 32767, got %v", adc)
 	}
-	
+
 	// mvToUAdc doesn't clamp negative, so it will return a highly negative value
 	adc = scp.mvToUAdc(-3000, genericps.Range_2v)
 	expectedNeg := int32(-3000 * 32767 / 2000)

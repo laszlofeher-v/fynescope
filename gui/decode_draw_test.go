@@ -28,14 +28,14 @@ func TestDrawDecode(t *testing.T) {
 		},
 		DecodeState: control.DecoderState{
 			Bytes: []control.DecodeResult{
-				{Value: 0x41, StartTime: 1.0, EndTime: 2.0, Error: false}, // Fits screen, Value 'A'
-				{Value: 0x42, StartTime: -5.0, EndTime: -4.0, Error: true}, // Offscreen left
+				{Value: 0x41, StartTime: 1.0, EndTime: 2.0, Error: false},   // Fits screen, Value 'A'
+				{Value: 0x42, StartTime: -5.0, EndTime: -4.0, Error: true},  // Offscreen left
 				{Value: 0x43, StartTime: 15.0, EndTime: 16.0, Error: false}, // Offscreen right
-				{Value: 0x44, StartTime: 9.0, EndTime: 11.0, Error: false}, // Clips right edge
-				{Value: 0x15, StartTime: 3.0, EndTime: 4.0, Error: false}, // Non-printable UART text
+				{Value: 0x44, StartTime: 9.0, EndTime: 11.0, Error: false},  // Clips right edge
+				{Value: 0x15, StartTime: 3.0, EndTime: 4.0, Error: false},   // Non-printable UART text
 			},
 			Bits: []control.DecodeBit{
-				{StartTime: 1.5, EndTime: 1.6}, // Visible bit
+				{StartTime: 1.5, EndTime: 1.6},   // Visible bit
 				{StartTime: 11.0, EndTime: 11.1}, // Offscreen bit
 			},
 		},

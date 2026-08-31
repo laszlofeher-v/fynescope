@@ -69,6 +69,3 @@ func TestGeneratorCommands(t *testing.T) {
 		})
 	}
 }
-
-
-

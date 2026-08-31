@@ -48,7 +48,7 @@ func TestFrqLabelViewer_MousIn(t *testing.T) {
 
 	assert.True(t, frql.mousIn(15, 25), "Point inside should be true")
 	assert.True(t, frql.mousIn(10, 20), "Point on top-left border should be true")
-	
+
 	// Max bounds are exclusive in image.Rect
 	assert.False(t, frql.mousIn(100, 49), "Point on right border should be false")
 	assert.False(t, frql.mousIn(99, 50), "Point on bottom border should be false")

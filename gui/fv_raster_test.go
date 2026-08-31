@@ -75,6 +75,6 @@ func TestFvViewer_TypedKey(t *testing.T) {
 	// Make sure typedKey doesn't panic on a dummy scope
 	fv.typedKey(20, 30, fyne.KeyDown)
 	fv.typedKey(20, 30, fyne.KeyUp)
-	
+
 	assert.True(t, true)
 }

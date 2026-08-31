@@ -7,7 +7,7 @@ import (
 
 func TestPscDesc_getValidTriggerProperties(t *testing.T) {
 	psControl := &PscDesc{}
-	
+
 	// Set up a basic trigger setting
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:         1000,
@@ -47,12 +47,12 @@ func TestPscDesc_getValidTriggerProperties(t *testing.T) {
 
 func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	psControl := &PscDesc{}
-	
+
 	// Case 1: lower > upper (should swap)
 	psControl.triggerSetting = TriggerDesc{
-		TriggerADC:         500,
-		LowerTriggerADC:    1000,
-		ThresholdMode:      genericps.Window,
+		TriggerADC:      500,
+		LowerTriggerADC: 1000,
+		ThresholdMode:   genericps.Window,
 	}
 
 	props := psControl.getValidTriggerProperties()
@@ -62,9 +62,9 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 
 	// Case 2: lower == upper (should increment upper)
 	psControl.triggerSetting = TriggerDesc{
-		TriggerADC:         500,
-		LowerTriggerADC:    500,
-		ThresholdMode:      genericps.Window,
+		TriggerADC:      500,
+		LowerTriggerADC: 500,
+		ThresholdMode:   genericps.Window,
 	}
 
 	props = psControl.getValidTriggerProperties()

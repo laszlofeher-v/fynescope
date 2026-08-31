@@ -75,9 +75,9 @@ func (cl *dftVChannelLabelViewer) mouseDown(button desktop.MouseButton, modifier
 		if channel.Enabled {
 			cl.displayOffsetFraction = 0
 			cl.scp.Settings.VirtualChannels[cl.vChannelIndex].DftDisplayVOffset = 0
-			
+
 			cl.enableRefresh()
-			
+
 			cl.scp.clearAllDftPersistentLayers()
 			cl.scp.refreshRasters()
 		}

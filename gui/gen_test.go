@@ -26,7 +26,7 @@ func TestNewGenPanel(t *testing.T) {
 
 	cont := container.NewVBox()
 	err := scp.newGenPanel(cont)
-	
+
 	assert.NoError(t, err)
 	assert.NotNil(t, cont)
 	assert.Greater(t, len(cont.Objects), 0, "Container should have objects added")

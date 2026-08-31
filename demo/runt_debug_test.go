@@ -11,7 +11,7 @@ func TestNewRuntStateLogic(t *testing.T) {
 	td.SetChannelProperties([]TriggerChannelProperties{
 		{ThresholdUpper: 50, ThresholdUpperHysteresis: 0, ThresholdLower: 10, ThresholdLowerHysteresis: 0, Channel: ChA},
 	})
-	
+
 	cfg := td.channels[ChA]
 	cfg.ThresholdMode = Window
 	cfg.ThresholdLower = 10
@@ -23,7 +23,7 @@ func TestNewRuntStateLogic(t *testing.T) {
 		if ch != ChA {
 			return 0
 		}
-		return amplitude * math.Sin(time * freq * 2 * math.Pi)
+		return amplitude * math.Sin(time*freq*2*math.Pi)
 	}
 
 	state := ChannelTriggerState{}
@@ -31,13 +31,13 @@ func TestNewRuntStateLogic(t *testing.T) {
 
 	for tVal := 0.0; tVal < 1000.0; tVal += dt {
 		level := signalFunc(tVal, ChA)
-		
+
 		_, fired, offset := td.evaluateWindowTrigger(cfg, &state, level, signalFunc, tVal, dt, ChA)
-		
+
 		if fired {
 			fmt.Printf("FIRED at tVal=%v, level=%v, offset=%v\n", tVal, level, offset)
 			fmt.Printf("  Actual trigger point was %v\n", tVal+offset)
-			
+
 			// If it fired, let's see what the signal was at the actual trigger point
 			trigTime := tVal + offset
 			fmt.Printf("  Signal at trigger point = %v\n", signalFunc(trigTime, ChA))

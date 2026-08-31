@@ -286,7 +286,7 @@ func newServerMux(authAdmin, authView string, getCapture func() image.Image, con
 			http.Error(w, "Not implemented", http.StatusNotImplemented)
 			return
 		}
-		
+
 		status := controller.GetStatus()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": status})

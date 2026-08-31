@@ -40,7 +40,7 @@ func TestIdle_StateTransition(t *testing.T) {
 
 	psControl.stateChannel <- mockState
 	nextState := idle(psControl)
-	
+
 	// Check if the returned state is the same as we sent (comparing addresses or function name)
 	assert.Equal(t, functionName(mockState), functionName(nextState))
 }
@@ -71,13 +71,13 @@ func TestStateMachine(t *testing.T) {
 
 	// Make idle return nil by sending shutdown immediately
 	psControl.shutdownCh <- struct{}{}
-	
+
 	done := make(chan struct{})
 	go func() {
 		psControl.stateMachine()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 	case <-time.After(1 * time.Second):
@@ -104,7 +104,7 @@ func TestRequestRestart(t *testing.T) {
 	}
 
 	psControl.RequestRestart()
-	
+
 	// Verify channel has one item
 	assert.Len(t, psControl.restartChannel, 1)
 

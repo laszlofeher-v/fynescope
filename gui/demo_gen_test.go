@@ -37,7 +37,7 @@ func TestApplyDemoGenSettings(t *testing.T) {
 		assert.Equal(t, float64(1000), msg.StartFrequency)
 		assert.Equal(t, float64(1000), msg.StopFrequency)
 		assert.Equal(t, genericps.SweepDown, msg.SweepType) // NoSweep mapped to SweepDown internally
-		assert.Equal(t, uint32(1000), msg.PkToPK) // Amplitude * 2
+		assert.Equal(t, uint32(1000), msg.PkToPK)           // Amplitude * 2
 		assert.Equal(t, int32(100), msg.OffsetVoltage)
 	case <-time.After(1 * time.Second):
 		t.Fatal("Timeout waiting for demo gen message")

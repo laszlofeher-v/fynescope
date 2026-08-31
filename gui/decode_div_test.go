@@ -1,8 +1,8 @@
 package gui
 
 import (
-	"fynescope/settings"
 	"fynescope/genericps"
+	"fynescope/settings"
 	"testing"
 
 	"fyne.io/fyne/v2/test"

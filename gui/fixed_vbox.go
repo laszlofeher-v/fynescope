@@ -37,7 +37,7 @@ func (l *fixedVBoxLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	if height > 0 {
 		height -= theme.Padding()
 	}
-	
+
 	return fyne.NewSize(width, height)
 }
 

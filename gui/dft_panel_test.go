@@ -38,7 +38,7 @@ func TestNewDftPanel(t *testing.T) {
 				{Enabled: false, Col: [2]color.NRGBA{{R: 255, G: 255, B: 255, A: 255}, {R: 255, G: 255, B: 255, A: 255}}},
 			},
 		},
-		channelCount:   2,
+		channelCount: 2,
 		channelViewers: []channelViewerDesc{
 			{
 				enableCheckbox:  &checkcolorpick.CheckColorPick{},

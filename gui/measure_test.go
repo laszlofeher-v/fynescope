@@ -22,7 +22,7 @@ func TestNumOfMeasurements(t *testing.T) {
 func TestMeasureFrq(t *testing.T) {
 	// Generate a simulated square/sine wave
 	buffer := make([]float32, 1000)
-	
+
 	// Create a 10Hz signal assuming a 1ms timeInterval (total time 1 second)
 	// 10 cycles per 1000 samples -> period = 100 samples
 	for i := 0; i < 1000; i++ {

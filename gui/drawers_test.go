@@ -78,7 +78,7 @@ func TestDrawers_ClearRGBA(t *testing.T) {
 	for i := range img.Pix {
 		assert.Equal(t, uint8(0), img.Pix[i])
 	}
-	
+
 	// Ensure no panic on nil
 	clearRGBA(nil)
 }
@@ -86,10 +86,10 @@ func TestDrawers_ClearRGBA(t *testing.T) {
 func TestDrawers_ClearPersistentLayers(t *testing.T) {
 	app := test.NewApp()
 	defer app.Quit()
-	
+
 	imgFt := image.NewRGBA(image.Rect(0, 0, 2, 2))
 	imgFt.Pix[0] = 255
-	
+
 	imgDft := image.NewRGBA(image.Rect(0, 0, 2, 2))
 	imgDft.Pix[0] = 255
 
@@ -111,7 +111,7 @@ func TestDrawers_ClearPersistentLayers(t *testing.T) {
 	imgDft.Pix[0] = 255
 	scp.clearAllDftPersistentLayers()
 	assert.Equal(t, uint8(0), imgDft.Pix[0])
-	
+
 	// Verify out of bounds doesn't panic
 	scp.clearFtPersistentLayer(genericps.ChannelId(99))
 	scp.clearDftPersistentLayer(genericps.ChannelId(99))

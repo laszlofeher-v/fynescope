@@ -677,13 +677,13 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						drawLinear()
 						return
 					}
-					
+
 					var prevX float64 = t0 + float64(bounds.Min.X) - deltaT
 					var prevYTop, prevYBot float64
-					
+
 					for i := 0; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
-						
+
 						sMax := displayBuffer[i]
 						sMin := displayBufferMin[i]
 						if channel.Inverted {
@@ -693,22 +693,22 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 						yTop := -yScale*float64(sMax) + offsetFloat
 						yBot := -yScale*float64(sMin) + offsetFloat
-						
+
 						// Draw vertical column
 						drawLine(targetImg, float32(x), float32(yBot), float32(x), float32(yTop), col)
 
-						if i > 0 && (x - prevX) > 1.0 {
+						if i > 0 && (x-prevX) > 1.0 {
 							// Outline the envelope
 							drawLine(targetImg, float32(prevX), float32(prevYTop), float32(x), float32(yTop), col)
 							drawLine(targetImg, float32(prevX), float32(prevYBot), float32(x), float32(yBot), col)
-							
+
 							ixStart := int(math.Ceil(prevX))
 							ixEnd := int(math.Floor(x))
 							for ix := ixStart; ix <= ixEnd; ix++ {
 								t := float64(ix) - prevX
 								frac := t / (x - prevX)
-								interpTop := prevYTop + frac*(yTop - prevYTop)
-								interpBot := prevYBot + frac*(yBot - prevYBot)
+								interpTop := prevYTop + frac*(yTop-prevYTop)
+								interpBot := prevYBot + frac*(yBot-prevYBot)
 								drawLine(targetImg, float32(ix), float32(interpBot), float32(ix), float32(interpTop), col)
 							}
 						}
@@ -1217,7 +1217,6 @@ func (scp *ScpDesc) snapYToFtN(y float64) int {
 	n := int(math.Round((y / yRasterDiv)))
 	return n
 }
-
 
 func (scp *ScpDesc) offsetNToFtY(n int) float64 {
 	h := float64(scp.ftScopeSignalScreen.Bounds().Dy())

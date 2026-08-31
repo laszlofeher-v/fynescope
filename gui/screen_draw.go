@@ -18,20 +18,20 @@ import (
 const dscp = 72
 
 var (
-	faceCache = make(map[float64]font.Face)
-	faceMutex sync.Mutex
+	faceCache  = make(map[float64]font.Face)
+	faceMutex  sync.Mutex
 	parsedFont *opentype.Font
-	labelSrc = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
+	labelSrc   = &image.Uniform{} // reused across addLabel calls to avoid per-call heap allocation
 )
 
 func getFace(size float64) font.Face {
 	faceMutex.Lock()
 	defer faceMutex.Unlock()
-	
+
 	if f, ok := faceCache[size]; ok {
 		return f
 	}
-	
+
 	if parsedFont == nil {
 		f, err := opentype.Parse(gomono.TTF)
 		if err != nil {
@@ -40,7 +40,7 @@ func getFace(size float64) font.Face {
 		}
 		parsedFont = f
 	}
-	
+
 	f, err := opentype.NewFace(parsedFont, &opentype.FaceOptions{
 		Size:    size,
 		DPI:     dscp,

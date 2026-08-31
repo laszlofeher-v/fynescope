@@ -167,14 +167,14 @@ type TestControl struct {
 }
 
 var (
-	controls        map[string]TestControl
-	tabValidKeys    map[int][]string
-	controlsMtx     sync.RWMutex
+	controls     map[string]TestControl
+	tabValidKeys map[int][]string
+	controlsMtx  sync.RWMutex
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
-	fuzzerEventMtx  sync.RWMutex
-	FuzzerCommitID  string
+	fuzzerEventMtx sync.RWMutex
+	FuzzerCommitID string
 )
 
 func IsFuzzer() bool {
@@ -213,7 +213,6 @@ func doEvent(fn func()) {
 	wait()
 	fyne.Do(fn)
 }
-
 
 var keyNames = []fyne.KeyName{
 	fyne.KeyUp, fyne.KeyDown, fyne.KeyLeft,
@@ -700,7 +699,7 @@ type errorCountingWriter struct {
 func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	str := string(p)
 	s := strings.ToLower(str)
-	
+
 	w.errorsMutex.Lock()
 	if strings.Contains(s, "level=error") {
 		atomic.AddUint64(w.count, 1)
@@ -709,13 +708,13 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 			w.firstErrors = append(w.firstErrors, block)
 		}
 	}
-	
+
 	w.logFifo = append(w.logFifo, str)
 	if len(w.logFifo) > 10 {
 		w.logFifo = w.logFifo[1:]
 	}
 	w.errorsMutex.Unlock()
-	
+
 	return w.target.Write(p)
 }
 

@@ -78,4 +78,3 @@ func TestPs2000aEtsSim(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int32(100), sampleTime)
 }
-

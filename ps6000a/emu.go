@@ -69,13 +69,13 @@ PICO_STATUS ps6000aGetUnitInfo(int16_t handle, int8_t *string, int16_t stringLen
 PICO_STATUS ps6000aFlashLed(int16_t handle, int16_t start) { return ps2000aFlashLed(handle, start); }
 PICO_STATUS ps6000aGetValuesAsync(int16_t handle, uint64_t startIndex, uint64_t noOfSamples, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, uint64_t segmentIndex, PICO_POINTER lpDataReady, PICO_POINTER pParameter) { return ps2000aGetValuesAsync(handle, (uint32_t)startIndex, (uint32_t)noOfSamples, (uint32_t)downSampleRatio, (uint32_t)downSampleRatioMode, (uint32_t)segmentIndex, lpDataReady, pParameter); }
 PICO_STATUS ps6000aGetValuesBulkAsync(int16_t handle, uint64_t startIndex, uint64_t noOfSamples, uint64_t fromSegmentIndex, uint64_t toSegmentIndex, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, PICO_POINTER lpDataReady, PICO_POINTER pParameter) { return 0; } // not direct map
-PICO_STATUS ps6000aGetValues(int16_t handle, uint64_t startIndex, uint64_t *noOfSamples, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, uint64_t segmentIndex, int16_t *overflow) { 
+PICO_STATUS ps6000aGetValues(int16_t handle, uint64_t startIndex, uint64_t *noOfSamples, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, uint64_t segmentIndex, int16_t *overflow) {
     uint32_t samples32 = (uint32_t)*noOfSamples;
     uint32_t status = ps2000aGetValues(handle, (uint32_t)startIndex, &samples32, (uint32_t)downSampleRatio, (uint32_t)downSampleRatioMode, (uint32_t)segmentIndex, overflow);
     *noOfSamples = samples32;
     return status;
 }
-PICO_STATUS ps6000aGetValuesBulk(int16_t handle, uint64_t startIndex, uint64_t *noOfSamples, uint64_t fromSegmentIndex, uint64_t toSegmentIndex, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, int16_t *overflow) { 
+PICO_STATUS ps6000aGetValuesBulk(int16_t handle, uint64_t startIndex, uint64_t *noOfSamples, uint64_t fromSegmentIndex, uint64_t toSegmentIndex, uint64_t downSampleRatio, PICO_RATIO_MODE downSampleRatioMode, int16_t *overflow) {
     uint32_t samples32 = (uint32_t)*noOfSamples;
     uint32_t status = ps2000aGetValuesBulk(handle, &samples32, (uint32_t)fromSegmentIndex, (uint32_t)toSegmentIndex, (uint32_t)downSampleRatio, (uint32_t)downSampleRatioMode, overflow);
     *noOfSamples = samples32;
@@ -87,13 +87,13 @@ PICO_STATUS ps6000aGetValuesOverlapped(int16_t handle, uint64_t startIndex, uint
     *noOfSamples = samples32;
     return status;
 }
-PICO_STATUS ps6000aGetNoOfCaptures(int16_t handle, uint64_t *nCaptures) { 
+PICO_STATUS ps6000aGetNoOfCaptures(int16_t handle, uint64_t *nCaptures) {
     uint32_t cap32;
     uint32_t status = ps2000aGetNoOfCaptures(handle, &cap32);
     *nCaptures = cap32;
     return status;
 }
-PICO_STATUS ps6000aGetNoOfProcessedCaptures(int16_t handle, uint64_t *nCaptures) { 
+PICO_STATUS ps6000aGetNoOfProcessedCaptures(int16_t handle, uint64_t *nCaptures) {
     uint32_t cap32;
     uint32_t status = ps2000aGetNoOfProcessedCaptures(handle, &cap32);
     *nCaptures = cap32;
@@ -109,7 +109,7 @@ PICO_STATUS ps6000aGetTimebase(int16_t handle, uint32_t timebase, uint64_t noSam
 }
 PICO_STATUS ps6000aSetChannelOn(int16_t handle, PICO_CHANNEL channel, PICO_COUPLING coupling, PICO_CONNECT_PROBE_RANGE range, double analogueOffset, PICO_BANDWIDTH_LIMITER bandwidth) { return ps2000aSetChannel(handle, (uint32_t)channel, 1, (uint32_t)coupling, (uint32_t)range, (float)analogueOffset); }
 PICO_STATUS ps6000aSetChannelOff(int16_t handle, PICO_CHANNEL channel) { return ps2000aSetChannel(handle, (uint32_t)channel, 0, 0, 0, 0.0f); }
-PICO_STATUS ps6000aGetAdcLimits(int16_t handle, PICO_DEVICE_RESOLUTION resolution, int16_t *minValue, int16_t *maxValue) { 
+PICO_STATUS ps6000aGetAdcLimits(int16_t handle, PICO_DEVICE_RESOLUTION resolution, int16_t *minValue, int16_t *maxValue) {
     ps2000aMinimumValue(handle, minValue);
     return ps2000aMaximumValue(handle, maxValue);
 }
@@ -194,13 +194,13 @@ PICO_STATUS ps6000aSetNoOfCaptures(int16_t handle, uint64_t nCaptures) { return 
 PICO_STATUS ps6000aGetTriggerTimeOffset(int16_t handle, int64_t *time, PICO_TIME_UNITS *timeUnits, uint64_t segmentIndex) { return ps2000aGetTriggerTimeOffset64(handle, time, (void*)timeUnits, (uint32_t)segmentIndex); }
 PICO_STATUS ps6000aGetValuesTriggerTimeOffsetBulk(int16_t handle, int64_t *times, PICO_TIME_UNITS *timeUnits, uint64_t fromSegmentIndex, uint64_t toSegmentIndex) { return ps2000aGetValuesTriggerTimeOffsetBulk64(handle, times, (void*)timeUnits, (uint32_t)fromSegmentIndex, (uint32_t)toSegmentIndex); }
 PICO_STATUS ps6000aIsReady(int16_t handle, int16_t *ready) { return ps2000aIsReady(handle, ready); }
-PICO_STATUS ps6000aMemorySegments(int16_t handle, uint64_t nSegments, uint64_t *nMaxSamples) { 
+PICO_STATUS ps6000aMemorySegments(int16_t handle, uint64_t nSegments, uint64_t *nMaxSamples) {
     int32_t maxSamples32;
     uint32_t status = ps2000aMemorySegments(handle, (uint32_t)nSegments, &maxSamples32);
     if (nMaxSamples) *nMaxSamples = maxSamples32;
     return status;
 }
-PICO_STATUS ps6000aNoOfStreamingValues(int16_t handle, uint64_t *noOfValues) { 
+PICO_STATUS ps6000aNoOfStreamingValues(int16_t handle, uint64_t *noOfValues) {
     uint32_t vals32;
     uint32_t status = ps2000aNoOfStreamingValues(handle, &vals32);
     if (noOfValues) *noOfValues = vals32;

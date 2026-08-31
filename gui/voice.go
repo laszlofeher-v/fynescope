@@ -48,8 +48,6 @@ func InitVoiceCommands() {
 		return
 	}
 
-
-
 	// load and merge all
 	for _, entry := range entries {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".yaml" {
@@ -88,8 +86,6 @@ func mergeVoiceCommands(dest, src *VoiceCommands) {
 	dest.ChannelC = append(dest.ChannelC, src.ChannelC...)
 	dest.ChannelD = append(dest.ChannelD, src.ChannelD...)
 }
-
-
 
 // ExecuteVoiceCommand processes natural language text commands
 // and executes the corresponding UI/backend logic.
@@ -164,8 +160,6 @@ func (scp *ScpDesc) ExecuteVoiceCommand(cmd string) {
 					}
 				}
 			}
-
-
 
 			if ac {
 				handled = true

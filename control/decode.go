@@ -14,7 +14,7 @@ type DecodeResult struct {
 	Value2    uint16
 	HasValue2 bool
 	Label     string // Custom label for rendering
-	Error     bool // Framing error or parity error
+	Error     bool   // Framing error or parity error
 }
 
 // DecodeBit represents a single decoded bit
@@ -207,8 +207,8 @@ func DecodeUART(buffer []int16, samplingTimeInterval float64, triggerTimeOffset 
 				stopBitsLen = 2.0
 			}
 			// sampleIdx is currently in the middle of the first stop bit.
-			// Advance to the end of the stop bits, minus a small margin so we 
-			// land securely in the idle state before the next start bit, 
+			// Advance to the end of the stop bits, minus a small margin so we
+			// land securely in the idle state before the next start bit,
 			// rather than accidentally overshooting into the next start bit.
 			i = int(sampleIdx - (samplesPerBit / 2.0) + stopBitsLen*samplesPerBit)
 		} else {
@@ -470,4 +470,3 @@ func DecodeI2C(sclBuffer []int16, sdaBuffer []int16, samplingTimeInterval float6
 
 	return state
 }
-

@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	DefaultDotSize      = float32(4)
-	DefaultDotSpacing   = float32(2)
-	DefaultCursorColor  = "gray"
-	digitCursorOut      = -1
-	labelIndex          = 0
-	numberIndex         = 1
-	spaceMultiplier     = 1.5
+	DefaultDotSize     = float32(4)
+	DefaultDotSpacing  = float32(2)
+	DefaultCursorColor = "gray"
+	digitCursorOut     = -1
+	labelIndex         = 0
+	numberIndex        = 1
+	spaceMultiplier    = 1.5
 )
 
 var (
@@ -82,7 +82,7 @@ func NewHexArray(numOfDigits int, w fyne.Window, onColor color.Color, readOnly b
 		disp.digits[i] = disp16Desc{}
 	}
 	disp.ExtendBaseWidget(disp)
-	
+
 	disp.dotSize = DefaultDotSize
 	disp.dotSpacing = DefaultDotSpacing
 	disp.spaceBetweenDigits = disp.dotSize * 3
@@ -97,12 +97,12 @@ func NewHexArray(numOfDigits int, w fyne.Window, onColor color.Color, readOnly b
 		disp.label.TextStyle = fyne.TextStyle{Monospace: true}
 		disp.label.TextSize = digitHeight / 2
 	}
-	
+
 	labelSpace := float32(0)
 	if disp.label != nil {
 		labelSpace = disp.label.MinSize().Width + disp.spaceBetweenDigits
 	}
-	
+
 	disp.size.Width = float32(numOfDigits)*digitWidth +
 		float32(numOfDigits-1)*disp.spaceBetweenDigits +
 		labelSpace

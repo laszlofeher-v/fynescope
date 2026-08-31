@@ -92,12 +92,12 @@ func StringToScopeType(s string) ScopeType {
 	s = strings.ReplaceAll(s, " ", "_")
 
 	base := parseBaseScopeType(s)
-	
+
 	// Fallback for legacy demo/sim names like "2407" or "2207" which are missing the "B"
 	if isSim && base == ScopeUnknown {
 		base = parseBaseScopeType(s + "B")
 	}
-	
+
 	if isSim && base != ScopeUnknown {
 		return base + ScopeSimulatedOffset
 	}
@@ -384,7 +384,7 @@ func (t ScopeType) Base() ScopeType {
 	if t >= ScopeSimulatedOffset {
 		return t - ScopeSimulatedOffset
 	}
-	
+
 	s := formatBaseScopeType(t)
 	if !strings.Contains(s, "SIM") && !strings.Contains(s, "DEMO") {
 		return t
@@ -394,7 +394,7 @@ func (t ScopeType) Base() ScopeType {
 	if strings.HasSuffix(s, "DEMO") {
 		s = strings.ReplaceAll(s, "DEMO", "B")
 	}
-	
+
 	// Ensure MSO suffix is properly formatted for StringToScopeType
 	s = strings.ReplaceAll(s, "BMSO", "B MSO")
 
@@ -412,18 +412,18 @@ func (t ScopeType) IsETSCapable() bool {
 	if base == ScopeUnknown {
 		return false
 	}
-	
+
 	baseStr := base.String()
-	
+
 	// Disable for 4000 family
 	if strings.HasPrefix(baseStr, "4") {
 		return false
 	}
-	
+
 	// Disable for non-A/non-B legacy PS2203/PS2204
 	if baseStr == "2203" || baseStr == "2204" {
 		return false
 	}
-	
+
 	return true
 }

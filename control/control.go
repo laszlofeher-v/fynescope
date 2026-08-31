@@ -49,24 +49,24 @@ type (
 		ChannelA, ChannelB, ChannelC, ChannelD, Ext, Aux genericps.ThresholdDirection
 	}
 	TriggerDesc struct {
-		Enabled            bool
-		TriggerADC         int16
-		LowerTriggerADC    int16
-		HysteresisADC      uint16
-		LowerHysteresisADC uint16
-		UpperHysteresis    int32
-		LowerHysteresis    int32
-		Source             genericps.ChannelId
-		ThresholdDirection genericps.ThresholdDirection
-		ThresholdMode      genericps.ThresholdModeId
-		Mode               TriggerModes
-		Type               TriggerTypes
-		Mv                 int32
-		LowerMv            int32
-		ComplexProperties  []genericps.TriggerChannelProperties
-		ComplexConditions  []genericps.TriggerConditions
-		ComplexDirections  []TriggerDirections
-		IntervalType       genericps.PulseWidthType
+		Enabled               bool
+		TriggerADC            int16
+		LowerTriggerADC       int16
+		HysteresisADC         uint16
+		LowerHysteresisADC    uint16
+		UpperHysteresis       int32
+		LowerHysteresis       int32
+		Source                genericps.ChannelId
+		ThresholdDirection    genericps.ThresholdDirection
+		ThresholdMode         genericps.ThresholdModeId
+		Mode                  TriggerModes
+		Type                  TriggerTypes
+		Mv                    int32
+		LowerMv               int32
+		ComplexProperties     []genericps.TriggerChannelProperties
+		ComplexConditions     []genericps.TriggerConditions
+		ComplexDirections     []TriggerDirections
+		IntervalType          genericps.PulseWidthType
 		IntervalTimeLower     float64
 		IntervalTimeUpper     float64
 		XOffset               float64
@@ -167,9 +167,9 @@ type (
 		getChannel        getChannelMsg
 		getNumOfEnabled   getNumOfEnabledChMsg
 
-		SetDigitalPortCh  chan *DigitalPortMsg
-		getDigitalPortCh  chan *getDigitalPortMsg
-		getDigitalPort    getDigitalPortMsg
+		SetDigitalPortCh chan *DigitalPortMsg
+		getDigitalPortCh chan *getDigitalPortMsg
+		getDigitalPort   getDigitalPortMsg
 
 		SetInterpolationModeCh chan settings.InterpolationType
 		getInterpolationModeCh chan *getInterpolationModeMsg
@@ -190,8 +190,8 @@ type (
 		chEnabled                   []atomic.Bool
 		digitalPortsEnabled         [2]atomic.Bool
 		triggerTimeOffset           int64
-		receiveBuffer               [][]int16   // raw data buffer, only for real channel
-		receiveBufferMin            [][]int16   // raw data buffer for min values when in ED mode
+		receiveBuffer               [][]int16 // raw data buffer, only for real channel
+		receiveBufferMin            [][]int16 // raw data buffer for min values when in ED mode
 		digitalReceiveBuffer        [][]int16
 		digitalReceiveBufferMin     [][]int16
 		displayBuffer               [][]float32 // signal stored in mv
@@ -213,16 +213,16 @@ type (
 		scopeScreenWidth            float64
 		timeBaseDec                 uint64
 		minValue                    int32
-		RefreshCallback    func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64, xRoundError float64, samplingTimeInterval float64)
-		RefreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)
-		BufferCallback     func(size int)
-		EtsBufferCallback  func(size int)
-		DisplayStatus      func(s string, errorType ScopeError)
-		refreshTime        time.Time
-		Info               string
-		ScopeModel         ScopeType
-		MaxSamplingRate    uint32
-		StreamEnabled      atomic.Bool
+		RefreshCallback             func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64, xRoundError float64, samplingTimeInterval float64)
+		RefreshEtsCallback          func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)
+		BufferCallback              func(size int)
+		EtsBufferCallback           func(size int)
+		DisplayStatus               func(s string, errorType ScopeError)
+		refreshTime                 time.Time
+		Info                        string
+		ScopeModel                  ScopeType
+		MaxSamplingRate             uint32
+		StreamEnabled               atomic.Bool
 	}
 )
 

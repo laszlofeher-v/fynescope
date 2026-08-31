@@ -49,8 +49,8 @@ func NewPrbsGenerator() WaveformGenerator {
 		}
 		// Which bit period are we in?
 		bitIndex := int64(t / (2 * math.Pi))
-		
-		// Use a fast, high-quality 64-bit integer hash (SplitMix64) 
+
+		// Use a fast, high-quality 64-bit integer hash (SplitMix64)
 		x := uint64(bitIndex)
 		x += 0x9e3779b97f4a7c15 // Weyl constant
 		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9

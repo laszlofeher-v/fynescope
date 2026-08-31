@@ -1,10 +1,10 @@
 package gui
 
 import (
+	"fynescope/genericps"
 	"image"
 	"image/draw"
 	"math"
-	"fynescope/genericps"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -79,17 +79,17 @@ func (cl *ftChannelLabelViewer) mouseDown(button desktop.MouseButton, modifier f
 		channel := &cl.scp.Settings.Channels[cl.channelIndex]
 		if channel.Enabled {
 			channelViewer := &cl.scp.channelViewers[cl.channelIndex]
-			
+
 			channelViewer.displayOffsetFraction = 0
 			channelViewer.displayOffsetInt = 0
 			cl.scp.Settings.Channels[cl.channelIndex].DisplayVOffset = 0
-			
+
 			channelViewer.label.enableRefresh()
 			if channelViewer.tzLabel != nil {
 				channelViewer.tzLabel.enableRefresh()
 			}
 			channelViewer.dftLabel.enableRefresh()
-			
+
 			cl.scp.clearAllFtPersistentLayers()
 			cl.scp.refreshRasters()
 		}

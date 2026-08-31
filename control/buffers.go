@@ -75,7 +75,7 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 			return
 		}
 	}
-	
+
 	for i := 0; i < 2; i++ {
 		if !psControl.digitalPortsEnabled[i].Load() {
 			continue

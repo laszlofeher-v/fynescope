@@ -93,7 +93,7 @@ func TestGeneratorMonitor_SetSameSettingWhenUnchanged(t *testing.T) {
 	initialSetting := GeneratorDesc{OffsetVoltage: 0, PkToPK: 1000, WaveType: genericps.Square}
 
 	go psControl.generatorMonitor()
-	
+
 	// Send initial setting to populate storedSetting
 	psControl.SetGeneratorCh <- &GeneratorDescMsg{GeneratorDesc: initialSetting}
 	time.Sleep(50 * time.Millisecond) // Allow processing
@@ -356,4 +356,3 @@ func TestSetGenerator_ArbitraryWaveformSweep(t *testing.T) {
 	assert.NoError(t, err)
 	wg.Wait()
 }
-
