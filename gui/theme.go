@@ -201,7 +201,7 @@ func (t ScpDarkTheme) Size(s fyne.ThemeSizeName) float32 {
 	case theme.SizeNameInlineIcon:
 		return 20 * GlobalScreenScale
 	case theme.SizeNamePadding:
-		return 4 * GlobalScreenScale
+		return 2 * GlobalScreenScale
 	case theme.SizeNameScrollBar:
 		return 16 * GlobalScreenScale
 	case theme.SizeNameScrollBarSmall:
@@ -223,7 +223,7 @@ func (t ScpLightTheme) Size(s fyne.ThemeSizeName) float32 {
 	case theme.SizeNameInlineIcon:
 		return 20 * GlobalScreenScale
 	case theme.SizeNamePadding:
-		return 4 * GlobalScreenScale
+		return 2 * GlobalScreenScale
 	case theme.SizeNameScrollBar:
 		return 16 * GlobalScreenScale
 	case theme.SizeNameScrollBarSmall:
