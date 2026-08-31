@@ -28,6 +28,12 @@ func newFramelessEntry() *framelessEntry {
 	return e
 }
 
+func (e *framelessEntry) MinSize() fyne.Size {
+	s := e.Entry.MinSize()
+	s.Width = fyne.MeasureText("WWWWWW", theme.TextSize(), fyne.TextStyle{}).Width
+	return s
+}
+
 func (e *framelessEntry) CreateRenderer() fyne.WidgetRenderer {
 	r := e.Entry.CreateRenderer()
 	fr := &framelessEntryRenderer{WidgetRenderer: r}
@@ -284,10 +290,21 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		trigSelect.SetSelected(initialDirStr)
 		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
 
+		negCheck := widget.NewCheck("Neg", func(v bool) {
+			scp.Settings.Digital.ChannelNegated[chIdx] = v
+			if scp.digitalRaster != nil {
+				scp.digitalRaster.refresh()
+			}
+			scp.SaveSettings()
+		})
+		negCheck.SetChecked(scp.Settings.Digital.ChannelNegated[chIdx])
+		addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
+
 		row := container.NewHBox(
 			dnLabel,
 			labelEntry,
-			ccp,
+			negCheck,
+			container.NewCenter(ccp),
 			widget.NewLabel("Trig:"),
 			trigSelect,
 		)

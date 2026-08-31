@@ -180,6 +180,7 @@ type (
 		ChannelColors   [16]color.NRGBA        `yaml:"channelcolors"`
 		ChannelsEnabled [16]bool               `yaml:"channelsenabled"`
 		ChannelLabels   [16]string             `yaml:"channellabels"`
+		ChannelNegated  [16]bool               `yaml:"channelnegated"`
 		Trigger         DigitalTriggerSettings `yaml:"trigger"`
 		HexView         bool                   `yaml:"hexview"`
 	}
