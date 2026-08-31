@@ -212,7 +212,7 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 }
 
 func (tp *intervalTriggerPointViewer) draw() {
-	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
+	if tp.scp.getActiveFunctionIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
 	}
 	tp.advTriggerPointViewer.draw()

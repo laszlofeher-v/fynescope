@@ -507,7 +507,7 @@ func (tp *complexTriggerPointViewer) scrolled(delta, x, y float32) {
 }
 
 func (tp *complexTriggerPointViewer) draw() {
-	if tp.scp.controlTab.SelectedIndex() == dftTabIndex || tp.scp.inStreamMode() {
+	if tp.scp.getActiveFunctionIndex() == dftTabIndex || tp.scp.inStreamMode() {
 		return
 	}
 

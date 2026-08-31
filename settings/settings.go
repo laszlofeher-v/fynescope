@@ -181,6 +181,7 @@ type (
 		ChannelsEnabled [16]bool               `yaml:"channelsenabled"`
 		ChannelLabels   [16]string             `yaml:"channellabels"`
 		ChannelNegated  [16]bool               `yaml:"channelnegated"`
+		LabelNegated    [16]bool               `yaml:"labelnegated"`
 		Trigger         DigitalTriggerSettings `yaml:"trigger"`
 		HexView         bool                   `yaml:"hexview"`
 	}

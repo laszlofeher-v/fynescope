@@ -28,6 +28,76 @@ func newFramelessEntry() *framelessEntry {
 	return e
 }
 
+type tappableDnLabel struct {
+	widget.Label
+	onTapped func()
+	negated  bool
+}
+
+func newTappableDnLabel(text string, negated bool, tapped func()) *tappableDnLabel {
+	l := &tappableDnLabel{onTapped: tapped, negated: negated}
+	l.Text = text
+	l.ExtendBaseWidget(l)
+	return l
+}
+
+func (l *tappableDnLabel) Tapped(e *fyne.PointEvent) {
+	if l.onTapped != nil {
+		l.onTapped()
+	}
+}
+
+func (l *tappableDnLabel) TappedSecondary(e *fyne.PointEvent) {}
+
+func (l *tappableDnLabel) setNegated(neg bool) {
+	l.negated = neg
+	l.Refresh()
+}
+
+func (l *tappableDnLabel) CreateRenderer() fyne.WidgetRenderer {
+	r := l.Label.CreateRenderer()
+	line := canvas.NewLine(theme.ForegroundColor())
+	line.StrokeWidth = 1
+	if !l.negated {
+		line.Hidden = true
+	}
+	return &tappableDnLabelRenderer{WidgetRenderer: r, label: l, line: line}
+}
+
+type tappableDnLabelRenderer struct {
+	fyne.WidgetRenderer
+	label *tappableDnLabel
+	line  *canvas.Line
+}
+
+func (r *tappableDnLabelRenderer) Layout(size fyne.Size) {
+	r.WidgetRenderer.Layout(size)
+	r.line.Position1 = fyne.NewPos(0, 2)
+	r.line.Position2 = fyne.NewPos(size.Width, 2)
+}
+
+func (r *tappableDnLabelRenderer) MinSize() fyne.Size {
+	return r.WidgetRenderer.MinSize()
+}
+
+func (r *tappableDnLabelRenderer) Refresh() {
+	r.line.StrokeColor = theme.ForegroundColor()
+	r.line.Hidden = !r.label.negated
+	r.WidgetRenderer.Refresh()
+}
+
+func (r *tappableDnLabelRenderer) Objects() []fyne.CanvasObject {
+	baseObjs := r.WidgetRenderer.Objects()
+	objs := make([]fyne.CanvasObject, len(baseObjs)+1)
+	copy(objs, baseObjs)
+	objs[len(baseObjs)] = r.line
+	return objs
+}
+
+func (r *tappableDnLabelRenderer) Destroy() {
+	r.WidgetRenderer.Destroy()
+}
+
 func (e *framelessEntry) MinSize() fyne.Size {
 	s := e.Entry.MinSize()
 	s.Width = fyne.MeasureText("WWWWWW", theme.TextSize(), fyne.TextStyle{}).Width
@@ -240,7 +310,16 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	for i := 0; i < 16; i++ {
 		chIdx := i
 		dn := fmt.Sprintf("D%d", chIdx)
-		dnLabel := widget.NewLabel(dn)
+		
+		var dnLabel *tappableDnLabel
+		dnLabel = newTappableDnLabel(dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
+			scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
+			dnLabel.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
+			scp.SaveSettings()
+			if scp.digitalRaster != nil {
+				scp.digitalRaster.refresh()
+			}
+		})
 
 		// 1. Editable label (max 6 chars, frameless)
 		labelEntry := newFramelessEntry()
@@ -291,13 +370,13 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
 
 		negCheck := widget.NewCheck("Neg", func(v bool) {
-			scp.Settings.Digital.ChannelNegated[chIdx] = v
+			scp.Settings.Digital.LabelNegated[chIdx] = v
 			if scp.digitalRaster != nil {
 				scp.digitalRaster.refresh()
 			}
 			scp.SaveSettings()
 		})
-		negCheck.SetChecked(scp.Settings.Digital.ChannelNegated[chIdx])
+		negCheck.SetChecked(scp.Settings.Digital.LabelNegated[chIdx])
 		addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
 
 		row := container.NewHBox(

@@ -879,7 +879,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
-		newTab := scp.controlTab.SelectedIndex()
+		newTab := scp.getActiveFunctionIndex()
 		scp.handleTabTransition(prevTab, newTab)
 
 		if scp.Settings.Window.LastDispFunction != scp.Settings.Window.Function {
@@ -1076,7 +1076,7 @@ func (scp *ScpDesc) build2000Gui() {
 			if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
 				scp.psControl.DisplayStatus("", control.Info)
 			}
-			if scp.controlTab.SelectedIndex() == ffTabIndex {
+			if scp.getActiveFunctionIndex() == ffTabIndex {
 				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
 					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
@@ -1104,7 +1104,7 @@ func (scp *ScpDesc) build2000Gui() {
 				// External generator frequency will be set via setGeneratorFreq during the sweep.
 			}
 
-			if scp.controlTab.SelectedIndex() == ffTabIndex {
+			if scp.getActiveFunctionIndex() == ffTabIndex {
 				scp.ResetFfSweep()
 				// User requirement: When f(f) is selected then the run button starts the generators that are checked on.
 				// Start the application-controlled logarithmic frequency sweep.
@@ -1666,5 +1666,39 @@ func newNumericalEntry() *numericalEntry {
 func (e *numericalEntry) TypedRune(r rune) {
 	if (r >= '0' && r <= '9') || r == '.' || r == '-' || r == 'e' || r == 'E' || r == '+' {
 		e.Entry.TypedRune(r)
+	}
+}
+
+func (scp *ScpDesc) getActiveFunctionIndex() int {
+	if scp.controlTab == nil || scp.controlTab.Selected() == nil {
+		return ftTabIndex
+	}
+	switch scp.controlTab.Selected() {
+	case scp.ftTab:
+		return ftTabIndex
+	case scp.fvTab:
+		return fvTabIndex
+	case scp.dftTab:
+		return dftTabIndex
+	case scp.ffTab:
+		return ffTabIndex
+	case scp.rlcTab:
+		return rlcTabIndex
+	case scp.genTab:
+		return genTabIndex
+	case scp.filterTab:
+		return filterTabIndex
+	case scp.extgenTab:
+		return extgenTabIndex
+	case scp.digGenTab:
+		return digGenTabIndex
+	case scp.digPortTab:
+		return digPortTabIndex
+	case scp.vchTab:
+		return vchTabIndex
+	case scp.decodeTab:
+		return decodeTabIndex
+	default:
+		return ftTabIndex
 	}
 }
