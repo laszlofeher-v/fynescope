@@ -188,15 +188,7 @@ func (ccp *CheckColorPick) MouseOut() {
 	ccp.window.Canvas().Unfocus()
 	ccp.Refresh()
 }
-func (ccp *CheckColorPick) Disable() {
-}
-func (ccp *CheckColorPick) Enable() {
-}
-func (ccp *CheckColorPick) Disabled() bool {
-	return false
-}
 
-var _ fyne.Disableable = (*CheckColorPick)(nil)
 var _ fyne.Focusable = (*CheckColorPick)(nil)
 var _ fyne.Tappable = (*CheckColorPick)(nil)
 var _ fyne.Widget = (*CheckColorPick)(nil)
