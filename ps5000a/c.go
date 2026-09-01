@@ -524,6 +524,7 @@ func ps5000aSetTriggerChannelProperties(handle int16, channelProperties []Trigge
 			cTriggerChannelProperties[i].thresholdLower = (C.short)(channelProperties[i].ThresholdLower)
 			cTriggerChannelProperties[i].thresholdUpperHysteresis = (C.ushort)(channelProperties[i].ThresholdUpperHysteresis)
 			cTriggerChannelProperties[i].thresholdUpper = (C.short)(channelProperties[i].ThresholdUpper)
+			cTriggerChannelProperties[i].thresholdMode = (C.PS5000A_THRESHOLD_MODE)(channelProperties[i].ThresholdMode)
 		}
 	}
 	pcTriggerChannelProperties := (*C.PS5000A_TRIGGER_CHANNEL_PROPERTIES)(nil)

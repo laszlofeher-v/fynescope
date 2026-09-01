@@ -84,3 +84,26 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 		t.Errorf("Expected lower bound to be decremented to 32444, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 }
+
+func TestPscDesc_getValidTriggerProperties_RiseFall(t *testing.T) {
+	psControl := &PscDesc{}
+
+	// RiseFall with initial Level mode should automatically become Window mode in properties
+	psControl.triggerSetting = TriggerDesc{
+		Type:            RiseFall,
+		TriggerADC:      2000,
+		LowerTriggerADC: 500,
+		ThresholdMode:   genericps.Level,
+	}
+
+	props := psControl.getValidTriggerProperties()
+	if len(props) != 1 {
+		t.Fatalf("Expected 1 property, got %d", len(props))
+	}
+	if props[0].ThresholdMode != genericps.Window {
+		t.Errorf("Expected ThresholdMode Window for RiseFall, got %v", props[0].ThresholdMode)
+	}
+	if props[0].ThresholdUpper != 2000 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected upper: 2000, lower: 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	}
+}
