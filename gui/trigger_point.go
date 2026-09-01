@@ -242,7 +242,7 @@ func (tp *triggerPointViewer) draw() {
 				int(math.Round(float64(x+rectSize))),
 				int(math.Round(float64(y+rectSize))))
 			drawCircle(tp.signalScreen(), x, y, triggerPointR, theme.ForegroundColor())
-			if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
+			if tp.scp.triggerThresholdDisp != nil && tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 				tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 				tp.scp.triggerThresholdDisp.Refresh()
 			}

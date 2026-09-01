@@ -396,7 +396,7 @@ func (tp *advTriggerPointViewer) draw() {
 			drawLine(tp.signalScreen(), x-halfRectSize, lyh, x+halfRectSize, lyh, col)
 		}
 
-		if tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
+		if tp.scp.triggerThresholdDisp != nil && tp.scp.triggerThresholdDisp.Value != int(channel.Trigger.Mv) {
 			tp.scp.triggerThresholdDisp.SilentSetValue(int(channel.Trigger.Mv))
 			tp.scp.triggerThresholdDisp.Refresh()
 		}
@@ -407,7 +407,7 @@ func (tp *advTriggerPointViewer) draw() {
 			currentLowerHysteresis = int(channel.Trigger.DropoutHysteresis)
 		}
 
-		if tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
+		if tp.scp.triggerHysteresisDisp != nil && tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
 			tp.scp.triggerHysteresisDisp.SilentSetValue(currentHysteresis)
 			tp.scp.triggerHysteresisDisp.Refresh()
 		}

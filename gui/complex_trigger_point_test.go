@@ -4,6 +4,7 @@ import (
 	"fynescope/genericps"
 	"fynescope/settings"
 	"image"
+	"image/color"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,4 +78,46 @@ func TestComplexTrigger_y2mv(t *testing.T) {
 
 	mv2 := viewer.y2mv(450, 1)
 	assert.Equal(t, 500.0, mv2)
+}
+
+func TestComplexTrigger_RiseFallDraw(t *testing.T) {
+	genericps.TriggerRising = genericps.ThresholdDirection(2)
+	genericps.TriggerFalling = genericps.ThresholdDirection(3)
+	genericps.CondDontCare = genericps.TriggerRespBase(0)
+	genericps.CondTrue = genericps.TriggerRespBase(1)
+
+	scp := setupComplexTriggerScp()
+	scp.maxScreenTime = 100.0
+	scp.triggerSource = 0
+	scp.Settings.Channels[0].Enabled = true
+	scp.Settings.Channels[0].Trigger.Condition = genericps.CondTrue
+	scp.Settings.Channels[0].Trigger.Type = settings.TriggerTypeRiseFall
+	scp.Settings.Channels[0].Trigger.Mv = 1000
+	scp.Settings.Channels[0].Trigger.LowerMv = -1000
+	scp.Settings.Channels[0].Trigger.IntervalType = genericps.PwTypeLessThan
+	scp.Settings.Channels[0].Trigger.IntervalTimeUpper = 20.0
+	scp.Settings.Channels[0].Col = [2]color.NRGBA{
+		{255, 255, 255, 255}, {255, 255, 255, 255},
+	}
+
+	viewer := newComplexTriggerPointViewer(scp.ftScopeSignalScreen, scp, false)
+
+	// 1. Rising -> 1 handle at lower threshold
+	scp.Settings.Channels[0].Trigger.TriggerDirection = genericps.TriggerRising
+	viewer.draw()
+	assert.Equal(t, 1, len(viewer.intLowerRects[0]), "Should draw 1 handle for RiseFall Rising")
+	_, expectedYLower := viewer.timeMv2xy(-1000, 0)
+	assert.Equal(t, int(expectedYLower), (viewer.intLowerRects[0][0].Min.Y+viewer.intLowerRects[0][0].Max.Y)/2)
+
+	// 2. Falling -> 1 handle at upper threshold
+	scp.Settings.Channels[0].Trigger.TriggerDirection = genericps.TriggerFalling
+	viewer.draw()
+	assert.Equal(t, 1, len(viewer.intLowerRects[0]), "Should draw 1 handle for RiseFall Falling")
+	_, expectedYUpper := viewer.timeMv2xy(1000, 0)
+	assert.Equal(t, int(expectedYUpper), (viewer.intLowerRects[0][0].Min.Y+viewer.intLowerRects[0][0].Max.Y)/2)
+
+	// 3. WindowPulseWidth -> 2 handles
+	scp.Settings.Channels[0].Trigger.Type = settings.TriggerTypeWindowPulseWidth
+	viewer.draw()
+	assert.Equal(t, 2, len(viewer.intLowerRects[0]), "Should draw 2 handles for WindowPulseWidth")
 }

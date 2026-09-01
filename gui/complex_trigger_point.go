@@ -687,10 +687,20 @@ func (tp *complexTriggerPointViewer) draw() {
 				pwType := chCfg.IntervalType
 				isSingle := intervalSingleModeTypes[pwType]
 
-				yList := []float32{y}
-				if isWin {
+				yList := []float32{}
+				if chCfg.Type == settings.TriggerTypeRiseFall {
+					if chCfg.TriggerDirection == genericps.TriggerFalling {
+						_, yUpper := tp.timeMv2xy(chCfg.Mv, i)
+						yList = []float32{yUpper}
+					} else {
+						_, yLower := tp.timeMv2xy(chCfg.LowerMv, i)
+						yList = []float32{yLower}
+					}
+				} else if isWin {
 					_, yLower := tp.timeMv2xy(chCfg.LowerMv, i)
-					yList = append(yList, yLower)
+					yList = []float32{y, yLower}
+				} else {
+					yList = []float32{y}
 				}
 
 				for _, currY := range yList {
@@ -786,7 +796,7 @@ func (tp *complexTriggerPointViewer) draw() {
 			}
 
 			if genericps.ChannelId(i) == tp.scp.triggerSource {
-				if tp.scp.triggerThresholdDisp.Value != int(chCfg.Mv) {
+				if tp.scp.triggerThresholdDisp != nil && tp.scp.triggerThresholdDisp.Value != int(chCfg.Mv) {
 					tp.scp.triggerThresholdDisp.SilentSetValue(int(chCfg.Mv))
 					tp.scp.triggerThresholdDisp.Refresh()
 				}
@@ -803,7 +813,7 @@ func (tp *complexTriggerPointViewer) draw() {
 					currentLowerHysteresis = int(chCfg.DropoutHysteresis)
 				}
 
-				if tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
+				if tp.scp.triggerHysteresisDisp != nil && tp.scp.triggerHysteresisDisp.Value != currentHysteresis {
 					tp.scp.triggerHysteresisDisp.SilentSetValue(currentHysteresis)
 					tp.scp.triggerHysteresisDisp.Refresh()
 				}
