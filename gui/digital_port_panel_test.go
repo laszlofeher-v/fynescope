@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -126,5 +127,38 @@ func TestDigitalPortPanel_DnLabelsAddToTest(t *testing.T) {
 		dnLabel.Tapped(nil)
 		assert.Equal(t, !initialNeg, scp.Settings.Digital.ChannelNegated[i])
 		assert.Equal(t, !initialNeg, dnLabel.negated)
+	}
+}
+
+func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: true},
+					{Enabled: true},
+				},
+			},
+		},
+	}
+
+	scp.buildDigitalPortContent(false)
+
+	for i := 0; i < 16; i++ {
+		negCheckId := fmt.Sprintf("digPortNegCheck_%d", i)
+		labelEntryId := fmt.Sprintf("digPortLabelEntry_%d", i)
+
+		controlsMtx.RLock()
+		negCtrl, negOk := controls[negCheckId]
+		labelCtrl, labelOk := controls[labelEntryId]
+		controlsMtx.RUnlock()
+
+		assert.True(t, negOk, "Expected %s to be registered in controls", negCheckId)
+		assert.NotNil(t, negCtrl.Obj, "Expected %s object to be non-nil", negCheckId)
+		assert.Equal(t, digPortTabIndex, negCtrl.Tab)
+
+		assert.True(t, labelOk, "Expected %s to be registered in controls", labelEntryId)
+		assert.NotNil(t, labelCtrl.Obj, "Expected %s object to be non-nil", labelEntryId)
+		assert.Equal(t, digPortTabIndex, labelCtrl.Tab)
 	}
 }

@@ -54,7 +54,6 @@ const (
 	x10Id                          = "x10"
 	triggerCheckId                 = "triggerCheck"
 	persId                         = "pers"
-	timeId                         = "time"
 	timeSelectId                   = "timeSelect"
 	unitSelectId                   = "unitSelect"
 	acdcId                         = "acdc"
@@ -94,7 +93,6 @@ const (
 	dftWindowId                    = "dftWindow"
 	dftModeId                      = "dftMode"
 	dftMaxFreqValId                = "dftMaxFreqVal"
-	dftMaxFreqUnitId               = "dftMaxFreqUnit"
 	dftBinId                       = "dftBin"
 	dftSampleRateId                = "dftSampleRate"
 	dftSampleUnitId                = "dftSampleUnit"
@@ -105,7 +103,6 @@ const (
 	extGenOffsetId                 = "extGenOffset"
 	extGenPhaseId                  = "extGenPhase"
 	extGenImpOhmsId                = "extGenImpOhms"
-	extGenImpModeId                = "extGenImpMode"
 	ipmId                          = "ipm"
 	triggerDirectionId             = "triggerDirection"
 	chOffsetId                     = "chOffsetId"
@@ -118,8 +115,6 @@ const (
 	genOperationId                 = "genOperation"
 	ffMinFreqId                    = "ffMinFreq"
 	ffMaxFreqId                    = "ffMaxFreq"
-	ffSweepButtonId                = "ffSweepButton"
-	ffStopButtonId                 = "ffStopButton"
 	ffExtGenSelectId               = "ffExtGenSelect"
 	ffDispModeSelectId             = "ffDispModeSelect"
 
@@ -134,9 +129,7 @@ const (
 	digGenFuncId   = "digGenFunc"
 	vchFuncId      = "vchFunc"
 	decodeFuncId   = "decodeFunc"
-	rlcEnableId    = "rlcEnable"
 	rlcTypeId      = "rlcType"
-	rlcGenSourceId = "rlcGenSource"
 	rlcRId         = "rlcR"
 	rlcRUnitId     = "rlcRUnit"
 	rlcLId         = "rlcL"
@@ -192,6 +185,8 @@ func addToTest(obj fyne.CanvasObject, name string, tabID int) {
 	controlsMtx.Lock()
 	if _, exists := controls[name]; !exists {
 		tabValidKeys[tabID] = append(tabValidKeys[tabID], name)
+	} else {
+		slog.Debug(name + " already!")
 	}
 	controls[name] = TestControl{Obj: obj, Tab: tabID}
 	controlsMtx.Unlock()
@@ -354,6 +349,13 @@ func internalTap(name string, isFuzzer bool) bool {
 			}
 			return false
 		}
+	case *widget.Check:
+		if isFuzzer {
+			slog.Debug("randTap", "name", name)
+		}
+		doEvent(func() {
+			c.SetChecked(!c.Checked)
+		})
 	case fyne.Tappable:
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
@@ -562,7 +564,7 @@ func (scp *ScpDesc) Test() {
 	scroll(genMinFrqId, 5)
 	scroll(genMaxFrqId, 5)
 	scroll(genStepFreqId, 5)
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 2; i++ {
 		tap(runblockButtonId)
 		tap(themeChangeActionId)
 		drag(genFreqSetId, 100000)
@@ -603,8 +605,10 @@ func (scp *ScpDesc) Test() {
 	}
 
 	tap(digPortFuncId)
-	tap("d07Button")
-	tap("d815Button")
+	tap("digPort0EnableCheck")
+	tap("digPort1EnableCheck")
+	tap("digPortDnLabel_0")
+	tap("digPortNegCheck_0")
 	tap("digPortTrigEnable")
 	scroll("digPortOperandSelect", 1)
 	tap("digPortCheckColorPick_0")

@@ -23,7 +23,7 @@ const (
 var (
 	numberOfChannels        = 4
 	ScopeDemoVariantInfo    = "2407DEMO"
-	ScopeSimVariantInfo     = "2207SIM"
+	ScopeSimVariantInfo     = "2207MSOSIM"
 	scopeBatchAndSerialInfo = "1/1"
 	MaxChannelBuffers       = 8
 )
