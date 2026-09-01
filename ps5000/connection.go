@@ -412,6 +412,7 @@ func setPulseWidthQualifier(m *genericps.SetPulseWidthQualifierMsg) {
 		c[i].ChannelB = TriggerState(m.Conditions[i].ChannelB)
 		c[i].ChannelC = TriggerState(m.Conditions[i].ChannelC)
 		c[i].ChannelD = TriggerState(m.Conditions[i].ChannelD)
+		c[i].External = TriggerState(m.Conditions[i].External)
 	}
 	err = ps5000SetPulseWidthQualifier(m.Handle(), c, ThresholdDirection(m.Direction), m.Lower, m.Upper, PulseWidthType(m.PwType))
 	response := m.Rsp().(*genericps.SetPulseWidthQualifierRsp)
