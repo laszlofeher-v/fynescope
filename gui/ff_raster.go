@@ -224,6 +224,18 @@ func (ff *ffViewer) draw() {
 
 			startDecade := int(math.Floor(logMin))
 			endDecade := int(math.Ceil(logMax))
+			numDecades := logMax - logMin
+
+			var multipliers []int
+			if numDecades <= 1.2 {
+				multipliers = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+			} else if numDecades <= 3.5 {
+				multipliers = []int{1, 2, 5}
+			} else {
+				multipliers = []int{1}
+			}
+
+			lastLabelRight := -100000.0
 
 			for dec := startDecade; dec <= endDecade; dec++ {
 				base := math.Pow(10, float64(dec))
@@ -236,12 +248,24 @@ func (ff *ffViewer) draw() {
 							col = color.NRGBA{50, 50, 50, 255}
 						}
 
+						shouldLabel := false
+						for _, m := range multipliers {
+							if j == m {
+								shouldLabel = true
+								break
+							}
+						}
+
 						if j == 1 {
 							ixf := int(math.Round(xf))
 							for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 								ff.scp.ffScopeFullScreen.Set(ixf, y, col)
 							}
+						} else {
+							drawVDiv(xf, col)
+						}
 
+						if shouldLabel {
 							vstr := fmt.Sprintf("%gHz", f)
 							if f >= 1000000 {
 								vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
@@ -249,9 +273,12 @@ func (ff *ffViewer) draw() {
 								vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
 							}
 							left, _, right, _ := ff.scp.boundString(vstr)
-							ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
-						} else {
-							drawVDiv(xf, col)
+							lblW := float64(right - left)
+							drawX := xf - lblW/2.0
+							if drawX >= lastLabelRight+8.0 {
+								ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
+								lastLabelRight = drawX + lblW
+							}
 						}
 					}
 				}
@@ -264,6 +291,8 @@ func (ff *ffViewer) draw() {
 			}
 			step := niceStep(span / 10.0)
 			firstFreq := math.Floor(minFreq/step) * step
+
+			lastLabelRight := -100000.0
 
 			for i := 0; i < 20; i++ {
 				f := firstFreq + float64(i)*step
@@ -291,7 +320,12 @@ func (ff *ffViewer) draw() {
 						vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
 					}
 					left, _, right, _ := ff.scp.boundString(vstr)
-					ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
+					lblW := float64(right - left)
+					drawX := xf - lblW/2.0
+					if drawX >= lastLabelRight+8.0 {
+						ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
+						lastLabelRight = drawX + lblW
+					}
 				}
 			}
 		}
@@ -360,24 +394,49 @@ func (ff *ffViewer) draw() {
 				divH := h / 8.0
 				j_min := math.Ceil(-yOffset / divH)
 				yf_top := float64(bounds.Min.Y) + j_min*divH + yOffset
-				ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(yf_top+divH/2+10)), unitName, col)
+
+				stride := 1
+				if divH < float64(fontSize)+6.0 {
+					stride = 2
+				}
+				lastDrawnY := -100000.0
+				unitDrawn := false
+				unitY := yf_top - float64(fontSize)/2.0 - 2.0
+				if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
+					lastDrawnY = unitY
+					unitDrawn = true
+				}
 
 				dv := maxV / 8.0
 				for j := -40; j <= 48; j++ {
+					if j%stride != 0 {
+						continue
+					}
 					yf := float64(bounds.Min.Y) + float64(j)*divH + yOffset
+					if yf < float64(bounds.Min.Y) || yf > float64(bounds.Max.Y) {
+						continue
+					}
 					v := maxV - float64(j)*dv
 					vstr := strconv.FormatFloat(v, 'f', 1, 64)
+					if !unitDrawn {
+						vstr += " " + unitName
+						unitDrawn = true
+					}
 
 					left, top, right, bottom := ff.scp.boundString(vstr)
+					drawY := yf - float64(top-bottom)/2.0
+					if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+						continue
+					}
 					var lx int
 					if yCount%2 == 0 {
 						lx = bounds.Min.X - int(right-left) - 5 - yLabelOffsetLeft
 					} else {
 						lx = bounds.Max.X + 5 + yLabelOffsetRight
 					}
-					if yf >= float64(bounds.Min.Y) && yf <= float64(bounds.Max.Y) {
-						ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(yf-float64(top-bottom)/2)), vstr, col)
-					}
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(drawY)), vstr, col)
+					lastDrawnY = drawY
 				}
 			} else {
 				unitName = ff.scp.Settings.Dft.DisplayMode
@@ -395,23 +454,48 @@ func (ff *ffViewer) draw() {
 				divH := h / 8.0
 				j_min := math.Ceil(-yOffset / divH)
 				yf_top := float64(bounds.Min.Y) + j_min*divH + yOffset
-				ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(yf_top+divH/2+10)), unitName, col)
+
+				stride := 1
+				if divH < float64(fontSize)+6.0 {
+					stride = 2
+				}
+				lastDrawnY := -100000.0
+				unitDrawn := false
+				unitY := yf_top - float64(fontSize)/2.0 - 2.0
+				if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
+					lastDrawnY = unitY
+					unitDrawn = true
+				}
 
 				for j := -40; j <= 48; j++ {
+					if j%stride != 0 {
+						continue
+					}
 					yf := float64(bounds.Min.Y) + float64(j)*divH + yOffset
+					if yf < float64(bounds.Min.Y) || yf > float64(bounds.Max.Y) {
+						continue
+					}
 					v := float64(j) * -10.0
 					vstr := strconv.FormatFloat(v, 'f', 0, 64)
+					if !unitDrawn {
+						vstr += " " + unitName
+						unitDrawn = true
+					}
 
 					left, top, right, bottom := ff.scp.boundString(vstr)
+					drawY := yf - float64(top-bottom)/2.0
+					if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+						continue
+					}
 					var lx int
 					if yCount%2 == 0 {
 						lx = bounds.Min.X - int(right-left) - 5 - yLabelOffsetLeft
 					} else {
 						lx = bounds.Max.X + 5 + yLabelOffsetRight
 					}
-					if yf >= float64(bounds.Min.Y) && yf <= float64(bounds.Max.Y) {
-						ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(yf-float64(top-bottom)/2)), vstr, col)
-					}
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(drawY)), vstr, col)
+					lastDrawnY = drawY
 				}
 			}
 
@@ -441,15 +525,32 @@ func (ff *ffViewer) draw() {
 			} else {
 				lx_unit = bounds.Max.X + 5 + yLabelOffsetRight
 			}
-			ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(float64(bounds.Min.Y)+float64(h)/float64(numberOfDivs)/2+10)), unitName, col)
 
 			divHPhase := h / 8.0
+			stride := 1
+			if divHPhase < float64(fontSize)+6.0 {
+				stride = 2
+			}
+			lastDrawnY := -100000.0
+			unitY := float64(bounds.Min.Y) - float64(fontSize)/2.0 - 2.0
+			if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
+				ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
+				lastDrawnY = unitY
+			}
+
 			for j := 0; j <= 8; j++ {
+				if j%stride != 0 && j != 0 && j != 8 {
+					continue
+				}
 				yf := float64(bounds.Min.Y) + float64(j)*divHPhase
 				v := 180.0 - float64(j)*45.0
 				vstr := strconv.FormatFloat(v, 'f', 0, 64)
 
 				left, top, right, bottom := ff.scp.boundString(vstr)
+				drawY := yf - float64(top-bottom)/2.0
+				if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+					continue
+				}
 				var lx int
 				if yCount%2 == 0 {
 					lx = bounds.Min.X - int(right-left) - 5 - yLabelOffsetLeft
@@ -457,7 +558,8 @@ func (ff *ffViewer) draw() {
 					lx = bounds.Max.X + 5 + yLabelOffsetRight
 				}
 				if yf >= float64(bounds.Min.Y) && yf <= float64(bounds.Max.Y) {
-					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(yf-float64(top-bottom)/2)), vstr, col)
+					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx, int(math.Round(drawY)), vstr, col)
+					lastDrawnY = drawY
 				}
 			}
 

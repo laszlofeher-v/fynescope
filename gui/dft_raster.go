@@ -201,16 +201,14 @@ func (frql *frqLabelViewer) draw() {
 	if w < 1 {
 		return
 	}
-	l, t, r, b := frql.scp.boundString("100M")
-	maxLblWidth := r - l
+	minFreq, maxFreqPlot := frql.scp.getDftFreqRange()
+	sampleLabel := formatFreq(maxFreqPlot)
+	l, t, r, b := frql.scp.boundString(sampleLabel)
+	maxLblWidth := float32(math.Max(float64(r-l), 45.0))
 	lblHeight := b - t
 
 	// Frequency steps: avoid overlapping by calculating based on width
-	labelSpacing := maxLblWidth + 10 // add some padding between labels
-	if labelSpacing < 10 {
-		labelSpacing = 50 // fallback
-	}
-
+	labelSpacing := maxLblWidth + 14.0 // padding between labels
 	numDivs := int(w / labelSpacing)
 	if numDivs > 10 {
 		numDivs = 10
@@ -227,14 +225,14 @@ func (frql *frqLabelViewer) draw() {
 		&image.Uniform{frql.scp.theme.Color(ColorNameSignalBackground, 0)},
 		image.ZP, draw.Src)
 
-	minFreq, maxFreqPlot := frql.scp.getDftFreqRange()
-
 	if !frql.scp.Settings.Dft.XAxisLog {
 		if numDivs <= 0 {
 			numDivs = 1
 		}
 		step := niceStep(maxFreqPlot / float64(numDivs))
 		firstFreq := math.Floor(minFreq/step) * step
+
+		lastLabelRight := float32(-100000.0)
 
 		for i := 0; ; i++ { // Draw labels until they go off-screen
 			freq := firstFreq + float64(i)*step
@@ -255,9 +253,15 @@ func (frql *frqLabelViewer) draw() {
 			label := formatFreq(freq)
 			lblL, _, lblR, _ := frql.scp.boundString(label)
 			lblW := lblR - lblL
+			drawX := x - lblW/2
 
-			frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
+			if drawX < lastLabelRight+8.0 {
+				continue
+			}
+
+			frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(drawX),
 				bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+			lastLabelRight = drawX + lblW
 		}
 	} else {
 		logMin := math.Log10(math.Max(minFreq, 1e-6))
@@ -274,10 +278,22 @@ func (frql *frqLabelViewer) draw() {
 
 		startDecade := int(math.Floor(logMin))
 		endDecade := int(math.Ceil(logMax))
+		numDecades := logMax - logMin
+
+		var multipliers []int
+		if numDecades <= 1.2 {
+			multipliers = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+		} else if numDecades <= 3.5 {
+			multipliers = []int{1, 2, 5}
+		} else {
+			multipliers = []int{1}
+		}
+
+		lastLabelRight := float32(-100000.0)
 
 		for dec := startDecade; dec <= endDecade; dec++ {
 			base := math.Pow(10, float64(dec))
-			for j := 1; j < 10; j++ {
+			for _, j := range multipliers {
 				freq := base * float64(j)
 				if freq < minFreq-1e-6 || freq > minFreq+maxFreqPlot+1e-6 {
 					continue
@@ -292,14 +308,18 @@ func (frql *frqLabelViewer) draw() {
 					break
 				}
 
-				if j == 1 {
-					label := formatFreq(freq)
-					lblL, _, lblR, _ := frql.scp.boundString(label)
-					lblW := lblR - lblL
+				label := formatFreq(freq)
+				lblL, _, lblR, _ := frql.scp.boundString(label)
+				lblW := lblR - lblL
+				drawX := x - lblW/2
 
-					frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(x-lblW/2),
-						bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+				if drawX < lastLabelRight+8.0 {
+					continue
 				}
+
+				frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(drawX),
+					bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+				lastLabelRight = drawX + lblW
 			}
 		}
 	}

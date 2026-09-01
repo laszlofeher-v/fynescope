@@ -342,19 +342,50 @@ func (tl *timeLabelViewer) draw() {
 	}
 	zeroAt := w*triggerTimeOffset/maxScreenTime + float64(signalScreen.Bounds().Min.X)
 	gridSpacing := w / float64(numberOfDivs)
-	v = float32(math.Round(float64(divsX[0]-float32(zeroAt))/gridSpacing)) * float32(dt)
+	v0 := float32(math.Round(float64(divsX[0]-float32(zeroAt))/gridSpacing)) * float32(dt)
+
+	// Measure sample label with unit to pick an optimal stride
+	sampleStr := strconv.FormatFloat(float64(v0), 'f', 1, 32) + " " + unitName
+	l0, _, r0, _ := tl.scp.boundString(sampleStr)
+	maxSampleWidth := float64(r0-l0) + 12.0
+
+	stride := 1
+	if gridSpacing < maxSampleWidth {
+		if 2*gridSpacing >= maxSampleWidth {
+			stride = 2
+		} else {
+			stride = 5
+		}
+	}
+
+	lastDrawnRight := -100000.0
+	firstDrawn := true
+
 	for i, x := range divsX {
+		v = v0 + float32(i)*dt
 		if v > -dt/8 && v < dt/8 { // avoid -0.0
 			v = 0
 		}
+		if i%stride != 0 && i != 0 && i != len(divsX)-1 {
+			continue
+		}
 		vstr := strconv.FormatFloat(float64(v), 'f', 1, 32)
-		if i == 0 { // 											first label
+		if firstDrawn {
 			vstr = vstr + " " + unitName
 		}
 		left, _, right, _ := tl.scp.boundString(vstr)
-		tl.scp.addLabel(fullScreen, int(math.Round(float64(x-(right+left)/2))),
+		lblW := float64(right - left)
+		drawX := float64(x) - lblW/2.0
+
+		// Ensure no overlap with previous label
+		if drawX < lastDrawnRight+6.0 {
+			continue
+		}
+
+		tl.scp.addLabel(fullScreen, int(math.Round(drawX)),
 			y, vstr, theme.ForegroundColor())
-		v += float32(dt)
+		lastDrawnRight = drawX + lblW
+		firstDrawn = false
 	}
 	tl.disableRefresh()
 }
