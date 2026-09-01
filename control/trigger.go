@@ -183,9 +183,18 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 	if psControl.triggerSetting.Mode == Auto {
 		at = autoTriggerMs
 	}
+	dir := psControl.triggerSetting.ThresholdDirection
+	if !psControl.triggerSetting.Enabled ||
+		(dir != genericps.TriggerRising &&
+			dir != genericps.TriggerFalling &&
+			dir != genericps.TriggerRisingOrFalling &&
+			dir != genericps.TriggerAbove &&
+			dir != genericps.TriggerBelow) {
+		dir = genericps.TriggerRising
+	}
 	err = psControl.Con.SetSimpleTrigger(psControl.triggerSetting.Enabled,
 		psControl.triggerSetting.Source, psControl.triggerSetting.TriggerADC,
-		psControl.triggerSetting.ThresholdDirection, 0, at)
+		dir, 0, at)
 	if err != nil {
 		slog.Error("setSimpleTrigger", "error:", err)
 		return
