@@ -684,18 +684,30 @@ func simGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples, downSa
 }
 
 func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error) {
-	maximumVoltage, minimumVoltage = 20, -20
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, 0, fmt.Errorf(invalidHandle)
 	}
+	if voltageRange < int(Range_10mv) || voltageRange > int(Range_50v) {
+		return 0, 0, fmt.Errorf("invalid voltage range: %d", voltageRange)
+	}
+	if coupling != Ac && coupling != Dc {
+		return 0, 0, fmt.Errorf("invalid coupling: %d", coupling)
+	}
+	maximumVoltage, minimumVoltage = 20, -20
 	return
 }
 
 func simGetChannelInformation(handle int16, info int16, probe int32, ranges []int32, channels ChannelId) (lengthOfRanges int32, err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, fmt.Errorf(invalidHandle)
 	}
-	chRanges := []int32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if channels < 0 || int(channels) >= MaxChannels {
+		return 0, fmt.Errorf("invalid channel: %d", channels)
+	}
+	if info != 0 {
+		return 0, fmt.Errorf("invalid info: %d", info)
+	}
+	chRanges := []int32{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 	lengthOfRanges = int32(len(chRanges))
 	copy(ranges, chRanges)
 	return
@@ -798,26 +810,26 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingRe
 				channels[i].sweepController.Update()
 			}
 		}
-		lpStreamingReadyGoPar(handle, writeCount, uint32(streamingWriteIndex), 0, 0, 0, 0, param)
 		streamingWriteIndex = (streamingWriteIndex + writeCount) % activeBufLen
-		streamingLastReadTime = streamingLastReadTime.Add(time.Duration(float64(writeCount)*streamingIntervalNs) * time.Nanosecond)
-	} else {
-		lpStreamingReadyGoPar(handle, 0, 0, 0, 0, 0, 0, param)
+		streamingLastReadTime = time.Now()
 	}
 
+	lpStreamingReadyGoPar(handle, writeCount, uint32(streamingWriteIndex-writeCount+activeBufLen)%uint32(activeBufLen), 0, 0, 0, 0, param)
 	return nil
 }
+
 func numberOfEnabledChannels() int {
-	count := 0
-	for _, v := range channels {
-		if v.enabled {
-			count++
+	nec := 0
+	for _, c := range channels {
+		if c.enabled {
+			nec++
 		}
 	}
-	return count
+	return nec
 }
+
 func simGetTimebaseError() (err error) {
-	err = fmt.Errorf("Invalid time base")
+	err = fmt.Errorf("Timebase error")
 	return
 }
 func simGetTimeInterval(timeBase uint32, nec int) (timeIntervalNanoseconds int32, err error) {
@@ -845,6 +857,12 @@ func simGetTimeInterval(timeBase uint32, nec int) (timeIntervalNanoseconds int32
 }
 
 func simGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
+	if handle <= 0 {
+		return 0, 0, fmt.Errorf(invalidHandle)
+	}
+	if segmentIndex != 0 {
+		return 0, 0, fmt.Errorf("segment out of range: %d", segmentIndex)
+	}
 	nec := numberOfEnabledChannels()
 	if nec == 0 {
 		err = simGetTimebaseError()
@@ -892,7 +910,12 @@ func simGetTimeInterval2(timeBase uint32, nec int) (timeIntervalNanoseconds floa
 }
 
 func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
-	// slog.Debug("simGetTimebase2")
+	if handle <= 0 {
+		return 0, 0, fmt.Errorf(invalidHandle)
+	}
+	if segmentIndex != 0 {
+		return 0, 0, fmt.Errorf("segment out of range: %d", segmentIndex)
+	}
 	nec := numberOfEnabledChannels()
 	if nec == 0 {
 		err = simGetTimebaseError()
@@ -919,20 +942,31 @@ func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32, overSamp
 func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
 	slog.Debug("sim SetChannel", "index", channel, "enabled", enabled,
 		"coupling", couplingType, "vrange", voltageRange, "analogOffset", analogOffset)
-	if voltageRange < 0 {
-		slog.Error("simSetChannel: negative voltageRange, clamping to 0", "vrange", voltageRange)
-		voltageRange = 0
+	if handle <= 0 {
+		return fmt.Errorf(invalidHandle)
+	}
+	if channel < 0 || int(channel) >= MaxChannels {
+		return fmt.Errorf("invalid channel: %d", channel)
+	}
+	if couplingType != Ac && couplingType != Dc {
+		return fmt.Errorf("invalid coupling: %d", couplingType)
+	}
+	if voltageRange < Range_10mv || voltageRange > Range_50v {
+		return fmt.Errorf("invalid voltage range: %d", voltageRange)
+	}
+	if analogOffset < -20.0 || analogOffset > 20.0 {
+		return fmt.Errorf("analog offset out of range: %f", analogOffset)
 	}
 	channels[channel].enabled = enabled
 	channels[channel].vrange = voltageRange
 	channels[channel].offset = float64(analogOffset)
 	channels[channel].coupling = couplingType
-	return
+	return nil
 }
 
 func simMaximumValue(handle int16) (value int32, err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, fmt.Errorf(invalidHandle)
 	}
 	value = int32(maxValue)
 	return
@@ -940,7 +974,7 @@ func simMaximumValue(handle int16) (value int32, err error) {
 
 func simMinimumValue(handle int16) (value int32, err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, fmt.Errorf(invalidHandle)
 	}
 	value = -int32(maxValue)
 	return
@@ -951,22 +985,35 @@ func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
 	}
+	if len(bufferIn) == 0 {
+		return fmt.Errorf("invalid buffer length")
+	}
+	if int(ch) < 0 {
+		return fmt.Errorf("invalid channel: %d", ch)
+	}
+	if segmentIndex != 0 {
+		return fmt.Errorf("segment out of range: %d", segmentIndex)
+	}
 	if int(ch) >= MaxChannels {
 		digitalBuffers[int(ch)] = bufferIn
 	} else {
 		buffers[ch] = bufferIn
 	}
-	return
+	return nil
 }
 
 func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
-		return
+		return fmt.Errorf(invalidHandle)
 	}
 	if ch < 0 {
-		err = fmt.Errorf("invalid parameter")
-		return
+		return fmt.Errorf("invalid channel: %d", ch)
+	}
+	if len(bufferMax) == 0 && len(bufferMin) == 0 {
+		return fmt.Errorf("invalid buffer length")
+	}
+	if segmentIndex != 0 {
+		return fmt.Errorf("segment out of range: %d", segmentIndex)
 	}
 	if int(ch) >= MaxChannels {
 		digitalBuffers[int(ch)] = bufferMax
@@ -975,7 +1022,7 @@ func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16,
 		buffers[ch] = bufferMax
 		buffersMin[ch] = bufferMin
 	}
-	return
+	return nil
 }
 
 func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
@@ -990,22 +1037,31 @@ func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin 
 func simSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	//64 bit buffers
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
+	}
+	if len(buffer) == 0 {
+		return fmt.Errorf("invalid buffer length")
 	}
 	etsTimeBuffer = buffer
-	return
+	return nil
 }
 
 func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err error) {
 	//32 bit buffers
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
+	}
+	if len(timeUpper) == 0 || len(timeLower) == 0 {
+		return fmt.Errorf("invalid buffer length")
 	}
 	err = fmt.Errorf("%w; %s", err, notImplemented)
 	return
 }
 
 func simSetEts(handle int16, mode EtsMode, etsCycles int16, etsInterLeave int16) (sampleTimePicoseconds int32, err error) {
+	if handle <= 0 {
+		return 0, fmt.Errorf(invalidHandle)
+	}
 	etsEnbaled = mode != EtsOff
 	if etsCycles < etsInterLeave {
 		err = fmt.Errorf("etsCycles=%d < etsInterleave=%d", etsCycles, etsInterLeave)
@@ -1025,7 +1081,13 @@ func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeU
 	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
 	overviewBufferSize uint32) (sampleInterval uint32, err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, fmt.Errorf(invalidHandle)
+	}
+	if reqSampleInterval == 0 {
+		return 0, fmt.Errorf("invalid sample interval")
+	}
+	if sampleIntervalTimeUnits < TuFs || sampleIntervalTimeUnits > TuS {
+		return 0, fmt.Errorf("invalid time units: %d", sampleIntervalTimeUnits)
 	}
 	streamingIntervalNs = float64(reqSampleInterval) * TimeUnitToVal(sampleIntervalTimeUnits) * 1e9
 	if streamingIntervalNs <= 0 {
@@ -1056,7 +1118,16 @@ func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param any) (timeIndisposedMs int32, err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return 0, fmt.Errorf(invalidHandle)
+	}
+	if noOfPreTriggerSamples < 0 || noOfPostTriggerSamples < 0 || (noOfPreTriggerSamples == 0 && noOfPostTriggerSamples == 0) {
+		return 0, fmt.Errorf("invalid sample count")
+	}
+	if int64(noOfPreTriggerSamples)+int64(noOfPostTriggerSamples) > int64(64*mega) {
+		return 0, fmt.Errorf("too many samples")
+	}
+	if segmentIndex != 0 {
+		return 0, fmt.Errorf("segment out of range: %d", segmentIndex)
 	}
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	if !running {
@@ -1080,14 +1151,23 @@ func simSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold 
 	direction ThresholdDirection, delay uint32, autoTriggerMs int16) (err error) {
 	slog.Debug("SetSimpleTrigger", "threshold", threshold)
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
+	}
+	if source < 0 || (int(source) >= MaxChannels && source != ChannelId(4) && source != ChannelId(5)) {
+		return fmt.Errorf("invalid trigger channel: %d", source)
+	}
+	if direction < TriggerAbove || direction > TriggerRisingOrFalling {
+		return fmt.Errorf("invalid trigger direction: %d", direction)
+	}
+	if autoTriggerMs < 0 {
+		return fmt.Errorf("invalid autoTriggerMs: %d", autoTriggerMs)
 	}
 	triggerDetector = NewTriggerDetector(enable, threshold, 0, direction, source)
 	triggerDetector.SetTriggerCalculationMode(TriggerCalculationMode)
 	// triggerDelay = delay
 	autoTrigger = int32(autoTriggerMs)
 	complexTrigger = false
-	return
+	return nil
 }
 
 // simSetTriggerChannelProperties configures advanced trigger channel properties.
@@ -1095,7 +1175,15 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 	autoTriggerMs int32) (err error) {
 	slog.Debug("sim trigg prop", "channelProperties", channelProperties)
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
+	}
+	for _, prop := range channelProperties {
+		if prop.Channel < 0 || int(prop.Channel) >= MaxChannels {
+			return fmt.Errorf("invalid trigger channel: %d", prop.Channel)
+		}
+		if prop.ThresholdMode == Window && prop.ThresholdLower > prop.ThresholdUpper {
+			return fmt.Errorf("invalid trigger property: lower (%d) > upper (%d)", prop.ThresholdLower, prop.ThresholdUpper)
+		}
 	}
 	for i := 0; i < len(simChannelProperties) && i < len(channelProperties); i++ {
 		simChannelProperties[i] = channelProperties[i]
@@ -1106,14 +1194,14 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 	}
 	triggerDetector.SetChannelProperties(channelProperties)
 	autoTrigger = autoTriggerMs
-	return
+	return nil
 }
 
 // simSetTriggerChannelConditions configures trigger channel conditions.
 func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerConditions) (err error) {
 	slog.Debug("sim trigg cond", "simTriggerConditions", simTriggerConditions)
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
 	}
 	for i := 0; i < len(simTriggerConditions) && i < len(triggerConditions); i++ {
 		simTriggerConditions[i] = triggerConditions[i]
@@ -1122,22 +1210,22 @@ func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerCon
 		triggerDetector.SetChannelConditions(triggerConditions)
 	}
 	complexTrigger = true
-	return
+	return nil
 }
 
 // simSetTriggerChannelDirections configures trigger directions for each channel.
 func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, channelD, ext, aux ThresholdDirection) (err error) {
+	if handle <= 0 {
+		return fmt.Errorf(invalidHandle)
+	}
 	channelAThresholdDirection, channelBThresholdDirection,
 		channelCThresholdDirection, channelDThresholdDirection = channelA, channelB, channelC, channelD
-	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
-	}
 	complexTrigger = true
 
 	if triggerDetector != nil {
 		triggerDetector.SetChannelDirections(channelA, channelB, channelC, channelD)
 	}
-	return
+	return nil
 }
 
 func simSetTriggerDelay(handle int16, delay uint32) (err error) {
@@ -1151,7 +1239,10 @@ func simSetTriggerDelay(handle int16, delay uint32) (err error) {
 func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
 	pwType PulseWidthType) (err error) {
 	if handle <= 0 {
-		err = fmt.Errorf(invalidHandle)
+		return fmt.Errorf(invalidHandle)
+	}
+	if (pwType == PwTypeInRange || pwType == PwTypeOutOfRange) && lower > upper {
+		return fmt.Errorf("invalid pulse width qualifier: lower (%d) > upper (%d)", lower, upper)
 	}
 	if triggerDetector != nil {
 		triggerDetector.SetPulseWidthQualifier(conditions, direction, lower, upper, pwType)
@@ -1469,6 +1560,12 @@ func simSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand) (er
 func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
+	}
+	if port < Port0 || port >= MaxDigitalPorts {
+		return fmt.Errorf("invalid digital port: %d", port)
+	}
+	if logiclevel < -32767 || logiclevel > 32767 {
+		return fmt.Errorf("invalid logic level: %d", logiclevel)
 	}
 	digitalPortsEnabled[genericps.DigitalPort(port)] = enabled
 	return nil
