@@ -119,17 +119,37 @@ func (fv *fvViewer) draw() {
 	fv.labelBounds[xCh] = image.Rect(bounds.Min.X, bounds.Max.Y, bounds.Max.X, bounds.Max.Y+40)
 
 	// Draw grid and X labels
+	sampleXStr := fv.formatVoltage(float32(xRange), fv.scp.Settings.Channels[xCh].VRange)
+	lx0, _, rx0, _ := fv.scp.boundString(sampleXStr)
+	xLblW := float64(rx0-lx0) + 12.0
+	xDivSpacing := w / float64(numberOfDivs)
+	xStride := 1
+	if xDivSpacing < xLblW {
+		if 2*xDivSpacing >= xLblW {
+			xStride = 2
+		} else {
+			xStride = 5
+		}
+	}
+	lastDrawnX := -100000.0
+
 	for i := 0; i <= numberOfDivs; i++ {
 		xf := float64(bounds.Min.X) + float64(i)*w/float64(numberOfDivs) + xOffset
 		yf := float64(bounds.Min.Y) + float64(i)*h/float64(numberOfDivs)
 		drawDivs(xf, yf, gridCol)
 
 		// X labels
+		if i%xStride != 0 && i != 0 && i != numberOfDivs {
+			continue
+		}
 		vx := -float64(xRange) + float64(i)*2.0*float64(xRange)/float64(numberOfDivs)
 		vstr := fv.formatVoltage(float32(vx), fv.scp.Settings.Channels[xCh].VRange)
 		left, _, right, _ := fv.scp.boundString(vstr)
-		if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
-			fv.scp.addLabel(fv.scp.fvScopeFullScreen, int(math.Round(xf-float64(right-left)/2)), bounds.Max.Y+20, vstr, xCol)
+		lblW := float64(right - left)
+		drawX := xf - lblW/2.0
+		if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) && drawX >= lastDrawnX+6.0 {
+			fv.scp.addLabel(fv.scp.fvScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, xCol)
+			lastDrawnX = drawX + lblW
 		}
 	}
 
@@ -175,11 +195,26 @@ func (fv *fvViewer) draw() {
 			fv.labelBounds[i] = image.Rect(minX, bounds.Min.Y, maxX, bounds.Max.Y)
 
 			// Draw Y labels
+			yDivH := h / float64(numberOfDivs)
+			yStride := 1
+			if yDivH < float64(fontSize)+6.0 {
+				yStride = 2
+			}
+			lastDrawnY := -100000.0
+
 			for j := 0; j <= numberOfDivs; j++ {
+				if j%yStride != 0 && j != 0 && j != numberOfDivs {
+					continue
+				}
 				yf := float64(bounds.Min.Y) + float64(j)*h/float64(numberOfDivs) + yOffset
 				vy := float64(yRange) - float64(j)*2.0*float64(yRange)/float64(numberOfDivs)
 				vstr := fv.formatVoltage(float32(vy), vRange)
 				left, top, right, bottom := fv.scp.boundString(vstr)
+				drawY := yf - float64(top-bottom)/2.0
+
+				if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+					continue
+				}
 
 				var lx int
 				if yCount%2 == 0 {
@@ -190,7 +225,8 @@ func (fv *fvViewer) draw() {
 					lx = bounds.Max.X + 5 + yLabelOffsetRight
 				}
 				if yf >= float64(bounds.Min.Y) && yf <= float64(bounds.Max.Y) {
-					fv.scp.addLabel(fv.scp.fvScopeFullScreen, lx, int(math.Round(yf-float64(top-bottom)/2)), vstr, col)
+					fv.scp.addLabel(fv.scp.fvScopeFullScreen, lx, int(math.Round(drawY)), vstr, col)
+					lastDrawnY = drawY
 				}
 			}
 

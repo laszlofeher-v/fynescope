@@ -190,26 +190,49 @@ func (cl *ftChannelLabelViewer) draw() {
 				xoffset = -float32(xBounds.Dx())
 			}
 
-			// Draw unit name "dB"
-			cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-				int(math.Round(float64(cl.scp.dftDivsY[0])+yOffset+float64(dy+fontSize)/2)),
-				unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+			stride := 1
+			if dy < float32(fontSize)+6.0 {
+				stride = 2
+			}
+			lastDrawnY := -100000.0
+			unitDrawn := false
+
+			unitY := float64(cl.scp.dftDivsY[0]) + yOffset - float64(fontSize)/2.0 - 2.0
+			if unitY >= minY && unitY <= maxY {
+				cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
+					int(math.Round(unitY)),
+					unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+				lastDrawnY = unitY
+				unitDrawn = true
+			}
 
 			for i, y := range cl.scp.dftDivsY {
 				yo := float64(y) + yOffset
 				if yo > maxY || yo < minY {
 					continue
 				}
+				if i%stride != 0 && i != 0 && i != len(cl.scp.dftDivsY)-1 {
+					continue
+				}
 				v := float64(i) * -10.0
 				vstr := strconv.FormatFloat(v, 'f', 0, 64)
+				if !unitDrawn {
+					vstr += " " + unitName
+					unitDrawn = true
+				}
 				left, top, right, bottom := cl.scp.boundString(vstr)
+				drawY := float64(y) + yOffset - float64(top-bottom)/2.0 - 1.0
+				if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+					continue
+				}
 				xoffset := left - right - 1
 				if !channelViewer.leftLabel {
 					xoffset = -float32(xBounds.Dx())
 				}
 				cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-					int(math.Round(float64(y)+yOffset-float64(top-bottom)/2)-1), vstr,
+					int(math.Round(drawY)), vstr,
 					channel.Col[cl.scp.Settings.ChannelColorIndex])
+				lastDrawnY = drawY
 			}
 		} else {
 			// Voltage mode for DFT
@@ -228,10 +251,21 @@ func (cl *ftChannelLabelViewer) draw() {
 				xoffset = -float32(xBounds.Dx())
 			}
 
-			// Draw unit name
-			cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-				int(math.Round(float64(cl.scp.dftDivsY[0])+yOffset+float64(dy+fontSize)/2)),
-				unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+			stride := 1
+			if dy < float32(fontSize)+6.0 {
+				stride = 2
+			}
+			lastDrawnY := -100000.0
+			unitDrawn := false
+
+			unitY := float64(cl.scp.dftDivsY[0]) + yOffset - float64(fontSize)/2.0 - 2.0
+			if unitY >= minY && unitY <= maxY {
+				cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
+					int(math.Round(unitY)),
+					unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+				lastDrawnY = unitY
+				unitDrawn = true
+			}
 
 			dv := maxV / 10.0
 			for i, y := range cl.scp.dftDivsY {
@@ -239,16 +273,28 @@ func (cl *ftChannelLabelViewer) draw() {
 				if yo > maxY || yo < minY {
 					continue
 				}
+				if i%stride != 0 && i != 0 && i != len(cl.scp.dftDivsY)-1 {
+					continue
+				}
 				v := maxV - float64(i)*dv
 				vstr := strconv.FormatFloat(v, 'f', 1, 64)
+				if !unitDrawn {
+					vstr += " " + unitName
+					unitDrawn = true
+				}
 				left, top, right, bottom := cl.scp.boundString(vstr)
+				drawY := float64(y) + yOffset - float64(top-bottom)/2.0 - 1.0
+				if math.Abs(drawY-lastDrawnY) < float64(fontSize)-1.0 {
+					continue
+				}
 				xoffset := left - right - 1
 				if !channelViewer.leftLabel {
 					xoffset = -float32(xBounds.Dx())
 				}
 				cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-					int(math.Round(float64(y)+yOffset-float64(top-bottom)/2)-1), vstr,
+					int(math.Round(drawY)), vstr,
 					channel.Col[cl.scp.Settings.ChannelColorIndex])
+				lastDrawnY = drawY
 			}
 		}
 		cl.disableRefresh()
@@ -271,39 +317,60 @@ func (cl *ftChannelLabelViewer) draw() {
 		xoffset = -float32(xBounds.Dx())
 	}
 	yOffset := cl.scp.offsetNToFtY(channelViewer.displayOffsetInt)
-	if yOffset >= 0 {
-		firstY := cl.scp.ftDivsY[0]
-		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-			int(math.Round(float64(firstY)+yOffset+float64(dy+fontSize)/2)),
-			unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
-	} else {
-		lastY := cl.scp.ftDivsY[0]
-		for _, yVal := range cl.scp.ftDivsY {
-			if yVal >= 0 {
-				lastY = yVal
-			}
-		}
-		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-			int(math.Round(float64(lastY)+yOffset-float64(dy-fontSize)/2)),
-			unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+
+	stride := 1
+	if dy < float32(fontSize)+6.0 {
+		stride = 2
 	}
+	lastDrawnY := -100000.0
+	unitDrawn := false
+
+	unitY := float64(cl.scp.ftDivsY[0]) + yOffset - float64(fontSize)/2.0 - 2.0
+	if yOffset < 0 {
+		unitY = float64(cl.scp.ftDivsY[len(cl.scp.ftDivsY)-1]) + yOffset + float64(fontSize)*1.2
+	}
+	if unitY >= float64(yBounds.Min.Y) && unitY <= float64(yBounds.Max.Y) {
+		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
+			int(math.Round(unitY)),
+			unitName, channel.Col[cl.scp.Settings.ChannelColorIndex])
+		lastDrawnY = unitY
+		unitDrawn = true
+	}
+
 	v := startValue
-	for _, y := range cl.scp.ftDivsY {
+	for i, y := range cl.scp.ftDivsY {
 		if y < 0 {
+			v = v - dv
 			continue
 		}
-		if float64(y)+yOffset > float64(yBounds.Max.Y) {
-			break
+		drawY := float64(y) + yOffset
+		if drawY > float64(yBounds.Max.Y) || drawY < float64(yBounds.Min.Y) {
+			v = v - dv
+			continue
+		}
+		if i%stride != 0 && i != 0 && i != len(cl.scp.ftDivsY)-1 {
+			v = v - dv
+			continue
 		}
 		vstr := strconv.FormatFloat(float64(v), 'f', 1, 64)
+		if !unitDrawn {
+			vstr += " " + unitName
+			unitDrawn = true
+		}
 		left, top, right, bottom := cl.scp.boundString(vstr)
+		lblDrawY := drawY - float64(top-bottom)/2.0 - 1.0
+		if math.Abs(lblDrawY-lastDrawnY) < float64(fontSize)-1.0 {
+			v = v - dv
+			continue
+		}
 		xoffset := left - right - 1
 		if !channelViewer.leftLabel {
-			xoffset = -float32(xBounds.Dx()) //+ 2
+			xoffset = -float32(xBounds.Dx())
 		}
 		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
-			int(math.Round(float64(y)+yOffset-float64(top-bottom)/2)-1), vstr,
+			int(math.Round(lblDrawY)), vstr,
 			channel.Col[cl.scp.Settings.ChannelColorIndex])
+		lastDrawnY = lblDrawY
 		v = v - dv
 	}
 	cl.disableRefresh()
