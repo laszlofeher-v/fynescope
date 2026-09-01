@@ -198,8 +198,15 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 	lower := psControl.triggerSetting.LowerTriggerADC
 	upperHyst := psControl.triggerSetting.HysteresisADC
 	lowerHyst := psControl.triggerSetting.LowerHysteresisADC
+	mode := psControl.triggerSetting.ThresholdMode
 	slog.Debug("validprop", "genericps.Window", genericps.Window)
-	if psControl.triggerSetting.ThresholdMode == genericps.Window || psControl.triggerSetting.Type == RiseFall {
+	if psControl.triggerSetting.ThresholdMode == genericps.Window ||
+		psControl.triggerSetting.Type == Window ||
+		psControl.triggerSetting.Type == WindowPulseWidth ||
+		psControl.triggerSetting.Type == WindowDropout ||
+		psControl.triggerSetting.Type == Runt ||
+		psControl.triggerSetting.Type == RiseFall {
+		mode = genericps.Window
 		if lower >= upper {
 			slog.Warn("getValidTriggerProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
 			if lower > upper {
@@ -223,7 +230,7 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 		ThresholdLower:           lower,
 		ThresholdLowerHysteresis: lowerHyst,
 		Channel:                  psControl.triggerSetting.Source,
-		ThresholdMode:            psControl.triggerSetting.ThresholdMode,
+		ThresholdMode:            mode,
 	}}
 }
 

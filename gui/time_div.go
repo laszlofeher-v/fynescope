@@ -408,6 +408,13 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		}
 		lowerMv = trig.LowerMv
 		thresholdMode = trig.ThresholdMode
+		if scp.triggerSettingMsg.Type == control.Window ||
+			scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
+			scp.triggerSettingMsg.Type == control.WindowDropout ||
+			scp.triggerSettingMsg.Type == control.Runt ||
+			scp.triggerSettingMsg.Type == control.RiseFall {
+			thresholdMode = genericps.Window
+		}
 	} else {
 		upperHysteresis = scp.triggerSettingMsg.UpperHysteresis
 		lowerMv = scp.triggerSettingMsg.LowerMv
@@ -448,6 +455,12 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		scp.triggerSettingMsg.LowerHysteresisADC = lowerHysteresisADC
 		scp.triggerSettingMsg.LowerTriggerADC = lowerTriggerADC
 		scp.triggerSettingMsg.ThresholdMode = thresholdMode
+		if source != dontCare && int(source) < len(scp.Settings.Channels) {
+			trig := scp.Settings.Channels[source].Trigger
+			scp.triggerSettingMsg.IntervalType = trig.IntervalType
+			scp.triggerSettingMsg.IntervalTimeLower = trig.IntervalTimeLower
+			scp.triggerSettingMsg.IntervalTimeUpper = trig.IntervalTimeUpper
+		}
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
@@ -1015,7 +1028,11 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 		scp.triggerSettingMsg.Type = triggerTypes[scp.Settings.Trigger.Type]
 	}
 
-	if scp.triggerSettingMsg.Type == control.Window || scp.triggerSettingMsg.Type == control.WindowPulseWidth || scp.triggerSettingMsg.Type == control.WindowDropout || scp.triggerSettingMsg.Type == control.Runt {
+	if scp.triggerSettingMsg.Type == control.Window ||
+		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
+		scp.triggerSettingMsg.Type == control.WindowDropout ||
+		scp.triggerSettingMsg.Type == control.Runt ||
+		scp.triggerSettingMsg.Type == control.RiseFall {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1060,7 +1077,8 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt {
+		scp.triggerSettingMsg.Type == control.Runt ||
+		scp.triggerSettingMsg.Type == control.RiseFall {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1070,6 +1088,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 
 	if scp.triggerSource != dontCare && int(scp.triggerSource) < len(scp.Settings.Channels) {
 		trig := scp.Settings.Channels[scp.triggerSource].Trigger
+		vRange := scp.Settings.Channels[scp.triggerSource].VRange
 		var upperHyst, lowerHyst int32
 		if option == settings.TriggerTypeDropout {
 			upperHyst = trig.DropoutHysteresis
@@ -1079,9 +1098,22 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 			lowerHyst = trig.LowerHysteresis
 		}
 		slog.Debug("onTriggerTypeChange", "upperHyst", upperHyst, "lowerHyst", lowerHyst)
-		// Use the proper setters so HysteresisADC / LowerHysteresisADC are also updated.
-		scp.SetTriggerUpperHysteresis(upperHyst)
-		scp.SetTriggerLowerHysteresis(lowerHyst)
+		scp.triggerSettingMsg.UpperHysteresis = upperHyst
+		scp.triggerSettingMsg.LowerHysteresis = lowerHyst
+		scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(upperHyst, vRange))
+		scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(lowerHyst, vRange))
+		scp.triggerSettingMsg.Mv = trig.Mv
+		scp.triggerSettingMsg.TriggerADC = int16(scp.mvToAdc(trig.Mv, vRange))
+		scp.triggerSettingMsg.LowerMv = trig.LowerMv
+		scp.triggerSettingMsg.LowerTriggerADC = int16(scp.mvToAdc(trig.LowerMv, vRange))
+		scp.triggerSettingMsg.ThresholdDirection = trig.TriggerDirection
+		scp.triggerSettingMsg.IntervalType = trig.IntervalType
+		scp.triggerSettingMsg.IntervalTimeLower = trig.IntervalTimeLower
+		scp.triggerSettingMsg.IntervalTimeUpper = trig.IntervalTimeUpper
+		scp.triggerSettingMsg.Source = scp.triggerSource
+		scp.triggerSettingMsg.Enabled = scp.Settings.Channels[scp.triggerSource].TriggerSource
+		scp.triggerSettingMsg.XOffset = scp.Settings.Time.TriggerTimeOffset
+
 		// Update display widgets synchronously – we are already on the main goroutine
 		// (UI callback), so fyne.Do would defer the update until after updateTriggerUIForType
 		// shows the widgets, causing the old stale value to flash.
@@ -1657,7 +1689,8 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt {
+		scp.triggerSettingMsg.Type == control.Runt ||
+		scp.triggerSettingMsg.Type == control.RiseFall {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
