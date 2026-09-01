@@ -92,3 +92,39 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 		t.Fatal("Expected digital trigger message to be sent to channel")
 	}
 }
+
+func TestDigitalPortPanel_DnLabelsAddToTest(t *testing.T) {
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: true},
+					{Enabled: true},
+				},
+			},
+		},
+	}
+
+	scp.buildDigitalPortContent(false)
+
+	for i := 0; i < 16; i++ {
+		labelId := "digPortDnLabel_" + string(rune('0'+i/10)) + string(rune('0'+i%10))
+		if i < 10 {
+			labelId = "digPortDnLabel_" + string(rune('0'+i))
+		}
+		controlsMtx.RLock()
+		ctrl, ok := controls[labelId]
+		controlsMtx.RUnlock()
+		assert.True(t, ok, "Expected %s to be registered in controls", labelId)
+		assert.NotNil(t, ctrl.Obj, "Expected %s object to be non-nil", labelId)
+		assert.Equal(t, digPortTabIndex, ctrl.Tab)
+
+		// Test tapping toggles negation
+		dnLabel, isDnLabel := ctrl.Obj.(*tappableDnLabel)
+		assert.True(t, isDnLabel, "Expected %s to be *tappableDnLabel", labelId)
+		initialNeg := scp.Settings.Digital.ChannelNegated[i]
+		dnLabel.Tapped(nil)
+		assert.Equal(t, !initialNeg, scp.Settings.Digital.ChannelNegated[i])
+		assert.Equal(t, !initialNeg, dnLabel.negated)
+	}
+}

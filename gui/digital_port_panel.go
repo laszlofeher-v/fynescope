@@ -320,6 +320,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 				scp.digitalRaster.refresh()
 			}
 		})
+		addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
 
 		// 1. Editable label (max 6 chars, frameless)
 		labelEntry := newFramelessEntry()
