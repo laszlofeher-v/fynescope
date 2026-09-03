@@ -537,7 +537,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				}
 
 				for r := uint32(0); r < downSampleRatio; r++ {
-					rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)*float64(downSampleRatio)
+					rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)
 					rt := rawSampleIndex*dt + triggerTime
 
 					levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
@@ -629,7 +629,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				if downSampleRatio < 1 {
 					downSampleRatio = 1
 				}
-				rawSampleIndex := float64(t)*float64(downSampleRatio) - float64(nOfPreTrSamples)*float64(downSampleRatio)
+				rawSampleIndex := float64(t)*float64(downSampleRatio) - float64(nOfPreTrSamples)
 				rt := rawSampleIndex*dt + triggerTime
 
 				var portVal int16
