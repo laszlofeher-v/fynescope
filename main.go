@@ -121,7 +121,7 @@ var (
 		"gui/theme.go":                       false,
 		"gui/time_div.go":                    false,
 		"control/timing.go":                  false,
-		"control/trigger.go":                 true,
+		"control/trigger.go":                 false,
 		"gui/trigger_point.go":               false,
 		"ps2000a/types.go":                   false,
 		"ps3000a/types.go":                   false,
