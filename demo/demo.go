@@ -476,6 +476,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	found := false
 	found, triggerTime = triggerDetector.FindTriggerPoint(signalFunc, reqNoOfSamples, maxTime, dt)
 	if !found {
+		slog.Warn("simGetValues: trigger not found", "maxTime", maxTime, "maxIter", maxIter)
 		return
 	}
 
@@ -649,6 +650,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			}
 		}
 	}
+
+
 
 	if etsEnbaled && running {
 		go delayedCall(handle, regLpBlockReadyGo)
@@ -994,6 +997,7 @@ func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex
 	if segmentIndex != 0 {
 		return fmt.Errorf("segment out of range: %d", segmentIndex)
 	}
+
 	if int(ch) >= MaxChannels {
 		digitalBuffers[int(ch)] = bufferIn
 	} else {

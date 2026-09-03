@@ -354,10 +354,10 @@ const (
 type DigitalPort int
 
 const (
-	Port0 DigitalPort = iota // digital channel 0 - 7
-	Port1                    // digital channel 8 - 15
-	Port2                    // digital channel 16 - 23
-	Port3                    // digital channel 24 - 31
+	Port0 DigitalPort = 128 + iota // digital channel 0 - 7
+	Port1                          // digital channel 8 - 15
+	Port2                          // digital channel 16 - 23
+	Port3                          // digital channel 24 - 31
 	MaxDigitalPorts
 )
 
