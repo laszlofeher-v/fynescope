@@ -252,11 +252,11 @@ const (
 type DigitalPort int
 
 const (
-	Port0           DigitalPort = 0
-	Port1           DigitalPort = 1
-	Port2           DigitalPort = 2
-	Port3           DigitalPort = 3
-	MaxDigitalPorts DigitalPort = 4
+	Port0           DigitalPort = 128
+	Port1           DigitalPort = 129
+	Port2           DigitalPort = 130
+	Port3           DigitalPort = 131
+	MaxDigitalPorts DigitalPort = 132
 )
 
 var (

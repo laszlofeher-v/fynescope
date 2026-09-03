@@ -91,6 +91,16 @@ func TestGui(t *testing.T) {
 	scp.Test()
 }
 
+func TestFunctional(t *testing.T) {
+	if scp == nil {
+		t.Fatal("scp is nil — app failed to initialize")
+	}
+	err := scp.FunctionalTestUnit()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Test0 runs the GUI fuzzer for the duration set by the -timeout flag.
 // Run with: go test -v -run Test0 -timeout 105m
 func Test0(t *testing.T) {

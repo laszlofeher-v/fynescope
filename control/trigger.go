@@ -135,6 +135,8 @@ func (psControl *PscDesc) applyDigitalTrigger() (err error) {
 			slog.Error("applyDigitalTrigger SetDigitalAnalogTriggerOperand:", "error:", err)
 			return
 		}
+	} else {
+		_ = psControl.Con.SetTriggerDigitalPortProperties(nil)
 	}
 	return
 }

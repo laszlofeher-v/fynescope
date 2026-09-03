@@ -145,7 +145,7 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 		anyEnabled = true
 	}
 
-	digitalActive := td.digitalTriggerEnabled && (td.digitalCondition == CondTrue || td.digitalCondition == CondDontCare)
+	digitalActive := td.digitalTriggerEnabled && ((!anyEnabled && td.digitalCondition == CondDontCare) || td.digitalCondition == CondTrue)
 
 	if !anyEnabled && !digitalActive {
 		found = true
