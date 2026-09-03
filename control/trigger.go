@@ -213,8 +213,8 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 		psControl.triggerSetting.Type == Window ||
 		psControl.triggerSetting.Type == WindowPulseWidth ||
 		psControl.triggerSetting.Type == WindowDropout ||
-		psControl.triggerSetting.Type == Runt ||
-		psControl.triggerSetting.Type == RiseFall {
+		psControl.triggerSetting.Type == RiseFall ||
+		psControl.triggerSetting.Type == Runt {
 		mode = genericps.Window
 		if lower >= upper {
 			slog.Warn("getValidTriggerProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
@@ -654,6 +654,7 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 	at := int32(0) // Pulse Width Qualifier requires autoTriggerMilliseconds to be 0
 
 	channelProperties := psControl.getValidTriggerProperties()
+	channelProperties[0].ThresholdMode = 0
 	slog.Debug("Prop", "prop", channelProperties)
 	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
@@ -668,13 +669,18 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 		return
 	}
 
-	// Channel direction: Rising uses the lower threshold crossing; Falling uses the
-	// lower threshold on the way back down (FallingLower).
-	mainDir := genericps.TriggerRising
-	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerFalling {
-		mainDir = genericps.TriggerFallingLower
+	// For Rising, signal goes up: crosses Lower (RisingLower), then Upper (Rising).
+	// For Falling, signal goes down: crosses Upper (Falling), then Lower (FallingLower).
+	mainDir := psControl.triggerSetting.ThresholdDirection
+	channelDir := mainDir
+	pwqDir := genericps.TriggerRisingLower
+
+	if mainDir == genericps.TriggerFalling {
+		channelDir = genericps.TriggerFallingLower
+		pwqDir = genericps.TriggerFalling
 	}
-	err = psControl.setTriggerChannelDirections(mainDir)
+
+	err = psControl.setTriggerChannelDirections(channelDir)
 	if err != nil {
 		slog.Error("sendRiseFallTrigger SetTriggerChannelDirections:", "error:", err)
 		return
@@ -685,12 +691,8 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 
 	// PWQ direction is the complementary crossing boundary:
 	// Rising trigger → qualify via RisingLower; Falling trigger → qualify via Falling.
-	pwqDir := genericps.TriggerRisingLower
-	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerFalling {
-		pwqDir = genericps.TriggerFalling
-	}
 
-	intervalType, lowerSamples, upperSamples := adjustPwqSamplesRiseFall(psControl.triggerSetting.IntervalType, lowerSamples, upperSamples)
+	intervalType, lowerSamples, upperSamples := psControl.adjustPwqSamplesRiseFall(psControl.triggerSetting.IntervalType, lowerSamples, upperSamples)
 
 	slog.Debug("sendRiseFallTrigger", "pwqConditions", pwqConditions, "pwqDir", pwqDir,
 		"intervalType", intervalType,
@@ -754,7 +756,6 @@ func (psControl *PscDesc) setTriggerChannelDirections(dir genericps.ThresholdDir
 	channelD := genericps.TriggerNone
 	ext := genericps.TriggerNone
 	aux := genericps.TriggerNone
-
 	switch psControl.triggerSetting.Source {
 	case genericps.ChA:
 		channelA = dir
@@ -765,6 +766,7 @@ func (psControl *PscDesc) setTriggerChannelDirections(dir genericps.ThresholdDir
 	case genericps.ChD:
 		channelD = dir
 	}
+	slog.Debug("trigger2", "channelA", channelA, "channelB", channelB, "channelC", channelC, "channelD", channelD)
 	return psControl.Con.SetTriggerChannelDirections(channelA, channelB, channelC, channelD, ext, aux)
 }
 
@@ -774,7 +776,8 @@ func (psControl *PscDesc) setTriggerChannelDirections(dir genericps.ThresholdDir
 // Callers are responsible for applying any further per-type sample adjustments via
 // adjustPwqSamples or adjustPwqSamplesRiseFall.
 func (psControl *PscDesc) computePwqSamples() (uint32, uint32) {
-	const maxPwqSamples = uint32(16777215)
+	maxPwqSamples := uint32(psControl.scopeScreenWidth / psControl.SamplingTimeInterval)
+	//const maxPwqSamples = uint32(16777215)
 
 	lowerSamples := uint32(1)
 	if psControl.triggerSetting.IntervalTimeLower > 0 && psControl.SamplingTimeInterval > 0 {
@@ -864,8 +867,9 @@ func adjustPwqSamples(intervalType genericps.PulseWidthType, lower, upper uint32
 // differently for RiseFall triggers: because the PWQ must have a bounded window,
 // GreaterThan is converted to PwTypeInRange with upperSamples set to the hardware
 // maximum (16 777 215), ensuring the slew-rate window remains well-defined.
-func adjustPwqSamplesRiseFall(intervalType genericps.PulseWidthType, lower, upper uint32) (genericps.PulseWidthType, uint32, uint32) {
-	const maxPwqSamples = uint32(16777215)
+func (psControl *PscDesc) adjustPwqSamplesRiseFall(intervalType genericps.PulseWidthType, lower, upper uint32) (genericps.PulseWidthType, uint32, uint32) {
+	// const maxPwqSamples = uint32(16777215)
+	maxPwqSamples := uint32(32767)
 	// The PicoScope driver uses the 'lower' parameter for the time limit in single-value modes.
 	if intervalType == genericps.PwTypeLessThan {
 		lower = upper
@@ -876,7 +880,7 @@ func adjustPwqSamplesRiseFall(intervalType genericps.PulseWidthType, lower, uppe
 		// Set upperSamples to the hardware maximum so the window covers all practical
 		// slew rates faster than lowerSamples while remaining well-defined.
 		intervalType = genericps.PwTypeInRange
-		upper = maxPwqSamples
+		upper = maxPwqSamples - 1
 		if lower >= upper {
 			lower = upper - 1
 		}

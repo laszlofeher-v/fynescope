@@ -439,11 +439,11 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 		}
 		lowerMv = trig.LowerMv
 		thresholdMode = trig.ThresholdMode
+		//TODO Remove this if if it is possible
 		if scp.triggerSettingMsg.Type == control.Window ||
 			scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 			scp.triggerSettingMsg.Type == control.WindowDropout ||
-			scp.triggerSettingMsg.Type == control.Runt ||
-			scp.triggerSettingMsg.Type == control.RiseFall {
+			scp.triggerSettingMsg.Type == control.Runt  {
 			thresholdMode = genericps.Window
 		}
 	} else {
@@ -1062,8 +1062,7 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt ||
-		scp.triggerSettingMsg.Type == control.RiseFall {
+		scp.triggerSettingMsg.Type == control.Runt {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1108,8 +1107,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt ||
-		scp.triggerSettingMsg.Type == control.RiseFall {
+		scp.triggerSettingMsg.Type == control.Runt  {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
@@ -1720,8 +1718,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if scp.triggerSettingMsg.Type == control.Window ||
 		scp.triggerSettingMsg.Type == control.WindowPulseWidth ||
 		scp.triggerSettingMsg.Type == control.WindowDropout ||
-		scp.triggerSettingMsg.Type == control.Runt ||
-		scp.triggerSettingMsg.Type == control.RiseFall {
+		scp.triggerSettingMsg.Type == control.Runt  {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Window
 	} else {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
