@@ -9,6 +9,8 @@ import (
 	"fynescope/genericps"
 	"fynescope/gui"
 
+	// The following imports load the device specific drivers and registers the
+	// devices for enumeration or opening.
 	// _ "fynescope/ps2000"
 	_ "fynescope/ps2000a"
 	// _ "fynescope/ps3000"
@@ -119,7 +121,7 @@ var (
 		"gui/theme.go":                       false,
 		"gui/time_div.go":                    false,
 		"control/timing.go":                  false,
-		"control/trigger.go":                 false,
+		"control/trigger.go":                 true,
 		"gui/trigger_point.go":               false,
 		"ps2000a/types.go":                   false,
 		"ps3000a/types.go":                   false,
