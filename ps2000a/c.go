@@ -3,14 +3,22 @@
 package ps2000a
 
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-// #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+// #include <PicoStatus.h>
+// #include <ps2000aApi.h>
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps2000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
+#ifdef _WIN32
+#define CALLBACK_CONV __stdcall
+#else
+#define CALLBACK_CONV
+#endif
+
 // Forward declarations
-int lpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);
-int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
+void CALLBACK_CONV lpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);
+void CALLBACK_CONV lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter);
-int lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
+void CALLBACK_CONV lpStreamingReady(int16_t handle, int32_t noOfSamples, uint32_t startIndex,
                 int16_t overflow, uint32_t triggerAt, int16_t triggered,
                 int16_t autoStop, void * pParameter);
 */
@@ -47,7 +55,7 @@ func enumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	c := make(chan struct{}, 1)
 	go func() {
 		var cstrPtr *C.schar
-		cstrPtr = (*C.schar)(C.malloc(C.sizeof_schar * (C.ulong)(bufferLen)))
+		cstrPtr = (*C.schar)(C.malloc(C.sizeof_schar * (C.size_t)(bufferLen)))
 		defer C.free(unsafe.Pointer(cstrPtr))
 		serialLth = bufferLen
 		slog.Debug("ps2000aEnumerateUnits", "bufferLen", bufferLen)
@@ -147,23 +155,26 @@ func ps2000aFlashLed(handle int16, start int16) (err error) {
 // 3. C calls registered C callback function
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
-var regLpDataReadyGo DataReady // registered go callback function
+var (
+	regLpDataReadyGo    DataReady // registered go callback function
+	regLpDataReadyParam any
+)
 
 // Bridge callback function. It is visible from C. (from callbacks.go lpDataReady C function)
 // No space allowed before export!
 //
 //export lpDataReadyGo
-func lpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func lpDataReadyGo(handle int16, status uint32, noOfSamples uint32, overflow int16, param unsafe.Pointer) {
 	if regLpDataReadyGo != nil {
-		regLpDataReadyGo(handle, status, noOfSamples, overflow, param) // call registered go callback function
+		regLpDataReadyGo(handle, int(status), noOfSamples, overflow, regLpDataReadyParam) // call registered go callback function
 	}
-	return
 }
 
 func ps2000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 	param interface{}) (err error) {
 	regLpDataReadyGo = lpDataReadyGoPar
+	regLpDataReadyParam = param
 	slog.Debug("ps2000aGetValuesAsync", "handle", handle, "startIndex", startIndex, "noOfSamples", noOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "lpDataReadyGoPar", lpDataReadyGoPar, "segmentIndex", segmentIndex, "param", param)
 	stat := C.ps2000aGetValuesAsync((C.short)(handle),
 		(C.uint)(startIndex),
@@ -171,8 +182,8 @@ func ps2000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 		(C.uint)(downSampleRatio),
 		(C.PS2000A_RATIO_MODE)(downSampleRatioMode),
 		(C.uint)(segmentIndex),
-		(C.lpDataReady), // C callback function in callbacks.go
-		unsafe.Pointer(&param))
+		unsafe.Pointer(C.lpDataReady), // C callback function in callbacks.go
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesAsync:  %s", psc.StatStr(int(stat)))
 	}
@@ -313,26 +324,29 @@ func ps2000aGetNumOfProcessedCaptures(handle int16) (nCaptures uint32, err error
 // 3. C calls registered C callback function
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
-var regLpStreamingReadyGo StreamingReady // registered go callback function
+var (
+	regLpStreamingReadyGo    StreamingReady // registered go callback function
+	regLpStreamingReadyParam any
+)
 
 // Bridge callback function. It is visible from C. (from callbacks.go lpDataReady C function)
 // No space allowed before export!
 //
 //export lpStreamingReadyGo
 func lpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
-	triggeredAt uint32, triggered, autoStop int16, param interface{}) {
+	triggeredAt uint32, triggered, autoStop int16, param unsafe.Pointer) {
 	if regLpStreamingReadyGo != nil {
-		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, param) // call registered go callback function
+		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, regLpStreamingReadyParam) // call registered go callback function
 	}
-	return
 }
 
 func ps2000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingReady, param interface{}) (err error) {
 	regLpStreamingReadyGo = lpStreamingReadyGoPar
+	regLpStreamingReadyParam = param
 	slog.Debug("ps2000aGetStreamingLatestValues", "handle", handle, "lpStreamingReadyGoPar", lpStreamingReadyGoPar, "param", param)
 	stat := C.ps2000aGetStreamingLatestValues((C.short)(handle),
 		(C.ps2000aStreamingReady)(C.lpStreamingReady), // C callback function in callbacks.go
-		unsafe.Pointer(&param))
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetStreamingLatestValues:  %s", psc.StatStr(int(stat)))
 	}
@@ -449,7 +463,7 @@ func ps2000aSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, buffer
 
 func ps2000aSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	slog.Debug("ps2000aSetEtsTimeBuffer", "handle", handle, "buffer", buffer)
-	stat := C.ps2000aSetEtsTimeBuffer((C.short)(handle), (*C.long)(&buffer[0]),
+	stat := C.ps2000aSetEtsTimeBuffer((C.short)(handle), (*C.int64_t)(&buffer[0]),
 		(C.int)(len(buffer)))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetEtsTimeBuffer:  %s", psc.StatStr(int(stat)))
@@ -502,23 +516,26 @@ func ps2000aRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalT
 // 3. C calls registered C callback function
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
-var regLpBlockReadyGo BlockReady // registered go callback function
+var (
+	regLpBlockReadyGo    BlockReady // registered go callback function
+	regLpBlockReadyParam any
+)
 
 // Bridge callback function. It is visible from C. (from callbacks.go lpDataReady C function)
 // No space allowed before export!
 //
 //export lpBlockReadyGo
-func lpBlockReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func lpBlockReadyGo(handle int16, status uint32, param unsafe.Pointer) {
 	if regLpBlockReadyGo != nil {
-		regLpBlockReadyGo(handle, status, param) // call registered go callback function
+		regLpBlockReadyGo(handle, int(status), regLpBlockReadyParam) // call registered go callback function
 	}
-	return
 }
 
 func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
+	regLpBlockReadyParam = param
 	nSamples := noOfPreTriggerSamples + noOfPostTriggerSamples
 	if nSamples > 1<<29 { // avoid exception in cgo
 		err = fmt.Errorf("RunBlock:  too many required samples %d", nSamples)
@@ -530,7 +547,8 @@ func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 	stat := C.ps2000aRunBlock((C.short)(handle), (C.int)(noOfPreTriggerSamples),
 		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase), (C.short)(overSample),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps2000aBlockReady)(C.lpBlockReady),
-		unsafe.Pointer(&param))
+		nil)
+	slog.Debug("ps2000aRunBlock returned")
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("RunBlock:  %s", psc.StatStr(int(stat)))
 	}
@@ -758,7 +776,7 @@ func ps2000aGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, 
 
 func ps2000aGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (time int64, timeUnits TimeUnits, err error) {
 	slog.Debug("ps2000aGetTriggerTimeOffset64", "handle", handle, "segmentIndex", segmentIndex)
-	stat := C.ps2000aGetTriggerTimeOffset64((C.short)(handle), (*C.long)(&time),
+	stat := C.ps2000aGetTriggerTimeOffset64((C.short)(handle), (*C.int64_t)(&time),
 		(*C.PS2000A_TIME_UNITS)(&timeUnits), (C.uint)(segmentIndex))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetTriggerTimeOffset64:  %s", psc.StatStr(int(stat)))
@@ -786,7 +804,7 @@ func ps2000aGetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUn
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
 	slog.Debug("ps2000aGetValuesTriggerTimeOffsetBulk64", "handle", handle, "times", times, "timeUnits", timeUnits,
 		"fromSegmentIndex", fromSegmentIndex, "toSegmentIndex", toSegmentIndex)
-	stat := C.ps2000aGetValuesTriggerTimeOffsetBulk64((C.short)(handle), (*C.long)(&times[0]),
+	stat := C.ps2000aGetValuesTriggerTimeOffsetBulk64((C.short)(handle), (*C.int64_t)(&times[0]),
 		(*C.PS2000A_TIME_UNITS)(&timeUnits[0]), (C.uint)(fromSegmentIndex),
 		(C.uint)(toSegmentIndex))
 	if stat != C.PICO_OK {
@@ -797,7 +815,7 @@ func ps2000aGetValuesTriggerTimeOffsetBulk64(handle int16, times []int64, timeUn
 
 func ps2000aHoldOff(handle int16, holdOff uint64, holdOffType HoldOffType) (err error) {
 	slog.Debug("ps2000aHoldOff", "handle", handle, "holdOff", holdOff, "holdOffType", holdOffType)
-	stat := C.ps2000aHoldOff((C.short)(handle), (C.ulong)(holdOff), (C.PS2000A_HOLDOFF_TYPE)(holdOffType))
+	stat := C.ps2000aHoldOff((C.short)(handle), (C.uint64_t)(holdOff), (C.PS2000A_HOLDOFF_TYPE)(holdOffType))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("HoldOff:  %s", psc.StatStr(int(stat)))
 	}

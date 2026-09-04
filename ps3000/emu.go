@@ -3,14 +3,16 @@
 package ps3000
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps3000 -I/opt/picoscope/include/libps2000a
-#cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps3000 -I/opt/picoscope/include/libps2000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
+#cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000a
 
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps3000/ps3000.h"
-#include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-#include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+#include <ps3000.h>
+#include <PicoStatus.h>
+#include <ps2000aApi.h>
 
 int16_t ps3000_open_unit(void) {
     int16_t handle = 0;

@@ -3,10 +3,11 @@
 package ps2000a
 
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps2000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 #include <stdlib.h>
-#include "/opt/picoscope/include/libps2000/ps2000.h"
-#include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-#include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+#include <PicoStatus.h>
+#include <ps2000aApi.h>
 
 // Forward declarations of Go exports
 extern uint32_t Gops2000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth);

@@ -3,7 +3,8 @@
 package ps2000
 
 /*
-#cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000
+#cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000
+#cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000
 #include <stdint.h>
 
 // Dummy types for functions not supported by PS2000 but needed for emu compatibility

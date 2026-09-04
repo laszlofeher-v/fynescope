@@ -2,11 +2,13 @@
 
 package ps6000
 
-// #cgo CFLAGS: -g -Wall -I/opt/picoscope/include/libps6000a
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps6000
+// #cgo linux CFLAGS: -g -Wall -I/opt/picoscope/include/libps6000a
+// #cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps6000
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
+// #cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps6000
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps6000/PicoStatus.h"
-// #include "/opt/picoscope/include/libps6000/ps6000Api.h"
+// #include <PicoStatus.h>
+// #include <ps6000Api.h>
 /*
 // Forward declarations
 int lpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);

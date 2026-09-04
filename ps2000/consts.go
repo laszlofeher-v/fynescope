@@ -2,10 +2,12 @@
 
 package ps2000
 
-// #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000
+// #cgo linux CFLAGS: -g -Wall
+// #cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
+// #cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000/ps2000.h"
+// #include <ps2000.h>
 import "C"
 import "fynescope/genericps"
 

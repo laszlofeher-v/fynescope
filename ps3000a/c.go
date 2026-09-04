@@ -2,11 +2,12 @@
 
 package ps3000a
 
-// #cgo CFLAGS: -g -Wall -I/opt/picoscope/include/libps3000a
+// #cgo linux CFLAGS: -g -Wall -I/opt/picoscope/include/libps3000a
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps3000/ps3000.h"
-// #include "/opt/picoscope/include/libps3000a/PicoStatus.h"
-// #include "/opt/picoscope/include/libps3000a/ps3000aApi.h"
+// #include <ps3000.h>
+// #include <PicoStatus.h>
+// #include <ps3000aApi.h>
 /*
 // Forward declarations
 int ps3000aLpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);

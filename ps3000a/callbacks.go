@@ -3,8 +3,10 @@
 package ps3000a
 
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps3000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 #include <stdio.h>
-#include "/opt/picoscope/include/libps3000a/PicoStatus.h"
+#include <PicoStatus.h>
 // C callback function
 int ps3000aLpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter)

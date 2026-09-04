@@ -3,14 +3,16 @@
 package ps2000
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps2000 -I/opt/picoscope/include/libps2000a
-#cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps2000 -I/opt/picoscope/include/libps2000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
+#cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000a
 
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps2000/ps2000.h"
-#include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-#include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+#include <ps2000.h>
+#include <PicoStatus.h>
+#include <ps2000aApi.h>
 // ps2000a type aliases mapped to ps2000a equivalents
 typedef PS2000A_COUPLING        PS2000_COUPLING;
 typedef PS2000A_RATIO_MODE      PS2000_RATIO_MODE;
