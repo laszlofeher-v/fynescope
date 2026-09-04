@@ -3,8 +3,10 @@
 package ps5000
 
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps5000
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 #include <stdio.h>
-#include "/opt/picoscope/include/libps5000/PicoStatus.h"
+#include <PicoStatus.h>
 // C callback function
 int ps5000LpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter)

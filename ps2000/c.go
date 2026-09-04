@@ -2,9 +2,10 @@
 
 package ps2000
 
-// #cgo CFLAGS: -g -Wall
+// #cgo linux CFLAGS: -g -Wall
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000/ps2000.h"
+// #include <ps2000.h>
 /*
 // Forward declarations
 void lpStreamingReady2000(

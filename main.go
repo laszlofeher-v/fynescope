@@ -62,7 +62,7 @@ var (
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
-		"ps2000a/c.go":                       false,
+		"ps2000a/c.go":                       true,
 		"ps2000a/sim_noscope.go":             false,
 		"ps3000a/c.go":                       false,
 		"ps2000a/callbacks.go":               false,

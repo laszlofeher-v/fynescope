@@ -2,12 +2,13 @@
 
 package ps2000a
 
-// #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+// #cgo linux CFLAGS: -g -Wall
+// #cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
+// #cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000a -Wl,--allow-multiple-definition
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps2000/ps2000.h"
-// #include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-// #include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+// #include <PicoStatus.h>
+// #include <ps2000aApi.h>
 /*
 // Forward declarations
 int lpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,

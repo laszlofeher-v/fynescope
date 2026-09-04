@@ -2,10 +2,12 @@
 
 package ps3000
 
-// #cgo CFLAGS: -g -Wall
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps3000
+// #cgo linux CFLAGS: -g -Wall
+// #cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps3000
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
+// #cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps3000
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps3000/ps3000.h"
+// #include <ps3000.h>
 import "C"
 import "fynescope/genericps"
 

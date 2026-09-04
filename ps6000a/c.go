@@ -3,9 +3,11 @@
 package ps6000a
 
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps6000a/PicoStatus.h"
-// #include "/opt/picoscope/include/libps6000a/ps6000aApi.h"
+// #include <PicoStatus.h>
+// #include <ps6000aApi.h>
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps6000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 // Forward declarations
 int ps6000aLpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);
 int ps6000aLpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,

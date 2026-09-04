@@ -3,11 +3,12 @@
 package ps4000
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps4000
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps4000
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps4000/ps4000Api.h"
+#include <ps4000Api.h>
 
 PICO_STATUS ps4000EnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth) { return 0; }
 PICO_STATUS ps4000OpenUnit(int16_t *handle) { return 0; }

@@ -3,15 +3,17 @@
 package ps3000a
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps2000a -I/opt/picoscope/include/libps2000
-#cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps2000a -I/opt/picoscope/include/libps2000
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
+#cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000a
 
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps2000/ps2000.h"
-#include "/opt/picoscope/include/libps2000a/PicoStatus.h"
-#include "/opt/picoscope/include/libps2000a/ps2000aApi.h"
+#include <ps2000.h>
+#include <PicoStatus.h>
+#include <ps2000aApi.h>
 
 // ps3000a type aliases mapped to ps2000a equivalents
 typedef PS2000A_CHANNEL         PS3000A_CHANNEL;

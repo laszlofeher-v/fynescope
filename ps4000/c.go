@@ -2,11 +2,13 @@
 
 package ps4000
 
-// #cgo CFLAGS: -g -Wall -I/opt/picoscope/include/libps4000
-// #cgo LDFLAGS: -L/opt/picoscope/lib/ -lps4000
+// #cgo linux CFLAGS: -g -Wall -I/opt/picoscope/include/libps4000
+// #cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps4000
+// #cgo windows CFLAGS: -g -Wall -I"C:/Program Files/Pico Technology/SDK/inc"
+// #cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps4000
 // #include <stdlib.h>
-// #include "/opt/picoscope/include/libps4000/PicoStatus.h"
-// #include "/opt/picoscope/include/libps4000/ps4000Api.h"
+// #include <PicoStatus.h>
+// #include <ps4000Api.h>
 /*
 // Forward declarations
 int ps4000LpBlockReady(int16_t handle, PICO_STATUS status, void * pParameter);

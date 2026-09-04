@@ -3,11 +3,12 @@
 package ps5000
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps5000
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps5000
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps5000/ps5000Api.h"
+#include <ps5000Api.h>
 
 
 PICO_STATUS ps5000OpenUnit(int16_t *handle) { return 0; }

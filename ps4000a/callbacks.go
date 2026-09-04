@@ -3,8 +3,10 @@
 package ps4000a
 
 /*
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps4000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
 #include <stdio.h>
-#include "/opt/picoscope/include/libps4000a/PicoStatus.h"
+#include <PicoStatus.h>
 // C callback function
 int ps4000aLpDataReady(int16_t handle, PICO_STATUS status, uint32_t noOfSamples,
 				int16_t overflow, void * pParameter)

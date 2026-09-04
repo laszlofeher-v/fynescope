@@ -3,12 +3,14 @@
 package ps6000a
 
 /*
-#cgo CFLAGS: -I/opt/picoscope/include/libps6000a
-#cgo LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo linux CFLAGS: -I/opt/picoscope/include/libps6000a
+#cgo windows CFLAGS: -I"C:/Program Files/Pico Technology/SDK/inc"
+#cgo linux LDFLAGS: -L/opt/picoscope/lib/ -lps2000a
+#cgo windows LDFLAGS: -L"C:/Program Files/Pico Technology/SDK/lib" -lps2000a
 
 #include <stdint.h>
 #include <string.h>
-#include "/opt/picoscope/include/libps6000a/ps6000aApi.h"
+#include <ps6000aApi.h>
 
 // ps2000a forward declarations
 uint32_t ps2000aEnumerateUnits(int16_t *count, int8_t *serials, int16_t *serialLth);
