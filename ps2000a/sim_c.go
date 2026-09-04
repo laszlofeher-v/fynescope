@@ -587,8 +587,15 @@ func Gops2000aSetTriggerChannelProperties(handle C.int16_t, channelProperties un
 		if p.thresholdMode != 0 && p.thresholdMode != 1 {
 			return picoInvalidParameter
 		}
-		if p.thresholdMode == 1 && int16(p.thresholdLower) > int16(p.thresholdUpper) {
-			return picoInvalidTriggerProperty
+		if p.thresholdMode == 1 {
+			if int16(p.thresholdLower) > int16(p.thresholdUpper) {
+				return picoInvalidTriggerProperty
+			}
+			// In window mode, upper threshold must be greater than or equal to lower threshold + upper hysteresis + lower hysteresis
+			// To avoid overflow, we can do it in int32:
+			if int32(p.thresholdUpper)-int32(p.thresholdUpperHysteresis) < int32(p.thresholdLower)+int32(p.thresholdLowerHysteresis) {
+				return picoInvalidTriggerProperty
+			}
 		}
 		props = append(props, demo.TriggerChannelProperties{
 			ThresholdUpper:           int16(p.thresholdUpper),

@@ -1603,10 +1603,10 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		scp.psControl.StreamEnabled.Store(*scp.Settings.StreamEnabled)
 	}
 	GlobalScreenScale = scp.getScreenScale()
-	scp.Window = scp.App.NewWindow("")
-	scp.Window.SetMaster()
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
+	scp.Window = scp.App.NewWindow("")
+	scp.Window.SetMaster()
 	scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})
 	scp.dftScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})
 	scp.fvScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})
