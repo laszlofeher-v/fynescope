@@ -224,13 +224,13 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 				lower, upper = upper, lower
 			}
 		}
-		if upper-lower < 256 {
+		if int32(upper)-int32(lower) < 256 {
 			slog.Warn("getValidTriggerProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
-			diff := int16(256) - (upper - lower)
-			if upper < 32767-diff {
-				upper += diff
+			diff := int32(256) - (int32(upper) - int32(lower))
+			if int32(upper) < 32767-diff {
+				upper += int16(diff)
 			} else {
-				lower -= diff
+				lower -= int16(diff)
 			}
 		}
 	}
