@@ -462,7 +462,7 @@ func ps2000aSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, buffer
 }
 
 func ps2000aSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
-	slog.Debug("ps2000aSetEtsTimeBuffer", "handle", handle, "buffer", buffer)
+	slog.Debug("ps2000aSetEtsTimeBuffer", "handle", handle)
 	stat := C.ps2000aSetEtsTimeBuffer((C.short)(handle), (*C.int64_t)(&buffer[0]),
 		(C.int)(len(buffer)))
 	if stat != C.PICO_OK {

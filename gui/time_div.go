@@ -492,12 +492,7 @@ func (scp *ScpDesc) setTrigger(enable bool, source genericps.ChannelId, mv int32
 			scp.triggerSettingMsg.IntervalTimeLower = trig.IntervalTimeLower
 			scp.triggerSettingMsg.IntervalTimeUpper = trig.IntervalTimeUpper
 		}
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+		scp.sendTriggerUpdate(scp.triggerSettingMsg)
 	} else {
 		slog.Debug("not new trigger")
 	}
@@ -911,6 +906,22 @@ func (scp *ScpDesc) updateTriggerSourceState(option string) {
 func (scp *ScpDesc) updateTriggerUIForType() {
 	if scp.boxTriggerHysteresisDisp == nil {
 		return
+	}
+
+	if scp.triggerSettingMsg.Mode == control.ETS {
+		if scp.boxEtsSettings != nil {
+			scp.boxEtsSettings.Show()
+		}
+		if scp.etsSamplingRateDisp != nil {
+			scp.etsSamplingRateDisp.Show()
+		}
+	} else {
+		if scp.boxEtsSettings != nil {
+			scp.boxEtsSettings.Hide()
+		}
+		if scp.etsSamplingRateDisp != nil {
+			scp.etsSamplingRateDisp.Hide()
+		}
 	}
 
 	// Show/hide channel condition selectors for complex trigger
@@ -1582,8 +1593,17 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.timeSelect.SilentSetSelected(scp.Settings.Time.TimeDiv)
 	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
 	scp.timeDiv = intTimeDiv
-	scp.ipmSelect = selectscroll.NewSelectScroll(interpolationModeOptions, scp.onInterpolationModeChange, linear)
-	scp.ipmSelect.SetSelected(interpolationModeOptions[scp.Settings.Time.Interpolation])
+	options := interpolationModeOptions
+	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
+		options = interpolationModeOptions[:3]
+	}
+	scp.ipmSelect = selectscroll.NewSelectScroll(options, scp.onInterpolationModeChange, linear)
+	
+	selected := interpolationModeOptions[scp.Settings.Time.Interpolation]
+	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS && selected == sinc {
+		selected = linear
+	}
+	scp.ipmSelect.SetSelected(selected)
 	addToTest(scp.ipmSelect, ipmId, -1)
 
 	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")

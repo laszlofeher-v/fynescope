@@ -286,12 +286,7 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	channel.Trigger.Mv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
-	t := tp.scp.triggerSettingMsg
-	t.Done = make(chan struct{}, 1)
-	go func() {
-		tp.scp.psControl.SetTriggerCh <- &t
-		<-t.Done
-	}()
+	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
@@ -332,12 +327,7 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	channel.Trigger.LowerMv = newMv
 
 	tp.scp.buildComplexTriggerMessage()
-	t := tp.scp.triggerSettingMsg
-	t.Done = make(chan struct{}, 1)
-	go func() {
-		tp.scp.psControl.SetTriggerCh <- &t
-		<-t.Done
-	}()
+	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
@@ -406,12 +396,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 
 		tp.scp.buildComplexTriggerMessage()
-		t := tp.scp.triggerSettingMsg
-		t.Done = make(chan struct{}, 1)
-		go func() {
-			tp.scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}()
+		tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 		tp.enableRefresh()
 		if tp.raster() != nil {
 			tp.raster().Refresh()
@@ -434,12 +419,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		}
 
 		tp.scp.buildComplexTriggerMessage()
-		t := tp.scp.triggerSettingMsg
-		t.Done = make(chan struct{}, 1)
-		go func() {
-			tp.scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}()
+		tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 		tp.enableRefresh()
 		if tp.raster() != nil {
 			tp.raster().Refresh()
@@ -489,12 +469,7 @@ func (tp *complexTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			tp.scp.triggerSettingMsg.IntervalTimeUpper = channel.Trigger.IntervalTimeUpper
 		}
 		tp.scp.buildComplexTriggerMessage()
-		t := tp.scp.triggerSettingMsg
-		t.Done = make(chan struct{}, 1)
-		go func() {
-			tp.scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}()
+		tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 		tp.enableRefresh()
 		if tp.raster() != nil {
 			tp.raster().Refresh()

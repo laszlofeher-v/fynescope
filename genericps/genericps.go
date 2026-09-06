@@ -12,7 +12,7 @@ type (
 
 const (
 	cmdSendTimeout         = 5000 * time.Millisecond
-	responseReceiveTimeout = 5000 * time.Millisecond
+	responseReceiveTimeout = 15000 * time.Millisecond
 	MaxDwellTime           = 100000000
 )
 

@@ -30,10 +30,7 @@ func blockMode(psControl *PscDesc) state {
 
 	prepare := func() (err error) {
 		// Ensure the hardware is stopped before reconfiguring.
-		// quit() is asynchronous; without this explicit Stop the hardware
-		// may still be running (e.g. in ETS mode) when SetEts(Off) is called,
-		// causing PICO_TRIGGER_ERROR on the subsequent RunBlock.
-		if stopErr := psControl.Con.Stop(); stopErr != nil {
+		if stopErr := psControl.stopHardware(); stopErr != nil {
 			slog.Debug("prepare Stop", "err", stopErr)
 		}
 		// Disable ETS on hardware BEFORE configuring the trigger.
@@ -216,7 +213,6 @@ func blockMode(psControl *PscDesc) state {
 			for n := psControl.numberOfEnabledChannels(); n == 0; {
 				select {
 				case <-psControl.restartChannel:
-					psControl.quit()
 					return start
 				case <-psControl.stopChannel:
 					slog.Debug("runblock start stop received")
@@ -245,7 +241,6 @@ func blockMode(psControl *PscDesc) state {
 			}
 			select {
 			case <-psControl.restartChannel:
-				psControl.quit()
 				return start
 			case <-psControl.stopChannel:
 				slog.Info("runblock run stop received ")

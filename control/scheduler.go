@@ -40,9 +40,10 @@ func (psControl *PscDesc) stateMachine() {
 }
 
 func (psControl *PscDesc) quit() (err error) {
-	// Run asynchronously to prevent state machine deadlocks if the driver hangs
+	// Run asynchronously to prevent state machine deadlocks if the driver hangs,
+	// but serialized through stopHardware to prevent concurrent Stop commands.
 	go func() {
-		stopErr := psControl.Con.Stop()
+		stopErr := psControl.stopHardware()
 		slog.Debug("Stop called from quit", "error", stopErr)
 	}()
 	return

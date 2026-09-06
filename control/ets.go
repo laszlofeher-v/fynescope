@@ -5,7 +5,6 @@ import (
 	"fynescope/genericps"
 	"log/slog"
 	"math"
-
 	"time"
 )
 
@@ -60,12 +59,6 @@ func etsBlockMode(psControl *PscDesc) state {
 
 	prepare := func() error {
 		slog.Debug("ETS prepare")
-		// Ensure the hardware is stopped before reconfiguring.
-		// quit() is asynchronous; the previous state may still be running
-		// when we call setEverything()/SetEts(Fast).
-		if stopErr := psControl.Con.Stop(); stopErr != nil {
-			slog.Debug("ETS prepare Stop", "err", stopErr)
-		}
 		if err := psControl.setEverything(); err != nil {
 			return err
 		}
@@ -267,6 +260,11 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 
 		run = func() eventHandlerFunc {
+			// Drain any stale callback before starting a new acquisition
+			select {
+			case <-callbackChannel:
+			default:
+			}
 			if err := runBlock(); err != nil {
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
@@ -279,7 +277,15 @@ func etsBlockMode(psControl *PscDesc) state {
 			case <-callbackChannel:
 				// Data acquisition finished
 			case <-psControl.restartChannel:
-				psControl.quit()
+				// Stop the hardware to cancel any in-progress acquisition.
+				// This causes the SDK to fire the block callback, which we
+				// then drain. Without this, memorySegments may block on
+				// Windows with real hardware because the device is still busy.
+				_ = psControl.Con.Stop()
+				select {
+				case <-callbackChannel:
+				case <-time.After(500 * time.Millisecond):
+				}
 				return start
 			case <-psControl.stopChannel:
 				return nil
@@ -303,7 +309,10 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 
 		slog.Debug("ETS quit")
-		psControl.quit()
+		_ = psControl.stopHardware()
+		if psControl.Con != nil {
+			_, _ = psControl.Con.SetEts(genericps.EtsOff, 40, 4)
+		}
 	}
 
 	stateMachine()
