@@ -111,12 +111,7 @@ func (scp *ScpDesc) SetTriggerUpperHysteresis(mv int32) {
 		if scp.triggerSource >= 0 && int(scp.triggerSource) < len(scp.Settings.Channels) {
 			scp.triggerSettingMsg.HysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
 		}
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+		scp.sendTriggerUpdate(scp.triggerSettingMsg)
 	}
 }
 
@@ -126,12 +121,7 @@ func (scp *ScpDesc) SetTriggerLowerHysteresis(mv int32) {
 		if scp.triggerSource >= 0 && int(scp.triggerSource) < len(scp.Settings.Channels) {
 			scp.triggerSettingMsg.LowerHysteresisADC = uint16(scp.mvToUAdc(mv, scp.Settings.Channels[scp.triggerSource].VRange))
 		}
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+		scp.sendTriggerUpdate(scp.triggerSettingMsg)
 	}
 }
 

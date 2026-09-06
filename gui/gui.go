@@ -109,6 +109,9 @@ type (
 		IsMSO                       bool
 		repartition, themeChanged   chan struct{}
 		triggerSettingMsg           control.TriggerDescMsg
+		triggerUpdateMu             sync.Mutex
+		triggerUpdatePending        *control.TriggerDescMsg
+		triggerUpdateActive         bool
 		rangeMargin                 float32
 		controlSamplingTimeInterval float64
 		controlXRoundError          float64
@@ -1701,4 +1704,47 @@ func (scp *ScpDesc) getActiveFunctionIndex() int {
 	default:
 		return ftTabIndex
 	}
+}
+
+// sendTriggerUpdate serializes and coalesces trigger updates sent to the hardware.
+// At most one update is in flight at a time; subsequent updates while in flight are
+// coalesced so that the hardware always receives the latest trigger state without
+// flooding SetTriggerCh with concurrent goroutines.
+func (scp *ScpDesc) sendTriggerUpdate(msg control.TriggerDescMsg) {
+	if scp == nil || scp.psControl == nil || scp.psControl.SetTriggerCh == nil {
+		return
+	}
+	scp.triggerUpdateMu.Lock()
+	if scp.triggerUpdateActive {
+		msgCopy := msg
+		scp.triggerUpdatePending = &msgCopy
+		scp.triggerUpdateMu.Unlock()
+		return
+	}
+	scp.triggerUpdateActive = true
+	scp.triggerUpdatePending = nil
+	scp.triggerUpdateMu.Unlock()
+
+	go func(initialMsg control.TriggerDescMsg) {
+		currentMsg := initialMsg
+		for {
+			currentMsg.Done = make(chan struct{}, 1)
+			scp.psControl.SetTriggerCh <- &currentMsg
+			<-currentMsg.Done
+
+			// Rate limit hardware updates: wait 80ms before sending the next update.
+			// This prevents slider dragging from spamming the scope USB driver with 50+ restarts/sec.
+			time.Sleep(80 * time.Millisecond)
+
+			scp.triggerUpdateMu.Lock()
+			if scp.triggerUpdatePending == nil {
+				scp.triggerUpdateActive = false
+				scp.triggerUpdateMu.Unlock()
+				return
+			}
+			currentMsg = *scp.triggerUpdatePending
+			scp.triggerUpdatePending = nil
+			scp.triggerUpdateMu.Unlock()
+		}
+	}(msg)
 }

@@ -196,12 +196,7 @@ func (tp *intervalTriggerPointViewer) dragged(dx, dy, x, y float32) {
 	tp.scp.triggerSettingMsg.IntervalTimeLower = channel.Trigger.IntervalTimeLower
 	tp.scp.triggerSettingMsg.IntervalTimeUpper = channel.Trigger.IntervalTimeUpper
 
-	t := tp.scp.triggerSettingMsg
-	t.Done = make(chan struct{}, 1)
-	go func() {
-		tp.scp.psControl.SetTriggerCh <- &t
-		<-t.Done
-	}()
+	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 
 	tp.enableRefresh()
 	if tp.raster() != nil {

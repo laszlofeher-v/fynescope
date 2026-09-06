@@ -62,7 +62,7 @@ var (
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
-		"ps2000a/c.go":                       false,
+		"ps2000a/c.go":                       true,
 		"ps2000a/sim_noscope.go":             false,
 		"ps3000a/c.go":                       false,
 		"ps2000a/callbacks.go":               false,
@@ -401,6 +401,33 @@ func initializeAndRunApp(con *genericps.Connection, scp *gui.ScpDesc, explicitSc
 // 3. Loads settings and launches the main application
 // 4. On exit, closes the connection and saves settings
 func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo, explicitScreenSize *string, isScreenSizeExplicit bool) error {
+	if len(devices) == 1 {
+		selectedDevice := &devices[0]
+		con, err := connectToDevice(selectedDevice)
+		if err != nil {
+			slog.Warn("failed to connect to device", "err", err)
+			return err
+		}
+		if err := setupSettingsFile(con); err != nil {
+			slog.Warn("failed to setup settings file", "err", err)
+		}
+		
+		err = initializeAndRunApp(con, scp, explicitScreenSize, isScreenSizeExplicit)
+		
+		if err == nil {
+			scp.App.Run()
+		}
+		
+		if con != nil {
+			con.CloseUnit()
+			if err := settings.Save(settingFileName, scp.Settings); err != nil {
+				slog.Error("failed to save settings", "err", err)
+			}
+		}
+		slog.Info("Unit closed")
+		return err
+	}
+
 	w := scp.App.NewWindow("Select Device")
 	w.Resize(fyne.NewSize(400, 300))
 
@@ -491,11 +518,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 	)
 
 	w.SetContent(content)
-	if len(devices) == 1 { // Obvious choice
-		selectButton.OnTapped()
-	} else {
-		w.Show()
-	}
+	w.Show()
 	scp.App.Run() // Blocks until window is closed
 
 	// Cleanup: close connection and save settings if a device was connected

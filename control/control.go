@@ -150,6 +150,7 @@ type (
 	PscDesc struct {
 		Con *genericps.Connection
 
+		hardwareMu   sync.Mutex
 		shutdownCh   chan struct{} // closed by Shutdown() to stop all monitor goroutines
 		shutdownOnce sync.Once
 
@@ -493,6 +494,15 @@ func (psControl *PscDesc) MinMaxValues() (min, max int32, err error) {
 	psControl.maxValue = max
 	psControl.minValue = min
 	return
+}
+
+func (psControl *PscDesc) stopHardware() (err error) {
+	psControl.hardwareMu.Lock()
+	defer psControl.hardwareMu.Unlock()
+	if psControl.Con == nil {
+		return nil
+	}
+	return psControl.Con.Stop()
 }
 
 func (psControl *PscDesc) Stop() (err error) {

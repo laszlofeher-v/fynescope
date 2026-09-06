@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"fynescope/control"
 	"fynescope/genericps"
 	"fynescope/settings"
 	"image"
@@ -103,12 +102,7 @@ func (scp *ScpDesc) setTriggerTime(xOffset float64) {
 	newOffset := float64(xOffset)
 	if scp.triggerSettingMsg.XOffset != newOffset {
 		scp.triggerSettingMsg.XOffset = newOffset
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+		scp.sendTriggerUpdate(scp.triggerSettingMsg)
 	}
 	if scp.ftBottomLabelViewer != nil {
 		scp.ftBottomLabelViewer.(*timeLabelViewer).enableRefresh()
@@ -188,12 +182,7 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	channel.Trigger.Mv = newMv
 	tp.scp.triggerSettingMsg.TriggerADC = int16(tp.scp.mvToAdc(channel.Trigger.Mv, channel.VRange))
 	tp.scp.triggerSettingMsg.Mv = channel.Trigger.Mv
-	triggerCopy := tp.scp.triggerSettingMsg
-	triggerCopy.Done = make(chan struct{}, 1)
-	go func(t control.TriggerDescMsg) {
-		tp.scp.psControl.SetTriggerCh <- &t
-		<-t.Done
-	}(triggerCopy)
+	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
