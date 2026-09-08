@@ -432,6 +432,15 @@ func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 	return
 }
 
+func (psControl *PscDesc) numberOfEnabledAnalogChannels() (n int) {
+	psControl.getNumOfEnabledCh <- &psControl.getNumOfEnabled
+	return <-psControl.getNumOfEnabled.n
+}
+
+func (psControl *PscDesc) NumberOfEnabledAnalogChannels() int {
+	return psControl.numberOfEnabledAnalogChannels()
+}
+
 func (psControl *PscDesc) NewChannels(numberOfChannels int) {
 	go psControl.channelStateMachine(numberOfChannels)
 	psControl.receiveBuffer = make([][]int16, numberOfChannels)

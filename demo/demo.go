@@ -828,6 +828,14 @@ func numberOfEnabledChannels() int {
 			nec++
 		}
 	}
+	if nec == 0 {
+		for _, enabled := range digitalPortsEnabled {
+			if enabled {
+				nec = 1
+				break
+			}
+		}
+	}
 	return nec
 }
 
