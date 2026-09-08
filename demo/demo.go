@@ -1746,7 +1746,7 @@ func dispatch(msg genericps.Message) {
 		getValuesTriggerTimeOffsetBulk64(m)
 	case *genericps.HoldOffMsg:
 		holdOff(m)
-	case *genericps.LsReadyMsg:
+	case *genericps.IsReadyMsg:
 		lsReady(m)
 	case *genericps.TriggerOrPulseWidthQualifierEnabledMsg:
 		triggerOrPulseWidthQualifierEnabled(m)

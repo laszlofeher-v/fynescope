@@ -1327,6 +1327,13 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 
 	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64, samplingTimeInterval float64) {
+		if len(scp.etsBuffer) != len(etsInBuffer) {
+			if cap(scp.etsBuffer) >= len(etsInBuffer) {
+				scp.etsBuffer = scp.etsBuffer[:len(etsInBuffer)]
+			} else {
+				scp.etsBuffer = make([]int64, len(etsInBuffer))
+			}
+		}
 		copy(scp.etsBuffer, etsInBuffer)
 		scp.psControl.RefreshCallback(buffers, nil, nil, 0, xRoundError, samplingTimeInterval)
 	}
