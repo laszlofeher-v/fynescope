@@ -584,10 +584,10 @@ func simIsReady(handle int16) (ready int16, err error) {
 	return
 }
 
-func lsReady(m *genericps.LsReadyMsg) {
+func lsReady(m *genericps.IsReadyMsg) {
 	ready, err := simIsReady(m.Handle())
 
-	response := m.Rsp().(*genericps.LsReadyRsp)
+	response := m.Rsp().(*genericps.IsReadyRsp)
 	response.Ready = ready
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}

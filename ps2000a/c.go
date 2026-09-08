@@ -526,6 +526,7 @@ var (
 //
 //export lpBlockReadyGo
 func lpBlockReadyGo(handle int16, status uint32, param unsafe.Pointer) {
+	slog.Debug("lpBlockReadyGo", "handle", handle, "status", status)
 	if regLpBlockReadyGo != nil {
 		regLpBlockReadyGo(handle, int(status), regLpBlockReadyParam) // call registered go callback function
 	}
@@ -696,6 +697,7 @@ func ps2000aSetTriggerDigitalPortProperties(handle int16, digitalDirections []Di
 func ps2000aStop(handle int16) (err error) {
 	slog.Debug("ps2000aStop", "handle", handle)
 	stat := C.ps2000aStop((C.short)(handle))
+	slog.Debug("ps2000aStop returned", "handle", handle, "stat", stat)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("Stop:  %s", psc.StatStr(int(stat)))
 	}

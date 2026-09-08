@@ -698,10 +698,10 @@ type (
 		RespBase
 	}
 
-	LsReadyMsg struct {
+	IsReadyMsg struct {
 		MsgBase
 	}
-	LsReadyRsp struct {
+	IsReadyRsp struct {
 		RespBase
 		Ready int16
 	}
@@ -1222,10 +1222,10 @@ func (c Connection) HoldOff(holdOff uint64, holdOffType HoldOffType) (err error)
 	return
 }
 func (c Connection) LsReady() (ready int16, err error) {
-	msg := &LsReadyMsg{}
-	msg.rsp = &LsReadyRsp{}
+	msg := &IsReadyMsg{}
+	msg.rsp = &IsReadyRsp{}
 	c.Send(msg)
-	rsp := msg.Rsp().(*LsReadyRsp)
+	rsp := msg.Rsp().(*IsReadyRsp)
 	ready = rsp.Ready
 	err = rsp.Status()
 	return

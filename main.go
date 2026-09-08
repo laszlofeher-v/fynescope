@@ -62,7 +62,7 @@ var (
 		"gui/adv_trigger_point.go":           false,
 		"control/block_mode.go":              false,
 		"control/buffers.go":                 false,
-		"ps2000a/c.go":                       true,
+		"ps2000a/c.go":                       false,
 		"ps2000a/sim_noscope.go":             false,
 		"ps3000a/c.go":                       false,
 		"ps2000a/callbacks.go":               false,
@@ -411,13 +411,13 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 		if err := setupSettingsFile(con); err != nil {
 			slog.Warn("failed to setup settings file", "err", err)
 		}
-		
+
 		err = initializeAndRunApp(con, scp, explicitScreenSize, isScreenSizeExplicit)
-		
+
 		if err == nil {
 			scp.App.Run()
 		}
-		
+
 		if con != nil {
 			con.CloseUnit()
 			if err := settings.Save(settingFileName, scp.Settings); err != nil {

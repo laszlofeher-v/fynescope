@@ -172,7 +172,20 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
 		timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout || psControl.triggerSetting.Type == WindowPulseWidth || psControl.triggerSetting.Type == RiseFall
-		if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
+
+		// In ETS mode, triggering MUST be enabled. If the user hasn't explicitly
+		// enabled a trigger, force a simple rising-edge trigger on the selected source.
+		if !psControl.triggerSetting.Enabled {
+			dir := genericps.TriggerRising
+			err = psControl.Con.SetSimpleTrigger(true,
+				psControl.triggerSetting.Source, psControl.triggerSetting.TriggerADC,
+				dir, 0, 0)
+			if err != nil {
+				slog.Error("ETS prepare default trigger failed", "error", err)
+				return err
+			}
+			psControl.initialTriggerSet = true
+		} else if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
 			err = psControl.sendTrigger()
 			if err != nil {
 				slog.Error("ETS prepare sendTrigger failed", "error", err)
@@ -205,10 +218,10 @@ func etsBlockMode(psControl *PscDesc) state {
 			return err
 		}
 		slog.Debug("ETS", "SampleCount", psControl.SampleCountRequired)
-		if err := psControl.setEtsBuffer(psControl.SampleCountRequired, 0); err != nil {
-			slog.Error("ETS prepare: setEtsBuffers failed", "error", err)
-			return err
-		}
+		// if err := psControl.setEtsBuffer(psControl.SampleCountRequired, 0); err != nil {
+		// 	slog.Error("ETS prepare: setEtsBuffers failed", "error", err)
+		// 	return err
+		// }
 		// here we need the npre and npost values
 		// and have to modify triggerTimeOffset
 		// etscallback also needs triggerTimeOffset
@@ -243,6 +256,8 @@ func etsBlockMode(psControl *PscDesc) state {
 		var start, run, get eventHandlerFunc
 
 		start = func() eventHandlerFunc {
+			// Ensure hardware is stopped before prepare/memorySegments
+			_ = psControl.Con.Stop()
 			for psControl.numberOfEnabledChannels() == 0 {
 				select {
 				case <-psControl.restartChannel:
@@ -273,36 +288,59 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 
 		get = func() eventHandlerFunc {
-			select {
-			case <-callbackChannel:
-				// Data acquisition finished
-			case <-psControl.restartChannel:
-				// Stop the hardware to cancel any in-progress acquisition.
-				// This causes the SDK to fire the block callback, which we
-				// then drain. Without this, memorySegments may block on
-				// Windows with real hardware because the device is still busy.
-				_ = psControl.Con.Stop()
+			ticker := time.NewTicker(20 * time.Millisecond)
+			defer ticker.Stop()
+			timeout := time.After(1500 * time.Millisecond)
+
+			for {
 				select {
 				case <-callbackChannel:
-				case <-time.After(500 * time.Millisecond):
+					goto ready
+				case <-ticker.C:
+					if ready, err := psControl.Con.LsReady(); err == nil && ready != 0 {
+						goto ready
+					}
+				case <-timeout:
+					// In ETS mode, auto-trigger is not supported by hardware.
+					// If no trigger event occurred within 1.5s, stop acquisition
+					// and restart so the UI remains responsive.
+					_ = psControl.Con.Stop()
+					return run
+				case <-psControl.restartChannel:
+					// Stop the hardware to cancel any in-progress acquisition.
+					_ = psControl.Con.Stop()
+					select {
+					case <-callbackChannel:
+					case <-time.After(200 * time.Millisecond):
+					}
+					return start
+				case <-psControl.stopChannel:
+					return nil
 				}
-				return start
-			case <-psControl.stopChannel:
-				return nil
 			}
-			// Throttling to avoid canvas cache issues
+
+ready:
 			if dt := minEtsRefreshTime - time.Since(psControl.refreshTime); dt > 0 {
 				time.Sleep(dt)
 			}
+			if err := psControl.setEtsBuffer(psControl.SampleCountRequired, 0); err != nil {
+				slog.Error("ETS prepare: setEtsBuffers failed", "error", err)
+				psControl.DisplayStatus(err.Error(), Fatal)
+				return nil
+			}
 			psControl.refreshTime = time.Now()
-
 			if err := psControl.getData(psControl.SampleCountRequired, 0, true); err != nil {
 				slog.Error("ETS get data failed", "error", err)
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
+			// Stop the hardware between block captures so the next RunBlock
+			// starts from a clean, idle hardware state machine.
+			_ = psControl.Con.Stop()
+			time.Sleep(20 * time.Millisecond)
 			return run
 		}
+
 
 		for handler := start; handler != nil; {
 			handler = handler()

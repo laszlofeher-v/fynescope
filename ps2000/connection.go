@@ -392,9 +392,9 @@ func holdOff(m *genericps.HoldOffMsg) {
 	m.RspCh() <- struct{}{}
 }
 
-func lsReady(m *genericps.LsReadyMsg) {
+func IsReady(m *genericps.IsReadyMsg) {
 	ready, err := ps2000IsReady(m.Handle())
-	response := m.Rsp().(*genericps.LsReadyRsp)
+	response := m.Rsp().(*genericps.IsReadyRsp)
 	response.Ready = ready
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
@@ -601,8 +601,8 @@ func dispatch(msg genericps.Message) {
 		getValuesTriggerTimeOffsetBulk64(m)
 	case *genericps.HoldOffMsg:
 		holdOff(m)
-	case *genericps.LsReadyMsg:
-		lsReady(m)
+	case *genericps.IsReadyMsg:
+		IsReady(m)
 	case *genericps.TriggerOrPulseWidthQualifierEnabledMsg:
 		triggerOrPulseWidthQualifierEnabled(m)
 	case *genericps.MemorySegmentsMsg:
