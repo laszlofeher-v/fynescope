@@ -1477,7 +1477,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.psControl.Info, err = scp.psControl.UnitVariantInfo()
 	scp.psControl.ScopeModel = control.StringToScopeType(scp.psControl.Info)
 	slog.Debug("scope ", "info string", scp.psControl.Info)
-	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO")
+	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO") || scp.psControl.Info == demo.ScopeDemoVariantInfo
 	// TODO select preconfigured gui description, including
 	// channel count
 	// e.g. ETS mode is available, voltage, frequency ranges
