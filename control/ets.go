@@ -62,6 +62,9 @@ func etsBlockMode(psControl *PscDesc) state {
 		if err := psControl.setEverything(); err != nil {
 			return err
 		}
+		if psControl.numberOfEnabledAnalogChannels() == 0 {
+			return fmt.Errorf("ETS mode requires at least one enabled analog channel")
+		}
 
 		// Fetch the latest trigger settings from triggerMonitor so we have up-to-date EtsInterleave/EtsCycles
 		psControl.getTriggerCh <- &psControl.getTrigger
@@ -258,7 +261,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		start = func() eventHandlerFunc {
 			// Ensure hardware is stopped before prepare/memorySegments
 			_ = psControl.Con.Stop()
-			for psControl.numberOfEnabledChannels() == 0 {
+			for psControl.numberOfEnabledAnalogChannels() == 0 {
 				select {
 				case <-psControl.restartChannel:
 					return start

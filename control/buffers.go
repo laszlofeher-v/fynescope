@@ -80,6 +80,9 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 		if !psControl.digitalPortsEnabled[i].Load() {
 			continue
 		}
+		if len(psControl.digitalReceiveBuffer) < 2 {
+			psControl.digitalReceiveBuffer = make([][]int16, 2)
+		}
 		if len(psControl.digitalReceiveBuffer[i]) < int(sampleCount) {
 			if cap(psControl.digitalReceiveBuffer[i]) < int(sampleCount) {
 				psControl.digitalReceiveBuffer[i] = make([]int16, sampleCount)
@@ -91,6 +94,9 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 		}
 		minMax := psControl.downSampleRatioMode == genericps.RatioModeAggregate
 		if minMax {
+			if len(psControl.digitalReceiveBufferMin) < 2 {
+				psControl.digitalReceiveBufferMin = make([][]int16, 2)
+			}
 			if len(psControl.digitalReceiveBufferMin[i]) < int(sampleCount) {
 				if cap(psControl.digitalReceiveBufferMin[i]) < int(sampleCount) {
 					psControl.digitalReceiveBufferMin[i] = make([]int16, sampleCount)
