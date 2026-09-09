@@ -409,6 +409,12 @@ func NewDefaultSettings() *PsSettings {
 			},
 			HexView: false,
 		},
+		DigitalDemoGenPanel: DigitalDemoGenSettings{
+			Frequency: defaultFrequency,
+			Direction: genericps.DigitalDemoGenDirectionUp,
+			Encoding:  genericps.DigitalDemoGenEncodingBinary,
+			Mode:      genericps.DigitalDemoGenModeSynchronous,
+		},
 		Theme:         DarkTheme,
 		StreamEnabled: &streamDefault,
 	}
@@ -499,6 +505,10 @@ func Load(fileName string) (*PsSettings, error) {
 	if settings.StreamEnabled == nil {
 		streamDefault := true
 		settings.StreamEnabled = &streamDefault
+	}
+
+	if settings.DigitalDemoGenPanel.Frequency <= 0 {
+		settings.DigitalDemoGenPanel.Frequency = defaultFrequency
 	}
 
 	if settings.ScreenSize == "" {

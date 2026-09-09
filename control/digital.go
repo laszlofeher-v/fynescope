@@ -7,13 +7,16 @@ import (
 )
 
 func (psControl *PscDesc) setDigitalPort() (err error) {
+	if psControl.getDigitalPortCh == nil {
+		return nil
+	}
 	psControl.getDigitalPortCh <- &psControl.getDigitalPort
 	for <-psControl.getDigitalPort.newSettings {
 		chset := psControl.getDigitalPort.portSettings
 		err = psControl.Con.SetDigitalPort(chset.Port, chset.Settings.Enabled, chset.Settings.Threshold)
 		if err != nil {
 			slog.Error("SetDigitalPort", "error:", err)
-			return
+			err = nil // don't fail setEverything if digital ports are unsupported on this model
 		}
 		psControl.getDigitalPortCh <- &psControl.getDigitalPort
 	}
@@ -37,6 +40,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 		if oldChDesc[portIdx] != setMsg.Settings {
 			oldChDesc[portIdx] = setMsg.Settings
 			changedSet[portIdx] = true
+			psControl.requestRestart()
 			return changed
 		}
 		return unchanged
