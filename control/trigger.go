@@ -226,13 +226,13 @@ func sanitizeTriggerChannelProperties(props []genericps.TriggerChannelProperties
 
 		if mode == genericps.Window {
 			if lower >= upper {
-				slog.Warn("sanitizeTriggerChannelProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
+				slog.Debug("sanitizeTriggerChannelProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
 				if lower > upper {
 					lower, upper = upper, lower
 				}
 			}
 			if int32(upper)-int32(lower) < 256 {
-				slog.Warn("sanitizeTriggerChannelProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
+				slog.Debug("sanitizeTriggerChannelProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
 				diff := int32(256) - (int32(upper) - int32(lower))
 				if int32(upper) <= 32767-diff {
 					upper += int16(diff)
@@ -256,16 +256,16 @@ func sanitizeTriggerChannelProperties(props []genericps.TriggerChannelProperties
 			}
 
 			if upperHyst > limitHyst {
-				slog.Warn("sanitizeTriggerChannelProperties: upper hysteresis exceeds window limits, clamping", "from", upperHyst, "to", maxHyst)
+				slog.Debug("sanitizeTriggerChannelProperties: upper hysteresis exceeds window limits, clamping", "from", upperHyst, "to", maxHyst)
 				upperHyst = maxHyst
 			}
 			if lowerHyst > limitHyst {
-				slog.Warn("sanitizeTriggerChannelProperties: lower hysteresis exceeds window limits, clamping", "from", lowerHyst, "to", maxHyst)
+				slog.Debug("sanitizeTriggerChannelProperties: lower hysteresis exceeds window limits, clamping", "from", lowerHyst, "to", maxHyst)
 				lowerHyst = maxHyst
 			}
 
 			if int32(upper)-int32(upperHyst) <= int32(lower)+int32(lowerHyst) {
-				slog.Warn("sanitizeTriggerChannelProperties: hysteresis boundaries overlap, clamping to safe fraction of window")
+				slog.Debug("sanitizeTriggerChannelProperties: hysteresis boundaries overlap, clamping to safe fraction of window")
 				upperHyst = uint16(windowHeight / 4)
 				lowerHyst = uint16(windowHeight / 4)
 			}
