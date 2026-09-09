@@ -2,6 +2,7 @@
 *.kra
 *.pclx
 *.debug
+*.exe
 *~
 _debug*
 vendor
