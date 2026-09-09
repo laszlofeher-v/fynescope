@@ -1470,6 +1470,10 @@ func (scp *ScpDesc) build2000DemoGui() {
 
 	scp.build2000Gui()
 	scp.newDemoGenPanel(scp.genLayout, true)
+	// Re-apply saved DigGen settings so the demo backend starts up with the
+	// correct frequency / port-enable state without requiring the user to
+	// touch a control first.
+	scp.applyDemoDigitalGenSettings()
 
 }
 

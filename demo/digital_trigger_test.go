@@ -3,6 +3,7 @@ package demo
 import (
 	"fynescope/genericps"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -138,3 +139,84 @@ func TestCombinedAnalogAndDigitalTriggerAND(t *testing.T) {
 	currD1 := (p0Curr >> 1) & 1
 	assert.Equal(t, int16(1), currD1, "D1 must be High when trigger fired in AND mode")
 }
+
+func TestDigitalGenerator_BlockMode(t *testing.T) {
+	handle, err := openUnit("", 0)
+	assert.NoError(t, err)
+
+	s := &SimDesc{}
+	err = s.SetDemoDigitalGen(true, true, 1000, genericps.DigitalDemoGenDirectionUp, genericps.DigitalDemoGenEncodingBinary, genericps.DigitalDemoGenModeSynchronous, 0)
+	assert.NoError(t, err)
+
+	err = simSetDigitalPort(handle, Port0, true, 0)
+	assert.NoError(t, err)
+
+	buf0 := make([]int16, 1000)
+	err = simSetDataBuffer(handle, ChannelId(128), buf0, 0, RatioModeNone)
+	assert.NoError(t, err)
+
+	blockReadyCb := func(handle int16, status int, param any) {}
+	_, err = simRunBlock(handle, 500, 500, 200, 0, 0, blockReadyCb, nil)
+	assert.NoError(t, err)
+
+	n, _, err := simGetValues(handle, 0, 1000, 1, RatioModeNone, 0)
+	assert.NoError(t, err)
+	assert.Greater(t, n, uint32(0))
+
+	hasNonZero := false
+	hasChanges := false
+	for i := 1; i < int(n); i++ {
+		if buf0[i] != 0 {
+			hasNonZero = true
+		}
+		if buf0[i] != buf0[i-1] {
+			hasChanges = true
+		}
+	}
+	assert.True(t, hasNonZero, "Digital buffer should have non-zero samples")
+	assert.True(t, hasChanges, "Digital buffer should have changing/toggling values")
+}
+
+func TestDigitalGenerator_StreamingMode(t *testing.T) {
+	handle, err := openUnit("", 0)
+	assert.NoError(t, err)
+
+	s := &SimDesc{}
+	err = s.SetDemoDigitalGen(true, true, 1000, genericps.DigitalDemoGenDirectionUp, genericps.DigitalDemoGenEncodingBinary, genericps.DigitalDemoGenModeSynchronous, 0)
+	assert.NoError(t, err)
+
+	err = simSetDigitalPort(handle, Port0, true, 0)
+	assert.NoError(t, err)
+
+	buf0 := make([]int16, 1000)
+	err = simSetDataBuffer(handle, ChannelId(128), buf0, 0, RatioModeNone)
+	assert.NoError(t, err)
+
+	_, err = simRunStreaming(handle, 1, TuMs, 0, 1000, false, 1, RatioModeNone, 1000)
+	assert.NoError(t, err)
+
+	called := false
+	var sampleCount int32
+	readyCb := func(handle int16, noOfSamples int32, startIndex uint32, overflow int16, triggeredAt uint32, triggered int16, autoStop int16, p any) error {
+		called = true
+		sampleCount = noOfSamples
+		return nil
+	}
+
+	// Sleep slightly to allow simulated time to advance
+	time.Sleep(20 * time.Millisecond)
+	err = simGetStreamingLatestValues(handle, readyCb, nil)
+	assert.NoError(t, err)
+	assert.True(t, called)
+	assert.Greater(t, sampleCount, int32(0))
+
+	hasNonZero := false
+	for i := 0; i < int(sampleCount); i++ {
+		if buf0[i] != 0 {
+			hasNonZero = true
+			break
+		}
+	}
+	assert.True(t, hasNonZero, "Streaming digital buffer should have non-zero samples")
+}
+

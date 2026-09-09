@@ -209,6 +209,13 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 		default:
 			slog.Error("windowTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
 		}
+		maxHyst := (channel.Trigger.Mv - channel.Trigger.LowerMv) / 2
+		if maxHyst < 0 {
+			maxHyst = 0
+		}
+		if channel.Trigger.Hysteresis > maxHyst {
+			channel.Trigger.Hysteresis = maxHyst
+		}
 		tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 		tp.enableRefresh()
 		if tp.raster() != nil {
@@ -231,6 +238,13 @@ func (tp *windowTriggerPointViewer) dragged(dx, dy, x, y float32) {
 			}
 		default:
 			slog.Error("windowTrigger", "TriggerDirection", channel.Trigger.TriggerDirection)
+		}
+		maxHyst := (channel.Trigger.Mv - channel.Trigger.LowerMv) / 2
+		if maxHyst < 0 {
+			maxHyst = 0
+		}
+		if channel.Trigger.LowerHysteresis > maxHyst {
+			channel.Trigger.LowerHysteresis = maxHyst
 		}
 		// Update without repartition (same as SetTriggerUpperHysteresis)
 		if tp.scp.triggerSettingMsg.LowerHysteresis != channel.Trigger.LowerHysteresis {
@@ -261,6 +275,13 @@ func (tp *windowTriggerPointViewer) setUpperHysteresisDispOffset(dyh float32) {
 	if d > 0 || channel.Trigger.Hysteresis > 0 {
 		channel.Trigger.Hysteresis += d
 	}
+	maxHyst := (channel.Trigger.Mv - channel.Trigger.LowerMv) / 2
+	if maxHyst < 0 {
+		maxHyst = 0
+	}
+	if channel.Trigger.Hysteresis > maxHyst {
+		channel.Trigger.Hysteresis = maxHyst
+	}
 	tp.scp.SetTriggerUpperHysteresis(channel.Trigger.Hysteresis)
 	tp.enableRefresh()
 	if tp.raster() != nil {
@@ -282,6 +303,13 @@ func (tp *windowTriggerPointViewer) setLowerHysteresisDispOffset(dyh float32) {
 	d := int32(math.Round(yScale * float64(dyh)))
 	if d > 0 || channel.Trigger.LowerHysteresis > 0 {
 		channel.Trigger.LowerHysteresis += d
+	}
+	maxHyst := (channel.Trigger.Mv - channel.Trigger.LowerMv) / 2
+	if maxHyst < 0 {
+		maxHyst = 0
+	}
+	if channel.Trigger.LowerHysteresis > maxHyst {
+		channel.Trigger.LowerHysteresis = maxHyst
 	}
 	if tp.scp.triggerSettingMsg.LowerHysteresis != channel.Trigger.LowerHysteresis {
 		tp.scp.triggerSettingMsg.LowerHysteresis = channel.Trigger.LowerHysteresis

@@ -283,6 +283,17 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
 			}(scp.Settings.Digital.Ports[0])
 		}
+		if scp.runningMode == genericps.DemoMode {
+			if v {
+				if scp.Settings.DigitalDemoGenPanel.Frequency <= 0 {
+					scp.Settings.DigitalDemoGenPanel.Frequency = 1000
+				}
+				scp.Settings.DigitalDemoGenPanel.Port0Enabled = true
+			} else {
+				scp.Settings.DigitalDemoGenPanel.Port0Enabled = false
+			}
+			scp.applyDemoDigitalGenSettings()
+		}
 	})
 	port0EnableCheck.SetChecked(scp.Settings.Digital.Ports[0].Enabled)
 	addToTest(port0EnableCheck, "digPort0EnableCheck", digPortTabIndex)
@@ -301,6 +312,17 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			go func(p settings.DigitalPortSettings) {
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
 			}(scp.Settings.Digital.Ports[1])
+		}
+		if scp.runningMode == genericps.DemoMode {
+			if v {
+				if scp.Settings.DigitalDemoGenPanel.Frequency <= 0 {
+					scp.Settings.DigitalDemoGenPanel.Frequency = 1000
+				}
+				scp.Settings.DigitalDemoGenPanel.Port1Enabled = true
+			} else {
+				scp.Settings.DigitalDemoGenPanel.Port1Enabled = false
+			}
+			scp.applyDemoDigitalGenSettings()
 		}
 	})
 	port1EnableCheck.SetChecked(scp.Settings.Digital.Ports[1].Enabled)

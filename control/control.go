@@ -363,6 +363,11 @@ func (psControl *PscDesc) setEverything() (err error) {
 		slog.Error("setChannel", "error", err)
 		return
 	}
+	err = psControl.setDigitalPort()
+	if err != nil {
+		slog.Error("setDigitalPort", "error", err)
+		return
+	}
 	return
 }
 

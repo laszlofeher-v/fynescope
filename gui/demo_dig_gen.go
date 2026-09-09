@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/control"
 	"fynescope/demo"
 	"fynescope/disp7"
 	"fynescope/genericps"
@@ -18,6 +19,28 @@ import (
 func (scp *ScpDesc) applyDemoDigitalGenSettings() {
 	if scp.psControl != nil && scp.psControl.Con != nil {
 		set := scp.Settings.DigitalDemoGenPanel
+
+		splitChanged := false
+		if set.Port0Enabled && !scp.Settings.Digital.Ports[0].Enabled {
+			scp.Settings.Digital.Ports[0].Enabled = true
+			splitChanged = true
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+			}(scp.Settings.Digital.Ports[0])
+		}
+		if set.Port1Enabled && !scp.Settings.Digital.Ports[1].Enabled {
+			scp.Settings.Digital.Ports[1].Enabled = true
+			splitChanged = true
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+			}(scp.Settings.Digital.Ports[1])
+		}
+		if splitChanged {
+			scp.updateDigitalSplit()
+			scp.updateDigitalTrigger()
+			scp.updateTriggerModeOptions()
+		}
+
 		// Set port-enable flags atomically and immediately so the next
 		// acquisition cycle outputs low on disabled ports right away,
 		// without waiting for the goroutine below to be scheduled.

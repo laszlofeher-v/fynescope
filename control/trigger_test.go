@@ -107,3 +107,51 @@ func TestPscDesc_getValidTriggerProperties_RiseFall(t *testing.T) {
 		t.Errorf("Expected upper: 2000, lower: 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 }
+
+func TestPscDesc_getValidTriggerProperties_HysteresisClamping(t *testing.T) {
+	psControl := &PscDesc{}
+
+	// Case 1: Window mode with upper hysteresis = 32767 (the exact error report)
+	psControl.triggerSetting = TriggerDesc{
+		TriggerADC:         327,
+		LowerTriggerADC:    0,
+		HysteresisADC:      32767,
+		LowerHysteresisADC: 0,
+		Source:             genericps.ChA,
+		ThresholdMode:      genericps.Window,
+	}
+
+	props := psControl.getValidTriggerProperties()
+	p := props[0]
+	if p.ThresholdMode != genericps.Window {
+		t.Errorf("Expected ThresholdMode Window, got %v", p.ThresholdMode)
+	}
+	if p.ThresholdUpper != 327 || p.ThresholdLower != 0 {
+		t.Errorf("Expected upper: 327, lower: 0, got upper: %v, lower: %v", p.ThresholdUpper, p.ThresholdLower)
+	}
+	// Verify that upper - upperHyst >= lower + lowerHyst (no crossover)
+	if int32(p.ThresholdUpper)-int32(p.ThresholdUpperHysteresis) < int32(p.ThresholdLower)+int32(p.ThresholdLowerHysteresis) {
+		t.Errorf("Upper hysteresis overlaps lower threshold: upper=%d, uh=%d, lower=%d, lh=%d",
+			p.ThresholdUpper, p.ThresholdUpperHysteresis, p.ThresholdLower, p.ThresholdLowerHysteresis)
+	}
+	if p.ThresholdUpperHysteresis == 32767 {
+		t.Errorf("Expected ThresholdUpperHysteresis to be clamped from 32767, got %v", p.ThresholdUpperHysteresis)
+	}
+
+	// Case 2: Level mode with excessive hysteresis
+	psControl.triggerSetting = TriggerDesc{
+		Type:               Advanced,
+		TriggerADC:         100,
+		LowerTriggerADC:    100,
+		HysteresisADC:      50000,
+		LowerHysteresisADC: 0,
+		Source:             genericps.ChA,
+		ThresholdMode:      genericps.Level,
+	}
+	props = psControl.getValidTriggerProperties()
+	p = props[0]
+	if p.ThresholdUpperHysteresis > 32767 {
+		t.Errorf("Expected upper hysteresis in level mode to be <= 32767, got %v", p.ThresholdUpperHysteresis)
+	}
+}
+

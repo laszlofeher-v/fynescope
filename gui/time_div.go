@@ -1230,6 +1230,28 @@ func (scp *ScpDesc) onHysteresisChange(v float64) {
 	}
 	intV := int32(math.Round(v))
 
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeRunt ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
+		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
+		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
+		maxHyst := (upperMv - lowerMv) / 2
+		if maxHyst < 0 {
+			maxHyst = 0
+		}
+		if intV > maxHyst {
+			intV = maxHyst
+			fyne.Do(func() {
+				if scp.triggerHysteresisDisp != nil {
+					scp.triggerHysteresisDisp.SilentSetValue(int(intV))
+					scp.triggerHysteresisDisp.Refresh()
+				}
+			})
+		}
+	}
+
 	if scp.triggerSettingMsg.Type == control.Dropout {
 		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV
 		scp.SetTriggerUpperHysteresis(intV)
@@ -1293,6 +1315,28 @@ func (scp *ScpDesc) onLowerHysteresisChange(v float64) {
 		return
 	}
 	intV := int32(math.Round(v))
+
+	if scp.Settings.Trigger.Type == settings.TriggerTypeWindow ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeWindowPulseWidth ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeRunt ||
+		scp.Settings.Trigger.Type == settings.TriggerTypeRiseFall {
+		upperMv := scp.Settings.Channels[scp.triggerSource].Trigger.Mv
+		lowerMv := scp.Settings.Channels[scp.triggerSource].Trigger.LowerMv
+		maxHyst := (upperMv - lowerMv) / 2
+		if maxHyst < 0 {
+			maxHyst = 0
+		}
+		if intV > maxHyst {
+			intV = maxHyst
+			fyne.Do(func() {
+				if scp.triggerLowerHysteresisDisp != nil {
+					scp.triggerLowerHysteresisDisp.SilentSetValue(int(intV))
+					scp.triggerLowerHysteresisDisp.Refresh()
+				}
+			})
+		}
+	}
 
 	if scp.triggerSettingMsg.Type == control.Dropout {
 		scp.Settings.Channels[scp.triggerSource].Trigger.DropoutHysteresis = intV

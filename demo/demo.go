@@ -620,7 +620,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	for ch, enabled := range digitalPortsEnabled {
 		if enabled && digitalBuffers[int(ch)] != nil {
 			buf := digitalBuffers[int(ch)]
-			if noOfSamples > uint32(len(buf)) {
+			if noOfSamples == 0 || noOfSamples > uint32(len(buf)) {
 				noOfSamples = uint32(len(buf))
 			}
 
@@ -764,12 +764,20 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingRe
 		return nil
 	}
 
-	// Find the buffer length of the first enabled channel
+	// Find the buffer length of the first enabled channel or digital port
 	var activeBufLen int32 = 0
 	for ch := 0; ch < MaxChannels; ch++ {
 		if channels[ch].enabled && len(buffers[ch]) > 0 {
 			activeBufLen = int32(len(buffers[ch]))
 			break
+		}
+	}
+	if activeBufLen <= 0 {
+		for ch, enabled := range digitalPortsEnabled {
+			if enabled && len(digitalBuffers[int(ch)]) > 0 {
+				activeBufLen = int32(len(digitalBuffers[int(ch)]))
+				break
+			}
 		}
 	}
 
@@ -802,6 +810,33 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingRe
 					idx := (streamingWriteIndex + int32(i)) % activeBufLen
 					if idx < int32(len(buffers[ch])) {
 						buffers[ch][idx] = level
+					}
+				}
+			}
+		}
+
+		for ch, enabled := range digitalPortsEnabled {
+			if enabled && len(digitalBuffers[int(ch)]) > 0 {
+				buf := digitalBuffers[int(ch)]
+				bufLen := int32(len(buf))
+				for i := 0; i < int(writeCount); i++ {
+					t := float64(totalSamplesGenerated+int64(i)) * (streamingIntervalNs * 1e-9)
+					p0, p1, p0En, p1En := GetDemoDigitalGenValue(t)
+					var portVal int16
+					if int(ch) == 128 { // Port0 (D0-D7)
+						if p0En {
+							portVal = p0
+						}
+					} else if int(ch) == 129 { // Port1 (D8-D15)
+						if p1En {
+							portVal = p1
+						}
+					} else {
+						portVal = p0
+					}
+					idx := (streamingWriteIndex + int32(i)) % activeBufLen
+					if idx < bufLen {
+						buf[idx] = portVal
 					}
 				}
 			}
@@ -1193,8 +1228,14 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 		if prop.Channel < 0 || int(prop.Channel) >= MaxChannels {
 			return fmt.Errorf("invalid trigger channel: %d", prop.Channel)
 		}
-		if prop.ThresholdMode == Window && prop.ThresholdLower > prop.ThresholdUpper {
-			return fmt.Errorf("invalid trigger property: lower (%d) > upper (%d)", prop.ThresholdLower, prop.ThresholdUpper)
+		if prop.ThresholdMode == Window {
+			if prop.ThresholdLower > prop.ThresholdUpper {
+				return fmt.Errorf("invalid trigger property: lower (%d) > upper (%d)", prop.ThresholdLower, prop.ThresholdUpper)
+			}
+			if int32(prop.ThresholdUpper)-int32(prop.ThresholdUpperHysteresis) < int32(prop.ThresholdLower)+int32(prop.ThresholdLowerHysteresis) {
+				return fmt.Errorf("invalid trigger property: upper (%d) - upperHyst (%d) < lower (%d) + lowerHyst (%d)",
+					prop.ThresholdUpper, prop.ThresholdUpperHysteresis, prop.ThresholdLower, prop.ThresholdLowerHysteresis)
+			}
 		}
 	}
 	for i := 0; i < len(simChannelProperties) && i < len(channelProperties); i++ {

@@ -204,6 +204,98 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 	return
 }
 
+func sanitizeTriggerChannelProperties(props []genericps.TriggerChannelProperties) []genericps.TriggerChannelProperties {
+	sanitized := make([]genericps.TriggerChannelProperties, len(props))
+	for i, p := range props {
+		upper := p.ThresholdUpper
+		lower := p.ThresholdLower
+		upperHyst := p.ThresholdUpperHysteresis
+		lowerHyst := p.ThresholdLowerHysteresis
+		mode := p.ThresholdMode
+
+		if upper > 32767 {
+			upper = 32767
+		} else if upper < -32767 {
+			upper = -32767
+		}
+		if lower > 32767 {
+			lower = 32767
+		} else if lower < -32767 {
+			lower = -32767
+		}
+
+		if mode == genericps.Window {
+			if lower >= upper {
+				slog.Warn("sanitizeTriggerChannelProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
+				if lower > upper {
+					lower, upper = upper, lower
+				}
+			}
+			if int32(upper)-int32(lower) < 256 {
+				slog.Warn("sanitizeTriggerChannelProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
+				diff := int32(256) - (int32(upper) - int32(lower))
+				if int32(upper) <= 32767-diff {
+					upper += int16(diff)
+				} else {
+					lower -= int16(diff)
+				}
+			}
+
+			windowHeight := int32(upper) - int32(lower)
+			// Hysteresis in window mode specifies how far into the window the signal must travel
+			// before re-arming the respective threshold.
+			// The hysteresis boundaries must not cross or meet: upper - upperHyst > lower + lowerHyst.
+			// Clamp each hysteresis to at most a safe fraction of the window.
+			maxHyst := uint16(windowHeight / 4)
+			if maxHyst < 1 {
+				maxHyst = 1
+			}
+			limitHyst := uint16((windowHeight - 16) / 2)
+			if limitHyst < maxHyst {
+				limitHyst = maxHyst
+			}
+
+			if upperHyst > limitHyst {
+				slog.Warn("sanitizeTriggerChannelProperties: upper hysteresis exceeds window limits, clamping", "from", upperHyst, "to", maxHyst)
+				upperHyst = maxHyst
+			}
+			if lowerHyst > limitHyst {
+				slog.Warn("sanitizeTriggerChannelProperties: lower hysteresis exceeds window limits, clamping", "from", lowerHyst, "to", maxHyst)
+				lowerHyst = maxHyst
+			}
+
+			if int32(upper)-int32(upperHyst) <= int32(lower)+int32(lowerHyst) {
+				slog.Warn("sanitizeTriggerChannelProperties: hysteresis boundaries overlap, clamping to safe fraction of window")
+				upperHyst = uint16(windowHeight / 4)
+				lowerHyst = uint16(windowHeight / 4)
+			}
+		} else {
+			if upperHyst > 32767 {
+				upperHyst = 32767
+			}
+			if int32(upper)-int32(upperHyst) < -32767 {
+				upperHyst = uint16(int32(upper) + 32767)
+			}
+			if int32(upper)+int32(upperHyst) > 32767 {
+				upperHyst = uint16(32767 - int32(upper))
+			}
+			if lowerHyst > 32767 {
+				lowerHyst = 32767
+			}
+		}
+
+		sanitized[i] = genericps.TriggerChannelProperties{
+			ThresholdUpper:           upper,
+			ThresholdUpperHysteresis: upperHyst,
+			ThresholdLower:           lower,
+			ThresholdLowerHysteresis: lowerHyst,
+			Channel:                  p.Channel,
+			ThresholdMode:            mode,
+		}
+	}
+	return sanitized
+}
+
 func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannelProperties {
 	upper := psControl.triggerSetting.TriggerADC
 	lower := psControl.triggerSetting.LowerTriggerADC
@@ -218,24 +310,9 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 		psControl.triggerSetting.Type == RiseFall ||
 		psControl.triggerSetting.Type == Runt {
 		mode = genericps.Window
-		if lower >= upper {
-			slog.Warn("getValidTriggerProperties: lower >= upper, correcting automatically", "lower", lower, "upper", upper)
-			if lower > upper {
-				lower, upper = upper, lower
-			}
-		}
-		if int32(upper)-int32(lower) < 256 {
-			slog.Warn("getValidTriggerProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
-			diff := int32(256) - (int32(upper) - int32(lower))
-			if int32(upper) < 32767-diff {
-				upper += int16(diff)
-			} else {
-				lower -= int16(diff)
-			}
-		}
 	}
 
-	return []genericps.TriggerChannelProperties{{
+	rawProps := []genericps.TriggerChannelProperties{{
 		ThresholdUpper:           upper,
 		ThresholdUpperHysteresis: upperHyst,
 		ThresholdLower:           lower,
@@ -243,6 +320,7 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 		Channel:                  psControl.triggerSetting.Source,
 		ThresholdMode:            mode,
 	}}
+	return sanitizeTriggerChannelProperties(rawProps)
 }
 
 func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
@@ -570,9 +648,10 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		at = autoTriggerMs
 	}
 
-	err = psControl.Con.SetTriggerChannelProperties(psControl.triggerSetting.ComplexProperties, false, at)
+	sanitizedProps := sanitizeTriggerChannelProperties(psControl.triggerSetting.ComplexProperties)
+	err = psControl.Con.SetTriggerChannelProperties(sanitizedProps, false, at)
 	if err != nil {
-		slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", psControl.triggerSetting.ComplexProperties)
+		slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", sanitizedProps)
 		return
 	}
 	err = psControl.Con.SetTriggerChannelConditions(psControl.triggerSetting.ComplexConditions)
