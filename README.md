@@ -1,11 +1,11 @@
-<img width="1733" height="987" alt="fv" src="fv.gif" />
+<img width="1733" height="987" alt="fv" src="pictures/fv.gif" />
 # fynescope
 
 <p align="center">
-  <img src="signal.png" width="100%" alt="Fynescope Interface Screenshot">
+  <img src="pictures/signal.png" width="100%" alt="Fynescope Interface Screenshot">
 </p>
 
-`fynescope` is a prototype graphical user interface and control Linux application for PicoScope 2000A Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000A series SDK.
+`fynescope` is a cross-platform (Windows and Linux) graphical user interface and control application for PicoScope 2000A Series PC Oscilloscopes, written in Go and based on the Fyne widget toolkit and the PicoScope 2000A series SDK.
 
 ## Documentation
 For comprehensive details on features, installation, usage, and development, please read our **[Wiki Pages](https://github.com/laszlofeher-v/fynescope/wiki/Home)**!
@@ -21,10 +21,10 @@ In the Wiki, you will find detailed guides on:
 - **[Testing & Debugging](https://github.com/laszlofeher-v/fynescope/wiki/Testing-and-Debugging)**: Automated UI fuzzing, logging, profiling, and unit tests.
 
 <p align="center">
-  <img src="bodeplot.png" width="100%" alt="Bode plot Screenshot">
+  <img src="pictures/bodeplot.png" width="100%" alt="Bode plot Screenshot">
 </p>
 <p align="center">
-  <img src="pulsewidth.png" width="100%" alt="Fynescope Interface Screenshot">
+  <img src="pictures/pulsewidth.png" width="100%" alt="Fynescope Interface Screenshot">
 </p>
 
 
