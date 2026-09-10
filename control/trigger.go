@@ -231,13 +231,17 @@ func sanitizeTriggerChannelProperties(props []genericps.TriggerChannelProperties
 					lower, upper = upper, lower
 				}
 			}
-			if int32(upper)-int32(lower) < 256 {
+			if int32(upper)-int32(lower) < 512 {
 				slog.Debug("sanitizeTriggerChannelProperties: window too small, correcting automatically", "lower", lower, "upper", upper)
-				diff := int32(256) - (int32(upper) - int32(lower))
+				diff := int32(512) - (int32(upper) - int32(lower))
 				if int32(upper) <= 32767-diff {
 					upper += int16(diff)
 				} else {
 					lower -= int16(diff)
+					if lower < -32767 {
+						lower = -32767
+						upper = -32767 + 512
+					}
 				}
 			}
 

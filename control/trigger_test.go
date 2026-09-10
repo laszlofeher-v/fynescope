@@ -51,16 +51,16 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	// Case 1: lower > upper (should swap)
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:      500,
-		LowerTriggerADC: 1000,
+		LowerTriggerADC: 1500,
 		ThresholdMode:   genericps.Window,
 	}
 
 	props := psControl.getValidTriggerProperties()
-	if props[0].ThresholdUpper != 1000 || props[0].ThresholdLower != 500 {
-		t.Errorf("Expected bounds to be swapped to 1000 and 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	if props[0].ThresholdUpper != 1500 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected bounds to be swapped to 1500 and 500, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 
-	// Case 2: lower == upper (should expand window to minimum 256 counts)
+	// Case 2: lower == upper (should expand window to minimum 512 counts)
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:      500,
 		LowerTriggerADC: 500,
@@ -68,11 +68,11 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	}
 
 	props = psControl.getValidTriggerProperties()
-	if props[0].ThresholdUpper != 756 || props[0].ThresholdLower != 500 {
-		t.Errorf("Expected upper bound to be expanded to 756, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	if props[0].ThresholdUpper != 1012 || props[0].ThresholdLower != 500 {
+		t.Errorf("Expected upper bound to be expanded to 1012, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 
-	// Case 3: lower == upper near max int16 (should decrement lower)
+	// Case 3: lower == upper near max int16 (should decrement lower by 512)
 	psControl.triggerSetting = TriggerDesc{
 		TriggerADC:      32700,
 		LowerTriggerADC: 32700,
@@ -80,8 +80,19 @@ func TestPscDesc_getValidTriggerProperties_WindowCorrection(t *testing.T) {
 	}
 
 	props = psControl.getValidTriggerProperties()
-	if props[0].ThresholdUpper != 32700 || props[0].ThresholdLower != 32444 {
-		t.Errorf("Expected lower bound to be decremented to 32444, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	if props[0].ThresholdUpper != 32700 || props[0].ThresholdLower != 32188 {
+		t.Errorf("Expected lower bound to be decremented to 32188, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
+	}
+
+	// Case 4: window < 512 counts (e.g. upper=256, lower=0) should expand to at least 512 counts
+	psControl.triggerSetting = TriggerDesc{
+		TriggerADC:      256,
+		LowerTriggerADC: 0,
+		ThresholdMode:   genericps.Window,
+	}
+	props = psControl.getValidTriggerProperties()
+	if props[0].ThresholdUpper != 512 || props[0].ThresholdLower != 0 {
+		t.Errorf("Expected window to expand to upper: 512, lower: 0, got upper: %v, lower: %v", props[0].ThresholdUpper, props[0].ThresholdLower)
 	}
 }
 
@@ -111,9 +122,9 @@ func TestPscDesc_getValidTriggerProperties_RiseFall(t *testing.T) {
 func TestPscDesc_getValidTriggerProperties_HysteresisClamping(t *testing.T) {
 	psControl := &PscDesc{}
 
-	// Case 1: Window mode with upper hysteresis = 32767 (the exact error report)
+	// Case 1: Window mode with upper hysteresis = 32767 (excessive hysteresis)
 	psControl.triggerSetting = TriggerDesc{
-		TriggerADC:         327,
+		TriggerADC:         1000,
 		LowerTriggerADC:    0,
 		HysteresisADC:      32767,
 		LowerHysteresisADC: 0,
@@ -126,8 +137,8 @@ func TestPscDesc_getValidTriggerProperties_HysteresisClamping(t *testing.T) {
 	if p.ThresholdMode != genericps.Window {
 		t.Errorf("Expected ThresholdMode Window, got %v", p.ThresholdMode)
 	}
-	if p.ThresholdUpper != 327 || p.ThresholdLower != 0 {
-		t.Errorf("Expected upper: 327, lower: 0, got upper: %v, lower: %v", p.ThresholdUpper, p.ThresholdLower)
+	if p.ThresholdUpper != 1000 || p.ThresholdLower != 0 {
+		t.Errorf("Expected upper: 1000, lower: 0, got upper: %v, lower: %v", p.ThresholdUpper, p.ThresholdLower)
 	}
 	// Verify that upper - upperHyst >= lower + lowerHyst (no crossover)
 	if int32(p.ThresholdUpper)-int32(p.ThresholdUpperHysteresis) < int32(p.ThresholdLower)+int32(p.ThresholdLowerHysteresis) {

@@ -128,6 +128,29 @@ func TestPs2000a_SimParameterChecks(t *testing.T) {
 		// OutOfRange with lower > upper is invalid
 		assert.Error(t, ps2000aSetPulseWidthQualifier(handle, conds, TriggerRisingLower, 20, 10, PwTypeOutOfRange))
 	})
+
+	// 7. Trigger Channel Properties (Window Mode)
+	t.Run("TriggerChannelPropertiesWindow", func(t *testing.T) {
+		handle := int16(1)
+
+		// Window mode with upper - lower < 512 is rejected
+		pSmall := []TriggerChannelProperties{
+			{ThresholdUpper: 256, ThresholdLower: 0, Channel: ChA, ThresholdMode: Window},
+		}
+		assert.Error(t, ps2000aSetTriggerChannelProperties(handle, pSmall, false, 0))
+
+		// Window mode with upper - lower = 511 is rejected
+		p511 := []TriggerChannelProperties{
+			{ThresholdUpper: 511, ThresholdLower: 0, Channel: ChA, ThresholdMode: Window},
+		}
+		assert.Error(t, ps2000aSetTriggerChannelProperties(handle, p511, false, 0))
+
+		// Window mode with upper - lower >= 512 is accepted
+		p512 := []TriggerChannelProperties{
+			{ThresholdUpper: 512, ThresholdLower: 0, Channel: ChA, ThresholdMode: Window},
+		}
+		assert.NoError(t, ps2000aSetTriggerChannelProperties(handle, p512, false, 0))
+	})
 }
 
 
