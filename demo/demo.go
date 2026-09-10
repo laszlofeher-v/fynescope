@@ -1617,7 +1617,7 @@ func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel 
 	if port < Port0 || port >= MaxDigitalPorts {
 		return fmt.Errorf("invalid digital port: %d", port)
 	}
-	if logiclevel < -32767 || logiclevel > 32767 {
+	if logiclevel < -32767 {
 		return fmt.Errorf("invalid logic level: %d", logiclevel)
 	}
 	digitalPortsEnabled[genericps.DigitalPort(port)] = enabled

@@ -829,7 +829,7 @@ func Gops2000aSetDigitalPort(handle C.int16_t, port C.int32_t, enabled C.int16_t
 	if port != 0x80 && port != 0x81 && port != 0 && port != 1 && port != 128 && port != 129 {
 		return picoInvalidDigitalPort
 	}
-	if logicLevel < -32767 || logicLevel > 32767 {
+	if logicLevel < -32767 {
 		return picoInvalidParameter
 	}
 	simSetDigitalPort(int16(handle), int(port), enabled != 0, int16(logicLevel))
