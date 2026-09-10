@@ -213,14 +213,10 @@ func sanitizeTriggerChannelProperties(props []genericps.TriggerChannelProperties
 		lowerHyst := p.ThresholdLowerHysteresis
 		mode := p.ThresholdMode
 
-		if upper > 32767 {
-			upper = 32767
-		} else if upper < -32767 {
+		if upper < -32767 {
 			upper = -32767
 		}
-		if lower > 32767 {
-			lower = 32767
-		} else if lower < -32767 {
+		if lower < -32767 {
 			lower = -32767
 		}
 

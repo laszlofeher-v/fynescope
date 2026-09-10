@@ -351,7 +351,7 @@ func TestSanitizeTriggerChannelProperties_Limits(t *testing.T) {
 	props := []genericps.TriggerChannelProperties{
 		{
 			ThresholdUpper: 32767,
-			ThresholdLower: -32767,
+			ThresholdLower: -32768,
 			ThresholdMode:  genericps.Level,
 		},
 	}
