@@ -114,3 +114,40 @@ func TestTimeInterval100M(t *testing.T) {
 		}
 	}
 }
+
+func TestTimeBase1G(t *testing.T) {
+	tests := []struct {
+		timeInterval uint64
+		want         uint64
+	}{
+		{0, 0},
+		{1, 0},
+		{2, 1},
+		{4, 2},
+		{8, 3},  // round(8 * 125 / 1000 + 2) = round(1 + 2) = 3
+		{16, 4}, // round(16 * 125 / 1000 + 2) = round(2 + 2) = 4
+	}
+	for _, tt := range tests {
+		if got := timeBase1G(tt.timeInterval); got != tt.want {
+			t.Errorf("timeBase1G(%v) = %v, want %v", tt.timeInterval, got, tt.want)
+		}
+	}
+}
+
+func TestTimeInterval1G(t *testing.T) {
+	tests := []struct {
+		timeBase uint64
+		want     uint64
+	}{
+		{0, 1},
+		{1, 2},
+		{2, 4},
+		{3, 8},  // 1000 * (3-2) / 125 = 8
+		{4, 16}, // 1000 * (4-2) / 125 = 16
+	}
+	for _, tt := range tests {
+		if got := timeInterval1G(tt.timeBase); got != tt.want {
+			t.Errorf("timeInterval1G(%v) = %v, want %v", tt.timeBase, got, tt.want)
+		}
+	}
+}

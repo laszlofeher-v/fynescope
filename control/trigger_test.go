@@ -166,3 +166,180 @@ func TestPscDesc_getValidTriggerProperties_HysteresisClamping(t *testing.T) {
 	}
 }
 
+func TestPscDesc_buildTriggerConditions(t *testing.T) {
+	channels := []genericps.ChannelId{genericps.ChA, genericps.ChB, genericps.ChC, genericps.ChD}
+	for _, ch := range channels {
+		psControl := &PscDesc{}
+		psControl.triggerSetting.Source = ch
+		psControl.triggerSetting.DigitalTriggerEnabled = false
+
+		conds := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondFalse)
+		if len(conds) != 1 {
+			t.Fatalf("expected 1 condition, got %d", len(conds))
+		}
+		c := conds[0]
+		if c.PulseWidthQualifier != genericps.CondFalse {
+			t.Errorf("expected pwqCond false, got %v", c.PulseWidthQualifier)
+		}
+		if c.Digital != genericps.CondDontCare {
+			t.Errorf("expected digital CondDontCare, got %v", c.Digital)
+		}
+		switch ch {
+		case genericps.ChA:
+			if c.ChannelA != genericps.CondTrue || c.ChannelB != genericps.CondDontCare {
+				t.Errorf("ChA condition mismatch: %+v", c)
+			}
+		case genericps.ChB:
+			if c.ChannelB != genericps.CondTrue || c.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChB condition mismatch: %+v", c)
+			}
+		case genericps.ChC:
+			if c.ChannelC != genericps.CondTrue || c.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChC condition mismatch: %+v", c)
+			}
+		case genericps.ChD:
+			if c.ChannelD != genericps.CondTrue || c.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChD condition mismatch: %+v", c)
+			}
+		}
+
+		// With digital enabled
+		psControl.triggerSetting.DigitalTriggerEnabled = true
+		condsDig := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondTrue)
+		if condsDig[0].Digital != genericps.CondTrue {
+			t.Errorf("expected digital CondTrue when enabled, got %v", condsDig[0].Digital)
+		}
+	}
+}
+
+func TestPscDesc_buildPwqConditions(t *testing.T) {
+	channels := []genericps.ChannelId{genericps.ChA, genericps.ChB, genericps.ChC, genericps.ChD}
+	for _, ch := range channels {
+		psControl := &PscDesc{}
+		psControl.triggerSetting.Source = ch
+
+		pwqConds := psControl.buildPwqConditions(genericps.CondTrue)
+		if len(pwqConds) != 1 {
+			t.Fatalf("expected 1 pwq condition, got %d", len(pwqConds))
+		}
+		p := pwqConds[0]
+		switch ch {
+		case genericps.ChA:
+			if p.ChannelA != genericps.CondTrue || p.ChannelB != genericps.CondDontCare {
+				t.Errorf("ChA pwq mismatch: %+v", p)
+			}
+		case genericps.ChB:
+			if p.ChannelB != genericps.CondTrue || p.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChB pwq mismatch: %+v", p)
+			}
+		case genericps.ChC:
+			if p.ChannelC != genericps.CondTrue || p.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChC pwq mismatch: %+v", p)
+			}
+		case genericps.ChD:
+			if p.ChannelD != genericps.CondTrue || p.ChannelA != genericps.CondDontCare {
+				t.Errorf("ChD pwq mismatch: %+v", p)
+			}
+		}
+	}
+}
+
+func TestPscDesc_computePwqSamples(t *testing.T) {
+	ps := &PscDesc{}
+	ps.scopeScreenWidth = 10000
+	ps.SamplingTimeInterval = 10 // maxPwqSamples = 1000
+
+	ps.triggerSetting.IntervalTimeLower = 500  // 50 samples
+	ps.triggerSetting.IntervalTimeUpper = 2000 // 200 samples
+	ps.triggerSetting.IntervalType = genericps.PwTypeNone
+
+	low, up := ps.computePwqSamples()
+	if low != 50 || up != 200 {
+		t.Errorf("expected low=50, up=200, got low=%d, up=%d", low, up)
+	}
+
+	// Test InRange swap/adjust when lower >= upper
+	ps.triggerSetting.IntervalTimeLower = 2000 // 200 samples
+	ps.triggerSetting.IntervalTimeUpper = 500  // 50 samples
+	ps.triggerSetting.IntervalType = genericps.PwTypeInRange
+
+	low, up = ps.computePwqSamples()
+	if low >= up {
+		t.Errorf("expected low < up for InRange, got low=%d, up=%d", low, up)
+	}
+
+	// Test clamping to maxPwqSamples
+	ps.triggerSetting.IntervalType = genericps.PwTypeNone
+	ps.triggerSetting.IntervalTimeLower = 500000
+	ps.triggerSetting.IntervalTimeUpper = 500000
+	low, up = ps.computePwqSamples()
+	if low != 1000 || up != 1000 {
+		t.Errorf("expected samples clamped to 1000, got low=%d, up=%d", low, up)
+	}
+}
+
+func TestPscDesc_autoTriggerMilliseconds32(t *testing.T) {
+	ps := &PscDesc{}
+	ps.triggerSetting.Mode = Auto
+	if ps.autoTriggerMilliseconds32() != autoTriggerMs {
+		t.Errorf("expected %d, got %d", autoTriggerMs, ps.autoTriggerMilliseconds32())
+	}
+	ps.triggerSetting.Mode = Repeat
+	if ps.autoTriggerMilliseconds32() != 0 {
+		t.Errorf("expected 0 for Repeat mode, got %d", ps.autoTriggerMilliseconds32())
+	}
+}
+
+func TestWindowChannelDir(t *testing.T) {
+	tests := []struct {
+		in   genericps.ThresholdDirection
+		want genericps.ThresholdDirection
+	}{
+		{genericps.TriggerEnter, genericps.TriggerOutside},
+		{genericps.TriggerEnterOrExit, genericps.TriggerOutside},
+		{genericps.TriggerExit, genericps.TriggerInside},
+		{genericps.TriggerRising, genericps.TriggerRising},
+		{genericps.TriggerFalling, genericps.TriggerFalling},
+	}
+	for _, tt := range tests {
+		if got := windowChannelDir(tt.in); got != tt.want {
+			t.Errorf("windowChannelDir(%v) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestAdjustPwqSamples(t *testing.T) {
+	// LessThan
+	it, low, up := adjustPwqSamples(genericps.PwTypeLessThan, 10, 50)
+	if it != genericps.PwTypeLessThan || low != 50 || up != 0 {
+		t.Errorf("LessThan: got it=%v, low=%d, up=%d", it, low, up)
+	}
+
+	// GreaterThan
+	it, low, up = adjustPwqSamples(genericps.PwTypeGreaterThan, 10, 50)
+	if it != genericps.PwTypeGreaterThan || low != 10 || up != 0 {
+		t.Errorf("GreaterThan: got it=%v, low=%d, up=%d", it, low, up)
+	}
+
+	// InRange
+	it, low, up = adjustPwqSamples(genericps.PwTypeInRange, 10, 50)
+	if it != genericps.PwTypeInRange || low != 10 || up != 50 {
+		t.Errorf("InRange: got it=%v, low=%d, up=%d", it, low, up)
+	}
+}
+
+func TestPscDesc_adjustPwqSamplesRiseFall(t *testing.T) {
+	ps := &PscDesc{}
+
+	// LessThan
+	it, low, up := ps.adjustPwqSamplesRiseFall(genericps.PwTypeLessThan, 10, 50)
+	if it != genericps.PwTypeLessThan || low != 50 || up != 0 {
+		t.Errorf("LessThan: got it=%v, low=%d, up=%d", it, low, up)
+	}
+
+	// GreaterThan converts to InRange with upper = maxPwqSamples - 1 (32766)
+	it, low, up = ps.adjustPwqSamplesRiseFall(genericps.PwTypeGreaterThan, 20, 100)
+	if it != genericps.PwTypeInRange || low != 20 || up != 32766 {
+		t.Errorf("GreaterThan: got it=%v, low=%d, up=%d", it, low, up)
+	}
+}
