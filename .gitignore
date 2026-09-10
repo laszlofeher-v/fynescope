@@ -36,3 +36,5 @@ waveform*.bin
 fynescope_bin
 fynescope_hw
 ps2000/emu.go
+fynescope-demo-windows-amd64
+fynescope-windows-amd64
