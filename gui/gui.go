@@ -247,6 +247,8 @@ type (
 		etsCyclesDisp                *disp7.DigitArray
 		etsSamplingRateDisp          *disp7.DigitArray
 		boxEtsSettings               *fyne.Container
+		apiServer                    *APIServer
+		apiServerMu                  sync.Mutex
 		// actualSampleTime                    *widget.Label
 
 		triggerCheck               []*widget.Check

@@ -58,11 +58,25 @@ func TestServerMux_NoAuth_Root(t *testing.T) {
 	}
 }
 
+type mockController struct {
+	ScopeController
+	onCommand func(string)
+}
+
+func (m *mockController) ExecuteVoiceCommand(cmd string) {
+	if m.onCommand != nil {
+		m.onCommand(cmd)
+	}
+}
+
 func TestServerMux_NoAuth_CommandPost(t *testing.T) {
 	var received string
-	mux := newServerMux("", "", blankCapture, func(cmd string) {
-		received = cmd
-	})
+	ctrl := &mockController{
+		onCommand: func(cmd string) {
+			received = cmd
+		},
+	}
+	mux := newServerMux("", "", blankCapture, ctrl)
 
 	req := httptest.NewRequest(http.MethodPost, "/command", strings.NewReader("start"))
 	rec := httptest.NewRecorder()

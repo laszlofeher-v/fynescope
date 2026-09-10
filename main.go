@@ -259,7 +259,7 @@ func startProfile(n int) error {
 //	 -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
 //	 -gif: enables GIF generation button
 //	 -ff-auto-range: enables auto ranging during Bode sweep
-func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string) {
+func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string, apiPort *int, apiAuth, apiAuthView *string) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	demoOnly = flag.Bool("demo", false, "-demo=true")
@@ -269,6 +269,9 @@ func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCo
 	webPortNoVoice = flag.Int("webport-novoice", 0, "-webport-novoice=8081 (starts web server without voice control on specified port, 0 to disable)")
 	webAuth = flag.String("webauth", "", "-webauth=user:pass (credentials for full access, voice + stream)")
 	webAuthView = flag.String("webauth-view", "", "-webauth-view=user:pass (credentials for read-only stream access)")
+	apiPort = flag.Int("apiport", 0, "-apiport=8443 (starts general remote HTTPS API server on specified port, 0 to disable)")
+	apiAuth = flag.String("apiauth", "", "-apiauth=user:pass (credentials for full read-write remote API access)")
+	apiAuthView = flag.String("apiauth-view", "", "-apiauth-view=user:pass (credentials for read-only remote API access)")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := registerExtGenFlag(inTestMode)
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
@@ -521,6 +524,10 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 	w.Show()
 	scp.App.Run() // Blocks until window is closed
 
+	if scp.IsAPIServerRunning() {
+		_ = scp.StopAPIServer()
+	}
+
 	// Cleanup: close connection and save settings if a device was connected
 	if con != nil {
 		con.CloseUnit()
@@ -549,7 +556,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simName := parseFlags()
+	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simName, apiPort, apiAuth, apiAuthView := parseFlags()
 	setLogging(logLevel)
 
 	err = demo.SetChannelCount(*chCount, chCountExplicit)
@@ -570,6 +577,16 @@ func main() {
 		FfAutoRangeEnabled: *ffAutoRange,
 	}
 	scp.App = app.New()
+
+	if *apiPort > 0 {
+		if err := scp.StartAPIServer(gui.APIServerConfig{
+			Port:      *apiPort,
+			AuthAdmin: *apiAuth,
+			AuthView:  *apiAuthView,
+		}); err != nil {
+			slog.Error("Failed to start remote HTTPS API server", "err", err)
+		}
+	}
 
 	if *webPort > 0 {
 		web.StartServer(*webPort, *webAuth, *webAuthView, func() image.Image {
