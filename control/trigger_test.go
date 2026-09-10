@@ -1,8 +1,11 @@
 package control
 
 import (
-	"fynescope/genericps"
 	"testing"
+	"time"
+
+	_ "fynescope/demo"
+	"fynescope/genericps"
 )
 
 func TestPscDesc_getValidTriggerProperties(t *testing.T) {
@@ -343,3 +346,146 @@ func TestPscDesc_adjustPwqSamplesRiseFall(t *testing.T) {
 		t.Errorf("GreaterThan: got it=%v, low=%d, up=%d", it, low, up)
 	}
 }
+
+func TestSanitizeTriggerChannelProperties_Limits(t *testing.T) {
+	props := []genericps.TriggerChannelProperties{
+		{
+			ThresholdUpper: 32767,
+			ThresholdLower: -32767,
+			ThresholdMode:  genericps.Level,
+		},
+	}
+	san := sanitizeTriggerChannelProperties(props)
+	if san[0].ThresholdUpper != 32767 || san[0].ThresholdLower != -32767 {
+		t.Errorf("expected 32767 / -32767, got upper=%d, lower=%d", san[0].ThresholdUpper, san[0].ThresholdLower)
+	}
+}
+
+func TestPscDesc_setTriggerChannelDirections(t *testing.T) {
+	con := genericps.NewConnection()
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	if err != nil {
+		t.Fatalf("failed to open demo: %v", err)
+	}
+	con.Handle = handle
+	defer con.CloseUnit()
+
+	channels := []genericps.ChannelId{genericps.ChA, genericps.ChB, genericps.ChC, genericps.ChD}
+	for _, ch := range channels {
+		ps := &PscDesc{Con: con}
+		ps.triggerSetting.Source = ch
+		err := ps.setTriggerChannelDirections(genericps.TriggerRising)
+		if err != nil {
+			t.Errorf("setTriggerChannelDirections failed for %v: %v", ch, err)
+		}
+	}
+}
+
+func TestPscDesc_disablePwq(t *testing.T) {
+	con := genericps.NewConnection()
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	if err != nil {
+		t.Fatalf("failed to open demo: %v", err)
+	}
+	con.Handle = handle
+	defer con.CloseUnit()
+
+	ps := &PscDesc{Con: con}
+	err = ps.disablePwq(genericps.TriggerRising)
+	if err != nil {
+		t.Errorf("disablePwq failed: %v", err)
+	}
+}
+
+func TestTriggerMonitor(t *testing.T) {
+	psControl := &PscDesc{
+		shutdownCh:     make(chan struct{}),
+		restartChannel: make(chan struct{}, 10),
+		SetTriggerCh:   make(chan *TriggerDescMsg, 10),
+		getTriggerCh:   make(chan *getTriggerMsg, 10),
+	}
+
+	go psControl.triggerMonitor()
+
+	// Initial getTrigger check (should report newSettings = false)
+	var trigSetting TriggerDesc
+	getMsg := &getTriggerMsg{
+		triggerSettings: &trigSetting,
+		newSettings:     make(chan bool, 1),
+	}
+	psControl.getTriggerCh <- getMsg
+	select {
+	case changed := <-getMsg.newSettings:
+		if changed {
+			t.Errorf("expected no new settings initially")
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for getTrigger")
+	}
+
+	// Send new trigger settings
+	setMsg := &TriggerDescMsg{
+		TriggerDesc: TriggerDesc{
+			Enabled:    true,
+			TriggerADC: 1234,
+		},
+		Done: make(chan struct{}, 1),
+	}
+	psControl.SetTriggerCh <- setMsg
+	select {
+	case <-setMsg.Done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for SetTriggerCh done")
+	}
+
+	// Query updated trigger settings
+	getMsg = &getTriggerMsg{
+		triggerSettings: &trigSetting,
+		newSettings:     make(chan bool, 1),
+	}
+	psControl.getTriggerCh <- getMsg
+	select {
+	case changed := <-getMsg.newSettings:
+		if !changed {
+			t.Errorf("expected newSettings = true after setting update")
+		}
+		if trigSetting.TriggerADC != 1234 {
+			t.Errorf("expected TriggerADC 1234, got %d", trigSetting.TriggerADC)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for getTrigger after update")
+	}
+
+	// Clean shutdown
+	close(psControl.shutdownCh)
+}
+
+func TestPscDesc_applyDigitalTrigger(t *testing.T) {
+	con := genericps.NewConnection()
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	if err != nil {
+		t.Fatalf("failed to open demo: %v", err)
+	}
+	con.Handle = handle
+	defer con.CloseUnit()
+
+	ps := &PscDesc{Con: con}
+	ps.triggerSetting.DigitalTriggerEnabled = true
+	ps.triggerSetting.DigitalAnalogOperand = genericps.OperandOr
+	ps.triggerSetting.DigitalDirections = []genericps.DigitalChannelDirections{
+		{Channel: genericps.Dch0, Direction: genericps.DigitalDirectionRising},
+	}
+
+	err = ps.applyDigitalTrigger()
+	if err != nil {
+		t.Errorf("applyDigitalTrigger failed: %v", err)
+	}
+
+	// Disabled digital trigger
+	ps.triggerSetting.DigitalTriggerEnabled = false
+	err = ps.applyDigitalTrigger()
+	if err != nil {
+		t.Errorf("applyDigitalTrigger (disabled) failed: %v", err)
+	}
+}
+

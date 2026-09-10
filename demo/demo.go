@@ -601,7 +601,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				}
 
 				// Store ETS time if enabled (fs)
-				if etsEnbaled && ch == int(ChA) {
+				if etsEnbaled && ch == int(ChA) && t < len(etsTimeBuffer) {
 					t0Fs := 1e15 * float64(nOfPreTrSamples) * timeIntervalNanoseconds / 1e9
 					rteFs := (float64(t) * timeIntervalNanoseconds * float64(downSampleRatio)) / 1e9 * 1e15
 					etsTimeBuffer[t] = int64(rteFs - t0Fs)
