@@ -29,3 +29,35 @@ func TestGoid(t *testing.T) {
 		t.Errorf("Expected different goroutine ID for a new goroutine, got %d for both", id1)
 	}
 }
+
+func TestGeneratorDesc_Equals(t *testing.T) {
+	g1 := &GeneratorDesc{
+		OffsetVoltage:     100,
+		PkToPK:            200,
+		ArbitraryWaveform: []int16{1, 2, 3},
+	}
+	g2 := &GeneratorDesc{
+		OffsetVoltage:     100,
+		PkToPK:            200,
+		ArbitraryWaveform: []int16{1, 2, 3},
+	}
+	if !g1.Equals(g2) {
+		t.Errorf("expected g1 equals g2")
+	}
+
+	g2.PkToPK = 300
+	if g1.Equals(g2) {
+		t.Errorf("expected g1 not equals g2 after PkToPK change")
+	}
+
+	g2.PkToPK = 200
+	g2.ArbitraryWaveform = []int16{1, 2}
+	if g1.Equals(g2) {
+		t.Errorf("expected g1 not equals g2 with different waveform length")
+	}
+
+	g2.ArbitraryWaveform = []int16{1, 2, 4}
+	if g1.Equals(g2) {
+		t.Errorf("expected g1 not equals g2 with different waveform data")
+	}
+}

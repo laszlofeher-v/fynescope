@@ -4,6 +4,8 @@ import (
 	"errors"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // MockScopeHandler is a mock implementation of ScopeHandler for testing.
@@ -347,5 +349,198 @@ func TestEnumerateUnits_Error(t *testing.T) {
 	if err.Error() != "enumerate error" {
 		t.Fatalf("EnumerateUnits returned with wrong error")
 	}
+}
 
+func TestUnRegister(t *testing.T) {
+	initialLength := len(implementedScopeHandlers)
+	handler1 := ScopeHandler{Id: "test1"}
+	handler2 := ScopeHandler{Id: "test2"}
+	Register(handler1)
+	Register(handler2)
+	assert.Equal(t, initialLength+2, len(implementedScopeHandlers))
+
+	UnRegister("test1")
+	assert.Equal(t, initialLength+1, len(implementedScopeHandlers))
+	assert.Equal(t, "test2", implementedScopeHandlers[len(implementedScopeHandlers)-1].Id)
+
+	UnRegister("nonexistent")
+	assert.Equal(t, initialLength+1, len(implementedScopeHandlers))
+
+	UnRegister("test2")
+	assert.Equal(t, initialLength, len(implementedScopeHandlers))
+}
+
+func TestParseSerials(t *testing.T) {
+	assert.Empty(t, parseSerials("", 0))
+	assert.Empty(t, parseSerials("ABC", 0))
+
+	assert.Equal(t, []string{"ABC"}, parseSerials("ABC", 1))
+	assert.Equal(t, []string{"ABC", "DEF"}, parseSerials("ABC,DEF", 2))
+	assert.Equal(t, []string{"A", "B", "C"}, parseSerials("A,B,C,", 3))
+}
+
+func TestEnumerateAllDevices(t *testing.T) {
+	defer func() { implementedScopeHandlers = []ScopeHandler{} }()
+	implementedScopeHandlers = []ScopeHandler{}
+
+	// No handlers
+	devices, err := EnumerateAllDevices(100)
+	assert.Error(t, err)
+	assert.Empty(t, devices)
+
+	// Add a handler with error
+	mockErr := &MockScopeHandler{
+		IdVal: "errHandler",
+		EnumerateUnitsFunc: func(bufferLen int16) (int16, string, int16, error) {
+			return 0, "", 0, errors.New("enum failed")
+		},
+	}
+	Register(mockErr.ScopeHandler())
+	devices, err = EnumerateAllDevices(100)
+	assert.Error(t, err)
+
+	// Add a handler with devices
+	mockOk := &MockScopeHandler{
+		IdVal: "ps2000a",
+		EnumerateUnitsFunc: func(bufferLen int16) (int16, string, int16, error) {
+			return 2, "SN1,SN2", 7, nil
+		},
+	}
+	Register(mockOk.ScopeHandler())
+	devices, err = EnumerateAllDevices(100)
+	assert.NoError(t, err)
+	assert.Len(t, devices, 2)
+	assert.Equal(t, "ps2000a", devices[0].Id)
+	assert.Equal(t, "SN1", devices[0].Serial)
+	assert.False(t, devices[0].IsDemo)
+
+	// Add demo handler
+	mockDemo := &MockScopeHandler{
+		IdVal: DemoId,
+		EnumerateUnitsFunc: func(bufferLen int16) (int16, string, int16, error) {
+			return 1, "DEMO_1", 6, nil
+		},
+	}
+	Register(mockDemo.ScopeHandler())
+	devices, err = EnumerateAllDevices(100)
+	assert.NoError(t, err)
+	assert.Len(t, devices, 3)
+	assert.True(t, devices[2].IsDemo)
+}
+
+func TestTimeUnitToVal(t *testing.T) {
+	assert.Equal(t, 1e-15, TimeUnitToVal(TuFs))
+	assert.Equal(t, 0.0, TimeUnitToVal(TimeUnits(999)))
+}
+
+func TestGetMinThresholdDiff(t *testing.T) {
+	RangeValuesMv = map[RangeEnum]float64{
+		RangeEnum(1): 100.0,
+		RangeEnum(2): 1000.0,
+	}
+	MinThresholdDiff = 200
+
+	assert.Equal(t, int32(200), GetMinThresholdDiff(RangeEnum(-1)))
+	assert.Equal(t, int32(200), GetMinThresholdDiff(RangeEnum(999)))
+	assert.Equal(t, int32(5), GetMinThresholdDiff(RangeEnum(1)))  // 100 * 0.05 = 5
+	assert.Equal(t, int32(50), GetMinThresholdDiff(RangeEnum(2))) // 1000 * 0.05 = 50
+}
+
+func TestConnectionWrappers(t *testing.T) {
+	con := NewConnection()
+	con.Handle = 42
+
+	// Launch responder goroutine
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case msg := <-con.MsgCh:
+				if msg != nil && msg.RspCh() != nil {
+					msg.RspCh() <- struct{}{}
+				}
+			case <-quit:
+				return
+			}
+		}
+	}()
+	defer close(quit)
+
+	// Test getters/setters on message
+	msg := &CloseUnitMsg{}
+	msg.rsp = &CloseUnitRsp{}
+	msg.SetHandle(10)
+	assert.Equal(t, int16(10), msg.Handle())
+	msg.SetStatus(nil)
+	assert.NoError(t, msg.Status())
+	rspCh := make(chan struct{}, 1)
+	msg.SetRspCh(rspCh)
+	assert.Equal(t, rspCh, msg.RspCh())
+
+	// Test all Connection command wrappers
+	_ = con.CloseUnit()
+	_ = con.FlashLed(1)
+	_ = con.PingUnit()
+	_, _, _ = con.GetAnalogueOffset(0, 0)
+	_, _ = con.GetChannelInformation(0, 0, nil, 0)
+	_, _ = con.GetMaxDownSampleRatio(100, 0, 0)
+	_, _ = con.GetMaxSegments()
+	_, _ = con.GetNumOfCaptures()
+	_, _ = con.GetNumOfProcessedCaptures()
+	_ = con.GetStreamingLatestValues(nil, nil)
+	_, _, _ = con.GetTimebase(0, 100, 0, 0)
+	_, _, _ = con.GetTimebase2(0, 100, 0, 0)
+	_, _, _, _ = con.GetTriggerTimeOffset(0)
+	_, _, _ = con.GetTriggerTimeOffset64(0)
+	_, _ = con.GetUnitInfo(0)
+	_, _, _ = con.GetValues(0, 100, 1, 0, 0)
+	_ = con.GetValuesAsync(0, 100, 1, 0, nil, 0, nil)
+	_, _ = con.GetValuesBulk(0, 0, 0, 1, 0, nil)
+	_, _ = con.GetValuesOverlapped(0, 0, 1, 0, 0, nil)
+	_, _ = con.GetValuesOverlappedBulk(0, 0, 1, 0, 0, 0, nil)
+	_ = con.GetValuesTriggerTimeOffsetBulk(nil, nil, nil, 0, 0)
+	_ = con.GetValuesTriggerTimeOffsetBulk64(nil, nil, 0, 0)
+	_ = con.HoldOff(0, 0)
+	_, _ = con.LsReady()
+	_, _ = con.MaximumValue()
+	_, _ = con.MemorySegments(1)
+	_, _ = con.MinimumValue()
+	_, _ = con.NumOfStreamingValues()
+	_, _ = con.QueryOutputEdgeDetect()
+	_, _ = con.RunBlock(0, 100, 1, 0, 0, nil, nil)
+	_, _ = con.RunStreaming(0, 0, 100, 100, false, 1, 0, 100)
+	_ = con.SetChannel(0, true, 0, 0, 0)
+	_ = con.SetDataBuffer(0, nil, 0, 0)
+	_ = con.SetDataBuffers(0, nil, nil, 0, 0)
+	_ = con.SetUnscaledDataBuffers(0, nil, nil, 0, 0)
+	_ = con.SetDigitalAnalogTriggerOperand(0)
+	_ = con.SetDigitalPort(0, true, 0)
+	_, _ = con.SetEts(0, 0, 0)
+	_ = con.SetEtsTimeBuffer(nil)
+	_ = con.SetEtsTimeBuffers(nil, nil)
+	_ = con.SetNoCaptures(1)
+	_ = con.SetOutputEdgeDetect(0)
+	_ = con.SetPulseWidthDigitalPortProperties(nil)
+	_ = con.SetPulseWidthQualifier(nil, 0, 0, 0, 0)
+	_ = con.SetSigGenArbitrary(0, 0, 0, 0, 0, 0, nil, 0, 0, 0, 0, 0, 0, 0, 0)
+	_, _, _, _, _ = con.SigGenArbitraryMinMaxValues()
+	_ = con.SetSigGenBuiltIn(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+	_ = con.SetSigGenBuiltInV2(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+	_ = con.SetDemoGen(0, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nil, 0, 0)
+	_ = con.SetDemoDigitalGen(false, false, 1000, 0, 0, 0, 0)
+	_ = con.SetDemoRlcFilter(0, 0, false, "", 0, "", 0, "", 0, "")
+	_ = con.SetSigGenPropertiesArbitrary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+	_ = con.SetSigGenPropertiesBuiltIn(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+	_ = con.SetSimpleTrigger(false, 0, 0, 0, 0, 0)
+	_ = con.SetTriggerChannelConditions(nil)
+	_ = con.SetTriggerChannelDirections(0, 0, 0, 0, 0, 0)
+	_ = con.SetTriggerChannelProperties(nil, false, 0)
+	_ = con.SetTriggerDelay(0)
+	_ = con.SetTriggerDigitalPortProperties(nil)
+	_, _ = con.SigGenFrequencyToPhase(0, 0, 0)
+	_ = con.Stop()
+	_, _, _ = con.TriggerOrPulseWidthQualifierEnabled()
+	_ = con.SigGenSoftwareControl(0)
+	_ = OpenUnitAsync("123")
+	_, _, _, _ = OpenUnitProgress()
 }
