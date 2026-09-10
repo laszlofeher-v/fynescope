@@ -591,6 +591,10 @@ func Gops2000aSetTriggerChannelProperties(handle C.int16_t, channelProperties un
 			if int16(p.thresholdLower) > int16(p.thresholdUpper) {
 				return picoInvalidTriggerProperty
 			}
+			// In window mode, hardware requires window height (upper - lower) to be at least 512 ADC counts
+			if int32(p.thresholdUpper)-int32(p.thresholdLower) < 512 {
+				return picoInvalidTriggerProperty
+			}
 			// In window mode, upper threshold must be greater than or equal to lower threshold + upper hysteresis + lower hysteresis
 			// To avoid overflow, we can do it in int32:
 			if int32(p.thresholdUpper)-int32(p.thresholdUpperHysteresis) < int32(p.thresholdLower)+int32(p.thresholdLowerHysteresis) {
