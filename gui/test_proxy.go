@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -141,7 +142,6 @@ const (
 	vchAcceptBtnId = "vchAcceptBtn"
 	vchDeleteBtnId = "vchDeleteBtn"
 	vchNewBtnId    = "vchNewBtn"
-	sleepTime      = 100 * time.Millisecond
 	timeout        = time.Duration(30) * time.Second
 )
 
@@ -160,15 +160,101 @@ type TestControl struct {
 }
 
 var (
-	controls     map[string]TestControl
-	tabValidKeys map[int][]string
-	controlsMtx  sync.RWMutex
+	sleepTime      = 100 * time.Millisecond
+	sleepTimeMu    sync.RWMutex
+	controls       map[string]TestControl
+	tabValidKeys   map[int][]string
+	controlsMtx    sync.RWMutex
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
 	fuzzerEventMtx sync.RWMutex
 	FuzzerCommitID string
 )
+
+// GetSleepTime returns the current dynamically calculated sleep duration.
+func GetSleepTime() time.Duration {
+	sleepTimeMu.RLock()
+	defer sleepTimeMu.RUnlock()
+	return sleepTime
+}
+
+// SetSleepTime safely updates the sleep duration.
+func SetSleepTime(d time.Duration) {
+	sleepTimeMu.Lock()
+	defer sleepTimeMu.Unlock()
+	sleepTime = d
+}
+
+// CalibrateSleepTime calculates the optimal sleepTime based on CPU and Video speed.
+// It benchmarks CPU computation latency and UI thread event dispatch latency,
+// measures OpenGL window canvas rendering/capture time, and computes a sleepTime
+// that allows the GUI to reliably process commands without lagging or freezing.
+func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
+	// 1. Measure CPU performance (math/raster calculation + event loop latency)
+	cpuBenchStart := time.Now()
+	const iters = 30_000
+	var acc float64
+	for i := 0; i < iters; i++ {
+		acc += math.Sin(float64(i)) * math.Cos(float64(i))
+	}
+	_ = acc
+	cpuBenchTime := time.Since(cpuBenchStart)
+
+	// Measure UI event queue round-trip latency
+	var cpuEventLatency time.Duration
+	eventQueueCh := make(chan struct{})
+	eventStart := time.Now()
+	fyne.Do(func() {
+		close(eventQueueCh)
+	})
+	select {
+	case <-eventQueueCh:
+		cpuEventLatency = time.Since(eventStart)
+	case <-time.After(2 * time.Second):
+		cpuEventLatency = 20 * time.Millisecond
+	}
+	tCPU := cpuBenchTime + cpuEventLatency
+
+	// 2. Measure Video / GPU rendering performance
+	tVideo := 16 * time.Millisecond // Default baseline (60Hz VSync)
+	if scp != nil && scp.Window != nil && scp.Window.Canvas() != nil {
+		videoCh := make(chan time.Duration, 1)
+		fyne.Do(func() {
+			start := time.Now()
+			_ = scp.Window.Canvas().Capture()
+			videoCh <- time.Since(start)
+		})
+		select {
+		case dur := <-videoCh:
+			tVideo = dur
+		case <-time.After(3 * time.Second):
+			tVideo = 50 * time.Millisecond
+		}
+	}
+
+	// Ensure video time accounts for standard 60Hz display refresh (16.6ms)
+	if tVideo < 16*time.Millisecond {
+		tVideo = 16 * time.Millisecond
+	}
+
+	// 3. Compute optimal sleepTime: 2x CPU time + 2x Video frame time
+	calculated := (2 * tCPU) + (2 * tVideo)
+
+	// Clamp between safe minimum (20ms) and maximum (250ms)
+	const minSleep = 20 * time.Millisecond
+	const maxSleep = 250 * time.Millisecond
+
+	if calculated < minSleep {
+		calculated = minSleep
+	} else if calculated > maxSleep {
+		calculated = maxSleep
+	}
+
+	SetSleepTime(calculated)
+	log.Printf("Calibrated sleepTime: %v (CPU: %v, Video: %v)", calculated, tCPU, tVideo)
+	return calculated
+}
 
 func IsFuzzer() bool {
 	return FuzzerCommitID != "" || os.Getenv("FUZZER_COMMIT_ID") != ""
@@ -195,7 +281,7 @@ func addToTest(obj fyne.CanvasObject, name string, tabID int) {
 // wait pauses execution for a short predefined duration to allow GUI operations,
 // animations, and state changes to settle before the next automated interaction.
 func wait() {
-	time.Sleep(sleepTime)
+	time.Sleep(GetSleepTime())
 }
 
 // doEvent is the safe wrapper for all fuzzer event dispatches.
@@ -558,6 +644,7 @@ func drag(name string, delta float32) {
 // Test runs a predefined sequence of deterministic hardcoded GUI operations.
 // It is intended to verify standard logic flow without the randomness of the fuzzer.
 func (scp *ScpDesc) Test() {
+	scp.CalibrateSleepTime()
 	log.Println("Test started")
 	tap(ftFuncId)
 	tap(genFuncId)
@@ -801,6 +888,8 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		os.Exit(1)
 	}
 
+	scp.CalibrateSleepTime()
+
 	var errorCount uint64
 	var eventCount uint64
 	startTime := time.Now()
@@ -859,6 +948,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			fmt.Fprintf(f, "Webport: %s\n", webport)
 		}
 		fmt.Fprintf(f, "Settings File: %s\n", settingsFileName)
+		fmt.Fprintf(f, "Sleep Time: %v\n", GetSleepTime())
 
 		tags := "none"
 		if info, ok := debug.ReadBuildInfo(); ok {
