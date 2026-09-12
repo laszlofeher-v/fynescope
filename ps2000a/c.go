@@ -82,8 +82,9 @@ func openUnit(serial string, resolution int) (handle int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
-		p = (*C.schar)(C.CString(serial))
-		defer C.free(unsafe.Pointer(p))
+		cSerial := C.CString(serial)
+		defer C.free(unsafe.Pointer(cSerial))
+		p = (*C.schar)(unsafe.Pointer(cSerial))
 	}
 	slog.Debug("ps2000aOpenUnit", "serial", serial)
 	stat := C.ps2000aOpenUnit((*C.short)(&handle), (*C.schar)(p))
@@ -98,8 +99,9 @@ func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	var p *C.schar
 	sLength := len(serial)
 	if sLength > 0 {
-		p = (*C.schar)(C.CString(serial))
-		defer C.free(unsafe.Pointer(p))
+		cSerial := C.CString(serial)
+		defer C.free(unsafe.Pointer(cSerial))
+		p = (*C.schar)(unsafe.Pointer(cSerial))
 	}
 	slog.Debug("ps2000aOpenUnitAsync", "serial", serial)
 	stat := C.ps2000aOpenUnitAsync((*C.short)(&status), (*C.schar)(p))
