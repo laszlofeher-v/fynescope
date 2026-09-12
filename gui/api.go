@@ -25,9 +25,10 @@ import (
 	"sync"
 	"time"
 
-	"fyne.io/fyne/v2"
 	"fynescope/genericps"
 	"fynescope/settings"
+
+	"fyne.io/fyne/v2"
 )
 
 // APIServerConfig contains options for configuring the HTTPS API server.
@@ -63,15 +64,15 @@ type ScopeInfo struct {
 
 // ChannelInfo describes the current runtime settings and properties of an oscilloscope channel.
 type ChannelInfo struct {
-	ID             string  `json:"id"`
-	Index          int     `json:"index"`
-	Enabled        bool    `json:"enabled"`
-	Range          string  `json:"range"`
-	RangeMV        int32   `json:"range_mv"`
-	Coupling       string  `json:"coupling"`
-	Invert         bool    `json:"invert"`
-	DisplayVOffset int     `json:"display_v_offset"`
-	TriggerSource  bool    `json:"trigger_source"`
+	ID             string `json:"id"`
+	Index          int    `json:"index"`
+	Enabled        bool   `json:"enabled"`
+	Range          string `json:"range"`
+	RangeMV        int32  `json:"range_mv"`
+	Coupling       string `json:"coupling"`
+	Invert         bool   `json:"invert"`
+	DisplayVOffset int    `json:"display_v_offset"`
+	TriggerSource  bool   `json:"trigger_source"`
 }
 
 // TriggerInfo describes the current trigger configuration.
@@ -637,28 +638,28 @@ func (scp *ScpDesc) NewAPIMux(authAdmin, authView string) *http.ServeMux {
 			return
 		}
 		endpoints := map[string]string{
-			"GET /api/status":           "Returns current run state and basic metrics",
-			"GET /api/info":             "Returns hardware and configuration information",
-			"GET /api/settings":         "Returns full application settings JSON",
-			"POST /api/settings":        "Applies deep-merged JSON payload to settings",
-			"POST /api/run":             "Starts continuous oscilloscope capture",
-			"POST /api/stop":            "Stops oscilloscope capture",
-			"POST /api/single":          "Arms single acquisition",
-			"POST /api/autorange":       "Triggers auto-range",
-			"POST /api/command":         "Executes natural language/voice command (JSON {\"command\": \"...\"} or text body)",
-			"GET /api/channels":         "Lists all channels with configuration and status",
-			"GET /api/channels/{id}":    "Gets settings for specific channel (A-D or 0-3)",
-			"POST /api/channels/{id}":   "Updates channel settings (enabled, coupling, range, invert)",
+			"GET /api/status":                 "Returns current run state and basic metrics",
+			"GET /api/info":                   "Returns hardware and configuration information",
+			"GET /api/settings":               "Returns full application settings JSON",
+			"POST /api/settings":              "Applies deep-merged JSON payload to settings",
+			"POST /api/run":                   "Starts continuous oscilloscope capture",
+			"POST /api/stop":                  "Stops oscilloscope capture",
+			"POST /api/single":                "Arms single acquisition",
+			"POST /api/autorange":             "Triggers auto-range",
+			"POST /api/command":               "Executes natural language/voice command (JSON {\"command\": \"...\"} or text body)",
+			"GET /api/channels":               "Lists all channels with configuration and status",
+			"GET /api/channels/{id}":          "Gets settings for specific channel (A-D or 0-3)",
+			"POST /api/channels/{id}":         "Updates channel settings (enabled, coupling, range, invert)",
 			"POST /api/channels/{id}/enable":  "Enables channel",
 			"POST /api/channels/{id}/disable": "Disables channel",
-			"GET /api/timebase":         "Returns horizontal timebase and sampling interval",
-			"POST /api/timebase":        "Configures timebase (time_div, time_unit)",
-			"GET /api/trigger":          "Returns trigger settings",
-			"POST /api/trigger":         "Configures trigger (source, mode, direction, threshold_mv)",
-			"GET /api/waveform":         "Returns latest acquired waveform samples in mV (?format=json|csv)",
-			"GET /api/waveform/{id}":    "Returns waveform samples for specific channel (?format=json|csv)",
-			"GET /api/measurements":     "Returns computed measurements (Vpp, Vmin, Vmax, Vmean, Vrms, frequency, period)",
-			"GET /api/screenshot":       "Captures GUI screen (?format=png|jpeg)",
+			"GET /api/timebase":               "Returns horizontal timebase and sampling interval",
+			"POST /api/timebase":              "Configures timebase (time_div, time_unit)",
+			"GET /api/trigger":                "Returns trigger settings",
+			"POST /api/trigger":               "Configures trigger (source, mode, direction, threshold_mv)",
+			"GET /api/waveform":               "Returns latest acquired waveform samples in mV (?format=json|csv)",
+			"GET /api/waveform/{id}":          "Returns waveform samples for specific channel (?format=json|csv)",
+			"GET /api/measurements":           "Returns computed measurements (Vpp, Vmin, Vmax, Vmean, Vrms, frequency, period)",
+			"GET /api/screenshot":             "Captures GUI screen (?format=png|jpeg)",
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"endpoints": endpoints})
 	})
@@ -1132,7 +1133,7 @@ func (scp *ScpDesc) StartAPIServer(cfg APIServerConfig) error {
 		return fmt.Errorf("invalid API server port: %d", cfg.Port)
 	}
 
-	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
+	addr := fmt.Sprintf("127.0.0.1:%d", cfg.Port)
 	mux := scp.NewAPIMux(cfg.AuthAdmin, cfg.AuthView)
 
 	var tlsCert tls.Certificate
