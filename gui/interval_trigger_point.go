@@ -283,14 +283,10 @@ func (tp *intervalTriggerPointViewer) draw() {
 				drawLine(tp.signalScreen(), x, currY, xSingle, currY, colSingle)
 				if pwType == genericps.PwTypeLessThan {
 					// Point RIGHT (towards origin, meaning smaller time/less than)
-					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle-halfRectSize, currY+halfRectSize, colSingle)
-					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
-					drawLine(tp.signalScreen(), xSingle-halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+					drawTriggerArrow(tp.signalScreen(), xSingle, currY, false, colSingle)
 				} else {
 					// Point LEFT (away from origin, meaning larger time/greater than)
-					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle+halfRectSize, currY+halfRectSize, colSingle)
-					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
-					drawLine(tp.signalScreen(), xSingle+halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+					drawTriggerArrow(tp.signalScreen(), xSingle, currY, true, colSingle)
 				}
 
 			} else {
@@ -333,24 +329,16 @@ func (tp *intervalTriggerPointViewer) draw() {
 				switch pwType {
 				case genericps.PwTypeInRange:
 					// xLower points LEFT (inside)
-					drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower+halfRectSize, currY+halfRectSize, colLower)
-					drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower, currY, colLower)
-					drawLine(tp.signalScreen(), xLower+halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+					drawTriggerArrow(tp.signalScreen(), xLower, currY, true, colLower)
 
 					// xUpper points RIGHT (inside)
-					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper-halfRectSize, currY+halfRectSize, colUpper)
-					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
-					drawLine(tp.signalScreen(), xUpper-halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+					drawTriggerArrow(tp.signalScreen(), xUpper, currY, false, colUpper)
 				case genericps.PwTypeOutOfRange:
 					// xLower points RIGHT (outside)
-					drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower-halfRectSize, currY+halfRectSize, colLower)
-					drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower, currY, colLower)
-					drawLine(tp.signalScreen(), xLower-halfRectSize, currY+halfRectSize, xLower, currY, colLower)
+					drawTriggerArrow(tp.signalScreen(), xLower, currY, false, colLower)
 
 					// xUpper points LEFT (outside)
-					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper+halfRectSize, currY+halfRectSize, colUpper)
-					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
-					drawLine(tp.signalScreen(), xUpper+halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+					drawTriggerArrow(tp.signalScreen(), xUpper, currY, true, colUpper)
 				}
 			}
 		}
