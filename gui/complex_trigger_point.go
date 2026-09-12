@@ -704,13 +704,9 @@ func (tp *complexTriggerPointViewer) draw() {
 
 						drawLine(tp.signalScreen(), x, currY, xSingle, currY, colSingle)
 						if pwType == genericps.PwTypeLessThan {
-							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle-halfRectSize, currY+halfRectSize, colSingle)
-							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
-							drawLine(tp.signalScreen(), xSingle-halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+							drawTriggerArrow(tp.signalScreen(), xSingle, currY, false, colSingle)
 						} else {
-							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle+halfRectSize, currY+halfRectSize, colSingle)
-							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY-halfRectSize, xSingle, currY, colSingle)
-							drawLine(tp.signalScreen(), xSingle+halfRectSize, currY+halfRectSize, xSingle, currY, colSingle)
+							drawTriggerArrow(tp.signalScreen(), xSingle, currY, true, colSingle)
 						}
 					} else {
 						lowerDx := float32((chCfg.IntervalTimeLower / tp.maxScreenTime()) * w)
@@ -750,21 +746,11 @@ func (tp *complexTriggerPointViewer) draw() {
 
 						switch pwType {
 						case genericps.PwTypeInRange:
-							drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower+halfRectSize, currY+halfRectSize, colLower)
-							drawLine(tp.signalScreen(), xLower+halfRectSize, currY-halfRectSize, xLower, currY, colLower)
-							drawLine(tp.signalScreen(), xLower+halfRectSize, currY+halfRectSize, xLower, currY, colLower)
-
-							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper-halfRectSize, currY+halfRectSize, colUpper)
-							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
-							drawLine(tp.signalScreen(), xUpper-halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+							drawTriggerArrow(tp.signalScreen(), xLower, currY, true, colLower)
+							drawTriggerArrow(tp.signalScreen(), xUpper, currY, false, colUpper)
 						case genericps.PwTypeOutOfRange:
-							drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower-halfRectSize, currY+halfRectSize, colLower)
-							drawLine(tp.signalScreen(), xLower-halfRectSize, currY-halfRectSize, xLower, currY, colLower)
-							drawLine(tp.signalScreen(), xLower-halfRectSize, currY+halfRectSize, xLower, currY, colLower)
-
-							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper+halfRectSize, currY+halfRectSize, colUpper)
-							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY-halfRectSize, xUpper, currY, colUpper)
-							drawLine(tp.signalScreen(), xUpper+halfRectSize, currY+halfRectSize, xUpper, currY, colUpper)
+							drawTriggerArrow(tp.signalScreen(), xLower, currY, false, colLower)
+							drawTriggerArrow(tp.signalScreen(), xUpper, currY, true, colUpper)
 						}
 					}
 				}

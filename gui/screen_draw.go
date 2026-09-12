@@ -203,3 +203,20 @@ func drawCircle(img draw.Image, x0, y0, r float32, c color.Color) {
 		r--
 	}
 }
+
+const (
+	triggerArrowLen   = float32(20)
+	triggerArrowHalfH = float32(5)
+)
+
+func drawTriggerArrow(img draw.Image, tipX, tipY float32, pointLeft bool, c color.Color) {
+	var baseX float32
+	if pointLeft {
+		baseX = tipX + triggerArrowLen
+	} else {
+		baseX = tipX - triggerArrowLen
+	}
+	_ = drawLine(img, baseX, tipY-triggerArrowHalfH, baseX, tipY+triggerArrowHalfH, c)
+	_ = drawLine(img, baseX, tipY-triggerArrowHalfH, tipX, tipY, c)
+	_ = drawLine(img, baseX, tipY+triggerArrowHalfH, tipX, tipY, c)
+}
