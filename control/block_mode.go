@@ -87,6 +87,11 @@ func blockMode(psControl *PscDesc) state {
 
 		rawSampleCount := psControl.SampleCountRequired * psControl.downSampleRatio
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(rawSampleCount)
+		if err != nil {
+			slog.Error("runblock getTimeBase", "err", err)
+			psControl.DisplayStatus(err.Error(), Fatal)
+			return err
+		}
 
 		minSampleCount := uint64(math.Round(psControl.scopeScreenWidth))
 		if minSampleCount < 1024 {
@@ -126,8 +131,15 @@ func blockMode(psControl *PscDesc) state {
 		}
 
 		limit := maxSampleCount / psControl.downSampleRatio
+		maxHardwareLimit := sampleCount / psControl.downSampleRatio
+		if limit == 0 || (maxHardwareLimit > 0 && limit > maxHardwareLimit) {
+			limit = maxHardwareLimit
+		}
 		if limit == 0 {
-			limit = maxSampleCount
+			limit = sampleCount
+		}
+		if limit == 0 || limit > 64*1024*1024 {
+			limit = 64 * 1024 * 1024
 		}
 		if minSampleCount > limit && limit > 0 {
 			minSampleCount = limit
