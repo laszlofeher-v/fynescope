@@ -1500,8 +1500,18 @@ func (scp *ScpDesc) partitionFtScreen(w, h float32) {
 	sampleMultiplier := 1.0
 	if scp.timeZoomWindow != nil && scp.timeZoomMaxScreenTime > scp.maxScreenTime && scp.maxScreenTime > 0 {
 		sampleMultiplier = scp.timeZoomMaxScreenTime / scp.maxScreenTime
+		if sampleMultiplier > 1000 {
+			sampleMultiplier = 1000
+		}
+		if sampleMultiplier < 1.0 {
+			sampleMultiplier = 1.0
+		}
 	}
-	scp.psControl.SetScopeScreenWidth(float64(scp.ftScopeSignalScreen.Bounds().Dx()-1) * sampleMultiplier)
+	screenWidth := float64(scp.ftScopeSignalScreen.Bounds().Dx()-1) * sampleMultiplier
+	if screenWidth > 1000000 {
+		screenWidth = 1000000
+	}
+	scp.psControl.SetScopeScreenWidth(screenWidth)
 	scp.ftBottomLabelViewer = newTimelLabelViewer(scp.ftScopeFullScreen,
 		image.Rect(int(math.Round(0)), int(math.Round(float64(h-defaultTimeMargin))),
 			int(math.Round(float64(w))), int(math.Round(float64(h)))), scp, false)

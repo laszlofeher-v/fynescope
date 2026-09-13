@@ -40,7 +40,7 @@ func TestNewFfPanel(t *testing.T) {
 				OffsetVoltage: 0,
 			},
 			Dft: settings.DftSettings{
-				DisplayMode: settings.ModeVoltage,
+				DisplayUnit: settings.UnitVoltage,
 			},
 			Channels: []settings.ChSettings{
 				{Enabled: true, Col: [2]color.NRGBA{{R: 255, G: 255, B: 255, A: 255}, {R: 255, G: 255, B: 255, A: 255}}},

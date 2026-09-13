@@ -28,11 +28,11 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		channelViewer := &scp.channelViewers[chIdx]
 
 		// Enable Checkbox
-		check := widget.NewCheck("", func(checked bool) {
+		check := scp.newFocusCheck("", func(checked bool) {
 			scp.EnableChannel(chIdx, checked)
 		})
 		check.SetChecked(channel.Enabled)
-		channelViewer.dftCheckbox = check
+		channelViewer.dftCheckbox = &check.Check
 		addToTest(check, dftEnableId+chName, dftTabIndex)
 
 		persSelected := func(checked bool) {
@@ -44,9 +44,9 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 			scp.refreshRasters()
 			scp.SaveSettings()
 		}
-		persCheck := widget.NewCheck("Pers", persSelected)
+		persCheck := scp.newFocusCheck("Pers", persSelected)
 		persCheck.SetChecked(channel.DftPersistence)
-		channelViewer.dftPersistenceCheckbox = persCheck
+		channelViewer.dftPersistenceCheckbox = &persCheck.Check
 		addToTest(persCheck, dftPersId+chName, dftTabIndex)
 
 		// Channel Label
@@ -84,11 +84,11 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		channelViewer.vRangeSelects = append(channelViewer.vRangeSelects, vRange)
 
 		// X10 Checkbox
-		x10Check := widget.NewCheck("X10", func(c bool) {
+		x10Check := scp.newFocusCheck("X10", func(c bool) {
 			scp.changeChannelX10(chIdx, c)
 		})
 		x10Check.SetChecked(scp.Settings.Channels[chIdx].X10)
-		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10Check)
+		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, &x10Check.Check)
 		addToTest(x10Check, dftX10Id+chName, dftTabIndex)
 
 		// Each channel gets its own row
@@ -109,10 +109,13 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, settings.WindowRectangular)
 	windowSelector.SilentSetSelected(scp.Settings.Dft.Window)
-	addToTest(windowSelector, dftWindowId, dftTabIndex)
 	var arbDbRefContainer *fyne.Container
+	dispColor := theme.Color(theme.ColorNameForeground)
+	if scp.theme != nil {
+		dispColor = scp.theme.Color(ColorNameGeneratorDisp, 0)
+	}
 	arbDbRefDisp, _ := disp7.NewCustomDisp7Array(5, 3, 20000, 1, disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
-		scp.theme.Color(ColorNameGeneratorDisp, 0), disp7.ReadWrite, disp7.DefaultDigitWidth, disp7.DeafultDigitHeight,
+		dispColor, disp7.ReadWrite, disp7.DefaultDigitWidth, disp7.DeafultDigitHeight,
 		disp7.DefaultSkew, disp7.DefaultVCursorSpace, "0dB Ref :", " V")
 
 	arbDbRefDisp.SetFloatValue(scp.Settings.Dft.ArbitraryDbRefV, 3)
@@ -126,15 +129,15 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	}
 
 	arbDbRefContainer = container.NewVBox(arbDbRefDisp)
-	if scp.Settings.Dft.DisplayMode != settings.ModeArbitraryDB {
+	if scp.Settings.Dft.DisplayUnit != settings.UnitArbitraryDB {
 		arbDbRefContainer.Hide()
 	}
 	addToTest(arbDbRefDisp, dftBinId+"ArbRef", dftTabIndex)
 
 	// Display mode selector row
-	modeSelector := selectscroll.NewSelectScroll([]string{settings.ModeDBFS, settings.ModeVoltage, settings.ModeDBV, settings.ModeDBU, settings.ModeDBM, settings.ModeArbitraryDB}, func(selected string, _ selectscroll.Exception) {
-		scp.Settings.Dft.DisplayMode = selected
-		if selected == settings.ModeArbitraryDB {
+	modeSelector := selectscroll.NewSelectScroll([]string{settings.UnitDBFS, settings.UnitVoltage, settings.UnitDBV, settings.UnitDBU, settings.UnitDBM, settings.UnitArbitraryDB}, func(selected string, _ selectscroll.Exception) {
+		scp.Settings.Dft.DisplayUnit = selected
+		if selected == settings.UnitArbitraryDB {
 			arbDbRefContainer.Show()
 		} else {
 			arbDbRefContainer.Hide()
@@ -148,8 +151,8 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 			scp.dftRaster.Refresh()
 		}
 		scp.SaveSettings()
-	}, settings.ModeVoltage)
-	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayMode)
+	}, settings.UnitVoltage)
+	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayUnit)
 	addToTest(modeSelector, dftModeId, dftTabIndex)
 
 	maxPossibleFreq := 500000000.0

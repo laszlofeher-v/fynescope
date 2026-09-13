@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/test"
-	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +39,7 @@ func TestUpdateStreamButtonState(t *testing.T) {
 	scp.updateStreamButtonState()
 
 	scp.psControl = &control.PscDesc{}
-	scp.streamEnableButton = widget.NewButton("", nil)
+	scp.streamEnableButton = scp.newFocusButton("", nil)
 
 	scp.psControl.StreamEnabled.Store(true)
 	scp.updateStreamButtonState()

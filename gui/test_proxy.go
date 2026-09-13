@@ -76,6 +76,7 @@ const (
 	fullScreenId                   = "fullScreen"
 	restoreScreenId                = "restoreScreen"
 	changeSideId                   = "changeSide"
+	helpButtonId                   = "helpButton"
 	triggerThresholdDispId         = "triggerThresholdDisp"
 	triggerHysteresisDispId        = "triggerHysteresisDisp"
 	triggerModeSelectId            = "triggerModeSelect"
@@ -117,7 +118,7 @@ const (
 	ffMinFreqId                    = "ffMinFreq"
 	ffMaxFreqId                    = "ffMaxFreq"
 	ffExtGenSelectId               = "ffExtGenSelect"
-	ffDispModeSelectId             = "ffDispModeSelect"
+	ffDispUnitSelectId             = "ffDispModeSelect"
 
 	ffPhaseCheckId = "ffPhaseCheck"
 	ffRefCheckId   = "ffRefCheck"
@@ -160,11 +161,11 @@ type TestControl struct {
 }
 
 var (
-	sleepTime      = 100 * time.Millisecond
-	sleepTimeMu    sync.RWMutex
-	controls       map[string]TestControl
-	tabValidKeys   map[int][]string
-	controlsMtx    sync.RWMutex
+	sleepTime    = 100 * time.Millisecond
+	sleepTimeMu  sync.RWMutex
+	controls     map[string]TestControl
+	tabValidKeys map[int][]string
+	controlsMtx  sync.RWMutex
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
@@ -265,17 +266,36 @@ func init() {
 	tabValidKeys = make(map[int][]string)
 }
 
+var (
+	objToName    = make(map[fyne.CanvasObject]string)
+	objToNameMtx sync.RWMutex
+)
+
 // addToTest registers a Fyne canvas object to the global controls map,
 // making it available for programmatic interactions by the fuzzer.
 func addToTest(obj fyne.CanvasObject, name string, tabID int) {
 	controlsMtx.Lock()
 	if _, exists := controls[name]; !exists {
 		tabValidKeys[tabID] = append(tabValidKeys[tabID], name)
-	} else {
-		slog.Debug(name + " already!")
 	}
 	controls[name] = TestControl{Obj: obj, Tab: tabID}
 	controlsMtx.Unlock()
+
+	if obj != nil {
+		objToNameMtx.Lock()
+		objToName[obj] = name
+		objToNameMtx.Unlock()
+	}
+}
+
+func getControlNameByObject(obj fyne.CanvasObject) (string, bool) {
+	if obj == nil {
+		return "", false
+	}
+	objToNameMtx.RLock()
+	defer objToNameMtx.RUnlock()
+	name, ok := objToName[obj]
+	return name, ok
 }
 
 // wait pauses execution for a short predefined duration to allow GUI operations,
@@ -435,6 +455,13 @@ func internalTap(name string, isFuzzer bool) bool {
 			}
 			return false
 		}
+	case *FocusCheck:
+		if isFuzzer {
+			slog.Debug("randTap", "name", name)
+		}
+		doEvent(func() {
+			c.SetChecked(!c.Checked)
+		})
 	case *widget.Check:
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
@@ -442,7 +469,11 @@ func internalTap(name string, isFuzzer bool) bool {
 		doEvent(func() {
 			c.SetChecked(!c.Checked)
 		})
+
 	case fyne.Tappable:
+		if isFuzzer && name == "logout" {
+			return false
+		}
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
@@ -908,19 +939,29 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		slog.SetDefault(slog.New(origSlogHandler))
 	}()
 
-	statusWin := scp.App.NewWindow("Fuzzer Status")
-	uptimeLabel := widget.NewLabel("Uptime: 0s")
-	remainingLabel := widget.NewLabel(fmt.Sprintf("Remaining: %v", duration))
-	eventsLabel := widget.NewLabel("Events: 0")
-	errorsLabel := widget.NewLabel("Errors: 0")
+	var (
+		statusWin      fyne.Window
+		uptimeLabel    *widget.Label
+		remainingLabel *widget.Label
+		eventsLabel    *widget.Label
+		errorsLabel    *widget.Label
+	)
 
-	statusWin.SetContent(container.NewVBox(
-		uptimeLabel,
-		remainingLabel,
-		eventsLabel,
-		errorsLabel,
-	))
-	statusWin.Show()
+	fyne.DoAndWait(func() {
+		statusWin = scp.App.NewWindow("Fuzzer Status")
+		uptimeLabel = widget.NewLabel("Uptime: 0s")
+		remainingLabel = widget.NewLabel(fmt.Sprintf("Remaining: %v", duration))
+		eventsLabel = widget.NewLabel("Events: 0")
+		errorsLabel = widget.NewLabel("Errors: 0")
+
+		statusWin.SetContent(container.NewVBox(
+			uptimeLabel,
+			remainingLabel,
+			eventsLabel,
+			errorsLabel,
+		))
+		statusWin.Show()
+	})
 
 	// writeFuzzerRecord writes a snapshot of the current fuzzer state to path.
 	// completed indicates whether the fuzzer ran to its full deadline.
@@ -1010,6 +1051,11 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	}()
 
 	defer func() {
+		if statusWin != nil {
+			fyne.Do(func() {
+				statusWin.Close()
+			})
+		}
 		// Stop the periodic flush goroutine and wait for it to exit.
 		close(flushStop)
 		<-flushDone

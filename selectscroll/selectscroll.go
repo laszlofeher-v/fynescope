@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -144,7 +145,61 @@ func isAscending(options []string) bool {
 	return false
 }
 
+func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
+	if root == nil || target == nil {
+		return false
+	}
+	if root == target {
+		return true
+	}
+	if c, ok := root.(*fyne.Container); ok {
+		for _, child := range c.Objects {
+			if canvasContains(child, target) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (selScr *SelectScroll) focus() {
+	if app := fyne.CurrentApp(); app != nil && app.Driver() != nil {
+		if c := app.Driver().CanvasForObject(selScr); c != nil {
+			c.Focus(selScr)
+			if c.Focused() == selScr {
+				return
+			}
+		}
+		for _, w := range app.Driver().AllWindows() {
+			if w != nil && w.Canvas() != nil {
+				if !canvasContains(w.Canvas().Content(), selScr) {
+					continue
+				}
+				w.Canvas().Focus(selScr)
+				if w.Canvas().Focused() == selScr {
+					return
+				}
+			}
+		}
+	}
+}
+
+
+
+// Tapped focuses this select widget and opens the dropdown menu.
+func (selScr *SelectScroll) Tapped(event *fyne.PointEvent) {
+	selScr.focus()
+	selScr.Select.Tapped(event)
+}
+
+// MouseIn focuses this select widget when the mouse cursor enters its bounding area.
+func (selScr *SelectScroll) MouseIn(event *desktop.MouseEvent) {
+	selScr.focus()
+	selScr.Select.MouseIn(event)
+}
+
 func (selScr *SelectScroll) Scrolled(event *fyne.ScrollEvent) {
+	selScr.focus()
 	var (
 		i int
 		s string

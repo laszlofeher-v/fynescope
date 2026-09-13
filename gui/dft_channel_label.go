@@ -164,9 +164,9 @@ func (cl *dftChannelLabelViewer) draw() {
 		maxY := float64(yBounds.Max.Y)
 		minY := float64(yBounds.Min.Y)
 
-		if cl.scp.Settings.Dft.DisplayMode != settings.ModeVoltage {
-			unitName := cl.scp.Settings.Dft.DisplayMode
-			if unitName == settings.ModeArbitraryDB {
+		if cl.scp.Settings.Dft.DisplayUnit != settings.UnitVoltage {
+			unitName := cl.scp.Settings.Dft.DisplayUnit
+			if unitName == settings.UnitArbitraryDB {
 				unitName = "dB"
 			}
 			left, _, right, _ := cl.scp.boundString(unitName)
