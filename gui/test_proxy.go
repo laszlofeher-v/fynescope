@@ -161,11 +161,12 @@ type TestControl struct {
 }
 
 var (
-	sleepTime    = 100 * time.Millisecond
-	sleepTimeMu  sync.RWMutex
-	controls     map[string]TestControl
-	tabValidKeys map[int][]string
-	controlsMtx  sync.RWMutex
+	sleepTime      = 100 * time.Millisecond
+	sleepTimeMu    sync.RWMutex
+	activeScp      *ScpDesc
+	controls       map[string]TestControl
+	tabValidKeys   map[int][]string
+	controlsMtx    sync.RWMutex
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
@@ -173,11 +174,27 @@ var (
 	FuzzerCommitID string
 )
 
-// GetSleepTime returns the current dynamically calculated sleep duration.
+// GetSleepTime returns the current dynamically calculated sleep duration,
+// adjusting for full-screen mode if currently active.
 func GetSleepTime() time.Duration {
 	sleepTimeMu.RLock()
-	defer sleepTimeMu.RUnlock()
-	return sleepTime
+	d := sleepTime
+	scp := activeScp
+	sleepTimeMu.RUnlock()
+
+	if scp != nil && scp.Window != nil {
+		if scp.Window.FullScreen() || (scp.Settings != nil && scp.Settings.Window.Fullscreen) {
+			// In full screen, raster rendering, buffer reallocation, and compositing
+			// takes significantly longer. Scale sleep time to prevent UI event queue
+			// starvation and screen jamming.
+			fsSleep := time.Duration(float64(d) * 2.5)
+			if fsSleep < 150*time.Millisecond {
+				fsSleep = 150 * time.Millisecond
+			}
+			return fsSleep
+		}
+	}
+	return d
 }
 
 // SetSleepTime safely updates the sleep duration.
@@ -192,12 +209,16 @@ func SetSleepTime(d time.Duration) {
 // measures OpenGL window canvas rendering/capture time, and computes a sleepTime
 // that allows the GUI to reliably process commands without lagging or freezing.
 func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
-	// 1. Measure CPU performance (math/raster calculation + event loop latency)
+	sleepTimeMu.Lock()
+	activeScp = scp
+	sleepTimeMu.Unlock()
+
+	// 1. Measure CPU performance (realistic waveform math & raster calculation latency)
 	cpuBenchStart := time.Now()
-	const iters = 30_000
+	const iters = 200_000
 	var acc float64
 	for i := 0; i < iters; i++ {
-		acc += math.Sin(float64(i)) * math.Cos(float64(i))
+		acc += math.Sin(float64(i)*0.01) * math.Cos(float64(i)*0.02)
 	}
 	_ = acc
 	cpuBenchTime := time.Since(cpuBenchStart)
@@ -213,7 +234,7 @@ func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
 	case <-eventQueueCh:
 		cpuEventLatency = time.Since(eventStart)
 	case <-time.After(2 * time.Second):
-		cpuEventLatency = 20 * time.Millisecond
+		cpuEventLatency = 50 * time.Millisecond
 	}
 	tCPU := cpuBenchTime + cpuEventLatency
 
@@ -239,12 +260,36 @@ func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
 		tVideo = 16 * time.Millisecond
 	}
 
-	// 3. Compute optimal sleepTime: 2x CPU time + 2x Video frame time
-	calculated := (2 * tCPU) + (2 * tVideo)
+	// 3. Resolution scaling factor
+	resFactor := 1.0
+	if scp != nil && scp.Window != nil && scp.Window.Canvas() != nil {
+		sz := scp.Window.Canvas().Size()
+		if sz.Width > 0 && sz.Height > 0 {
+			area := float64(sz.Width * sz.Height)
+			baseArea := 1024.0 * 768.0
+			if area > baseArea {
+				resFactor = math.Sqrt(area / baseArea)
+			}
+		}
+		if scp.Window.FullScreen() || (scp.Settings != nil && scp.Settings.Window.Fullscreen) {
+			if resFactor < 2.0 {
+				resFactor = 2.0
+			}
+		}
+	}
 
-	// Clamp between safe minimum (20ms) and maximum (250ms)
-	const minSleep = 20 * time.Millisecond
-	const maxSleep = 250 * time.Millisecond
+	// 4. Compute conservative sleepTime:
+	// A single GUI event triggers UI dispatch, control state changes,
+	// raster repartition/redraw, and OpenGL frame presentation.
+	// Use 3x CPU + 3x Video, scaled by resolution factor.
+	calculated := time.Duration(float64((3*tCPU)+(3*tVideo)) * resFactor)
+
+	// Clamp between safe minimum (60ms windowed, 150ms full-screen) and maximum (500ms)
+	minSleep := 60 * time.Millisecond
+	if scp != nil && scp.Window != nil && (scp.Window.FullScreen() || (scp.Settings != nil && scp.Settings.Window.Fullscreen)) {
+		minSleep = 150 * time.Millisecond
+	}
+	const maxSleep = 500 * time.Millisecond
 
 	if calculated < minSleep {
 		calculated = minSleep
@@ -253,7 +298,7 @@ func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
 	}
 
 	SetSleepTime(calculated)
-	log.Printf("Calibrated sleepTime: %v (CPU: %v, Video: %v)", calculated, tCPU, tVideo)
+	log.Printf("Calibrated sleepTime: %v (CPU: %v, Video: %v, ResFactor: %.2f)", calculated, tCPU, tVideo, resFactor)
 	return calculated
 }
 
@@ -305,14 +350,23 @@ func wait() {
 }
 
 // doEvent is the safe wrapper for all fuzzer event dispatches.
-// It holds fuzzerEventMtx as a reader so that randCloseWindow (which holds the
-// write lock while tearing down a window) can quiesce all in-flight events
-// before destroying the underlying GLFW handle.
+// It executes fn on the UI thread, waits for it to finish, and then sleeps
+// for the calibrated duration to allow GUI operations, animations, and raster
+// rendering to settle before dispatching the next automated interaction.
 func doEvent(fn func()) {
 	fuzzerEventMtx.RLock()
 	defer fuzzerEventMtx.RUnlock()
+	done := make(chan struct{})
+	fyne.Do(func() {
+		defer close(done)
+		fn()
+	})
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		log.Println("Warning: doEvent timed out waiting for UI thread")
+	}
 	wait()
-	fyne.Do(fn)
 }
 
 var keyNames = []fyne.KeyName{
@@ -348,9 +402,8 @@ func randKey(name string) bool {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
-				runes := []rune("0123456789abcdefABCDEF")
-				r := runes[rand.Intn(len(runes))]
-				c.TypedRune(r)
+				key := keyNames[rand.Intn(len(keyNames))]
+				c.TypedKey(&fyne.KeyEvent{Name: key})
 			}
 		})
 	case *widget.Entry:
@@ -359,9 +412,8 @@ func randKey(name string) bool {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
-				runes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/() ")
-				r := runes[rand.Intn(len(runes))]
-				c.TypedRune(r)
+				key := keyNames[rand.Intn(len(keyNames))]
+				c.TypedKey(&fyne.KeyEvent{Name: key})
 			}
 		})
 	case *framelessEntry:
@@ -370,10 +422,21 @@ func randKey(name string) bool {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
-				runes := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
-				r := runes[rand.Intn(len(runes))]
-				c.TypedRune(r)
+				key := keyNames[rand.Intn(len(keyNames))]
+				c.TypedKey(&fyne.KeyEvent{Name: key})
 			}
+		})
+	case fyne.Focusable:
+		slog.Debug("randKey", "name", name)
+		key := keyNames[rand.Intn(len(keyNames))]
+		doEvent(func() {
+			c.TypedKey(&fyne.KeyEvent{Name: key})
+		})
+	case keyer:
+		slog.Debug("randKey", "name", name)
+		key := keyNames[rand.Intn(len(keyNames))]
+		doEvent(func() {
+			c.typedKey(0, 0, key)
 		})
 	default:
 		return false
@@ -480,6 +543,9 @@ func internalTap(name string, isFuzzer bool) bool {
 		doEvent(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
+		if isFuzzer && (name == fullScreenId || name == restoreScreenId) {
+			time.Sleep(300 * time.Millisecond)
+		}
 	default:
 		if !isFuzzer {
 			log.Printf("%s cannot use type %T\n", name, c)

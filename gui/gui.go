@@ -1179,10 +1179,18 @@ func (scp *ScpDesc) build2000Gui() {
 	setfullscreen := func() {
 		scp.Settings.Window.Fullscreen = true
 		scp.Window.SetFullScreen(true)
+		go func() {
+			time.Sleep(250 * time.Millisecond)
+			scp.CalibrateSleepTime()
+		}()
 	}
 	setnofullscreen := func() {
 		scp.Settings.Window.Fullscreen = false
 		scp.Window.SetFullScreen(false)
+		go func() {
+			time.Sleep(250 * time.Millisecond)
+			scp.CalibrateSleepTime()
+		}()
 	}
 
 	mode, ok := resolutionModes[scp.Settings.Time.ResolutionMode]
