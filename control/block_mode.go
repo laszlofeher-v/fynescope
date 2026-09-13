@@ -92,6 +92,9 @@ func blockMode(psControl *PscDesc) state {
 		if minSampleCount < 1024 {
 			minSampleCount = 1024
 		}
+		if maxSampleCount > 0 && minSampleCount > maxSampleCount {
+			minSampleCount = maxSampleCount
+		}
 
 		maxAllowedDownSample := uint64(psControl.maxScreenTime / (float64(timeIntervalNanoseconds) * 1e-9 * float64(minSampleCount)))
 		if psControl.downSampleRatio > maxAllowedDownSample {
@@ -121,17 +124,24 @@ func blockMode(psControl *PscDesc) state {
 		} else {
 			psControl.SampleCountRequired = 2 * psControl.SampleCountRequired
 		}
-		if psControl.SampleCountRequired > maxSampleCount/psControl.downSampleRatio || psControl.SampleCountRequired <= 0 {
-			slog.Debug("samplecount decreased:", "SampleCount", psControl.SampleCountRequired, " to :", maxSampleCount/psControl.downSampleRatio)
-			psControl.SampleCountRequired = maxSampleCount / psControl.downSampleRatio
-		}
 
-		if minSampleCount < 1024 {
+		limit := maxSampleCount / psControl.downSampleRatio
+		if limit == 0 {
+			limit = maxSampleCount
+		}
+		if minSampleCount > limit && limit > 0 {
+			minSampleCount = limit
+		}
+		if minSampleCount < 1024 && limit >= 1024 {
 			minSampleCount = 1024
 		}
 		if psControl.SampleCountRequired < minSampleCount {
 			slog.Debug("samplecount increased to minimum:", "from", psControl.SampleCountRequired, "to", minSampleCount)
 			psControl.SampleCountRequired = minSampleCount
+		}
+		if limit > 0 && (psControl.SampleCountRequired > limit || psControl.SampleCountRequired == 0) {
+			slog.Debug("samplecount decreased:", "SampleCount", psControl.SampleCountRequired, " to :", limit)
+			psControl.SampleCountRequired = limit
 		}
 		psControl.SamplingTimeInterval = float64(timeIntervalNanoseconds) * 1e-9 * float64(psControl.downSampleRatio)
 		err = psControl.setTrigger()

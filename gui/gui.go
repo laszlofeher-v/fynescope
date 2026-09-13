@@ -240,9 +240,9 @@ type (
 		triggerModeSelect            *selectscroll.SelectScroll
 		triggerTypeSelect            *selectscroll.SelectScroll
 		Settings                     *settings.PsSettings
-		runblockButton               *widget.Button
+		runblockButton               *FocusButton
 		toolbar                      *fyne.Container
-		streamEnableButton           *widget.Button
+		streamEnableButton           *FocusButton
 		etsInterleaveDisp            *disp7.DigitArray
 		etsCyclesDisp                *disp7.DigitArray
 		etsSamplingRateDisp          *disp7.DigitArray
@@ -285,7 +285,9 @@ type (
 		FfAutoRangeEnabled         bool
 		useExtGenCheck             *widget.Check
 		complexTriggerCheck        *widget.Check
-		timeZoomButton             *widget.Button
+		complexTriggerFocus        *FocusCheck
+		timeZoomButton             *FocusButton
+
 		timeZoomWindow             fyne.Window
 		timeZoomRaster             *screenRaster
 		timeZoomMaxScreenTime      float64
@@ -312,7 +314,18 @@ type (
 		gifFrames                  *gif.GIF
 		gifTicker                  *time.Ticker
 		gifStopChan                chan struct{}
-		recordGifButton            *widget.Button
+		recordGifButton            *FocusButton
+		helpButton                 *FocusButton
+		helpPopUp                  *widget.PopUp
+		helpOverlay                *fyne.Container
+		helpCard                   *fyne.Container
+		tabFocusRect               *canvas.Rectangle
+		tabFocusProxies            map[*container.TabItem]*TabFocusProxy
+		helpQuit                   chan struct{}
+		currentFocused             fyne.Focusable
+		helpShownFor               fyne.Focusable
+		focusedSince               time.Time
+		helpMu                     sync.Mutex
 	}
 )
 
@@ -820,11 +833,11 @@ func (scp *ScpDesc) build2000Gui() {
 	initMaps()
 	sortInputRanges()
 	var (
-		themeChangeAction *widget.Button
-		changeSide        *widget.Button
-		restoreScreen     *widget.Button
-		fullScreen        *widget.Button
-		logout            *widget.Button
+		themeChangeAction *FocusButton
+		changeSide        *FocusButton
+		restoreScreen     *FocusButton
+		fullScreen        *FocusButton
+		logout            *FocusButton
 		content           *fyne.Container
 	)
 
@@ -993,13 +1006,18 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.ffRaster.Hide()
 	}
 
-	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
+	scp.timeZoomButton = scp.newFocusButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
 	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex {
 		scp.timeZoomButton.Hide()
 	}
 
+	for _, item := range scp.controlTab.Items {
+		if item != nil {
+			scp.getOrCreateTabProxy(item)
+		}
+	}
 	addToTest(scp.controlTab, ftFuncId, -1)
 	addToTest(scp.controlTab, fvFuncId, -1)
 	addToTest(scp.controlTab, dftFuncId, -1)
@@ -1025,7 +1043,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.extgenLayout.Add(scp.newExtGenTab(true))
 	}
 	left := container.New(layout.NewVBoxLayout())
-	themeChangeAction = widget.NewButtonWithIcon("", theme.CheckButtonIcon(), func() {
+	themeChangeAction = scp.newFocusButtonWithIcon("", theme.CheckButtonIcon(), func() {
 		if scp.theme == Theme(settings.DarkTheme) {
 			scp.theme = Theme(settings.LightTheme)
 			scp.Settings.Theme = settings.LightTheme
@@ -1057,7 +1075,7 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	addToTest(themeChangeAction, themeChangeActionId, -1)
 
-	scp.streamEnableButton = widget.NewButton(streamEnabledLabel, func() {
+	scp.streamEnableButton = scp.newFocusButton(streamEnabledLabel, func() {
 		if scp.psControl == nil {
 			return
 		}
@@ -1074,7 +1092,7 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	scp.updateStreamButtonState()
 
-	scp.runblockButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
+	scp.runblockButton = scp.newFocusButtonWithIcon("", theme.MediaPlayIcon(), func() {
 		if !scp.running {
 			scp.clearAllFtPersistentLayers()
 			scp.clearAllDftPersistentLayers()
@@ -1174,7 +1192,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.psControl.ResolutionMode.Store(int32(mode))
 
 	scp.initStatus()
-	var saveRasterButton, saveWindowButton *widget.Button
+	var saveRasterButton, saveWindowButton *FocusButton
 	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
 	if scp.runningMode != genericps.ScopeMode {
 		if scp.psControl != nil {
@@ -1201,6 +1219,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
+			scp.toolbar.Add(scp.helpButton)
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.status.label)
@@ -1224,33 +1243,51 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
+			scp.toolbar.Add(scp.helpButton)
 			scp.toolbar.Add(logout)
 			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateBackIcon())
 		}
 		scp.toolbar.Refresh()
-		scp.Window.SetContent(content)
+		scp.setContentWithHelp(content)
 	}
-	saveRasterButton = widget.NewButtonWithIcon("R", theme.DocumentSaveIcon(), func() {
+	saveRasterButton = scp.newFocusButtonWithIcon("R", theme.DocumentSaveIcon(), func() {
 		scp.saveRasterToPng()
 	})
-	saveWindowButton = widget.NewButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
+	saveWindowButton = scp.newFocusButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
 		scp.saveWindowToPng()
 	})
-	scp.recordGifButton = widget.NewButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
+	scp.recordGifButton = scp.newFocusButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
 		scp.toggleGifRecording()
 	})
 
-	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
-	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
-	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
+	fullScreen = scp.newFocusButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
+	restoreScreen = scp.newFocusButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
+	changeSide = scp.newFocusButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
-	// addToTest(fullScreen, fullScreenId, -1)
-	// addToTest(restoreScreen, restoreScreenId, -1)
+	addToTest(saveRasterButton, "saveRasterButton", -1)
+
+	addToTest(saveWindowButton, "saveWindowButton", -1)
+	if scp.recordGifButton != nil {
+		addToTest(scp.recordGifButton, "recordGifButton", -1)
+	}
+	if scp.streamEnableButton != nil {
+		addToTest(scp.streamEnableButton, "streamEnableButton", -1)
+	}
+	if scp.timeZoomButton != nil {
+		addToTest(scp.timeZoomButton, "timeZoomButton", -1)
+	}
+	addToTest(fullScreen, fullScreenId, -1)
+	addToTest(restoreScreen, restoreScreenId, -1)
 	addToTest(changeSide, changeSideId, -1)
-	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
+	scp.helpButton = scp.newFocusButtonWithIcon("", theme.HelpIcon(), func() {
+		scp.toggleHelp()
+	})
+	scp.updateHelpButtonState()
+	addToTest(scp.helpButton, helpButtonId, -1)
+	logout = scp.newFocusButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
 			scp.psControl.Shutdown()
 		}
@@ -1258,8 +1295,11 @@ func (scp *ScpDesc) build2000Gui() {
 			close(scp.status.statusQuit)
 			scp.status.statusQuit = nil
 		}
+		scp.stopFocusHelp()
 		scp.App.Quit()
 	})
+	addToTest(logout, "logout", -1)
+
 	if scp.Settings.Window.LeftControl {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
@@ -1272,6 +1312,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(restoreScreen)
 		scp.toolbar.Add(changeSide)
 		scp.toolbar.Add(themeChangeAction)
+		scp.toolbar.Add(scp.helpButton)
 		scp.toolbar.Add(logout)
 		scp.toolbar.Add(layout.NewSpacer())
 		scp.toolbar.Add(scp.status.label)
@@ -1288,6 +1329,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(restoreScreen)
 		scp.toolbar.Add(changeSide)
 		scp.toolbar.Add(themeChangeAction)
+		scp.toolbar.Add(scp.helpButton)
 		scp.toolbar.Add(logout)
 		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 	}
@@ -1423,7 +1465,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.channelViewers[i].dftDisplayOffsetInt = scp.Settings.Channels[i].DftDisplayVOffset
 		}
 	}
-	scp.Window.SetContent(content)
+	scp.setContentWithHelp(content)
 }
 
 func (scp *ScpDesc) updateDigitalSplit() {
@@ -1665,6 +1707,8 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		scp.Window.SetFullScreen(true)
 	}
 	scp.Window.Show()
+	scp.hookWindowMouseLeave(scp.Window)
+	scp.startFocusHelp()
 	return
 }
 

@@ -297,17 +297,17 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	}
 
 	arbDbRefContainer = container.NewVBox(arbDbRefDisp)
-	if scp.Settings.Dft.DisplayMode != settings.ModeArbitraryDB {
+	if scp.Settings.Dft.DisplayUnit != settings.UnitArbitraryDB {
 		arbDbRefContainer.Hide()
 	}
 	addToTest(arbDbRefDisp, ffFuncId+"ArbRef", ffTabIndex)
 
-	if scp.Settings.Dft.DisplayMode == "" {
-		scp.Settings.Dft.DisplayMode = settings.ModeDBFS
+	if scp.Settings.Dft.DisplayUnit == "" {
+		scp.Settings.Dft.DisplayUnit = settings.UnitDBFS
 	}
-	dispModeSelect := selectscroll.NewSelectScroll([]string{settings.ModeDBFS, settings.ModeVoltage, settings.ModeDBV, settings.ModeDBU, settings.ModeDBM, settings.ModeArbitraryDB}, func(opt string, ex selectscroll.Exception) {
-		scp.Settings.Dft.DisplayMode = opt
-		if opt == settings.ModeArbitraryDB {
+	dispUnitSelect := selectscroll.NewSelectScroll([]string{settings.UnitDBFS, settings.UnitVoltage, settings.UnitDBV, settings.UnitDBU, settings.UnitDBM, settings.UnitArbitraryDB}, func(opt string, ex selectscroll.Exception) {
+		scp.Settings.Dft.DisplayUnit = opt
+		if opt == settings.UnitArbitraryDB {
 			arbDbRefContainer.Show()
 		} else {
 			arbDbRefContainer.Hide()
@@ -315,8 +315,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
 		scp.SaveSettings()
-	}, settings.ModeVoltage)
-	dispModeSelect.SilentSetSelected(scp.Settings.Dft.DisplayMode)
+	}, settings.UnitVoltage)
+	dispUnitSelect.SilentSetSelected(scp.Settings.Dft.DisplayUnit)
 
 	logXCheck := widget.NewCheck("Log X", func(b bool) {
 		scp.Settings.Ff.XAxisLog = b
@@ -327,7 +327,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	logXCheck.Checked = scp.Settings.Ff.XAxisLog
 	addToTest(logXCheck, ffFuncId+"LogX", ffTabIndex)
 
-	dispModeControls := container.NewHBox(widget.NewLabel(" Mode:"), dispModeSelect, logXCheck)
+	dispUnitControls := container.NewHBox(widget.NewLabel(" Unit:"), dispUnitSelect, logXCheck)
 
 	targetCyclesDisp, _ := disp7.NewCustomDisp7Array(3, 0,
 		100,
@@ -402,12 +402,12 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 	genSettings := container.New(layout.NewVBoxLayout(), scp.ffMinFreqDisp,
 		scp.ffMaxFreqDisp, scp.ffDeltaTDisp, targetCyclesDisp, scp.ffStepFreqDisp,
-		dispModeControls, genVBox)
+		dispUnitControls, genVBox)
 	panel.Add(genSettings)
 
 	addToTest(scp.ffMinFreqDisp, ffMinFreqId, ffTabIndex)
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
-	addToTest(dispModeSelect, ffDispModeSelectId, ffTabIndex)
+	addToTest(dispUnitSelect, ffDispUnitSelectId, ffTabIndex)
 	addToTest(scp.useExtGenCheck, ffExtGenSelectId, ffTabIndex)
 
 	scp.updateFfWidgetLimits()

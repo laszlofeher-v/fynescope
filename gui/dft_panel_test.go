@@ -27,7 +27,7 @@ func TestNewDftPanel(t *testing.T) {
 			Theme: settings.DarkTheme,
 			Dft: settings.DftSettings{
 				Window:          settings.WindowRectangular,
-				DisplayMode:     settings.ModeVoltage,
+				DisplayUnit:     settings.UnitVoltage,
 				Bins:            1024,
 				ArbitraryDbRefV: 1.0,
 				MinFreq:         0,

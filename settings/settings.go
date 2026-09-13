@@ -42,6 +42,7 @@ type (
 		LeftControl      bool    `yaml:"leftsignalscreen"`
 		FilterActiveTab  int     `yaml:"filteractivetab"`
 		DemoGenActiveTab int     `yaml:"demogenactivetab"`
+		HelpEnabled      *bool   `yaml:"helpenabled,omitempty"`
 	}
 	ChTriggerSettings struct {
 		Type              string                       `yaml:"type"` // "Simple", "Advanced", "Window", "Complex", "Interval", "Pulse Width"
@@ -189,7 +190,7 @@ type (
 		MaxFreq         float64 `yaml:"maxfreq"`
 		MinFreq         float64 `yaml:"minfreq"`
 		Window          string  `yaml:"window"`
-		DisplayMode     string  `yaml:"displaymode"`
+		DisplayUnit     string  `yaml:"displayunit"`
 		Bins            int     `yaml:"bins"`
 		SampleRate      string  `yaml:"samplerate"`
 		SampleRateUnit  string  `yaml:"samplerateunits"`
@@ -286,9 +287,10 @@ const (
 
 func NewDefaultSettings() *PsSettings {
 	streamDefault := true
+	defaultHelpEnabled := true
 	return &PsSettings{
 		Window: WindowSettings{Width: 1366, Height: 768, LeftControl: false,
-			Function: 0},
+			Function: 0, HelpEnabled: &defaultHelpEnabled},
 		ScreenSize: ScreenSize1920x1080,
 		Time: TimeSettings{Unit: defaultTimeUnit, TriggerTimeOffset: 0, TimeDiv: defaultTime,
 			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit,
@@ -367,8 +369,8 @@ func NewDefaultSettings() *PsSettings {
 			Threshold:    0,
 			Hysteresis:   100,
 		},
-		Dft: DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayMode: ModeDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
-		Ff:  FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: ModeDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
+		Dft: DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayUnit: UnitDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
+		Ff:  FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: UnitDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Digital: DigitalSettings{
 			Ports: [2]DigitalPortSettings{
 				{Enabled: false, Threshold: 1500},

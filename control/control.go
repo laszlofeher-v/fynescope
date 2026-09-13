@@ -408,6 +408,9 @@ func (psControl *PscDesc) sendTrigger() (err error) {
 }
 
 func (psControl *PscDesc) SetScopeScreenWidth(w float64) {
+	if w > 1000000 {
+		w = 1000000
+	}
 	if psControl.scopeScreenWidth != w {
 		psControl.scopeScreenWidth = w
 		psControl.requestRestart()

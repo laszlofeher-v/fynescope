@@ -15,7 +15,7 @@ import (
 
 func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 	vbox := container.New(layout.NewVBoxLayout())
-	var xChecks []*widget.Check
+	var xChecks []*FocusCheck
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		chIndex := genericps.ChannelId(i)
@@ -32,15 +32,15 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		scp.channelViewers[chIndex].fvNameLabel = label
 
 		// Enabled Checkbox
-		enabledCheck := widget.NewCheck("Enabled", func(b bool) {
+		enabledCheck := scp.newFocusCheck("Enabled", func(b bool) {
 			scp.EnableChannel(chIndex, b)
 		})
 		enabledCheck.SetChecked(scp.Settings.Channels[chIndex].Enabled)
-		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, enabledCheck)
+		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, &enabledCheck.Check)
 		addToTest(enabledCheck, fvEnableId+chName, fvTabIndex)
 
 		// X-Axis Check
-		xCheck := widget.NewCheck("X-Axis", nil)
+		xCheck := scp.newFocusCheck("X-Axis", nil)
 		if scp.Settings.Channels[chIndex].FvMode == settings.FvArgument {
 			xCheck.SetChecked(true)
 		}
@@ -65,11 +65,11 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		}
 
 		// X10 Checkbox
-		x10Check := widget.NewCheck("X10", func(c bool) {
+		x10Check := scp.newFocusCheck("X10", func(c bool) {
 			scp.changeChannelX10(chIndex, c)
 		})
 		x10Check.SetChecked(scp.Settings.Channels[chIndex].X10)
-		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, x10Check)
+		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, &x10Check.Check)
 		addToTest(x10Check, fvX10Id+chName, fvTabIndex)
 
 		// Arrange settings to minimize width (f(t) style)

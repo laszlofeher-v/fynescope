@@ -9,8 +9,6 @@ import (
 	"math"
 	"strings"
 
-	"fyne.io/fyne/v2/widget"
-
 	"fynescope/control"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
@@ -1063,7 +1061,11 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 }
 
 func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
+	if scp.complexTriggerFocus != nil {
+		scp.focusWidget(scp.complexTriggerFocus)
+	}
 	scp.Settings.Trigger.ComplexEnabled = checked
+
 	if checked {
 		scp.triggerSettingMsg.Type = control.Complex
 	} else {
@@ -1788,8 +1790,11 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		scp.triggerSettingMsg.ThresholdMode = genericps.Level
 	}
 
-	scp.complexTriggerCheck = widget.NewCheck("Cmpx", scp.onComplexTriggerChange)
-	scp.complexTriggerCheck.SetChecked(scp.Settings.Trigger.ComplexEnabled)
+	scp.complexTriggerFocus = scp.newFocusCheck("Cmpx", scp.onComplexTriggerChange)
+	scp.complexTriggerFocus.SetChecked(scp.Settings.Trigger.ComplexEnabled)
+	scp.complexTriggerCheck = &scp.complexTriggerFocus.Check
+	addToTest(scp.complexTriggerFocus, "complexTriggerCheck", -1)
+
 
 	if scp.Settings.Trigger.ComplexEnabled {
 		scp.buildComplexTriggerMessage()
@@ -1981,7 +1986,8 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.MaxSamplingRate) / 1e9
 	scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 
-	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerCheck)
+	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerFocus)
+
 	boxThresh := container.New(&tightHBoxLayout{gap: -25}, scp.triggerThresholdDisp, scp.triggerLowerThresholdDisp, scp.etsSamplingRateDisp)
 	scp.boxEtsSettings = container.New(layout.NewHBoxLayout(), scp.etsInterleaveDisp, scp.etsCyclesDisp)
 

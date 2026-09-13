@@ -31,6 +31,10 @@ func (psControl *PscDesc) setEtsBuffer(sampleCount uint64, segmentIndex uint64) 
 }
 
 func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (err error) {
+	if sampleCount > 100000000 {
+		slog.Error("setBuffers requested excessive sampleCount, capping", "sampleCount", sampleCount)
+		sampleCount = 100000000
+	}
 	for chIndex := range psControl.receiveBuffer {
 		if len(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
 			if cap(psControl.receiveBuffer[chIndex]) < int(sampleCount) {

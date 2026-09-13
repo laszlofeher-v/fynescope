@@ -601,7 +601,7 @@ func (dv *dftViewer) draw() {
 			mag := cmplx.Abs(fftResult[i]) / normFactor // Magnitude in mV (since input samples are in mV)
 			val := float64(float32(mag) * yScale)
 
-			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				magnitudes[i] = val
 			} else {
 				// dB plot
@@ -609,20 +609,20 @@ func (dv *dftViewer) draw() {
 					magnitudes[i] = dbFloor
 				} else {
 					var db float64
-					if dv.scp.Settings.Dft.DisplayMode == settings.ModeDBFS {
+					if dv.scp.Settings.Dft.DisplayUnit == settings.UnitDBFS {
 						db = 20 * math.Log10(val)
 					} else {
 						vPeak := val * float64(genericps.RangeValuesMv[vRange]) / 1000.0
 						vRms := vPeak / math.Sqrt(2)
 
-						switch dv.scp.Settings.Dft.DisplayMode {
-						case settings.ModeDBV:
+						switch dv.scp.Settings.Dft.DisplayUnit {
+						case settings.UnitDBV:
 							db = 20 * math.Log10(vRms/1.0)
-						case settings.ModeDBU:
+						case settings.UnitDBU:
 							db = 20 * math.Log10(vRms/0.7746)
-						case settings.ModeDBM:
+						case settings.UnitDBM:
 							db = 20 * math.Log10(vRms/0.2236)
-						case settings.ModeArbitraryDB:
+						case settings.UnitArbitraryDB:
 							ref := dv.scp.Settings.Dft.ArbitraryDbRefV
 							if ref <= 0 {
 								ref = 1e-6
@@ -671,7 +671,7 @@ func (dv *dftViewer) draw() {
 		}
 
 		var startY float32
-		if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+		if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 			startY = float32(float64(bounds.Min.Y) + (1.0-magnitudes[minBinIdx])*float64(h) + yOffset)
 		} else {
 			startY = float32(float64(bounds.Min.Y) + (magnitudes[minBinIdx]/dbFloor)*float64(h) + yOffset)
@@ -713,7 +713,7 @@ func (dv *dftViewer) draw() {
 
 			var y float32
 
-			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				y = float32(float64(bounds.Min.Y) + (1.0-magnitudes[i])*float64(h) + yOffset)
 			} else {
 				y = float32(float64(bounds.Min.Y) + (magnitudes[i]/dbFloor)*float64(h) + yOffset)
@@ -784,7 +784,7 @@ func (dv *dftViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rec
 			yOffset := dv.scp.offsetNToDftY(dftDisplayOffsetInt)
 			var v_cursor float64
 			dbFloor := -100.0
-			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				v_cursor = (float64(bounds.Min.Y) + h + yOffset - float64(my)) / h
 			} else {
 				v_cursor = (float64(my) - float64(bounds.Min.Y) - yOffset) / h * dbFloor
@@ -926,14 +926,14 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			v_cursor := dv.inspectorDispVCur[chIdx]
 
 			var valStr, curStr string
-			if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				mv := v * float64(genericps.RangeValuesMv[vRange])
 				mvCur := v_cursor * float64(genericps.RangeValuesMv[vRange])
 				valStr = formatVoltageFloat64(mv, vRange)
 				curStr = formatVoltageFloat64(mvCur, vRange)
 			} else {
-				unitStr := dv.scp.Settings.Dft.DisplayMode
-				if unitStr == settings.ModeArbitraryDB {
+				unitStr := dv.scp.Settings.Dft.DisplayUnit
+				if unitStr == settings.UnitArbitraryDB {
 					unitStr = "dB"
 				}
 				valStr = fmt.Sprintf("%+.1f%s", v, unitStr)
@@ -946,14 +946,14 @@ func (dv *dftViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				dvCurV := v_cursor - refInstVCur[chIdx]
 
 				var dvValStr, dvCurStr string
-				if dv.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				if dv.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 					mv := dvV * float64(genericps.RangeValuesMv[vRange])
 					mvCur := dvCurV * float64(genericps.RangeValuesMv[vRange])
 					dvValStr = formatVoltageFloat64(mv, vRange)
 					dvCurStr = formatVoltageFloat64(mvCur, vRange)
 				} else {
-					unitStr := dv.scp.Settings.Dft.DisplayMode
-					if unitStr == settings.ModeArbitraryDB {
+					unitStr := dv.scp.Settings.Dft.DisplayUnit
+					if unitStr == settings.UnitArbitraryDB {
 						unitStr = "dB"
 					}
 					dvValStr = fmt.Sprintf("%.1f%s", dvV, unitStr)

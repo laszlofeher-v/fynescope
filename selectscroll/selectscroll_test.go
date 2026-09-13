@@ -6,7 +6,9 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/driver/desktop"
 	"github.com/stretchr/testify/assert"
+
 )
 
 func TestMain(m *testing.M) {
@@ -128,3 +130,33 @@ func TestScrolled(t *testing.T) {
 	assert.Equal(t, "20", ascChangedVal)
 	assert.Equal(t, None, ascChangedExc)
 }
+
+func TestSelectScrollFocus(t *testing.T) {
+	sel := NewSelectScroll([]string{"1", "2"}, func(string, Exception) {}, "1")
+	var focused fyne.Focusable
+	fyne.DoAndWait(func() {
+		w := fyne.CurrentApp().NewWindow("test")
+		w.SetContent(sel)
+		sel.focus()
+		focused = w.Canvas().Focused()
+		w.Close()
+	})
+	assert.Equal(t, sel, focused)
+}
+
+func TestSelectScrollMouseInFocus(t *testing.T) {
+	sel := NewSelectScroll([]string{"1", "2"}, func(string, Exception) {}, "1")
+	var focused fyne.Focusable
+	fyne.DoAndWait(func() {
+		w := fyne.CurrentApp().NewWindow("test")
+		w.SetContent(sel)
+		sel.MouseIn(&desktop.MouseEvent{})
+		focused = w.Canvas().Focused()
+		w.Close()
+	})
+	assert.Equal(t, sel, focused)
+}
+
+
+
+

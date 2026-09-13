@@ -81,7 +81,7 @@ func TestSubpackages(t *testing.T) {
 				// Avoid duplicate entries
 				alreadyAdded := false
 				for _, d := range subdirs {
-					if d == dir {
+					if d == "./"+dir {
 						alreadyAdded = true
 						break
 					}

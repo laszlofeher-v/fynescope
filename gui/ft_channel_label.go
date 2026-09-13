@@ -181,7 +181,7 @@ func (cl *ftChannelLabelViewer) draw() {
 		maxY := float64(yBounds.Max.Y)
 		minY := float64(yBounds.Min.Y)
 
-		if cl.scp.Settings.Dft.DisplayMode == "dB" {
+		if cl.scp.Settings.Dft.DisplayUnit == "dB" {
 			unitName := "dB"
 			left, _, right, _ := cl.scp.boundString(unitName)
 			dy := float32(yBounds.Dy()-1.0) / 10.0

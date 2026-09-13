@@ -374,7 +374,7 @@ func (ff *ffViewer) draw() {
 			ff.labelBounds[i] = image.Rect(minX, bounds.Min.Y, maxX, bounds.Max.Y)
 
 			var unitName string
-			if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				maxV := genericps.RangeValuesMv[vRange]
 				if maxV < 1000.0 {
 					unitName = "mV"
@@ -439,8 +439,8 @@ func (ff *ffViewer) draw() {
 					lastDrawnY = drawY
 				}
 			} else {
-				unitName = ff.scp.Settings.Dft.DisplayMode
-				if unitName == settings.ModeArbitraryDB {
+				unitName = ff.scp.Settings.Dft.DisplayUnit
+				if unitName == settings.UnitArbitraryDB {
 					unitName = "dB"
 				}
 				lx_unit := 0
@@ -606,19 +606,19 @@ func drawDashedLine(img draw.Image, x0, y0, x1, y1 float32, c color.Color) {
 }
 
 func calcFfDb(val float64, mode string, vRange genericps.RangeEnum, arbitraryDbRefV float64) float64 {
-	if mode == settings.ModeDBFS {
+	if mode == settings.UnitDBFS {
 		return 20 * math.Log10(val)
 	}
 	vPeak := val * float64(genericps.RangeValuesMv[vRange]) / 1000.0
 	vRms := vPeak / math.Sqrt(2)
 	switch mode {
-	case settings.ModeDBV:
+	case settings.UnitDBV:
 		return 20 * math.Log10(vRms/1.0)
-	case settings.ModeDBU:
+	case settings.UnitDBU:
 		return 20 * math.Log10(vRms/0.7746)
-	case settings.ModeDBM:
+	case settings.UnitDBM:
 		return 20 * math.Log10(vRms/0.2236)
-	case settings.ModeArbitraryDB:
+	case settings.UnitArbitraryDB:
 		ref := arbitraryDbRefV
 		if ref <= 0 {
 			ref = 1e-6
@@ -712,7 +712,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 				x := float32(getX(pt.freq))
 				var y float32
 
-				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 					val := pt.amp / genericps.RangeValuesMv[vRange]
 					if val > 1.0 {
 						val = 1.0
@@ -725,7 +725,7 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 					if val < 1e-10 {
 						db = dbFloor
 					} else {
-						db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
+						db = calcFfDb(val, ff.scp.Settings.Dft.DisplayUnit, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 					}
 					if db < dbFloor {
 						db = dbFloor
@@ -875,7 +875,7 @@ func (ff *ffViewer) calcValuesAt(mx float32, my float32, w float64, h float64, b
 		yOffset := ff.offsetNToFf(ffDisplayVOffset)
 		instPhaseCur[chIdx] = 180.0 - (float64(my)-float64(bounds.Min.Y))/h*360.0
 
-		if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+		if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 			val_cursor := (float64(bounds.Min.Y) + h + yOffset - float64(my)) / h
 			instAmpCur[chIdx] = val_cursor * float64(genericps.RangeValuesMv[vRange])
 		} else {
@@ -1039,7 +1039,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		var ampStr, ampCurStr, phaseStr, phaseCurStr string
 
 		if enabled {
-			if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+			if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 				ampStr = formatVoltageFloat64(ff.inspectorDispAmp[chIdx], vRange)
 				ampCurStr = formatVoltageFloat64(ff.inspectorDispAmpCur[chIdx], vRange)
 			} else {
@@ -1048,7 +1048,7 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if val < 1e-10 {
 					db = -80.0
 				} else {
-					db = calcFfDb(val, ff.scp.Settings.Dft.DisplayMode, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
+					db = calcFfDb(val, ff.scp.Settings.Dft.DisplayUnit, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
 				}
 				if db < -80.0 {
 					db = -80.0
@@ -1056,8 +1056,8 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				if db > 0 {
 					db = 0
 				}
-				unitStr := ff.scp.Settings.Dft.DisplayMode
-				if unitStr == settings.ModeArbitraryDB {
+				unitStr := ff.scp.Settings.Dft.DisplayUnit
+				if unitStr == settings.UnitArbitraryDB {
 					unitStr = "dB"
 				}
 				ampStr = fmt.Sprintf("%+.1f%s", db, unitStr)
@@ -1086,14 +1086,14 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 				dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
 				dvAmpCur := ff.inspectorDispAmpCur[chIdx] - refInstAmpCur[chIdx]
 
-				if ff.scp.Settings.Dft.DisplayMode == settings.ModeVoltage {
+				if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
 					mv := dvAmp * float64(genericps.RangeValuesMv[vRange])
 					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[vRange])
 					dAmpStr = formatVoltageFloat64(mv, vRange)
 					dAmpCurStr = formatVoltageFloat64(mvCur, vRange)
 				} else {
-					unitStr := ff.scp.Settings.Dft.DisplayMode
-					if unitStr == settings.ModeArbitraryDB {
+					unitStr := ff.scp.Settings.Dft.DisplayUnit
+					if unitStr == settings.UnitArbitraryDB {
 						unitStr = "dB"
 					}
 					dAmpStr = fmt.Sprintf("%.1f%s", dvAmp, unitStr)

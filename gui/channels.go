@@ -396,10 +396,11 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	var (
 		invertTriggerIpm *fyne.Container
-		invert           *widget.Check
-		x10              *widget.Check
+		invert           *FocusCheck
+		x10              *FocusCheck
 		vRange           *selectscroll.SelectScroll
-		trigger          *widget.Check
+		trigger          *FocusCheck
+
 		channelViewer    *channelViewerDesc
 		channel          *settings.ChSettings
 		ranges           []string
@@ -448,6 +449,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.EnableChannel(chIndex, c)
 	}
 	inverted := func(c bool) {
+		scp.focusWidget(invert)
 		scp.Settings.Channels[chIndex].Inverted = c
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
@@ -456,8 +458,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.SaveSettings()
 	}
 	x10Changed := func(c bool) {
+		scp.focusWidget(x10)
 		scp.changeChannelX10(chIndex, c)
 	}
+
 	triggerTypeChanged := func(option string, e selectscroll.Exception) {
 		direction, ok := triggerDirections[option]
 		if !ok {
@@ -484,7 +488,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		setChannel()
 	}
 	triggerSelected := func(checked bool) {
+		scp.focusWidget(trigger)
 		if !channel.Enabled { // TODO is it impossible?
+
 			channel.TriggerSource = false
 			scp.triggerCheck[chIndex].Checked = false
 			return
@@ -654,16 +660,20 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	addToTest(channelViewer.enableCheckbox, chEnableId+chId, ftTabIndex)
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
-	invert = widget.NewCheck("Inv", inverted)
+	invert = scp.newFocusCheck("Inv", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
-	channelViewer.invertCheckbox = invert
+	channelViewer.invertCheckbox = &invert.Check
 	addToTest(invert, invertId+chId, ftTabIndex)
-	trigger = widget.NewCheck("Trig", triggerSelected)
-	channelViewer.triggerCheckbox = trigger
-	scp.triggerCheck = append(scp.triggerCheck, trigger)
+	trigger = scp.newFocusCheck("Trig", triggerSelected)
+	channelViewer.triggerCheckbox = &trigger.Check
+	scp.triggerCheck = append(scp.triggerCheck, &trigger.Check)
 	addToTest(trigger, triggerCheckId+chId, ftTabIndex)
 
+	var pers *FocusCheck
 	persSelected := func(checked bool) {
+		if pers != nil {
+			scp.focusWidget(pers)
+		}
 		channel.Persistence = checked
 		scp.Settings.Channels[chIndex].Persistence = checked
 		if !checked {
@@ -672,9 +682,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.refreshRasters()
 		scp.SaveSettings()
 	}
-	pers := widget.NewCheck("Pers", persSelected)
+	pers = scp.newFocusCheck("Pers", persSelected)
 	pers.SetChecked(scp.Settings.Channels[chIndex].Persistence)
-	channelViewer.persistenceCheckbox = pers
+	channelViewer.persistenceCheckbox = &pers.Check
 	addToTest(pers, persId+chId, ftTabIndex)
 
 	rangesEnum, err := scp.psControl.ChannelRanges(chIndex)
@@ -692,10 +702,11 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	if s, ok := rangeEnumToString[vr]; ok {
 		vRange.SetSelected(s)
 	}
-	x10 = widget.NewCheck("X10", x10Changed)
+	x10 = scp.newFocusCheck("X10", x10Changed)
 	x10.SetChecked(scp.Settings.Channels[chIndex].X10)
 	addToTest(x10, x10Id+chId, ftTabIndex)
-	channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10)
+	channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, &x10.Check)
+
 	channelViewer.vRangeSelects = append(channelViewer.vRangeSelects, vRange)
 	addToTest(vRange, vRangeId+chId, ftTabIndex)
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, cChanged, "AC")
@@ -777,16 +788,26 @@ func (scp *ScpDesc) SetChannelColors(col color.Color,
 			scp.intervalTimeUpperDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
 		}
 	}
-	channelViewer.minV.SetOncolor(
-		cfg.Col[scp.Settings.ChannelColorIndex])
-	channelViewer.maxV.SetOncolor(
-		cfg.Col[scp.Settings.ChannelColorIndex])
-	channelViewer.offset.SetOncolor(
-		cfg.Col[scp.Settings.ChannelColorIndex])
-	channelViewer.frq.SetOncolor(
-		cfg.Col[scp.Settings.ChannelColorIndex])
-	channelViewer.period.SetOncolor(
-		cfg.Col[scp.Settings.ChannelColorIndex])
+	if channelViewer.minV != nil {
+		channelViewer.minV.SetOncolor(
+			cfg.Col[scp.Settings.ChannelColorIndex])
+	}
+	if channelViewer.maxV != nil {
+		channelViewer.maxV.SetOncolor(
+			cfg.Col[scp.Settings.ChannelColorIndex])
+	}
+	if channelViewer.offset != nil {
+		channelViewer.offset.SetOncolor(
+			cfg.Col[scp.Settings.ChannelColorIndex])
+	}
+	if channelViewer.frq != nil {
+		channelViewer.frq.SetOncolor(
+			cfg.Col[scp.Settings.ChannelColorIndex])
+	}
+	if channelViewer.period != nil {
+		channelViewer.period.SetOncolor(
+			cfg.Col[scp.Settings.ChannelColorIndex])
+	}
 	if channelViewer.fvNameLabel != nil {
 		channelViewer.fvNameLabel.Color =
 			cfg.Col[scp.Settings.ChannelColorIndex]
