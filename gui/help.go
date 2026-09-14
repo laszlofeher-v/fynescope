@@ -604,7 +604,7 @@ func initNamedHelp() {
 
 		namedHelpRegistry[rlcFuncId] = WidgetHelpInfo{
 			Title:       "RLC Meter",
-			Description: "Component measurement mode for resistance, inductance, and capacitance.",
+			Description: "Generator signal dispatch and simulated analog filters.",
 		}
 		namedHelpRegistry["RLC"] = namedHelpRegistry[rlcFuncId]
 
