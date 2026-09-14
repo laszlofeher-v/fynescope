@@ -640,7 +640,7 @@ func initNamedHelp() {
 
 		namedHelpRegistry[decodeFuncId] = WidgetHelpInfo{
 			Title:       "Protocol Decoder",
-			Description: "Serial protocol decoding for UART, SPI, I2C, and CAN buses.",
+			Description: "Serial protocol decoding for UART, SPI, and I2C buses.",
 		}
 		namedHelpRegistry["decode"] = namedHelpRegistry[decodeFuncId]
 
@@ -649,6 +649,39 @@ func initNamedHelp() {
 			Description: "Digital signal filter configuration and parameters.",
 		}
 		namedHelpRegistry["filter"] = namedHelpRegistry[filterFuncId]
+
+		// Undock buttons and auxiliary action buttons for extended tabs
+		namedHelpRegistry["filterUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock Filter Panel",
+			Description: "Opens the digital filter settings in an independent floating window.",
+		}
+		namedHelpRegistry["decodeUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock Protocol Decoder",
+			Description: "Opens the serial protocol decoder in an independent floating window.",
+		}
+		namedHelpRegistry["genUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock Generator Panel",
+			Description: "Opens the signal generator controls in an independent floating window.",
+		}
+		namedHelpRegistry["demoGenUndockBtn"] = namedHelpRegistry["genUndockBtn"]
+		namedHelpRegistry["demoGenUndockBtnMain"] = namedHelpRegistry["genUndockBtn"]
+		namedHelpRegistry["genAwgEditorBtn"] = WidgetHelpInfo{
+			Title:       "AWG Waveform Editor",
+			Description: "Opens the arbitrary waveform generator editor to design and upload custom waveforms.",
+		}
+		namedHelpRegistry["demoAwgEditorBtn"] = namedHelpRegistry["genAwgEditorBtn"]
+		namedHelpRegistry["vchUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock Virtual Channels",
+			Description: "Opens the virtual channels panel in an independent floating window.",
+		}
+		namedHelpRegistry["digGenUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock Digital Generator",
+			Description: "Opens the digital pattern generator in an independent floating window.",
+		}
+		namedHelpRegistry["extGenUndockBtn"] = WidgetHelpInfo{
+			Title:       "Undock External Generator",
+			Description: "Opens the external SCPI signal generator in an independent floating window.",
+		}
 
 		// Prefix rules for per-channel or dynamically named controls
 		prefixHelpRules = []prefixHelpRule{
@@ -968,6 +1001,401 @@ func initNamedHelp() {
 					Description: "Enables or disables digital input channels D8-D15.",
 				},
 			},
+
+			// Digital Filter controls
+			{
+				prefix: "zeroPhaseCheck",
+				info: WidgetHelpInfo{
+					Title:       "Zero Phase Filter (FiltFilt)",
+					Description: "Applies forward-backward filtering to eliminate phase distortion and signal group delay.",
+				},
+			},
+			{
+				prefix: "lpCheck",
+				info: WidgetHelpInfo{
+					Title:       "Lowpass Filter Enable",
+					Description: "Enables or disables lowpass filtering to attenuate high-frequency noise above the cutoff frequency.",
+				},
+			},
+			{
+				prefix: "lpEntry",
+				info: WidgetHelpInfo{
+					Title:       "Lowpass Cutoff Frequency",
+					Description: "Sets the -3dB cutoff frequency threshold for the lowpass filter.",
+				},
+			},
+			{
+				prefix: "lpUnitSelect",
+				info: WidgetHelpInfo{
+					Title:       "Lowpass Frequency Unit",
+					Description: "Selects frequency unit for lowpass cutoff (Hz, kHz, MHz).",
+				},
+			},
+			{
+				prefix: "hpCheck",
+				info: WidgetHelpInfo{
+					Title:       "Highpass Filter Enable",
+					Description: "Enables or disables highpass filtering to remove DC offsets and low-frequency drift.",
+				},
+			},
+			{
+				prefix: "hpEntry",
+				info: WidgetHelpInfo{
+					Title:       "Highpass Cutoff Frequency",
+					Description: "Sets the -3dB cutoff frequency threshold for the highpass filter.",
+				},
+			},
+			{
+				prefix: "hpUnitSelect",
+				info: WidgetHelpInfo{
+					Title:       "Highpass Frequency Unit",
+					Description: "Selects frequency unit for highpass cutoff (Hz, kHz, MHz).",
+				},
+			},
+			{
+				prefix: "bpCheck",
+				info: WidgetHelpInfo{
+					Title:       "Bandpass Filter Enable",
+					Description: "Enables or disables bandpass filtering to pass frequencies within the specified passband range.",
+				},
+			},
+			{
+				prefix: "bpEntry1",
+				info: WidgetHelpInfo{
+					Title:       "Bandpass Lower Cutoff",
+					Description: "Sets the lower frequency cutoff boundary for the bandpass filter.",
+				},
+			},
+			{
+				prefix: "bpUnitSelect1",
+				info: WidgetHelpInfo{
+					Title:       "Bandpass Lower Frequency Unit",
+					Description: "Selects frequency unit for bandpass lower cutoff (Hz, kHz, MHz).",
+				},
+			},
+			{
+				prefix: "bpEntry2",
+				info: WidgetHelpInfo{
+					Title:       "Bandpass Upper Cutoff",
+					Description: "Sets the upper frequency cutoff boundary for the bandpass filter.",
+				},
+			},
+			{
+				prefix: "bpUnitSelect2",
+				info: WidgetHelpInfo{
+					Title:       "Bandpass Upper Frequency Unit",
+					Description: "Selects frequency unit for bandpass upper cutoff (Hz, kHz, MHz).",
+				},
+			},
+			{
+				prefix: "bsCheck",
+				info: WidgetHelpInfo{
+					Title:       "Bandstop Filter Enable",
+					Description: "Enables or disables notch / bandstop filtering to reject frequencies within the stopband range.",
+				},
+			},
+			{
+				prefix: "bsEntry1",
+				info: WidgetHelpInfo{
+					Title:       "Bandstop Lower Cutoff",
+					Description: "Sets the lower frequency boundary for the notch / bandstop filter.",
+				},
+			},
+			{
+				prefix: "bsUnitSelect1",
+				info: WidgetHelpInfo{
+					Title:       "Bandstop Lower Frequency Unit",
+					Description: "Selects frequency unit for bandstop lower cutoff (Hz, kHz, MHz).",
+				},
+			},
+			{
+				prefix: "bsEntry2",
+				info: WidgetHelpInfo{
+					Title:       "Bandstop Upper Cutoff",
+					Description: "Sets the upper frequency boundary for the notch / bandstop filter.",
+				},
+			},
+			{
+				prefix: "bsUnitSelect2",
+				info: WidgetHelpInfo{
+					Title:       "Bandstop Upper Frequency Unit",
+					Description: "Selects frequency unit for bandstop upper cutoff (Hz, kHz, MHz).",
+				},
+			},
+
+			// Internal / Demo Signal Generator controls
+			{
+				prefix: genShowId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Channel Visibility",
+					Description: "Shows or hides waveform parameters for this generator output channel.",
+				},
+			},
+			{
+				prefix: genCheckId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Channel Output",
+					Description: "Enables or disables waveform generation for this channel.",
+				},
+			},
+			{
+				prefix: genWaveTypeId,
+				info: WidgetHelpInfo{
+					Title:       "Waveform Shape",
+					Description: "Selects generated waveform function: Sine, Square, Triangle, Ramp, DC, Noise, or Arbitrary.",
+				},
+			},
+			{
+				prefix: genFreqId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Frequency",
+					Description: "Sets periodic waveform frequency generated by the hardware.",
+				},
+			},
+			{
+				prefix: genAmpId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Amplitude",
+					Description: "Sets peak-to-peak output voltage amplitude of the generated waveform.",
+				},
+			},
+			{
+				prefix: genOffsetId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Offset",
+					Description: "Sets DC bias voltage added to the generated signal output.",
+				},
+			},
+			{
+				prefix: genMinFrqId,
+				info: WidgetHelpInfo{
+					Title:       "Sweep Start Frequency",
+					Description: "Sets lower frequency limit for generator frequency sweeps.",
+				},
+			},
+			{
+				prefix: genMaxFrqId,
+				info: WidgetHelpInfo{
+					Title:       "Sweep Stop Frequency",
+					Description: "Sets upper frequency limit for generator frequency sweeps.",
+				},
+			},
+			{
+				prefix: genStepFreqId,
+				info: WidgetHelpInfo{
+					Title:       "Sweep Frequency Step",
+					Description: "Sets frequency increment per step during frequency sweep.",
+				},
+			},
+			{
+				prefix: genDwellTimeId,
+				info: WidgetHelpInfo{
+					Title:       "Sweep Dwell Time",
+					Description: "Sets duration to hold each frequency during sweep.",
+				},
+			},
+			{
+				prefix: genRiseFallTimeId,
+				info: WidgetHelpInfo{
+					Title:       "Rise / Fall Time",
+					Description: "Sets edge transition time for pulses and square waves.",
+				},
+			},
+			{
+				prefix: genNoiseAmpId,
+				info: WidgetHelpInfo{
+					Title:       "Noise Amplitude",
+					Description: "Sets Gaussian noise injection level added to signal.",
+				},
+			},
+			{
+				prefix: genPhaseNoiseId,
+				info: WidgetHelpInfo{
+					Title:       "Phase Noise",
+					Description: "Sets simulated phase jitter / noise on the generator clock.",
+				},
+			},
+			{
+				prefix: genPhaseId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Phase",
+					Description: "Sets relative phase angle shift for signal generator waveform.",
+				},
+			},
+			{
+				prefix: genSweepId,
+				info: WidgetHelpInfo{
+					Title:       "Frequency Sweep Mode",
+					Description: "Controls frequency sweep generation: Off, Up, Down, or Up/Down.",
+				},
+			},
+			{
+				prefix: genOperationId,
+				info: WidgetHelpInfo{
+					Title:       "Generator Operation Mode",
+					Description: "Selects operational mode: continuous waveform, burst, or modulation.",
+				},
+			},
+			{
+				prefix: genFreqSetId,
+				info: WidgetHelpInfo{
+					Title:       "Frequency Presets",
+					Description: "Quick selection presets for standard test frequencies.",
+				},
+			},
+			{
+				prefix: genAmpdSetId,
+				info: WidgetHelpInfo{
+					Title:       "Amplitude Presets",
+					Description: "Quick selection presets for standard test amplitudes.",
+				},
+			},
+
+			// RLC filter simulation
+			{
+				prefix: "rlcGenSource",
+				info: WidgetHelpInfo{
+					Title:       "Generator Stimulus Source",
+					Description: "Selects signal generator source to drive through the simulated RLC circuit.",
+				},
+			},
+			{
+				prefix: rlcTypeId,
+				info: WidgetHelpInfo{
+					Title:       "RLC Filter Topology",
+					Description: "Selects simulated filter configuration: Lowpass, Highpass or Bandpass.",
+				},
+			},
+			{
+				prefix: rlcRId,
+				info: WidgetHelpInfo{
+					Title:       "Resistor Value (R)",
+					Description: "Sets resistance value for the RLC filter circuit.",
+				},
+			},
+			{
+				prefix: rlcRUnitId,
+				info: WidgetHelpInfo{
+					Title:       "Resistor Unit",
+					Description: "Selects resistance unit (mΩ, Ω, kΩ, MΩ).",
+				},
+			},
+			{
+				prefix: rlcLId,
+				info: WidgetHelpInfo{
+					Title:       "Inductor Value (L)",
+					Description: "Sets inductance value for the RLC filter circuit.",
+				},
+			},
+			{
+				prefix: rlcLUnitId,
+				info: WidgetHelpInfo{
+					Title:       "Inductor Unit",
+					Description: "Selects inductance unit (µH, mH, H).",
+				},
+			},
+			{
+				prefix: rlcCId,
+				info: WidgetHelpInfo{
+					Title:       "Capacitor Value (C)",
+					Description: "Sets capacitance value for the RLC filter circuit.",
+				},
+			},
+			{
+				prefix: rlcCUnitId,
+				info: WidgetHelpInfo{
+					Title:       "Capacitor Unit",
+					Description: "Selects capacitance unit (pF, nF, µF, mF).",
+				},
+			},
+
+			// Virtual channels
+			{
+				prefix: vchNameEntryId,
+				info: WidgetHelpInfo{
+					Title:       "Virtual Channel Name",
+					Description: "Assigns an identifier name to the mathematical virtual channel (e.g. Math1).",
+				},
+			},
+			{
+				prefix: vchExprEntryId,
+				info: WidgetHelpInfo{
+					Title:       "Math Expression",
+					Description: "Mathematical expression defining the virtual channel waveform (e.g. ChA + ChB, ChA - ChB, ChA * ChB).",
+				},
+			},
+			{
+				prefix: vchAcceptBtnId,
+				info: WidgetHelpInfo{
+					Title:       "Apply Expression",
+					Description: "Parses and activates the virtual channel mathematical formula.",
+				},
+			},
+			{
+				prefix: vchDeleteBtnId,
+				info: WidgetHelpInfo{
+					Title:       "Delete Virtual Channel",
+					Description: "Removes this virtual channel from waveform calculation and display.",
+				},
+			},
+			{
+				prefix: vchNewBtnId,
+				info: WidgetHelpInfo{
+					Title:       "New Virtual Channel",
+					Description: "Creates a new mathematical virtual channel waveform.",
+				},
+			},
+
+			// Digital generator
+			{
+				prefix: "digGenPort0Check",
+				info: WidgetHelpInfo{
+					Title:       "Digital Generator Port 0",
+					Description: "Enables or disables pattern stimulus generation on digital output lines D0-D7.",
+				},
+			},
+			{
+				prefix: "digGenPort1Check",
+				info: WidgetHelpInfo{
+					Title:       "Digital Generator Port 1",
+					Description: "Enables or disables pattern stimulus generation on digital output lines D8-D15.",
+				},
+			},
+			{
+				prefix: "digGenFreqDisp",
+				info: WidgetHelpInfo{
+					Title:       "Pattern Clock Frequency",
+					Description: "Sets clock frequency for digital pattern generation.",
+				},
+			},
+			{
+				prefix: "digGenDirSelect",
+				info: WidgetHelpInfo{
+					Title:       "Pattern Shift Direction",
+					Description: "Sets bit shift pattern direction: forward or reverse.",
+				},
+			},
+			{
+				prefix: "digGenEncSelect",
+				info: WidgetHelpInfo{
+					Title:       "Pattern Encoding",
+					Description: "Selects digital output encoding scheme: Binary or Gray code.",
+				},
+			},
+			{
+				prefix: "digGenModeSelect",
+				info: WidgetHelpInfo{
+					Title:       "Pattern Generator Mode",
+					Description: "Selects digital generator operating mode: asynchronous, synchronous.",
+				},
+			},
+			{
+				prefix: "digGenBitDelayDisp",
+				info: WidgetHelpInfo{
+					Title:       "Inter-Bit Delay",
+					Description: "Sets timing delay between consecutive output bits.",
+				},
+			},
 		}
 	})
 }
@@ -1109,17 +1537,9 @@ func (scp *ScpDesc) getHelpForWidget(focused fyne.Focusable) (string, string) {
 	// 3. Heuristic fallback based on widget concrete type
 	switch w := focused.(type) {
 	case *FocusButton:
-		title := "Button"
-		if w.Text != "" {
-			title = w.Text + " Button"
-		}
-		return title, "Click or press Space/Enter to activate this action."
+		return getButtonHelp(w.Text)
 	case *widget.Button:
-		title := "Button"
-		if w.Text != "" {
-			title = w.Text + " Button"
-		}
-		return title, "Click or press Space/Enter to activate this action."
+		return getButtonHelp(w.Text)
 	case *TabFocusProxy:
 		if info, exists := namedHelpRegistry[w.tabText]; exists {
 			return info.Title, info.Description
@@ -1127,49 +1547,9 @@ func (scp *ScpDesc) getHelpForWidget(focused fyne.Focusable) (string, string) {
 		title := w.tabText + " Tab"
 		return title, "Selects the " + w.tabText + " function tab."
 	case *FocusCheck:
-		title := "Checkbox"
-		if w.Text != "" {
-			title = w.Text
-		}
-		switch strings.ToLower(w.Text) {
-		case "enabled":
-			return "Channel Enable", "Enables or disables signal acquisition and waveform display for this channel."
-		case "x-axis":
-			return "X-Axis Mode", "Selects this channel as the horizontal X-axis signal for f(v) X-Y mode."
-		case "inv":
-			return "Invert Waveform", "Inverts the voltage polarity of the channel waveform."
-		case "trig":
-			return "Trigger Source", "Selects this analog channel as the primary source for hardware triggering."
-		case "pers":
-			return "Persistence", "Accumulates past waveform traces on screen to visualize noise, jitter, and intermittent events."
-		case "x10", "x1":
-			return "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation."
-		case "cmpx":
-			return "Complex Trigger", "Enables advanced complex hardware triggering conditions and qualifiers."
-		}
-		return title, "Click or press Space to toggle this option on or off."
+		return getCheckHelp(w.Text)
 	case *widget.Check:
-		title := "Checkbox"
-		if w.Text != "" {
-			title = w.Text
-		}
-		switch strings.ToLower(w.Text) {
-		case "enabled":
-			return "Channel Enable", "Enables or disables signal acquisition and waveform display for this channel."
-		case "x-axis":
-			return "X-Axis Mode", "Selects this channel as the horizontal X-axis signal for f(v) X-Y mode."
-		case "inv":
-			return "Invert Waveform", "Inverts the voltage polarity of the channel waveform."
-		case "trig":
-			return "Trigger Source", "Selects this analog channel as the primary source for hardware triggering."
-		case "pers":
-			return "Persistence", "Accumulates past waveform traces on screen to visualize noise, jitter, and intermittent events."
-		case "x10", "x1":
-			return "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation."
-		case "cmpx":
-			return "Complex Trigger", "Enables advanced complex hardware triggering conditions and qualifiers."
-		}
-		return title, "Click or press Space to toggle this option on or off."
+		return getCheckHelp(w.Text)
 	case *disp7.DigitArray:
 		return "Numeric Value Editor", "Interactive 7-segment numeric display. Click individual digits, use arrow keys, or scroll mouse wheel to increment or decrement the value."
 	case *disp16.HexArray:
@@ -1182,23 +1562,131 @@ func (scp *ScpDesc) getHelpForWidget(focused fyne.Focusable) (string, string) {
 		if w.PlaceHolder != "" {
 			title = w.PlaceHolder
 		}
+		lower := strings.ToLower(title)
+		switch {
+		case strings.Contains(lower, "cutoff"):
+			return title, "Sets filter cutoff frequency threshold value."
+		case strings.Contains(lower, "threshold"):
+			return title, "Sets voltage threshold for logic level detection."
+		case strings.Contains(lower, "hysteresis"):
+			return title, "Sets noise immunity hysteresis voltage band."
+		case strings.Contains(lower, "expression") || strings.Contains(lower, "math"):
+			return title, "Enter mathematical formula (e.g. ChA + ChB)."
+		}
 		return title, "Type text or numeric values into this input field."
 	case *sliderscroll.SliderScroll, *widget.Slider:
 		return "Value Slider", "Drag the slider knob or scroll mouse wheel to adjust value smoothly."
 	case *selectscroll.SelectScroll:
-		title := "Selection Option"
-		if w.Selected != "" {
-			title = w.Selected
+		formatTitle := func(base string) string {
+			if w.Selected != "" {
+				return base + " (" + w.Selected + ")"
+			}
+			return base
 		}
 		if len(w.Options) == 2 && ((w.Options[0] == "AC" && w.Options[1] == "DC") || (w.Options[0] == "DC" && w.Options[1] == "AC")) {
-			return "Input Coupling (" + title + ")", "Selects input coupling: AC coupling (blocks DC bias) or DC coupling."
+			return formatTitle("Input Coupling"), "Selects input coupling: AC coupling (blocks DC bias) or DC coupling."
 		}
-		return "Selection Option (" + title + ")", "Click, use arrow keys, or scroll mouse wheel to choose from available configuration options."
+		isFreqUnit := func(s string) bool {
+			s = strings.ToLower(s)
+			return s == "hz" || s == "khz" || s == "mhz" || strings.Contains(s, "unit")
+		}
+		isFreqOptions := len(w.Options) == 3 && w.Options[0] == "Hz" && w.Options[1] == "kHz" && w.Options[2] == "MHz"
+
+		if isFreqUnit(w.PlaceHolder) || isFreqUnit(w.Selected) || isFreqOptions {
+			return formatTitle("Frequency Unit"), "Selects frequency unit (Hz, kHz, MHz) for this cutoff or parameter."
+		}
+
+		if w.PlaceHolder != "" && w.PlaceHolder != w.Selected {
+			c := strings.ToLower(w.PlaceHolder)
+			switch {
+			case strings.Contains(c, "bit order"):
+				return formatTitle("Bit Order"), "Selects serial bit transmission order: LSB First or MSB First."
+			case strings.Contains(c, "parity"):
+				return formatTitle("Parity"), "Selects serial communication parity bit mode: None, Even, or Odd."
+			case strings.Contains(c, "protocol"):
+				return formatTitle("Protocol"), "Selects serial protocol: UART, SPI, I2C, or CAN."
+			case strings.Contains(c, "baud"):
+				return formatTitle("Baud Rate"), "Selects communication baud rate frequency for serial decoding."
+			case strings.Contains(c, "data bits"):
+				return formatTitle("Data Bits"), "Selects number of payload data bits per frame."
+			case strings.Contains(c, "stop bits"):
+				return formatTitle("Stop Bits"), "Selects number of stop bits terminating each frame."
+			default:
+				return formatTitle(w.PlaceHolder), "Click, use arrow keys, or scroll mouse wheel to choose " + w.PlaceHolder + "."
+			}
+		}
+		return formatTitle("Selection Option"), "Click, use arrow keys, or scroll mouse wheel to choose from available configuration options."
 	case *widget.Select:
 		return "Selection Dropdown", "Click or scroll mouse wheel to choose from available configuration options."
 	default:
 		return "Control", "Focused user interface control. Interact using mouse or keyboard."
 	}
+}
+
+func getButtonHelp(text string) (string, string) {
+	title := "Button"
+	if text != "" {
+		title = text + " Button"
+	}
+	switch strings.ToLower(text) {
+	case "undock":
+		return "Undock Panel", "Opens this control panel in an independent floating window."
+	case "apply", "accept":
+		return "Apply Changes", "Applies the current configuration changes."
+	case "delete":
+		return "Delete Item", "Removes the selected item or configuration."
+	case "new":
+		return "New Item", "Creates a new item or channel configuration."
+	}
+	if strings.HasPrefix(text, "Ch ") {
+		return text + " Channel", "Selects channel configuration parameters to display."
+	}
+	return title, "Click or press Space/Enter to activate this action."
+}
+
+func getCheckHelp(text string) (string, string) {
+	title := "Checkbox"
+	if text != "" {
+		title = text
+	}
+	lower := strings.ToLower(text)
+	switch {
+	case lower == "enabled":
+		return "Channel Enable", "Enables or disables signal acquisition and waveform display for this channel."
+	case lower == "x-axis":
+		return "X-Axis Mode", "Selects this channel as the horizontal X-axis signal for f(v) X-Y mode."
+	case lower == "inv":
+		return "Invert Waveform", "Inverts the voltage polarity of the channel waveform."
+	case lower == "trig":
+		return "Trigger Source", "Selects this analog channel as the primary source for hardware triggering."
+	case lower == "pers":
+		return "Persistence", "Accumulates past waveform traces on screen to visualize noise, jitter, and intermittent events."
+	case lower == "x10" || lower == "x1":
+		return "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation."
+	case lower == "cmpx":
+		return "Complex Trigger", "Enables advanced complex hardware triggering conditions and qualifiers."
+	case strings.Contains(lower, "zero phase"):
+		return "Zero Phase Filter (FiltFilt)", "Applies forward-backward filtering to eliminate phase distortion and signal group delay."
+	case strings.Contains(lower, "lowpass"):
+		return "Lowpass Filter Enable", "Enables or disables lowpass filtering to attenuate high-frequency noise above the cutoff frequency."
+	case strings.Contains(lower, "highpass"):
+		return "Highpass Filter Enable", "Enables or disables highpass filtering to remove DC offsets and low-frequency drift."
+	case strings.Contains(lower, "bandpass"):
+		return "Bandpass Filter Enable", "Enables or disables bandpass filtering to pass frequencies within the specified passband range."
+	case strings.Contains(lower, "bandstop"):
+		return "Bandstop Filter Enable", "Enables or disables notch / bandstop filtering to reject frequencies within the stopband range."
+	case strings.Contains(lower, "bit lines"):
+		return "Show Bit Lines", "Displays vertical timing marker lines for decoded serial bits on the waveform display."
+	case strings.Contains(lower, "active high"):
+		return "CS Active High", "Configures Chip Select polarity as active-high instead of active-low."
+	case strings.Contains(lower, "cpol"):
+		return "Clock Polarity (CPOL)", "Configures SPI idle clock polarity: 0 for low, 1 for high."
+	case strings.Contains(lower, "cpha"):
+		return "Clock Phase (CPHA)", "Configures SPI clock sampling phase: 0 for leading edge, 1 for trailing edge."
+	case strings.Contains(lower, "invert"):
+		return "Invert Signal", "Inverts the logic polarity of the decoded input signal."
+	}
+	return title, "Click or press Space to toggle this option on or off."
 }
 
 func (scp *ScpDesc) findFocusedWidget() (fyne.Focusable, fyne.Canvas) {

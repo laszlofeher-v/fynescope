@@ -144,4 +144,5 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	scp.controlTab.Items = newItems
 	scp.controlTab.Refresh()
 	scp.controlTab.Select(tab)
+	scp.getOrCreateTabProxy(tab)
 }

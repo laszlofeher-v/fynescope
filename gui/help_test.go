@@ -685,4 +685,125 @@ func TestDftPanelCheckboxesFocusAndHelp(t *testing.T) {
 	}
 }
 
+func TestExtendedTabHelp(t *testing.T) {
+	scp := &ScpDesc{
+		Settings: settings.NewDefaultSettings(),
+	}
+
+	// 1. Digital filter controls registered via addToTest
+	lpCheck := widget.NewCheck("Enable Lowpass Filter", func(bool) {})
+	addToTest(lpCheck, "lpCheckA", filterTabIndex)
+	title, desc := scp.getHelpForWidget(lpCheck)
+	assert.Equal(t, "Lowpass Filter Enable", title)
+	assert.Contains(t, desc, "lowpass filtering")
+
+	lpEntry := widget.NewEntry()
+	addToTest(lpEntry, "lpEntryA", filterTabIndex)
+	title, desc = scp.getHelpForWidget(lpEntry)
+	assert.Equal(t, "Lowpass Cutoff Frequency", title)
+	assert.Contains(t, desc, "-3dB cutoff")
+
+	lpUnitSelect := selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(string, selectscroll.Exception) {}, "kHz")
+	addToTest(lpUnitSelect, "lpUnitSelectA", filterTabIndex)
+	title, desc = scp.getHelpForWidget(lpUnitSelect)
+	assert.Equal(t, "Lowpass Frequency Unit", title)
+	assert.Contains(t, desc, "frequency unit")
+
+	hpCheck := widget.NewCheck("Enable Highpass Filter", func(bool) {})
+	addToTest(hpCheck, "hpCheckB", filterTabIndex)
+	title, desc = scp.getHelpForWidget(hpCheck)
+	assert.Equal(t, "Highpass Filter Enable", title)
+
+	bpCheck := widget.NewCheck("Enable Bandpass Filter", func(bool) {})
+	addToTest(bpCheck, "bpCheckA", filterTabIndex)
+	title, desc = scp.getHelpForWidget(bpCheck)
+	assert.Equal(t, "Bandpass Filter Enable", title)
+
+	zeroPhaseCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(bool) {})
+	addToTest(zeroPhaseCheck, "zeroPhaseCheckA", filterTabIndex)
+	title, desc = scp.getHelpForWidget(zeroPhaseCheck)
+	assert.Equal(t, "Zero Phase Filter (FiltFilt)", title)
+	assert.Contains(t, desc, "forward-backward filtering")
+
+	filterUndock := widget.NewButton("Undock", func() {})
+	addToTest(filterUndock, "filterUndockBtn", filterTabIndex)
+	title, desc = scp.getHelpForWidget(filterUndock)
+	assert.Equal(t, "Undock Filter Panel", title)
+
+	// 2. Generator controls
+	genWave := selectscroll.NewSelectScroll([]string{"Sine", "Square"}, func(string, selectscroll.Exception) {}, "Sine")
+	addToTest(genWave, genWaveTypeId, genTabIndex)
+	title, desc = scp.getHelpForWidget(genWave)
+	assert.Equal(t, "Waveform Shape", title)
+
+	genFreq := widget.NewEntry()
+	addToTest(genFreq, genFreqId, genTabIndex)
+	title, desc = scp.getHelpForWidget(genFreq)
+	assert.Equal(t, "Generator Frequency", title)
+
+	genUndock := widget.NewButton("Undock", func() {})
+	addToTest(genUndock, "genUndockBtn", genTabIndex)
+	title, desc = scp.getHelpForWidget(genUndock)
+	assert.Equal(t, "Undock Generator Panel", title)
+
+	// 3. RLC simulation controls
+	rlcType := selectscroll.NewSelectScroll([]string{"Lowpass", "Highpass"}, func(string, selectscroll.Exception) {}, "Lowpass")
+	addToTest(rlcType, rlcTypeId+"A", rlcTabIndex)
+	title, desc = scp.getHelpForWidget(rlcType)
+	assert.Equal(t, "RLC Filter Topology", title)
+
+	rlcR := widget.NewEntry()
+	addToTest(rlcR, rlcRId+"A", rlcTabIndex)
+	title, desc = scp.getHelpForWidget(rlcR)
+	assert.Equal(t, "Resistor Value (R)", title)
+
+	// 4. Virtual channels
+	vchName := widget.NewEntry()
+	addToTest(vchName, vchNameEntryId, vchTabIndex)
+	title, desc = scp.getHelpForWidget(vchName)
+	assert.Equal(t, "Virtual Channel Name", title)
+
+	vchExpr := widget.NewEntry()
+	addToTest(vchExpr, vchExprEntryId, vchTabIndex)
+	title, desc = scp.getHelpForWidget(vchExpr)
+	assert.Equal(t, "Math Expression", title)
+
+	// 5. Protocol decoder
+	decUndock := widget.NewButton("Undock", func() {})
+	addToTest(decUndock, "decodeUndockBtn", decodeTabIndex)
+	title, desc = scp.getHelpForWidget(decUndock)
+	assert.Equal(t, "Undock Protocol Decoder", title)
+
+	// 6. Heuristic fallbacks for unregistered controls
+	unregCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(bool) {})
+	title, desc = scp.getHelpForWidget(unregCheck)
+	assert.Equal(t, "Zero Phase Filter (FiltFilt)", title)
+
+	unregLpCheck := widget.NewCheck("Enable Lowpass Filter", func(bool) {})
+	title, desc = scp.getHelpForWidget(unregLpCheck)
+	assert.Equal(t, "Lowpass Filter Enable", title)
+
+	unregCutoffEntry := widget.NewEntry()
+	unregCutoffEntry.PlaceHolder = "Cutoff Freq"
+	title, desc = scp.getHelpForWidget(unregCutoffEntry)
+	assert.Equal(t, "Cutoff Freq", title)
+	assert.Contains(t, desc, "filter cutoff")
+
+	unregUndockBtn := widget.NewButton("Undock", func() {})
+	title, desc = scp.getHelpForWidget(unregUndockBtn)
+	assert.Equal(t, "Undock Panel", title)
+
+	unregSelectScroll := selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(string, selectscroll.Exception) {}, "kHz")
+	unregSelectScroll.SetSelected("kHz")
+	title, desc = scp.getHelpForWidget(unregSelectScroll)
+	assert.Equal(t, "Frequency Unit (kHz)", title)
+	assert.Contains(t, desc, "frequency unit")
+
+	// Even without name, when placeholder is unit and nothing selected yet:
+	unregSelectScroll2 := selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(string, selectscroll.Exception) {}, "Cutoff Unit")
+	title, desc = scp.getHelpForWidget(unregSelectScroll2)
+	assert.Equal(t, "Frequency Unit", title)
+	assert.Contains(t, desc, "frequency unit")
+}
+
 
