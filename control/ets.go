@@ -70,8 +70,13 @@ func etsBlockMode(psControl *PscDesc) state {
 		psControl.getTriggerCh <- &psControl.getTrigger
 		newSettings := <-psControl.getTrigger.newSettings
 
+		const maxEtsSamples = 250000
+
 		psControl.refreshTime = time.Now()
-		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
+		minSampleCount := uint64(math.Round(psControl.scopeScreenWidth))
+		if minSampleCount < 1024 {
+			minSampleCount = 1024
+		}
 		slog.Debug("prepare", "psControl.scopeScreenWidth", psControl.scopeScreenWidth)
 
 		sampleCount, err := psControl.memorySegments(uint64(1))
@@ -79,9 +84,13 @@ func etsBlockMode(psControl *PscDesc) state {
 			slog.Error("ETS prepare: memorySegments failed", "error", err)
 			return err
 		}
-		if sampleCount < psControl.SampleCountRequired {
-			psControl.SampleCountRequired = sampleCount
+		if sampleCount > 0 && minSampleCount > sampleCount {
+			minSampleCount = sampleCount
 		}
+		if minSampleCount > maxEtsSamples {
+			minSampleCount = maxEtsSamples
+		}
+		psControl.SampleCountRequired = minSampleCount
 		etsDx := psControl.scopeScreenWidth / (psControl.maxScreenTime * 1e15)
 		slog.Debug("draw", "etsDx", etsDx)
 
@@ -153,7 +162,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		} else {
 			psControl.timeBase = 0
 		}
-		_, _, err = psControl.getTimeBase(psControl.SampleCountRequired)
+		maxSampleCount, _, err := psControl.getTimeBase(psControl.SampleCountRequired)
 		if err != nil {
 			slog.Error("ETS prepare: getTimeBase failed", "error", err)
 			return err
@@ -200,14 +209,17 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		rawSampleCount := uint64(math.Round(float64(psControl.maxScreenTime) / psControl.SamplingTimeInterval))
 
-		const maxEtsSamples = 250000
-		if rawSampleCount > maxEtsSamples {
-			slog.Debug("ETS sample count clamped to safe limit", "original", rawSampleCount, "max", maxEtsSamples)
-			rawSampleCount = maxEtsSamples
+		limit := uint64(maxEtsSamples)
+		if maxSampleCount > 0 && maxSampleCount < limit {
+			limit = maxSampleCount
 		}
-		if rawSampleCount > sampleCount {
-			slog.Debug("ETS sample count clamped to memory segment limit", "original", rawSampleCount, "max", sampleCount)
-			rawSampleCount = sampleCount
+		if sampleCount > 0 && sampleCount < limit {
+			limit = sampleCount
+		}
+
+		if rawSampleCount > limit {
+			slog.Debug("ETS sample count clamped to safe limit", "original", rawSampleCount, "max", limit)
+			rawSampleCount = limit
 		}
 		if rawSampleCount < 2 {
 			slog.Debug("ETS sample count clamped to minimum", "original", rawSampleCount, "min", 2)
