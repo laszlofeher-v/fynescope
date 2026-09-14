@@ -1074,6 +1074,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.SaveSettings()
 	})
 	addToTest(themeChangeAction, themeChangeActionId, -1)
+	RegisterWidgetHelp(themeChangeAction, "Toggle Theme", "Switches the user interface color scheme between dark theme and light theme.")
 
 	scp.streamEnableButton = scp.newFocusButton(streamEnabledLabel, func() {
 		if scp.psControl == nil {
@@ -1176,6 +1177,7 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 	})
 	addToTest(scp.runblockButton, runblockButtonId, -1)
+	RegisterWidgetHelp(scp.runblockButton, "Run / Pause", "Starts or stops continuous oscilloscope waveform acquisition and display updates.")
 	setfullscreen := func() {
 		scp.Settings.Window.Fullscreen = true
 		scp.Window.SetFullScreen(true)
@@ -1276,25 +1278,34 @@ func (scp *ScpDesc) build2000Gui() {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
 	addToTest(saveRasterButton, "saveRasterButton", -1)
+	RegisterWidgetHelp(saveRasterButton, "Save Raster (R)", "Saves the current waveform signal screen to a PNG image file.")
 
 	addToTest(saveWindowButton, "saveWindowButton", -1)
+	RegisterWidgetHelp(saveWindowButton, "Save Window (W)", "Captures and saves the entire application window to a PNG image file.")
 	if scp.recordGifButton != nil {
 		addToTest(scp.recordGifButton, "recordGifButton", -1)
+		RegisterWidgetHelp(scp.recordGifButton, "Record GIF", "Records live oscilloscope display frames and saves them as an animated GIF image file.")
 	}
 	if scp.streamEnableButton != nil {
 		addToTest(scp.streamEnableButton, "streamEnableButton", -1)
+		RegisterWidgetHelp(scp.streamEnableButton, "Streaming Mode", "Toggles real-time streaming acquisition mode for continuous gapless data capture.")
 	}
 	if scp.timeZoomButton != nil {
 		addToTest(scp.timeZoomButton, "timeZoomButton", -1)
+		RegisterWidgetHelp(scp.timeZoomButton, "Time Zoom", "Opens the Time Zoom window to examine high-resolution details of captured waveforms.")
 	}
 	addToTest(fullScreen, fullScreenId, -1)
+	RegisterWidgetHelp(fullScreen, "Full Screen", "Expands the oscilloscope window to occupy the entire display monitor.")
 	addToTest(restoreScreen, restoreScreenId, -1)
+	RegisterWidgetHelp(restoreScreen, "Restore Window", "Restores the oscilloscope window from full screen to normal windowed size.")
 	addToTest(changeSide, changeSideId, -1)
+	RegisterWidgetHelp(changeSide, "Move Controls", "Relocates the side control panel between the left and right sides of the waveform screen.")
 	scp.helpButton = scp.newFocusButtonWithIcon("", theme.HelpIcon(), func() {
 		scp.toggleHelp()
 	})
 	scp.updateHelpButtonState()
 	addToTest(scp.helpButton, helpButtonId, -1)
+	RegisterWidgetHelp(scp.helpButton, "Help Toggle (?)", "Toggles contextual focus help on or off. When enabled, holding focus on any control for a moment displays helpful guidance on its functionality.")
 	logout = scp.newFocusButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
 			scp.psControl.Shutdown()
@@ -1307,6 +1318,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.App.Quit()
 	})
 	addToTest(logout, "logout", -1)
+	RegisterWidgetHelp(logout, "Disconnect & Quit", "Safely stops data capture, shuts down scope hardware, saves settings, and quits the application.")
 
 	if scp.Settings.Window.LeftControl {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)

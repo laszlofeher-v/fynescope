@@ -38,6 +38,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		enabledCheck.SetChecked(scp.Settings.Channels[chIndex].Enabled)
 		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, &enabledCheck.Check)
 		addToTest(enabledCheck, fvEnableId+chName, fvTabIndex)
+		RegisterWidgetHelp(enabledCheck, "Channel Enable (f(v))", "Enables or disables this channel for X-Y voltage vs voltage display.")
 
 		// X-Axis Check
 		xCheck := scp.newFocusCheck("X-Axis", nil)
@@ -46,6 +47,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		}
 		xChecks = append(xChecks, xCheck)
 		addToTest(xCheck, fvXCheckId+chName, fvTabIndex)
+		RegisterWidgetHelp(xCheck, "X-Axis Mode", "Selects this channel as the horizontal X-axis signal for f(v) X-Y mode.")
 
 		// Range Selector
 		rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
@@ -58,6 +60,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		}, "+500m")
 		scp.channelViewers[chIndex].vRangeSelects = append(scp.channelViewers[chIndex].vRangeSelects, vRange)
 		addToTest(vRange, fvVRangeId+chName, fvTabIndex)
+		RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
 
 		vr := scp.Settings.Channels[chIndex].VRange
 		if s, ok := rangeEnumToString[vr]; ok {
@@ -71,6 +74,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		x10Check.SetChecked(scp.Settings.Channels[chIndex].X10)
 		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, &x10Check.Check)
 		addToTest(x10Check, fvX10Id+chName, fvTabIndex)
+		RegisterWidgetHelp(x10Check, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
 
 		// Arrange settings to minimize width (f(t) style)
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, xCheck)

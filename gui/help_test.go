@@ -68,21 +68,26 @@ func TestHelpContentLookup(t *testing.T) {
 		t.Errorf("Direct registration lookup failed: got (%q, %q)", title, desc)
 	}
 
-	// 2. Named control lookup (registered via addToTest)
+	// 2. Direct registration replaces old named-registry approach.
+	//    Register help text at creation time, just like production code does.
 	testBtn := widget.NewButton("RunBlock", func() {})
 	addToTest(testBtn, "runblockButton", -1)
+	RegisterWidgetHelp(testBtn, "Run / Pause", "Starts or stops continuous oscilloscope waveform acquisition and display updates.")
 	title, desc = scp.getHelpForWidget(testBtn)
 	if title != "Run / Pause" {
-		t.Errorf("Named lookup failed: expected 'Run / Pause', got %q", title)
+		t.Errorf("Direct registration lookup failed: expected 'Run / Pause', got %q", title)
 	}
+	_ = desc
 
-	// 3. Prefix rule lookup (e.g. channel enable)
+	// 3. Direct registration for channel controls.
 	chEnableCheck := widget.NewCheck("Enable", func(bool) {})
 	addToTest(chEnableCheck, chEnableId+"_ChA", -1)
+	RegisterWidgetHelp(chEnableCheck, "Channel Enable", "Enables or disables waveform display and signal acquisition for this channel.")
 	title, desc = scp.getHelpForWidget(chEnableCheck)
 	if title != "Channel Enable" {
-		t.Errorf("Prefix lookup failed: expected 'Channel Enable', got %q", title)
+		t.Errorf("Direct registration lookup failed: expected 'Channel Enable', got %q", title)
 	}
+	_ = desc
 
 	// 4. Heuristic fallback for Button
 	heuristicBtn := widget.NewButton("AutoZero", func() {})
@@ -233,30 +238,37 @@ func TestWidgetsFocusAndHelp(t *testing.T) {
 	// 1. AC/DC SelectScroll
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, func(string, selectscroll.Exception) {}, "AC")
 	addToTest(acdc, acdcId+"_ChA", -1)
+	RegisterWidgetHelp(acdc, "Input Coupling", "Selects input coupling: DC coupling, AC coupling (blocks DC bias), or 50-ohm termination.")
 
 	// 2. Voltage Range SelectScroll
 	vRange := selectscroll.NewSelectScroll([]string{"±1V", "±2V"}, func(string, selectscroll.Exception) {}, "±1V")
 	addToTest(vRange, vRangeId+"_ChA", -1)
+	RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
 
 	// 3. Time/Div SelectScroll
 	timeDiv := selectscroll.NewSelectScroll([]string{"1", "2"}, func(string, selectscroll.Exception) {}, "1")
 	addToTest(timeDiv, timeSelectId, -1)
+	RegisterWidgetHelp(timeDiv, "Timebase Scale", "Adjusts horizontal time scale per division across the waveform screen.")
 
 	// 4. Invert FocusCheck
 	inv := scp.newFocusCheck("Inv", func(bool) {})
 	addToTest(inv, invertId+"_ChA", -1)
+	RegisterWidgetHelp(inv, "Invert Waveform", "Inverts the voltage polarity of the channel waveform.")
 
 	// 5. Trigger FocusCheck
 	trig := scp.newFocusCheck("Trig", func(bool) {})
 	addToTest(trig, triggerCheckId+"_ChA", -1)
+	RegisterWidgetHelp(trig, "Trigger Source", "Selects this analog channel as the primary source for hardware triggering.")
 
 	// 6. X10 / X1 FocusCheck
 	x10 := scp.newFocusCheck("X10", func(bool) {})
 	addToTest(x10, x10Id+"_ChA", -1)
+	RegisterWidgetHelp(x10, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
 
 	// 7. Cmpx FocusCheck
 	cmpx := scp.newFocusCheck("Cmpx", func(bool) {})
 	addToTest(cmpx, "complexTriggerCheck", -1)
+	RegisterWidgetHelp(cmpx, "Complex Trigger", "Enables advanced complex hardware triggering conditions and qualifiers.")
 
 	cnt := container.NewVBox(acdc, vRange, timeDiv, inv, trig, x10, cmpx)
 	scp.setContentWithHelp(cnt)
@@ -402,6 +414,7 @@ func TestTopLineIconsFocusAndHelp(t *testing.T) {
 	for _, tb := range topButtons {
 		t.Run(tb.id, func(t *testing.T) {
 			addToTest(tb.btn, tb.id, -1)
+			RegisterWidgetHelp(tb.btn, tb.expectedTitle, "Test description for "+tb.id)
 			scp.setContentWithHelp(tb.btn)
 
 			title, desc := scp.getHelpForWidget(tb.btn)
@@ -693,84 +706,99 @@ func TestExtendedTabHelp(t *testing.T) {
 	// 1. Digital filter controls registered via addToTest
 	lpCheck := widget.NewCheck("Enable Lowpass Filter", func(bool) {})
 	addToTest(lpCheck, "lpCheckA", filterTabIndex)
+	RegisterWidgetHelp(lpCheck, "Lowpass Filter Enable", "Enables or disables lowpass filtering to attenuate high-frequency noise above the cutoff frequency.")
 	title, desc := scp.getHelpForWidget(lpCheck)
 	assert.Equal(t, "Lowpass Filter Enable", title)
 	assert.Contains(t, desc, "lowpass filtering")
 
 	lpEntry := widget.NewEntry()
 	addToTest(lpEntry, "lpEntryA", filterTabIndex)
+	RegisterWidgetHelp(lpEntry, "Lowpass Cutoff Frequency", "Sets the -3dB cutoff frequency threshold for the lowpass filter.")
 	title, desc = scp.getHelpForWidget(lpEntry)
 	assert.Equal(t, "Lowpass Cutoff Frequency", title)
 	assert.Contains(t, desc, "-3dB cutoff")
 
 	lpUnitSelect := selectscroll.NewSelectScroll([]string{"Hz", "kHz", "MHz"}, func(string, selectscroll.Exception) {}, "kHz")
 	addToTest(lpUnitSelect, "lpUnitSelectA", filterTabIndex)
+	RegisterWidgetHelp(lpUnitSelect, "Lowpass Frequency Unit", "Selects frequency unit for lowpass cutoff (Hz, kHz, MHz).")
 	title, desc = scp.getHelpForWidget(lpUnitSelect)
 	assert.Equal(t, "Lowpass Frequency Unit", title)
 	assert.Contains(t, desc, "frequency unit")
 
 	hpCheck := widget.NewCheck("Enable Highpass Filter", func(bool) {})
 	addToTest(hpCheck, "hpCheckB", filterTabIndex)
+	RegisterWidgetHelp(hpCheck, "Highpass Filter Enable", "Enables or disables highpass filtering to remove DC offsets and low-frequency drift.")
 	title, desc = scp.getHelpForWidget(hpCheck)
 	assert.Equal(t, "Highpass Filter Enable", title)
 
 	bpCheck := widget.NewCheck("Enable Bandpass Filter", func(bool) {})
 	addToTest(bpCheck, "bpCheckA", filterTabIndex)
+	RegisterWidgetHelp(bpCheck, "Bandpass Filter Enable", "Enables or disables bandpass filtering to pass frequencies within the specified passband range.")
 	title, desc = scp.getHelpForWidget(bpCheck)
 	assert.Equal(t, "Bandpass Filter Enable", title)
 
 	zeroPhaseCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(bool) {})
 	addToTest(zeroPhaseCheck, "zeroPhaseCheckA", filterTabIndex)
+	RegisterWidgetHelp(zeroPhaseCheck, "Zero Phase Filter (FiltFilt)", "Applies forward-backward filtering to eliminate phase distortion and signal group delay.")
 	title, desc = scp.getHelpForWidget(zeroPhaseCheck)
 	assert.Equal(t, "Zero Phase Filter (FiltFilt)", title)
 	assert.Contains(t, desc, "forward-backward filtering")
 
 	filterUndock := widget.NewButton("Undock", func() {})
 	addToTest(filterUndock, "filterUndockBtn", filterTabIndex)
+	RegisterWidgetHelp(filterUndock, "Undock Filter Panel", "Opens the digital filter settings in an independent floating window.")
 	title, desc = scp.getHelpForWidget(filterUndock)
 	assert.Equal(t, "Undock Filter Panel", title)
 
 	// 2. Generator controls
 	genWave := selectscroll.NewSelectScroll([]string{"Sine", "Square"}, func(string, selectscroll.Exception) {}, "Sine")
 	addToTest(genWave, genWaveTypeId, genTabIndex)
+	RegisterWidgetHelp(genWave, "Waveform Shape", "Selects generated waveform function: Sine, Square, Triangle, Ramp, DC, Noise, or Arbitrary.")
 	title, desc = scp.getHelpForWidget(genWave)
 	assert.Equal(t, "Waveform Shape", title)
 
 	genFreq := widget.NewEntry()
 	addToTest(genFreq, genFreqId, genTabIndex)
+	RegisterWidgetHelp(genFreq, "Generator Frequency", "Sets periodic waveform frequency generated by the hardware.")
 	title, desc = scp.getHelpForWidget(genFreq)
 	assert.Equal(t, "Generator Frequency", title)
 
 	genUndock := widget.NewButton("Undock", func() {})
 	addToTest(genUndock, "genUndockBtn", genTabIndex)
+	RegisterWidgetHelp(genUndock, "Undock Generator Panel", "Opens the signal generator controls in an independent floating window.")
 	title, desc = scp.getHelpForWidget(genUndock)
 	assert.Equal(t, "Undock Generator Panel", title)
 
 	// 3. RLC simulation controls
 	rlcType := selectscroll.NewSelectScroll([]string{"Lowpass", "Highpass"}, func(string, selectscroll.Exception) {}, "Lowpass")
 	addToTest(rlcType, rlcTypeId+"A", rlcTabIndex)
+	RegisterWidgetHelp(rlcType, "RLC Filter Topology", "Selects simulated filter configuration: Lowpass, Highpass or Bandpass.")
 	title, desc = scp.getHelpForWidget(rlcType)
 	assert.Equal(t, "RLC Filter Topology", title)
 
 	rlcR := widget.NewEntry()
 	addToTest(rlcR, rlcRId+"A", rlcTabIndex)
+	RegisterWidgetHelp(rlcR, "Resistor Value (R)", "Sets resistance value for the RLC filter circuit.")
 	title, desc = scp.getHelpForWidget(rlcR)
 	assert.Equal(t, "Resistor Value (R)", title)
 
 	// 4. Virtual channels
 	vchName := widget.NewEntry()
 	addToTest(vchName, vchNameEntryId, vchTabIndex)
+	RegisterWidgetHelp(vchName, "Virtual Channel Name", "Assigns an identifier name to the mathematical virtual channel (e.g. Math1).")
 	title, desc = scp.getHelpForWidget(vchName)
 	assert.Equal(t, "Virtual Channel Name", title)
 
 	vchExpr := widget.NewEntry()
 	addToTest(vchExpr, vchExprEntryId, vchTabIndex)
+	RegisterWidgetHelp(vchExpr, "Math Expression", "Mathematical expression defining the virtual channel waveform (e.g. ChA + ChB, ChA - ChB, ChA * ChB).")
 	title, desc = scp.getHelpForWidget(vchExpr)
 	assert.Equal(t, "Math Expression", title)
 
 	// 5. Protocol decoder
 	decUndock := widget.NewButton("Undock", func() {})
 	addToTest(decUndock, "decodeUndockBtn", decodeTabIndex)
+	RegisterWidgetHelp(decUndock, "Undock Protocol Decoder", "Opens the serial protocol decoder in an independent floating window.")
 	title, desc = scp.getHelpForWidget(decUndock)
 	assert.Equal(t, "Undock Protocol Decoder", title)
 
@@ -805,5 +833,75 @@ func TestExtendedTabHelp(t *testing.T) {
 	assert.Equal(t, "Frequency Unit", title)
 	assert.Contains(t, desc, "frequency unit")
 }
+
+func TestPanelCreationHelpRegistration(t *testing.T) {
+	scp := &ScpDesc{
+		Settings:     settings.NewDefaultSettings(),
+		channelCount: 2,
+	}
+
+	// 1. Digital Filter Panel
+	filterCont := container.NewMax()
+	scp.newDigitalFilterPanel(filterCont, true)
+
+	controlsMtx.RLock()
+	lpCheckA, lpOk := controls["lpCheckA"]
+	lpEntryA, entryOk := controls["lpEntryA"]
+	zeroPhaseA, zpOk := controls["zeroPhaseCheckA"]
+	controlsMtx.RUnlock()
+
+	assert.True(t, lpOk)
+	title, _ := scp.getHelpForWidget(lpCheckA.Obj.(fyne.Focusable))
+	assert.Equal(t, "Lowpass Filter", title)
+
+	assert.True(t, entryOk)
+	title, _ = scp.getHelpForWidget(lpEntryA.Obj.(fyne.Focusable))
+	assert.Equal(t, "Lowpass Cutoff Frequency", title)
+
+	assert.True(t, zpOk)
+	title, _ = scp.getHelpForWidget(zeroPhaseA.Obj.(fyne.Focusable))
+	assert.Equal(t, "Zero Phase Filtering", title)
+
+	// 2. Digital Port Panel
+	scp.buildDigitalPortContent(true)
+	controlsMtx.RLock()
+	negCheck0, negOk := controls["digPortNegCheck_0"]
+	port0Check, port0Ok := controls["digPort0EnableCheck"]
+	trigCheck, trigOk := controls["digPortTrigEnable"]
+	controlsMtx.RUnlock()
+
+	assert.True(t, negOk)
+	title, _ = scp.getHelpForWidget(negCheck0.Obj.(fyne.Focusable))
+	assert.Equal(t, "Negate Label", title)
+
+	assert.True(t, port0Ok)
+	title, _ = scp.getHelpForWidget(port0Check.Obj.(fyne.Focusable))
+	assert.Equal(t, "Port 0 Enable", title)
+
+	assert.True(t, trigOk)
+	title, _ = scp.getHelpForWidget(trigCheck.Obj.(fyne.Focusable))
+	assert.Equal(t, "Digital Pattern Trigger", title)
+
+	// 3. Virtual Channel Panel
+	scp.buildVirtualChannelContent(true)
+	controlsMtx.RLock()
+	nameEntryCtrl, nameOk := controls[vchNameEntryId]
+	exprEntryCtrl, exprOk := controls[vchExprEntryId]
+	newBtnCtrl, newBtnOk := controls[vchNewBtnId]
+	controlsMtx.RUnlock()
+
+	assert.True(t, nameOk)
+	title, _ = scp.getHelpForWidget(nameEntryCtrl.Obj.(fyne.Focusable))
+	assert.Equal(t, "Virtual Channel Name", title)
+
+	assert.True(t, exprOk)
+	title, _ = scp.getHelpForWidget(exprEntryCtrl.Obj.(fyne.Focusable))
+	assert.Equal(t, "Math Expression", title)
+
+	assert.True(t, newBtnOk)
+	title, _ = scp.getHelpForWidget(newBtnCtrl.Obj.(fyne.Focusable))
+	assert.Equal(t, "New Virtual Channel", title)
+}
+
 
 
