@@ -223,14 +223,22 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 
 	if undockable && undockButton != nil {
 		addToTest(undockButton, "digGenUndockBtn", digGenTabIndex)
+		RegisterWidgetHelp(undockButton, "Undock Digital Generator", "Opens the digital pattern generator in an independent floating window.")
 	}
 	addToTest(port0Check, "digGenPort0Check", digGenTabIndex)
+	RegisterWidgetHelp(port0Check, "Digital Generator Port 0", "Enables or disables pattern stimulus generation on digital output lines D0-D7.")
 	addToTest(port1Check, "digGenPort1Check", digGenTabIndex)
+	RegisterWidgetHelp(port1Check, "Digital Generator Port 1", "Enables or disables pattern stimulus generation on digital output lines D8-D15.")
 	addToTest(freqDisp, "digGenFreqDisp", digGenTabIndex)
+	RegisterWidgetHelp(freqDisp, "Pattern Clock Frequency", "Sets clock frequency for digital pattern generation.")
 	addToTest(dirSelect, "digGenDirSelect", digGenTabIndex)
+	RegisterWidgetHelp(dirSelect, "Pattern Shift Direction", "Sets bit shift pattern direction: forward or reverse.")
 	addToTest(encSelect, "digGenEncSelect", digGenTabIndex)
+	RegisterWidgetHelp(encSelect, "Pattern Encoding", "Selects digital output encoding scheme: Binary or Gray code.")
 	addToTest(modeSelect, "digGenModeSelect", digGenTabIndex)
+	RegisterWidgetHelp(modeSelect, "Pattern Generator Mode", "Selects digital generator operating mode: asynchronous, synchronous.")
 	addToTest(bitDelayDisp, "digGenBitDelayDisp", digGenTabIndex)
+	RegisterWidgetHelp(bitDelayDisp, "Inter-Bit Delay", "Sets timing delay between consecutive output bits.")
 
 	updateVisibility = func() {
 		if settings.Encoding == genericps.DigitalDemoGenEncodingGray {

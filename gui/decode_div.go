@@ -15,10 +15,11 @@ import (
 func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	settings := &scp.Settings.Decode
 
-	enableCheck := widget.NewCheck("Enable Decoder", func(b bool) {
+	enableCheck := scp.newFocusCheck("Enable Decoder", func(b bool) {
 		settings.Enabled = b
 	})
 	enableCheck.SetChecked(settings.Enabled)
+	RegisterWidgetHelp(enableCheck, "Protocol Decoder Enable", "Enables or disables protocol decoding on selected channels.")
 
 	protocolSelect := selectscroll.NewSelectScroll([]string{"UART", "SPI", "I2C"}, func(s string, _ selectscroll.Exception) {
 		if settings.Protocol != s {
@@ -27,6 +28,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		}
 	}, "Protocol")
 	protocolSelect.SetSelected(settings.Protocol)
+	RegisterWidgetHelp(protocolSelect, "Serial Protocol", "Selects protocol decoding format: UART, SPI, or I2C.")
 
 	chNames := []string{"Ch A", "Ch B", "Ch C", "Ch D"}
 
@@ -44,11 +46,15 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	if settings.Channel1 >= 0 && settings.Channel1 < len(chNames) {
 		ch1Select.SetSelected(chNames[settings.Channel1])
 	}
+	RegisterWidgetHelp(ch1Select, "Primary Decode Channel", "Selects input channel for data decoding (e.g. RX, MOSI, or SDA).")
 
 	ch2Select := selectscroll.NewSelectScroll(chNames, func(s string, _ selectscroll.Exception) {
 		for i, name := range chNames {
 			if s == name {
-				settings.Channel2 = i
+				if settings.Channel2 != i {
+					settings.Channel2 = i
+					scp.refreshDecodeTab()
+				}
 				break
 			}
 		}
@@ -56,6 +62,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	if settings.Channel2 >= 0 && settings.Channel2 < len(chNames) {
 		ch2Select.SetSelected(chNames[settings.Channel2])
 	}
+	RegisterWidgetHelp(ch2Select, "Secondary Decode Channel", "Selects second input channel for decoding (e.g. TX, SCLK, or SCL).")
 
 	chNamesWithNone := []string{"None", "Ch A", "Ch B", "Ch C", "Ch D"}
 
@@ -107,6 +114,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 		}
 	}, "Baud Rate")
 	baudSelect.SetSelected(strconv.Itoa(settings.BaudRate))
+	RegisterWidgetHelp(baudSelect, "Baud Rate", "Selects communication baud rate for UART decoding.")
 
 	invertCheck := widget.NewCheck("", func(b bool) {
 		settings.Invert = b
@@ -129,6 +137,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 			settings.Threshold = int16(scp.mvToAdc(int32(valV*1000.0), currRange))
 		}
 	}
+	RegisterWidgetHelp(thresholdEntry, "Logic Threshold", "Voltage threshold level for digital high/low logic transitions.")
 
 	hysteresisMv := scp.adcToMv(float64(settings.Hysteresis), chRange)
 	hysteresisEntry := widget.NewEntry()
@@ -139,6 +148,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 			settings.Hysteresis = int32(scp.mvToAdc(int32(valV*1000.0), currRange))
 		}
 	}
+	RegisterWidgetHelp(hysteresisEntry, "Logic Hysteresis", "Voltage hysteresis band around threshold for noise immunity.")
 
 	ch1Label := "Channel 1"
 	if settings.Protocol == "I2C" {
@@ -240,6 +250,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 			}
 		})
 		addToTest(undockBtn, "decodeUndockBtn", decodeTabIndex)
+		RegisterWidgetHelp(undockBtn, "Undock Protocol Decoder", "Opens the serial protocol decoder in an independent floating window.")
 	}
 
 	topRow := container.NewHBox(layout.NewSpacer())

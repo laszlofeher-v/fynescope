@@ -34,6 +34,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		check.SetChecked(channel.Enabled)
 		channelViewer.dftCheckbox = &check.Check
 		addToTest(check, dftEnableId+chName, dftTabIndex)
+		RegisterWidgetHelp(check, "Channel Enable (FFT)", "Enables or disables frequency spectrum display for this channel.")
 
 		persSelected := func(checked bool) {
 			channel.DftPersistence = checked
@@ -48,6 +49,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		persCheck.SetChecked(channel.DftPersistence)
 		channelViewer.dftPersistenceCheckbox = &persCheck.Check
 		addToTest(persCheck, dftPersId+chName, dftTabIndex)
+		RegisterWidgetHelp(persCheck, "Persistence", "Accumulates past spectral traces on screen to visualize intermittent frequency peaks and noise floor.")
 
 		// Channel Label
 		text := "Ch " + chName + ":"
@@ -74,6 +76,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 			scp.changeChannelRange(chIdx, option)
 		}, "±200mV")
 		addToTest(vRange, dftVRangeId+chName, dftTabIndex)
+		RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
 
 		vr := scp.Settings.Channels[chIdx].VRange
 		if s, ok := rangeEnumToString[vr]; ok {
@@ -90,6 +93,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		x10Check.SetChecked(scp.Settings.Channels[chIdx].X10)
 		channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, &x10Check.Check)
 		addToTest(x10Check, dftX10Id+chName, dftTabIndex)
+		RegisterWidgetHelp(x10Check, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
 
 		// Each channel gets its own row
 		chRow := container.NewHBox(check, label, vRange, x10Check, persCheck)
@@ -133,6 +137,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		arbDbRefContainer.Hide()
 	}
 	addToTest(arbDbRefDisp, dftBinId+"ArbRef", dftTabIndex)
+	RegisterWidgetHelp(arbDbRefDisp, "Arbitrary dB Reference", "Sets the dB reference level for arbitrary waveform display.")
 
 	// Display mode selector row
 	modeSelector := selectscroll.NewSelectScroll([]string{settings.UnitDBFS, settings.UnitVoltage, settings.UnitDBV, settings.UnitDBU, settings.UnitDBM, settings.UnitArbitraryDB}, func(selected string, _ selectscroll.Exception) {
@@ -154,6 +159,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	}, settings.UnitVoltage)
 	modeSelector.SilentSetSelected(scp.Settings.Dft.DisplayUnit)
 	addToTest(modeSelector, dftModeId, dftTabIndex)
+	RegisterWidgetHelp(modeSelector, "Spectrum Scale", "Sets spectral vertical scale: dBFS, dBm, or Linear magnitude.")
 
 	maxPossibleFreq := 500000000.0
 	numOfFractionDigits := 2
@@ -225,7 +231,9 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		}()
 	}
 	addToTest(scp.dftMaxFreqDisp, dftMaxFreqValId, dftTabIndex)
+	RegisterWidgetHelp(scp.dftMaxFreqDisp, "Spectrum Max Frequency", "Sets the upper frequency limit displayed on the FFT spectrum analyzer.")
 	addToTest(scp.dftMinFreqDisp, dftModeId+"MinFreq", dftTabIndex)
+	RegisterWidgetHelp(scp.dftMinFreqDisp, "Spectrum Min Frequency", "Sets the lower frequency limit displayed on the FFT spectrum analyzer.")
 
 	// Bins Selector
 	binLabels := []string{"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072", "262144", "524288", "1048576"}
@@ -246,6 +254,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	}, "1024")
 	binSelector.SilentSetSelected(strconv.Itoa(scp.Settings.Dft.Bins))
 	addToTest(binSelector, dftBinId, dftTabIndex)
+	RegisterWidgetHelp(binSelector, "FFT Resolution Bins", "Selects the number of frequency bins (FFT length) for spectral analysis.")
 
 	scp.binWidthLabel = widget.NewLabel("BW: -")
 	scp.updateBinWidth()
@@ -283,6 +292,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, "100")
 	addToTest(scp.dftSampleRateSelect, dftSampleRateId, dftTabIndex)
+	RegisterWidgetHelp(scp.dftSampleRateSelect, "Sample Rate", "Configures ADC sampling frequency for FFT digitizing.")
 
 	scp.dftSampleUnitSelect = selectscroll.NewSelectScroll(dftSampleUnits, func(selected string, _ selectscroll.Exception) {
 		if !scp.checkDftSampleRateLimit(scp.Settings.Dft.SampleRate, selected) {
@@ -313,6 +323,7 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 		scp.SaveSettings()
 	}, selectscroll.UnitMSps)
 	addToTest(scp.dftSampleUnitSelect, dftSampleUnitId, dftTabIndex)
+	RegisterWidgetHelp(scp.dftSampleUnitSelect, "Sample Rate Unit", "Selects sampling rate frequency unit for FFT.")
 
 	scp.dftSampleRateSelect.SilentSetSelected(scp.Settings.Dft.SampleRate)
 	scp.dftSampleUnitSelect.SilentSetSelected(scp.Settings.Dft.SampleRateUnit)
@@ -333,6 +344,8 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	})
 	logXCheck.Checked = scp.Settings.Dft.XAxisLog
 	addToTest(logXCheck, dftModeId+"LogX", dftTabIndex)
+	RegisterWidgetHelp(logXCheck, "Log X-Axis", "Displays frequency axis on logarithmic scale for spectrum analysis.")
+
 
 	windowCol.Add(scp.dftMaxFreqDisp)
 	windowCol.Add(logXCheck)

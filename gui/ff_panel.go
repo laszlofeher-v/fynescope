@@ -126,10 +126,15 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		vbox.Add(chBox)
 
 		addToTest(enabledCheck, ffEnableId+chName, ffTabIndex)
+		RegisterWidgetHelp(enabledCheck, "Channel Enable (Bode)", "Enables or disables this channel for Bode frequency response analysis.")
 		addToTest(phaseCheck, ffPhaseCheckId+chName, ffTabIndex)
+		RegisterWidgetHelp(phaseCheck, "Phase Trace", "Shows phase response curve on the Bode plot.")
 		addToTest(refCheck, ffRefCheckId+chName, ffTabIndex)
+		RegisterWidgetHelp(refCheck, "Reference Trace", "Shows a reference waveform trace on the Bode plot.")
 		addToTest(vRange, ffVRangeId+chName, ffTabIndex)
+		RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale for Bode plot channel.")
 		addToTest(x10Check, ffX10Id+chName, ffTabIndex)
+		RegisterWidgetHelp(x10Check, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
 	}
 
 	// Declare disp7 widgets first so they can be referenced in the OnChanged closure
@@ -301,6 +306,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		arbDbRefContainer.Hide()
 	}
 	addToTest(arbDbRefDisp, ffFuncId+"ArbRef", ffTabIndex)
+	RegisterWidgetHelp(arbDbRefDisp, "Arbitrary dB Reference", "Sets the dB reference level for arbitrary waveform display.")
 
 	if scp.Settings.Dft.DisplayUnit == "" {
 		scp.Settings.Dft.DisplayUnit = settings.UnitDBFS
@@ -326,6 +332,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	})
 	logXCheck.Checked = scp.Settings.Ff.XAxisLog
 	addToTest(logXCheck, ffFuncId+"LogX", ffTabIndex)
+	RegisterWidgetHelp(logXCheck, "Log X-Axis", "Displays frequency axis on logarithmic scale for Bode plots.")
+
 
 	dispUnitControls := container.NewHBox(widget.NewLabel(" Unit:"), dispUnitSelect, logXCheck)
 
@@ -406,9 +414,13 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	panel.Add(genSettings)
 
 	addToTest(scp.ffMinFreqDisp, ffMinFreqId, ffTabIndex)
+	RegisterWidgetHelp(scp.ffMinFreqDisp, "Sweep Start Frequency", "Start frequency for Bode frequency response analysis sweep.")
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
+	RegisterWidgetHelp(scp.ffMaxFreqDisp, "Sweep Stop Frequency", "Stop frequency for Bode frequency response analysis sweep.")
 	addToTest(dispUnitSelect, ffDispUnitSelectId, ffTabIndex)
+	RegisterWidgetHelp(dispUnitSelect, "Bode Display Units", "Selects frequency response display unit.")
 	addToTest(scp.useExtGenCheck, ffExtGenSelectId, ffTabIndex)
+	RegisterWidgetHelp(scp.useExtGenCheck, "External Generator Stimulus", "Routes Bode frequency sweep stimulus through external signal generator.")
 
 	scp.updateFfWidgetLimits()
 }

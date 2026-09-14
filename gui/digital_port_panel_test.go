@@ -157,6 +157,11 @@ func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
 		assert.NotNil(t, negCtrl.Obj, "Expected %s object to be non-nil", negCheckId)
 		assert.Equal(t, digPortTabIndex, negCtrl.Tab)
 
+		fc, isFC := negCtrl.Obj.(*FocusCheck)
+		assert.True(t, isFC, "Expected %s to be *FocusCheck", negCheckId)
+		title, _ := scp.getHelpForWidget(fc)
+		assert.Equal(t, "Negate Label", title)
+
 		assert.True(t, labelOk, "Expected %s to be registered in controls", labelEntryId)
 		assert.NotNil(t, labelCtrl.Obj, "Expected %s object to be non-nil", labelEntryId)
 		assert.Equal(t, digPortTabIndex, labelCtrl.Tab)
