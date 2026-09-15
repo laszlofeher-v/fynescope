@@ -223,6 +223,7 @@ type (
 		virtualChWindow              fyne.Window
 		decodeWindow                 fyne.Window
 		digPortWindow                fyne.Window
+		digPortLogicLevelDisp        [2]*disp7.DigitArray
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
 		ftRaster                     *screenRaster
