@@ -11,9 +11,10 @@ const (
 
 type (
 	DeviceInfo struct {
-		Id     string // Handler ID (e.g., "2407B", "2407BDEMO","2207BSIM")
-		Serial string // Serial number (empty for demo, and sim)
-		IsDemo bool
+		Id      string // Handler ID (e.g., "ps2000a", "sim")
+		Serial  string // Serial number (empty for demo and sim)
+		Variant string // Variant/model string (e.g., "2206BMSO", "2407B"); may be empty
+		IsDemo  bool
 	}
 )
 
@@ -25,6 +26,9 @@ type (
 		OpenUnitProgress func() (retHandle int16, progressPercent, complete int16, err error)
 		Dispatch         func(msg Message)
 		Id               string
+		// GetVariantInfo is optional. When set, EnumerateAllDevices calls it with
+		// each discovered serial to populate DeviceInfo.Variant (e.g. "2206BMSO").
+		GetVariantInfo func(serial string) string
 	}
 )
 
@@ -125,10 +129,15 @@ func EnumerateAllDevices(bufferLen int16) (devices []DeviceInfo, err error) {
 			// Parse the serials string (comma-separated)
 			serialList := parseSerials(serials, int(count))
 			for _, serial := range serialList {
+				variant := ""
+				if handler.GetVariantInfo != nil {
+					variant = handler.GetVariantInfo(serial)
+				}
 				devices = append(devices, DeviceInfo{
-					Id:     handler.Id,
-					Serial: serial,
-					IsDemo: (handler.Id == DemoId),
+					Id:      handler.Id,
+					Serial:  serial,
+					Variant: variant,
+					IsDemo:  (handler.Id == DemoId),
 				})
 			}
 		}

@@ -556,7 +556,11 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 		if dev.IsDemo {
 			options[i] = "Demo"
 		} else {
-			options[i] = dev.Id + " - " + dev.Serial
+			label := dev.Id
+			if dev.Variant != "" {
+				label = dev.Variant
+			}
+			options[i] = label + " - " + dev.Serial
 		}
 	}
 
