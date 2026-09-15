@@ -1653,7 +1653,7 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	}
 	scp.ipmSelect.SetSelected(selected)
 	addToTest(scp.ipmSelect, ipmId, -1)
-	RegisterWidgetHelp(scp.ipmSelect, "Input Preprocessing Mode", "Selects hardware input preprocessing and oversampling mode.")
+	RegisterWidgetHelp(scp.ipmSelect, "Interpolation Mode", "Selects No interpolation, Linear, SinC .")
 
 	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")
 	scp.resSelect.SetSelected(scp.Settings.Time.ResolutionMode)
@@ -1757,7 +1757,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.triggerModeSelect = selectscroll.NewSelectScroll(activeTriggerModes,
 		scp.onTriggerModeChange, settings.TriggerModeRepeat)
 	addToTest(scp.triggerModeSelect, triggerModeSelectId, -1)
-	RegisterWidgetHelp(scp.triggerModeSelect, "Trigger Mode", "Selects acquisition trigger mode: Auto, Normal, Single, or ETS.")
+	RegisterWidgetHelp(scp.triggerModeSelect, "Trigger Mode", "Selects acquisition trigger mode: Auto, Repeat, Single, or ETS.")
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
 

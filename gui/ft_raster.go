@@ -1187,6 +1187,9 @@ func (sv *signalViewer) formatTime(seconds float64) string {
 }
 
 func (scp *ScpDesc) addFtXOffset(dx float64) {
+	if scp.ftScopeSignalScreen == nil {
+		return
+	}
 	scp.Settings.Time.TriggerTimeOffset += scp.maxScreenTime * dx / float64(scp.ftScopeSignalScreen.Bounds().Dx())
 	switch {
 	case scp.Settings.Time.TriggerTimeOffset < 0:

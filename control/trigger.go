@@ -3,6 +3,7 @@ package control
 import (
 	"fynescope/genericps"
 	"log/slog"
+	"strings"
 )
 
 type (
@@ -132,8 +133,16 @@ func (psControl *PscDesc) applyDigitalTrigger() (err error) {
 		}
 		err = psControl.Con.SetDigitalAnalogTriggerOperand(psControl.triggerSetting.DigitalAnalogOperand)
 		if err != nil {
-			slog.Error("applyDigitalTrigger SetDigitalAnalogTriggerOperand:", "error:", err)
-			return
+			if strings.Contains(err.Error(), "PICO_NOT_USED") {
+				// Some devices (e.g. ps2000a MSO) do not implement this call;
+				// the digital trigger directions already configure the logic, so
+				// treat this as a non-fatal warning and continue.
+				slog.Debug("applyDigitalTrigger SetDigitalAnalogTriggerOperand not supported, continuing", "error:", err)
+				err = nil
+			} else {
+				slog.Error("applyDigitalTrigger SetDigitalAnalogTriggerOperand:", "error:", err)
+				return
+			}
 		}
 	} else {
 		_ = psControl.Con.SetTriggerDigitalPortProperties(nil)

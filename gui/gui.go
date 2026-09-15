@@ -1656,9 +1656,18 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		slog.Warn("PS2407B via PS3000a driver")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
-	// case "2206BMSO":
-	// case "2207BMSO":
-	// case "2208BMSO":
+	case "2206BMSO":
+		slog.Warn("2206BMSO not tested")
+		scp.maxSamplingRate = maxSampling500M
+		scp.build2407Gui()
+	case "2207BMSO":
+		slog.Warn("2207BMSO not tested")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
+	case "2208BMSO":
+		slog.Warn("2208BMSO not tested")
+		scp.maxSamplingRate = maxSampling1G
+		scp.build2407Gui()
 	default:
 		err = fmt.Errorf("getInfo: unknown variant info %s cannot set maximum sample rate",
 			scp.psControl.Info)
