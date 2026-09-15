@@ -329,7 +329,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		addToTest(port0LogicDisp, "digPort0LogicLevelDisp", digPortTabIndex)
 		RegisterWidgetHelp(port0LogicDisp, "Port 0 Logic Level", "Sets logic threshold level for digital Port 0 (D0-D7). Range: –32767 (–5 V) to 32767 (+5 V).")
 		scp.digPortLogicLevelDisp[0] = port0LogicDisp
-		port0Box.Add(container.NewHBox(port0LogicDisp))
+		if scp.runningMode != genericps.DemoMode {
+			port0Box.Add(container.NewHBox(port0LogicDisp))
+		}
 	}
 
 	port1EnableCheck := scp.newFocusCheck("Enable Port 1 (D8-D15)", func(v bool) {
@@ -382,7 +384,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		addToTest(port1LogicDisp, "digPort1LogicLevelDisp", digPortTabIndex)
 		RegisterWidgetHelp(port1LogicDisp, "Port 1 Logic Level", "Sets logic threshold level for digital Port 1 (D8-D15). Range: –32767 (–5 V) to 32767 (+5 V).")
 		scp.digPortLogicLevelDisp[1] = port1LogicDisp
-		port1Box.Add(container.NewHBox(port1LogicDisp))
+		if scp.runningMode != genericps.DemoMode {
+			port1Box.Add(container.NewHBox(port1LogicDisp))
+		}
 	}
 
 	for i := 0; i < 16; i++ {
