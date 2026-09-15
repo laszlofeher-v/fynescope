@@ -6,6 +6,7 @@ import (
 
 	"fynescope/checkcolorpick"
 	"fynescope/control"
+	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/selectscroll"
 	"fynescope/settings"
@@ -303,6 +304,34 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	RegisterWidgetHelp(port0EnableCheck, "Port 0 Enable", "Enables or disables digital input channels D0-D7.")
 	port0Box.Add(port0EnableCheck)
 
+	fontScale := float32(0.7) * scp.getScreenScale()
+	dispColor := theme.ForegroundColor()
+	if scp.theme != nil {
+		dispColor = scp.theme.Color(ColorNameGeneratorDisp, 0)
+	}
+
+	port0LogicDisp, err0 := disp7.NewCustomDisp7Array(4, 3, 5000, -5000,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
+		dispColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Threshold: ", "")
+	if err0 == nil {
+		port0LogicDisp.SilentSetValue(int(scp.Settings.Digital.Ports[0].Threshold))
+		port0LogicDisp.OnChanged = func(val float64) {
+			scp.Settings.Digital.Ports[0].Threshold = int16(val)
+			scp.SaveSettings()
+			if scp.psControl != nil {
+				go func(p settings.DigitalPortSettings) {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+				}(scp.Settings.Digital.Ports[0])
+			}
+		}
+		addToTest(port0LogicDisp, "digPort0LogicLevelDisp", digPortTabIndex)
+		RegisterWidgetHelp(port0LogicDisp, "Port 0 Logic Level", "Sets logic threshold level for digital Port 0 (D0-D7). Range: –32767 (–5 V) to 32767 (+5 V).")
+		scp.digPortLogicLevelDisp[0] = port0LogicDisp
+		port0Box.Add(container.NewHBox(port0LogicDisp))
+	}
+
 	port1EnableCheck := scp.newFocusCheck("Enable Port 1 (D8-D15)", func(v bool) {
 		scp.Settings.Digital.Ports[1].Enabled = v
 		scp.SaveSettings()
@@ -333,6 +362,28 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	addToTest(port1EnableCheck, "digPort1EnableCheck", digPortTabIndex)
 	RegisterWidgetHelp(port1EnableCheck, "Port 1 Enable", "Enables or disables digital input channels D8-D15.")
 	port1Box.Add(port1EnableCheck)
+
+	port1LogicDisp, err1 := disp7.NewCustomDisp7Array(5, 0, 32767, -32767,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
+		dispColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, "Logic Level: ", "")
+	if err1 == nil {
+		port1LogicDisp.SilentSetValue(int(scp.Settings.Digital.Ports[1].Threshold))
+		port1LogicDisp.OnChanged = func(val float64) {
+			scp.Settings.Digital.Ports[1].Threshold = int16(val)
+			scp.SaveSettings()
+			if scp.psControl != nil {
+				go func(p settings.DigitalPortSettings) {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+				}(scp.Settings.Digital.Ports[1])
+			}
+		}
+		addToTest(port1LogicDisp, "digPort1LogicLevelDisp", digPortTabIndex)
+		RegisterWidgetHelp(port1LogicDisp, "Port 1 Logic Level", "Sets logic threshold level for digital Port 1 (D8-D15). Range: –32767 (–5 V) to 32767 (+5 V).")
+		scp.digPortLogicLevelDisp[1] = port1LogicDisp
+		port1Box.Add(container.NewHBox(port1LogicDisp))
+	}
 
 	for i := 0; i < 16; i++ {
 		chIdx := i

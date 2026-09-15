@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fynescope/control"
+	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/settings"
 	"github.com/stretchr/testify/assert"
@@ -167,3 +168,85 @@ func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
 		assert.Equal(t, digPortTabIndex, labelCtrl.Tab)
 	}
 }
+
+func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
+	setCh := make(chan *control.DigitalPortMsg, 10)
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: true, Threshold: 1500},
+					{Enabled: false, Threshold: -2000},
+				},
+			},
+		},
+		psControl: &control.PscDesc{
+			SetDigitalPortCh: setCh,
+		},
+	}
+
+	scp.buildDigitalPortContent(false)
+
+	// Verify Port 0 Logic Level Disp
+	controlsMtx.RLock()
+	p0Ctrl, p0Ok := controls["digPort0LogicLevelDisp"]
+	p1Ctrl, p1Ok := controls["digPort1LogicLevelDisp"]
+	controlsMtx.RUnlock()
+
+	assert.True(t, p0Ok, "Expected digPort0LogicLevelDisp to be registered in controls")
+	assert.NotNil(t, p0Ctrl.Obj, "digPort0LogicLevelDisp object should not be nil")
+	assert.Equal(t, digPortTabIndex, p0Ctrl.Tab)
+
+	d7_0, isD7_0 := p0Ctrl.Obj.(*disp7.DigitArray)
+	assert.True(t, isD7_0, "digPort0LogicLevelDisp must be *disp7.DigitArray")
+	assert.Equal(t, 1500, d7_0.Value)
+
+	title0, desc0 := scp.getHelpForWidget(d7_0)
+	assert.Equal(t, "Port 0 Logic Level", title0)
+	assert.Contains(t, desc0, "–32767 (–5 V) to 32767 (+5 V)")
+
+	// Verify Port 1 Logic Level Disp
+	assert.True(t, p1Ok, "Expected digPort1LogicLevelDisp to be registered in controls")
+	assert.NotNil(t, p1Ctrl.Obj, "digPort1LogicLevelDisp object should not be nil")
+	assert.Equal(t, digPortTabIndex, p1Ctrl.Tab)
+
+	d7_1, isD7_1 := p1Ctrl.Obj.(*disp7.DigitArray)
+	assert.True(t, isD7_1, "digPort1LogicLevelDisp must be *disp7.DigitArray")
+	assert.Equal(t, -2000, d7_1.Value)
+
+	title1, desc1 := scp.getHelpForWidget(d7_1)
+	assert.Equal(t, "Port 1 Logic Level", title1)
+	assert.Contains(t, desc1, "–32767 (–5 V) to 32767 (+5 V)")
+
+	// Drain any messages sent during initialization
+	for len(setCh) > 0 {
+		<-setCh
+	}
+
+	// Test changing Port 0 logic level via SetValue
+	d7_0.SetValue(3000)
+	assert.Equal(t, int16(3000), scp.Settings.Digital.Ports[0].Threshold)
+
+	select {
+	case msg := <-setCh:
+		assert.Equal(t, genericps.Port0, msg.Port)
+		assert.Equal(t, int16(3000), msg.Settings.Threshold)
+		assert.True(t, msg.Settings.Enabled)
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("Expected SetDigitalPortCh message for Port 0")
+	}
+
+	// Test changing Port 1 logic level to negative value
+	d7_1.SetValue(-10000)
+	assert.Equal(t, int16(-10000), scp.Settings.Digital.Ports[1].Threshold)
+
+	select {
+	case msg := <-setCh:
+		assert.Equal(t, genericps.Port1, msg.Port)
+		assert.Equal(t, int16(-10000), msg.Settings.Threshold)
+		assert.False(t, msg.Settings.Enabled)
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("Expected SetDigitalPortCh message for Port 1")
+	}
+}
+
