@@ -170,6 +170,13 @@ func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
 }
 
 func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
+	genericps.DigitalDontCare = 0
+	genericps.DigitalDirectionLow = 1
+	genericps.DigitalDirectionHigh = 2
+	genericps.DigitalDirectionRising = 3
+	genericps.DigitalDirectionFalling = 4
+	genericps.DigitalDirectionRisingOrFalling = 5
+
 	setCh := make(chan *control.DigitalPortMsg, 10)
 	scp := &ScpDesc{
 		Settings: &settings.PsSettings{
@@ -199,7 +206,7 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 
 	d7_0, isD7_0 := p0Ctrl.Obj.(*disp7.DigitArray)
 	assert.True(t, isD7_0, "digPort0LogicLevelDisp must be *disp7.DigitArray")
-	assert.Equal(t, 1500, d7_0.Value)
+	assert.Equal(t, 228, d7_0.Value)
 
 	title0, desc0 := scp.getHelpForWidget(d7_0)
 	assert.Equal(t, "Port 0 Logic Level", title0)
@@ -212,7 +219,7 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 
 	d7_1, isD7_1 := p1Ctrl.Obj.(*disp7.DigitArray)
 	assert.True(t, isD7_1, "digPort1LogicLevelDisp must be *disp7.DigitArray")
-	assert.Equal(t, -2000, d7_1.Value)
+	assert.Equal(t, -305, d7_1.Value)
 
 	title1, desc1 := scp.getHelpForWidget(d7_1)
 	assert.Equal(t, "Port 1 Logic Level", title1)
@@ -225,25 +232,25 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 
 	// Test changing Port 0 logic level via SetValue
 	d7_0.SetValue(3000)
-	assert.Equal(t, int16(3000), scp.Settings.Digital.Ports[0].Threshold)
+	assert.Equal(t, int16(19660), scp.Settings.Digital.Ports[0].Threshold)
 
 	select {
 	case msg := <-setCh:
 		assert.Equal(t, genericps.Port0, msg.Port)
-		assert.Equal(t, int16(3000), msg.Settings.Threshold)
+		assert.Equal(t, int16(19660), msg.Settings.Threshold)
 		assert.True(t, msg.Settings.Enabled)
 	case <-time.After(200 * time.Millisecond):
 		t.Fatal("Expected SetDigitalPortCh message for Port 0")
 	}
 
 	// Test changing Port 1 logic level to negative value
-	d7_1.SetValue(-10000)
-	assert.Equal(t, int16(-10000), scp.Settings.Digital.Ports[1].Threshold)
+	d7_1.SetValue(-5000)
+	assert.Equal(t, int16(-32767), scp.Settings.Digital.Ports[1].Threshold)
 
 	select {
 	case msg := <-setCh:
 		assert.Equal(t, genericps.Port1, msg.Port)
-		assert.Equal(t, int16(-10000), msg.Settings.Threshold)
+		assert.Equal(t, int16(-32767), msg.Settings.Threshold)
 		assert.False(t, msg.Settings.Enabled)
 	case <-time.After(200 * time.Millisecond):
 		t.Fatal("Expected SetDigitalPortCh message for Port 1")
