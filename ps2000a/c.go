@@ -40,8 +40,25 @@ func init() {
 	scopeHandler.OpenUnit = openUnit
 	scopeHandler.OpenUnitAsync = openUnitAsync
 	scopeHandler.OpenUnitProgress = openUnitProgress
+	scopeHandler.GetVariantInfo = getVariantInfo
 	scopeHandler.Id = "ps2000a"
 	genericps.Register(scopeHandler)
+}
+
+// getVariantInfo opens the unit by serial, queries PICO_VARIANT_INFO, then closes it.
+func getVariantInfo(serial string) string {
+	handle, err := openUnit(serial, 0)
+	if err != nil {
+		slog.Debug("ps2000a getVariantInfo openUnit failed", "serial", serial, "err", err)
+		return ""
+	}
+	defer ps2000aCloseUnit(handle)
+	info, err := ps2000aGetUnitInfo(handle, PicoVariantInfo)
+	if err != nil {
+		slog.Debug("ps2000a getVariantInfo GetUnitInfo failed", "serial", serial, "err", err)
+		return ""
+	}
+	return info
 }
 
 func boolToint16(b bool) int16 {
