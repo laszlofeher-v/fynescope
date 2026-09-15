@@ -347,20 +347,6 @@ func (p *TabFocusProxy) TypedKey(e *fyne.KeyEvent) {
 	}
 }
 
-func (p *TabFocusProxy) Position() fyne.Position {
-	if btn := getTabButton(p.item); btn != nil {
-		return btn.Position()
-	}
-	return p.BaseWidget.Position()
-}
-
-func (p *TabFocusProxy) Size() fyne.Size {
-	if btn := getTabButton(p.item); btn != nil {
-		return btn.Size()
-	}
-	return p.BaseWidget.Size()
-}
-
 func (scp *ScpDesc) setTabFocusHighlight(item *container.TabItem, visible bool) {
 	if scp == nil {
 		return
@@ -607,7 +593,7 @@ func (scp *ScpDesc) setContentWithHelp(content fyne.CanvasObject) {
 	}
 	scp.helpMu.Lock()
 	if scp.helpOverlay == nil {
-		scp.helpOverlay = container.NewWithoutLayout()
+		scp.helpOverlay = container.New(&helpOverlayLayout{scp: scp})
 	}
 	overlay := scp.helpOverlay
 	if scp.tabFocusProxies != nil {
