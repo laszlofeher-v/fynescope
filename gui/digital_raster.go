@@ -203,7 +203,11 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 				continue
 			}
 
-			yBase := float64(chIdx) * channelHeight
+			effectiveChIdx := chIdx
+			if dr.scp.Settings.Digital.D0AtBottom {
+				effectiveChIdx = activeChannels - 1 - chIdx
+			}
+			yBase := float64(effectiveChIdx) * channelHeight
 			yHigh := int(math.Round(yBase + channelHeight*0.2))
 			yLow := int(math.Round(yBase + channelHeight*0.8))
 

@@ -29,7 +29,6 @@ import (
 	"fynescope/genericps"
 	"fynescope/psc"
 	"log/slog"
-	"math"
 	"time"
 	"unsafe"
 )
@@ -926,11 +925,9 @@ func ps2000aSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand)
 }
 
 func ps2000aSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
-	l := int16(math.Round((float64(logiclevel) * (32767.0 / 5000.0))))
-	slog.Debug("ps2000aSetDigitalPort", "handle", handle, "port", port,
-		"enabled", enabled, "logiclevel", logiclevel, "l", l)
+	slog.Debug("ps2000aSetDigitalPort", "handle", handle, "port", port, "enabled", enabled, "logiclevel", logiclevel)
 	stat := C.ps2000aSetDigitalPort((C.short)(handle),
-		(C.PS2000A_DIGITAL_PORT)(port), (C.short)(boolToint16(enabled)), (C.short)(l))
+		(C.PS2000A_DIGITAL_PORT)(port), (C.short)(boolToint16(enabled)), (C.short)(logiclevel))
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("SetDigitalPort:  %s", psc.StatStr(int(stat)))
 	}

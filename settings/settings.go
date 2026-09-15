@@ -185,6 +185,7 @@ type (
 		LabelNegated    [16]bool               `yaml:"labelnegated"`
 		Trigger         DigitalTriggerSettings `yaml:"trigger"`
 		HexView         bool                   `yaml:"hexview"`
+		D0AtBottom      bool                   `yaml:"d0atbottom"`
 	}
 	DftSettings struct {
 		MaxFreq         float64 `yaml:"maxfreq"`

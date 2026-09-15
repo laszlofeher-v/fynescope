@@ -163,7 +163,7 @@ var (
 		"ps2000/no_emu.go":                        false,
 		"ps2000/no_scope.go":                      false,
 		"ps2000/types.go":                         false,
-		"ps2000a/c.go":                            false,
+		"ps2000a/c.go":                            true,
 		"ps2000a/callbacks.go":                    false,
 		"ps2000a/connection.go":                   false,
 		"ps2000a/consts.go":                       false,

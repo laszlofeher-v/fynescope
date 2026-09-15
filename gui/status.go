@@ -110,7 +110,12 @@ func (scp *ScpDesc) initStatus() {
 			code = StatusChannelNoActiveGen
 		}
 
-		msg := statusMessage{text: s, code: code}
+		dispText := s
+		runes := []rune(dispText)
+		if len(runes) > 60 {
+			dispText = string(runes[:57]) + "..."
+		}
+		msg := statusMessage{text: dispText, code: code}
 		select {
 		case scp.status.statusChan <- msg:
 		default:
