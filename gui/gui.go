@@ -289,44 +289,44 @@ type (
 		complexTriggerFocus        *FocusCheck
 		timeZoomButton             *FocusButton
 
-		timeZoomWindow             fyne.Window
-		timeZoomRaster             *screenRaster
-		timeZoomMaxScreenTime      float64
-		timeZoomScopeFullScreen    rasterImage
-		timeZoomScopeSignalScreen  rasterImage
-		timeZoomDrawers            []drawer
-		tzVChannelLabels           []ftVChannelLabelViewer
-		timeZoomBoxOffset          float64
-		timeZoomBottomLabelViewer  drawer
-		timeZoomDivsX              [numberOfDivs + 1]float32
-		timeZoomDivsY              [numberOfDivs + 1]float32
-		timeZoomTriggerPoint       drawer
-		timeZoomTimeDiv            int
-		timeZoomTimeUnit           int
-		tzRepartition              chan struct{}
-		activeRasterContainer      *fyne.Container
-		digitalRasterContainer     *fyne.Container
-		digitalRaster              *digitalRaster
-		digitalVSplit              *container.Split
-		mainSplit                  *fyne.Container
-		mouseX, mouseY             float32
-		lastSaveDir                fyne.ListableURI
-		gifRecording               bool
-		gifFrames                  *gif.GIF
-		gifTicker                  *time.Ticker
-		gifStopChan                chan struct{}
-		recordGifButton            *FocusButton
-		helpButton                 *FocusButton
-		helpPopUp                  *widget.PopUp
-		helpOverlay                *fyne.Container
-		helpCard                   *fyne.Container
-		tabFocusRect               *canvas.Rectangle
-		tabFocusProxies            map[*container.TabItem]*TabFocusProxy
-		helpQuit                   chan struct{}
-		currentFocused             fyne.Focusable
-		helpShownFor               fyne.Focusable
-		focusedSince               time.Time
-		helpMu                     sync.Mutex
+		timeZoomWindow            fyne.Window
+		timeZoomRaster            *screenRaster
+		timeZoomMaxScreenTime     float64
+		timeZoomScopeFullScreen   rasterImage
+		timeZoomScopeSignalScreen rasterImage
+		timeZoomDrawers           []drawer
+		tzVChannelLabels          []ftVChannelLabelViewer
+		timeZoomBoxOffset         float64
+		timeZoomBottomLabelViewer drawer
+		timeZoomDivsX             [numberOfDivs + 1]float32
+		timeZoomDivsY             [numberOfDivs + 1]float32
+		timeZoomTriggerPoint      drawer
+		timeZoomTimeDiv           int
+		timeZoomTimeUnit          int
+		tzRepartition             chan struct{}
+		activeRasterContainer     *fyne.Container
+		digitalRasterContainer    *fyne.Container
+		digitalRaster             *digitalRaster
+		digitalVSplit             *container.Split
+		mainSplit                 *fyne.Container
+		mouseX, mouseY            float32
+		lastSaveDir               fyne.ListableURI
+		gifRecording              bool
+		gifFrames                 *gif.GIF
+		gifTicker                 *time.Ticker
+		gifStopChan               chan struct{}
+		recordGifButton           *FocusButton
+		helpButton                *FocusButton
+		helpPopUp                 *widget.PopUp
+		helpOverlay               *fyne.Container
+		helpCard                  *fyne.Container
+		tabFocusRect              *canvas.Rectangle
+		tabFocusProxies           map[*container.TabItem]*TabFocusProxy
+		helpQuit                  chan struct{}
+		currentFocused            fyne.Focusable
+		helpShownFor              fyne.Focusable
+		focusedSince              time.Time
+		helpMu                    sync.Mutex
 	}
 )
 
@@ -1659,7 +1659,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.build2407Gui()
 	case "2206BMSO":
 		slog.Warn("2206BMSO not tested")
-		scp.maxSamplingRate = maxSampling500M
+		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	case "2207BMSO":
 		slog.Warn("2207BMSO not tested")
