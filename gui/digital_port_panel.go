@@ -304,6 +304,8 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	RegisterWidgetHelp(port0EnableCheck, "Port 0 Enable", "Enables or disables digital input channels D0-D7.")
 	port0Box.Add(port0EnableCheck)
 
+	port0ChannelsBox := container.NewVBox()
+
 	fontScale := float32(0.7) * scp.getScreenScale()
 	dispColor := theme.ForegroundColor()
 	if scp.theme != nil {
@@ -314,11 +316,11 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 		dispColor, disp7.ReadWrite,
 		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
-		1, disp7.DefaultVCursorSpace, "Threshold: ", "")
+		1, disp7.DefaultVCursorSpace, "Threshold: ", " V")
 	if err0 == nil {
-		port0LogicDisp.SilentSetValue(int(scp.Settings.Digital.Ports[0].Threshold))
+		port0LogicDisp.SilentSetValue(int(float64(scp.Settings.Digital.Ports[0].Threshold) * 5000.0 / 32767.0))
 		port0LogicDisp.OnChanged = func(val float64) {
-			scp.Settings.Digital.Ports[0].Threshold = int16(val)
+			scp.Settings.Digital.Ports[0].Threshold = int16(val * 32767.0 / 5000.0)
 			scp.SaveSettings()
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
@@ -333,6 +335,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			port0Box.Add(container.NewHBox(port0LogicDisp))
 		}
 	}
+	port0Box.Add(port0ChannelsBox)
 
 	port1EnableCheck := scp.newFocusCheck("Enable Port 1 (D8-D15)", func(v bool) {
 		scp.Settings.Digital.Ports[1].Enabled = v
@@ -365,15 +368,17 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	RegisterWidgetHelp(port1EnableCheck, "Port 1 Enable", "Enables or disables digital input channels D8-D15.")
 	port1Box.Add(port1EnableCheck)
 
-	port1LogicDisp, err1 := disp7.NewCustomDisp7Array(5, 0, 32767, -32767,
+	port1ChannelsBox := container.NewVBox()
+
+	port1LogicDisp, err1 := disp7.NewCustomDisp7Array(4, 3, 5000, -5000,
 		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
 		dispColor, disp7.ReadWrite,
 		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
-		1, disp7.DefaultVCursorSpace, "Logic Level: ", "")
+		1, disp7.DefaultVCursorSpace, "Logic Level: ", " V")
 	if err1 == nil {
-		port1LogicDisp.SilentSetValue(int(scp.Settings.Digital.Ports[1].Threshold))
+		port1LogicDisp.SilentSetValue(int(float64(scp.Settings.Digital.Ports[1].Threshold) * 5000.0 / 32767.0))
 		port1LogicDisp.OnChanged = func(val float64) {
-			scp.Settings.Digital.Ports[1].Threshold = int16(val)
+			scp.Settings.Digital.Ports[1].Threshold = int16(val * 32767.0 / 5000.0)
 			scp.SaveSettings()
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
@@ -388,11 +393,16 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			port1Box.Add(container.NewHBox(port1LogicDisp))
 		}
 	}
+	port1Box.Add(port1ChannelsBox)
+
+	var port0Rows []fyne.CanvasObject
+	var port1Rows []fyne.CanvasObject
+	var trigSelects [16]*selectscroll.SelectScroll
 
 	for i := 0; i < 16; i++ {
 		chIdx := i
 		dn := fmt.Sprintf("D%d", chIdx)
-		
+
 		var dnLabel *tappableDnLabel
 		dnLabel = newTappableDnLabel(dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
 			scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
@@ -448,10 +458,26 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		trigSelect := selectscroll.NewSelectScroll(dirOptions, func(sel string, ex selectscroll.Exception) {
 			if dirVal, ok := dirMap[sel]; ok {
 				scp.Settings.Digital.Trigger.Directions[chIdx] = dirVal
+
+				if dirVal == genericps.DigitalDirectionRising || dirVal == genericps.DigitalDirectionFalling || dirVal == genericps.DigitalDirectionRisingOrFalling {
+					for j := 0; j < 16; j++ {
+						if j != chIdx {
+							d := scp.Settings.Digital.Trigger.Directions[j]
+							if d == genericps.DigitalDirectionRising || d == genericps.DigitalDirectionFalling || d == genericps.DigitalDirectionRisingOrFalling {
+								scp.Settings.Digital.Trigger.Directions[j] = genericps.DigitalDontCare
+								if trigSelects[j] != nil {
+									trigSelects[j].SetSelected(digitalDc)
+								}
+							}
+						}
+					}
+				}
+
 				scp.SaveSettings()
 				scp.updateDigitalTrigger()
 			}
 		}, upDown)
+		trigSelects[chIdx] = trigSelect
 		trigSelect.SetSelected(initialDirStr)
 		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
 		RegisterWidgetHelp(trigSelect, "Digital Channel Trigger", "Selects trigger condition for this digital line: Low (0), High (1), Rising edge (R), Falling edge (F), or Don't Care (X).")
@@ -477,17 +503,53 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		)
 
 		if i < 8 {
-			port0Box.Add(row)
+			port0Rows = append(port0Rows, row)
 		} else {
-			port1Box.Add(row)
+			port1Rows = append(port1Rows, row)
 		}
 	}
+
+	updateStack := func() {
+		port0ChannelsBox.Objects = nil
+		port1ChannelsBox.Objects = nil
+		if scp.Settings.Digital.D0AtBottom {
+			for i := len(port0Rows) - 1; i >= 0; i-- {
+				port0ChannelsBox.Add(port0Rows[i])
+			}
+			for i := len(port1Rows) - 1; i >= 0; i-- {
+				port1ChannelsBox.Add(port1Rows[i])
+			}
+		} else {
+			for i := 0; i < len(port0Rows); i++ {
+				port0ChannelsBox.Add(port0Rows[i])
+			}
+			for i := 0; i < len(port1Rows); i++ {
+				port1ChannelsBox.Add(port1Rows[i])
+			}
+		}
+		port0ChannelsBox.Refresh()
+		port1ChannelsBox.Refresh()
+	}
+	updateStack()
+
+	d0BottomCheck := scp.newFocusCheck("D0 at Bottom", func(v bool) {
+		scp.Settings.Digital.D0AtBottom = v
+		scp.SaveSettings()
+		updateStack()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+	})
+	d0BottomCheck.SetChecked(scp.Settings.Digital.D0AtBottom)
+	addToTest(d0BottomCheck, "digPortD0BottomCheck", digPortTabIndex)
+	RegisterWidgetHelp(d0BottomCheck, "Stack Direction", "When enabled, places D0 at the bottom of the digital signal stack.")
 
 	portTabs := container.NewAppTabs(
 		container.NewTabItem("Port 0 (D0-D7)", port0Box),
 		container.NewTabItem("Port 1 (D8-D15)", port1Box),
 	)
 	addToTest(portTabs, "digPortSubTabs", digPortTabIndex)
+	mainBox.Add(d0BottomCheck)
 	mainBox.Add(portTabs)
 
 	return container.NewVBox(mainBox, layout.NewSpacer())
