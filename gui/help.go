@@ -317,6 +317,19 @@ func (p *TabFocusProxy) FocusLost() {
 
 func (p *TabFocusProxy) TypedRune(_ rune) {}
 
+// Tapped selects the tab when the user clicks on it.  The proxy is overlaid
+// on top of the real tab button in the help overlay, so mouse clicks land
+// here instead of on the underlying AppTabs button.
+func (p *TabFocusProxy) Tapped(_ *fyne.PointEvent) {
+	if p.scp == nil || p.scp.controlTab == nil || p.item == nil {
+		return
+	}
+	p.scp.controlTab.Select(p.item)
+	if p.scp != nil {
+		p.scp.focusWidget(p)
+	}
+}
+
 func (p *TabFocusProxy) TypedKey(e *fyne.KeyEvent) {
 	if p.scp == nil || p.scp.controlTab == nil || p.item == nil {
 		return
@@ -377,6 +390,11 @@ func (scp *ScpDesc) setTabFocusHighlight(item *container.TabItem, visible bool) 
 	}
 	btnSize := btn.Size()
 	if btnSize.Width <= 0 || btnSize.Height <= 0 {
+		return
+	}
+	// Skip if the absolute position is (0,0) but the button's relative
+	// position is not: the button hasn't been laid out in the canvas yet.
+	if absPos == (fyne.Position{}) && btn.Position() != (fyne.Position{}) {
 		return
 	}
 
@@ -440,8 +458,17 @@ func (scp *ScpDesc) findHoveredTabItem() *container.TabItem {
 					absPos = btn.Position()
 				}
 				size := btn.Size()
-				if size.Width > 0 && size.Height > 0 &&
-					cursorX >= absPos.X && cursorX <= absPos.X+size.Width &&
+				if size.Width <= 0 || size.Height <= 0 {
+					continue
+				}
+				// Skip if absPos is (0,0) but the button's own relative
+				// position is nonzero: the widget hasn't been laid out in
+				// the canvas yet, so the absolute position is stale/invalid.
+				// Using it would falsely match the toolbar area.
+				if absPos == (fyne.Position{}) && btn.Position() != (fyne.Position{}) {
+					continue
+				}
+				if cursorX >= absPos.X && cursorX <= absPos.X+size.Width &&
 					cursorY >= absPos.Y && cursorY <= absPos.Y+size.Height {
 					return item
 				}
