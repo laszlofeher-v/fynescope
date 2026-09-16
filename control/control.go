@@ -373,7 +373,7 @@ func (psControl *PscDesc) setEverything() (err error) {
 
 func (psControl *PscDesc) sendTrigger() (err error) {
 	if !psControl.triggerSetting.Enabled {
-		if psControl.triggerSetting.DigitalTriggerEnabled {
+		if psControl.hasActiveDigitalTrigger() {
 			return psControl.sendDigitalTrigger()
 		}
 		return psControl.sendSimpleTrigger()
