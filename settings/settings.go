@@ -171,10 +171,12 @@ type (
 		Threshold int16 `yaml:"threshold"`
 	}
 	DigitalTriggerSettings struct {
-		Enabled    bool                           `yaml:"enabled"`
-		Logic      string                         `yaml:"logic"` // "AND", "OR", etc.
-		Operand    genericps.TriggerOperand       `yaml:"operand"`
-		Directions [16]genericps.DigitalDirection `yaml:"directions"`
+		Enabled       bool                           `yaml:"enabled"`
+		Logic         string                         `yaml:"logic"` // Legacy field for backwards compatibility
+		Operand       genericps.TriggerOperand       `yaml:"operand"`
+		ChannelsLogic string                         `yaml:"channels_logic"` // "AND" or "OR" across digital channels
+		AnalogLogic   string                         `yaml:"analog_logic"`   // "OR" or "AND" for combining with analog
+		Directions    [16]genericps.DigitalDirection `yaml:"directions"`
 	}
 	DigitalSettings struct {
 		Ports           [2]DigitalPortSettings `yaml:"ports"`
@@ -406,9 +408,11 @@ func NewDefaultSettings() *PsSettings {
 				"", "", "", "", "", "", "", "",
 			},
 			Trigger: DigitalTriggerSettings{
-				Enabled: false,
-				Logic:   "OR",
-				Operand: genericps.OperandOr,
+				Enabled:       false,
+				Logic:         "OR",
+				Operand:       genericps.OperandOr,
+				ChannelsLogic: "AND",
+				AnalogLogic:   "OR",
 			},
 			HexView: false,
 		},
@@ -512,6 +516,24 @@ func Load(fileName string) (*PsSettings, error) {
 
 	if settings.DigitalDemoGenPanel.Frequency <= 0 {
 		settings.DigitalDemoGenPanel.Frequency = defaultFrequency
+	}
+
+	if settings.Digital.Trigger.ChannelsLogic == "" {
+		settings.Digital.Trigger.ChannelsLogic = "AND"
+	}
+	if settings.Digital.Trigger.AnalogLogic == "" {
+		if settings.Digital.Trigger.Logic != "" {
+			settings.Digital.Trigger.AnalogLogic = settings.Digital.Trigger.Logic
+		} else {
+			settings.Digital.Trigger.AnalogLogic = "OR"
+		}
+	}
+	if settings.Digital.Trigger.Operand == genericps.OperandNone {
+		if settings.Digital.Trigger.AnalogLogic == "AND" || settings.Digital.Trigger.Logic == "AND" {
+			settings.Digital.Trigger.Operand = genericps.OperandAnd
+		} else {
+			settings.Digital.Trigger.Operand = genericps.OperandOr
+		}
 	}
 
 	if settings.ScreenSize == "" {

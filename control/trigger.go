@@ -45,6 +45,7 @@ func (psControl *PscDesc) triggerMonitor() {
 	triggerDescChanged := func(a, b TriggerDesc) bool {
 		if a.DigitalTriggerEnabled != b.DigitalTriggerEnabled ||
 			a.DigitalAnalogOperand != b.DigitalAnalogOperand ||
+			a.DigitalChannelsOperand != b.DigitalChannelsOperand ||
 			len(a.DigitalDirections) != len(b.DigitalDirections) {
 			return true
 		}
@@ -142,6 +143,11 @@ func (psControl *PscDesc) applyDigitalTrigger() (err error) {
 		if err != nil {
 			slog.Error("applyDigitalTrigger SetTriggerDigitalPortProperties:", "error:", err)
 			return
+		}
+		err = psControl.Con.SetDigitalChannelsTriggerOperand(psControl.triggerSetting.DigitalChannelsOperand)
+		if err != nil {
+			slog.Debug("applyDigitalTrigger SetDigitalChannelsTriggerOperand not supported, continuing", "error:", err)
+			err = nil
 		}
 		err = psControl.Con.SetDigitalAnalogTriggerOperand(psControl.triggerSetting.DigitalAnalogOperand)
 		if err != nil {
@@ -675,7 +681,31 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", sanitizedProps)
 		return
 	}
-	err = psControl.Con.SetTriggerChannelConditions(psControl.triggerSetting.ComplexConditions)
+
+	conds := make([]genericps.TriggerConditions, len(psControl.triggerSetting.ComplexConditions))
+	copy(conds, psControl.triggerSetting.ComplexConditions)
+
+	if psControl.hasActiveDigitalTrigger() {
+		if psControl.triggerSetting.DigitalAnalogOperand == genericps.OperandOr {
+			digRow := genericps.TriggerConditions{
+				ChannelA:            genericps.CondDontCare,
+				ChannelB:            genericps.CondDontCare,
+				ChannelC:            genericps.CondDontCare,
+				ChannelD:            genericps.CondDontCare,
+				External:            genericps.CondDontCare,
+				Aux:                 genericps.CondDontCare,
+				PulseWidthQualifier: genericps.CondDontCare,
+				Digital:             genericps.CondTrue,
+			}
+			conds = append(conds, digRow)
+		} else {
+			for i := range conds {
+				conds[i].Digital = genericps.CondTrue
+			}
+		}
+	}
+
+	err = psControl.Con.SetTriggerChannelConditions(conds)
 	if err != nil {
 		slog.Error("SetTriggerChannelCondition (Complex):", "error:", err)
 		return
@@ -814,22 +844,52 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 // on the trigger source channel and pwqCond on the PulseWidthQualifier field; all other
 // channels are set to CondDontCare.
 func (psControl *PscDesc) buildTriggerConditions(condMain, pwqCond genericps.TriggerRespBase) []genericps.TriggerConditions {
+	hasDigital := psControl.hasActiveDigitalTrigger()
 	digCond := genericps.CondDontCare
-	if psControl.hasActiveDigitalTrigger() {
+	if hasDigital {
 		digCond = genericps.CondTrue
 	}
-	var triggerConditions []genericps.TriggerConditions
-	switch psControl.triggerSetting.Source {
-	case genericps.ChA:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: condMain, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
-	case genericps.ChB:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: condMain, ChannelC: genericps.CondDontCare, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
-	case genericps.ChC:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: condMain, ChannelD: genericps.CondDontCare, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
-	case genericps.ChD:
-		triggerConditions = []genericps.TriggerConditions{{ChannelA: genericps.CondDontCare, ChannelB: genericps.CondDontCare, ChannelC: genericps.CondDontCare, ChannelD: condMain, External: genericps.CondDontCare, Aux: genericps.CondDontCare, PulseWidthQualifier: pwqCond, Digital: digCond}}
+
+	makeRow := func(main genericps.TriggerRespBase, pwq genericps.TriggerRespBase, dig genericps.TriggerRespBase) genericps.TriggerConditions {
+		tc := genericps.TriggerConditions{
+			ChannelA:            genericps.CondDontCare,
+			ChannelB:            genericps.CondDontCare,
+			ChannelC:            genericps.CondDontCare,
+			ChannelD:            genericps.CondDontCare,
+			External:            genericps.CondDontCare,
+			Aux:                 genericps.CondDontCare,
+			PulseWidthQualifier: pwq,
+			Digital:             dig,
+		}
+		switch psControl.triggerSetting.Source {
+		case genericps.ChA:
+			tc.ChannelA = main
+		case genericps.ChB:
+			tc.ChannelB = main
+		case genericps.ChC:
+			tc.ChannelC = main
+		case genericps.ChD:
+			tc.ChannelD = main
+		}
+		return tc
 	}
-	return triggerConditions
+
+	if hasDigital && psControl.triggerSetting.DigitalAnalogOperand == genericps.OperandOr {
+		rowAnalog := makeRow(condMain, pwqCond, genericps.CondDontCare)
+		rowDigital := genericps.TriggerConditions{
+			ChannelA:            genericps.CondDontCare,
+			ChannelB:            genericps.CondDontCare,
+			ChannelC:            genericps.CondDontCare,
+			ChannelD:            genericps.CondDontCare,
+			External:            genericps.CondDontCare,
+			Aux:                 genericps.CondDontCare,
+			PulseWidthQualifier: genericps.CondDontCare,
+			Digital:             genericps.CondTrue,
+		}
+		return []genericps.TriggerConditions{rowAnalog, rowDigital}
+	}
+
+	return []genericps.TriggerConditions{makeRow(condMain, pwqCond, digCond)}
 }
 
 // buildPwqConditions builds a single-element PwqConditions slice with condMain on the

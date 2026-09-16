@@ -71,10 +71,11 @@ type (
 		IntervalTimeUpper     float64
 		XOffset               float64
 		AutoTriggerMs         int16
-		DigitalTriggerEnabled bool
-		DigitalDirections     []genericps.DigitalChannelDirections
-		DigitalAnalogOperand  genericps.TriggerOperand
-		EtsInterleave         int16
+		DigitalTriggerEnabled  bool
+		DigitalDirections      []genericps.DigitalChannelDirections
+		DigitalAnalogOperand   genericps.TriggerOperand
+		DigitalChannelsOperand genericps.TriggerOperand
+		EtsInterleave          int16
 		EtsCycles             int16
 	}
 	TriggerDescMsg struct {

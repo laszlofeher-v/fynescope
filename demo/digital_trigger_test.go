@@ -104,6 +104,42 @@ func TestDigitalTriggerPatternMatching(t *testing.T) {
 	assert.Equal(t, int16(1), currD1, "D1 must be High")
 }
 
+func TestDigitalTriggerChannelsOperandOr(t *testing.T) {
+	SetDigitalGenPortEnabled(true, true)
+	s := &SimDesc{}
+	_ = s.SetDemoDigitalGen(true, true, 1000, genericps.DigitalDemoGenDirectionUp, genericps.DigitalDemoGenEncodingBinary, genericps.DigitalDemoGenModeSynchronous, 0)
+
+	// In OR mode: either D0 rising OR D1 falling triggers
+	td := NewTriggerDetector(false, 0, 0, TriggerNone, ChA)
+	td.SetDigitalPortProperties([]DigitalChannelDirections{
+		{Channel: Dch0, Direction: DigitalDirectionRising},
+		{Channel: Dch1, Direction: DigitalDirectionFalling},
+	})
+	td.SetDigitalChannelsOperand(OperandOr)
+
+	dt := 1e-6
+	reqSamples := uint32(1000)
+	maxTime := 0.01
+
+	signalFunc := func(t float64, ch ChannelId) float64 {
+		return 0
+	}
+
+	found, triggerTime := td.FindTriggerPoint(signalFunc, reqSamples, maxTime, dt)
+	assert.True(t, found)
+
+	p0Curr, _, _, _ := GetDemoDigitalGenValue(triggerTime)
+	p0Prev, _, _, _ := GetDemoDigitalGenValue(triggerTime - dt)
+	currD0 := p0Curr & 1
+	prevD0 := p0Prev & 1
+	currD1 := (p0Curr >> 1) & 1
+	prevD1 := (p0Prev >> 1) & 1
+
+	d0Rising := (prevD0 == 0 && currD0 == 1)
+	d1Falling := (prevD1 == 1 && currD1 == 0)
+	assert.True(t, d0Rising || d1Falling, "At least one condition must hold under OR")
+}
+
 func TestCombinedAnalogAndDigitalTriggerAND(t *testing.T) {
 	SetDigitalGenPortEnabled(true, true)
 	s := &SimDesc{}

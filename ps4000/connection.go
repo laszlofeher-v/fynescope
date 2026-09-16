@@ -590,6 +590,12 @@ func queryOutputEdgeDetect(m *genericps.QueryOutputEdgeDetectMsg) {
 	m.RspCh() <- struct{}{}
 }
 
+func setDigitalChannelsTriggerOperand(m *genericps.SetDigitalChannelsTriggerOperandMsg) {
+	response := m.Rsp().(*genericps.SetDigitalChannelsTriggerOperandRsp)
+	response.SetStatus(nil)
+	m.RspCh() <- struct{}{}
+}
+
 func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandMsg) {
 	// Not implemented in ps4000
 	response := m.Rsp().(*genericps.SetDigitalAnalogTriggerOperandRsp)
@@ -792,6 +798,8 @@ func dispatch(msg genericps.Message) {
 		queryOutputEdgeDetect(m)
 	case *genericps.SetDigitalAnalogTriggerOperandMsg:
 		setDigitalAnalogTriggerOperand(m)
+	case *genericps.SetDigitalChannelsTriggerOperandMsg:
+		setDigitalChannelsTriggerOperand(m)
 	case *genericps.SetDigitalPortMsg:
 		setDigitalPort(m)
 	case *genericps.SetOutputEdgeDetectMsg:

@@ -26,6 +26,7 @@ type TriggerDetector struct {
 	digitalTriggerEnabled  bool
 	digitalCondition       TriggerState
 	digitalAnalogOperand   TriggerOperand
+	digitalChannelsOperand TriggerOperand
 }
 
 type DigitalChannelTriggerConfig struct {
@@ -165,38 +166,70 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	t := float64(0)
 	for t < maxTime {
 		// Evaluate digital conditions at time t
-		digitalMatched := true
+		digitalMatched := false
 		if digitalActive {
 			p0, p1, _, _ := GetDemoDigitalGenValue(t)
 			prevP0, prevP1, _, _ := GetDemoDigitalGenValue(t - dt)
 			currWord := uint16(p0&0xFF) | (uint16(p1&0xFF) << 8)
 			prevWord := uint16(prevP0&0xFF) | (uint16(prevP1&0xFF) << 8)
 
-			for ch := 0; ch < 16; ch++ {
-				dir := td.digitalChannels[ch].Direction
-				if dir == DigitalDontCare {
-					continue
+			if td.digitalChannelsOperand == OperandOr {
+				digitalMatched = false
+				for ch := 0; ch < 16; ch++ {
+					dir := td.digitalChannels[ch].Direction
+					if dir == DigitalDontCare {
+						continue
+					}
+					currBit := (currWord >> ch) & 1
+					prevBit := (prevWord >> ch) & 1
+					matched := false
+					switch dir {
+					case DigitalDirectionLow:
+						matched = (currBit == 0)
+					case DigitalDirectionHigh:
+						matched = (currBit == 1)
+					case DigitalDirectionRising:
+						matched = (prevBit == 0 && currBit == 1)
+					case DigitalDirectionFalling:
+						matched = (prevBit == 1 && currBit == 0)
+					case DigitalDirectionRisingOrFalling:
+						matched = (prevBit != currBit)
+					default:
+						matched = true
+					}
+					if matched {
+						digitalMatched = true
+						break
+					}
 				}
-				currBit := (currWord >> ch) & 1
-				prevBit := (prevWord >> ch) & 1
-				matched := false
-				switch dir {
-				case DigitalDirectionLow:
-					matched = (currBit == 0)
-				case DigitalDirectionHigh:
-					matched = (currBit == 1)
-				case DigitalDirectionRising:
-					matched = (prevBit == 0 && currBit == 1)
-				case DigitalDirectionFalling:
-					matched = (prevBit == 1 && currBit == 0)
-				case DigitalDirectionRisingOrFalling:
-					matched = (prevBit != currBit)
-				default:
-					matched = true
-				}
-				if !matched {
-					digitalMatched = false
-					break
+			} else {
+				digitalMatched = true
+				for ch := 0; ch < 16; ch++ {
+					dir := td.digitalChannels[ch].Direction
+					if dir == DigitalDontCare {
+						continue
+					}
+					currBit := (currWord >> ch) & 1
+					prevBit := (prevWord >> ch) & 1
+					matched := false
+					switch dir {
+					case DigitalDirectionLow:
+						matched = (currBit == 0)
+					case DigitalDirectionHigh:
+						matched = (currBit == 1)
+					case DigitalDirectionRising:
+						matched = (prevBit == 0 && currBit == 1)
+					case DigitalDirectionFalling:
+						matched = (prevBit == 1 && currBit == 0)
+					case DigitalDirectionRisingOrFalling:
+						matched = (prevBit != currBit)
+					default:
+						matched = true
+					}
+					if !matched {
+						digitalMatched = false
+						break
+					}
 				}
 			}
 		} else {
@@ -494,6 +527,10 @@ func (td *TriggerDetector) SetDigitalPortProperties(dirs []DigitalChannelDirecti
 
 func (td *TriggerDetector) SetDigitalAnalogTriggerOperand(operand TriggerOperand) {
 	td.digitalAnalogOperand = operand
+}
+
+func (td *TriggerDetector) SetDigitalChannelsOperand(operand TriggerOperand) {
+	td.digitalChannelsOperand = operand
 }
 
 func (td *TriggerDetector) evaluateLevelTrigger(cfg TriggerChannelConfig, state *TriggerArmedState, level float64) (conditionMet bool, fired bool) {

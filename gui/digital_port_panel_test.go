@@ -57,11 +57,25 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 		assert.NotNil(t, msg)
 		assert.True(t, msg.DigitalTriggerEnabled)
 		assert.Equal(t, genericps.OperandAnd, msg.DigitalAnalogOperand)
+		assert.Equal(t, genericps.OperandAnd, msg.DigitalChannelsOperand)
 		assert.Len(t, msg.DigitalDirections, 2)
 		assert.Equal(t, genericps.DigitalChannel(0), msg.DigitalDirections[0].Channel)
 		assert.Equal(t, genericps.DigitalDirectionRising, msg.DigitalDirections[0].Direction)
 		assert.Equal(t, genericps.DigitalChannel(1), msg.DigitalDirections[1].Channel)
 		assert.Equal(t, genericps.DigitalDirectionHigh, msg.DigitalDirections[1].Direction)
+		msg.Done <- struct{}{}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Expected digital trigger message to be sent to channel")
+	}
+
+	// Test with ChannelsLogic = "OR"
+	scp.Settings.Digital.Trigger.ChannelsLogic = "OR"
+	scp.updateDigitalTrigger()
+
+	select {
+	case msg := <-scp.psControl.SetTriggerCh:
+		assert.NotNil(t, msg)
+		assert.Equal(t, genericps.OperandOr, msg.DigitalChannelsOperand)
 		msg.Done <- struct{}{}
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Expected digital trigger message to be sent to channel")
@@ -93,6 +107,39 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Expected digital trigger message to be sent to channel")
 	}
+}
+
+func TestDigitalPortPanel_TriggerLogicControlsAddToTest(t *testing.T) {
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: true},
+					{Enabled: true},
+				},
+				Trigger: settings.DigitalTriggerSettings{
+					Enabled:       true,
+					ChannelsLogic: "AND",
+					AnalogLogic:   "OR",
+				},
+			},
+		},
+		psControl: &control.PscDesc{
+			SetTriggerCh: make(chan *control.TriggerDescMsg, 1),
+		},
+	}
+
+	scp.buildDigitalPortContent(false)
+
+	controlsMtx.RLock()
+	channelsCtrl, chOk := controls["digPortChannelsLogicSelect"]
+	operandCtrl, opOk := controls["digPortOperandSelect"]
+	controlsMtx.RUnlock()
+
+	assert.True(t, chOk, "Expected digPortChannelsLogicSelect to be registered")
+	assert.NotNil(t, channelsCtrl.Obj)
+	assert.True(t, opOk, "Expected digPortOperandSelect to be registered")
+	assert.NotNil(t, operandCtrl.Obj)
 }
 
 func TestDigitalPortPanel_DnLabelsAddToTest(t *testing.T) {
