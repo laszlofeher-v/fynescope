@@ -609,6 +609,12 @@ func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandM
 	m.RspCh() <- struct{}{}
 }
 
+func setDigitalChannelsTriggerOperand(m *genericps.SetDigitalChannelsTriggerOperandMsg) {
+	response := m.Rsp().(*genericps.SetDigitalChannelsTriggerOperandRsp)
+	response.SetStatus(nil)
+	m.RspCh() <- struct{}{}
+}
+
 func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 	var (
 		err error
@@ -804,6 +810,8 @@ func dispatch(msg genericps.Message) {
 		queryOutputEdgeDetect(m)
 	case *genericps.SetDigitalAnalogTriggerOperandMsg:
 		setDigitalAnalogTriggerOperand(m)
+	case *genericps.SetDigitalChannelsTriggerOperandMsg:
+		setDigitalChannelsTriggerOperand(m)
 	case *genericps.SetDigitalPortMsg:
 		setDigitalPort(m)
 	case *genericps.SetOutputEdgeDetectMsg:

@@ -649,6 +649,17 @@ func setDigitalAnalogTriggerOperand(m *genericps.SetDigitalAnalogTriggerOperandM
 	m.RspCh() <- struct{}{}
 }
 
+func setDigitalChannelsTriggerOperand(m *genericps.SetDigitalChannelsTriggerOperandMsg) {
+	var (
+		err error
+	)
+	err = simSetDigitalChannelsTriggerOperand(m.Handle(), TriggerOperand(m.Operand))
+
+	response := m.Rsp().(*genericps.SetDigitalChannelsTriggerOperandRsp)
+	response.SetStatus(err)
+	m.RspCh() <- struct{}{}
+}
+
 func setDigitalPort(m *genericps.SetDigitalPortMsg) {
 	var (
 		err error

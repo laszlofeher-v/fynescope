@@ -160,13 +160,19 @@ func (scp *ScpDesc) updateDigitalTrigger() {
 
 	operand := scp.Settings.Digital.Trigger.Operand
 	if operand == genericps.OperandNone {
-		if scp.Settings.Digital.Trigger.Logic == "AND" {
+		if scp.Settings.Digital.Trigger.AnalogLogic == "AND" || scp.Settings.Digital.Trigger.Logic == "AND" {
 			operand = genericps.OperandAnd
 		} else {
 			operand = genericps.OperandOr
 		}
 	}
 	scp.triggerSettingMsg.DigitalAnalogOperand = operand
+
+	channelsOperand := genericps.OperandAnd
+	if scp.Settings.Digital.Trigger.ChannelsLogic == "OR" {
+		channelsOperand = genericps.OperandOr
+	}
+	scp.triggerSettingMsg.DigitalChannelsOperand = channelsOperand
 
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
@@ -233,17 +239,31 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	trigEnableCheck.SetChecked(scp.Settings.Digital.Trigger.Enabled)
 
+	channelsLogicOptions := []string{"AND", "OR"}
+	initialChannelsLogic := "AND"
+	if scp.Settings.Digital.Trigger.ChannelsLogic == "OR" {
+		initialChannelsLogic = "OR"
+	}
+	channelsLogicSelect := selectscroll.NewSelectScroll(channelsLogicOptions, func(sel string, ex selectscroll.Exception) {
+		scp.Settings.Digital.Trigger.ChannelsLogic = sel
+		scp.SaveSettings()
+		scp.updateDigitalTrigger()
+	}, "AND")
+	channelsLogicSelect.SetSelected(initialChannelsLogic)
+
 	operandOptions := []string{"OR", "AND"}
 	initialOperand := "OR"
-	if scp.Settings.Digital.Trigger.Operand == genericps.OperandAnd || scp.Settings.Digital.Trigger.Logic == "AND" {
+	if scp.Settings.Digital.Trigger.Operand == genericps.OperandAnd || scp.Settings.Digital.Trigger.AnalogLogic == "AND" || scp.Settings.Digital.Trigger.Logic == "AND" {
 		initialOperand = "AND"
 	}
 	operandSelect := selectscroll.NewSelectScroll(operandOptions, func(sel string, ex selectscroll.Exception) {
 		if sel == "AND" {
 			scp.Settings.Digital.Trigger.Operand = genericps.OperandAnd
+			scp.Settings.Digital.Trigger.AnalogLogic = "AND"
 			scp.Settings.Digital.Trigger.Logic = "AND"
 		} else {
 			scp.Settings.Digital.Trigger.Operand = genericps.OperandOr
+			scp.Settings.Digital.Trigger.AnalogLogic = "OR"
 			scp.Settings.Digital.Trigger.Logic = "OR"
 		}
 		scp.SaveSettings()
@@ -251,10 +271,12 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	}, "AND")
 	operandSelect.SetSelected(initialOperand)
 
-	trigHeader := container.NewHBox(
+	trigHeader := container.NewVBox(
 		trigEnableCheck,
 		layout.NewSpacer(),
-		widget.NewLabel("Logic:"),
+		widget.NewLabel("Channels:"),
+		channelsLogicSelect,
+		widget.NewLabel("Analog/Digital:"),
 		operandSelect,
 	)
 
@@ -267,8 +289,10 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	}
 	addToTest(trigEnableCheck, "digPortTrigEnable", digPortTabIndex)
 	RegisterWidgetHelp(trigEnableCheck, "Digital Pattern Trigger", "Enables multi-channel digital logic pattern triggering.")
+	addToTest(channelsLogicSelect, "digPortChannelsLogicSelect", digPortTabIndex)
+	RegisterWidgetHelp(channelsLogicSelect, "Digital Channels Logic", "Selects logical combination operator (AND / OR) across individual digital channels.")
 	addToTest(operandSelect, "digPortOperandSelect", digPortTabIndex)
-	RegisterWidgetHelp(operandSelect, "Logic Operand", "Selects logical combination operator (AND / OR) for digital trigger channels.")
+	RegisterWidgetHelp(operandSelect, "Analog/Digital Logic Operand", "Selects logical combination operator (AND / OR) between analog trigger and digital trigger.")
 
 	port0Box := container.NewVBox()
 	port1Box := container.NewVBox()

@@ -763,6 +763,14 @@ type (
 		RespBase
 	}
 
+	SetDigitalChannelsTriggerOperandMsg struct {
+		MsgBase
+		Operand TriggerOperand
+	}
+	SetDigitalChannelsTriggerOperandRsp struct {
+		RespBase
+	}
+
 	SetDigitalPortMsg struct {
 		MsgBase
 		Port       DigitalPort
@@ -1343,6 +1351,14 @@ func (c Connection) SetDigitalAnalogTriggerOperand(operand TriggerOperand) (err 
 	msg.rsp = &SetDigitalAnalogTriggerOperandRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetDigitalAnalogTriggerOperandRsp)
+	err = rsp.Status()
+	return
+}
+func (c Connection) SetDigitalChannelsTriggerOperand(operand TriggerOperand) (err error) {
+	msg := &SetDigitalChannelsTriggerOperandMsg{Operand: operand}
+	msg.rsp = &SetDigitalChannelsTriggerOperandRsp{}
+	c.Send(msg)
+	rsp := msg.Rsp().(*SetDigitalChannelsTriggerOperandRsp)
 	err = rsp.Status()
 	return
 }

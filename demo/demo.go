@@ -1608,6 +1608,17 @@ func simSetDigitalAnalogTriggerOperand(handle int16, operand TriggerOperand) (er
 	return nil
 }
 
+func simSetDigitalChannelsTriggerOperand(handle int16, operand TriggerOperand) (err error) {
+	if handle <= 0 {
+		return fmt.Errorf(invalidHandle)
+	}
+	if triggerDetector == nil {
+		triggerDetector = NewTriggerDetector(true, 0, 0, TriggerNone, ChA)
+	}
+	triggerDetector.SetDigitalChannelsOperand(operand)
+	return nil
+}
+
 func simSetDigitalPort(handle int16, port DigitalPort, enabled bool, logiclevel int16) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
@@ -1809,6 +1820,8 @@ func dispatch(msg genericps.Message) {
 		queryOutputEdgeDetect(m)
 	case *genericps.SetDigitalAnalogTriggerOperandMsg:
 		setDigitalAnalogTriggerOperand(m)
+	case *genericps.SetDigitalChannelsTriggerOperandMsg:
+		setDigitalChannelsTriggerOperand(m)
 	case *genericps.SetDigitalPortMsg:
 		setDigitalPort(m)
 	case *genericps.SetOutputEdgeDetectMsg:
