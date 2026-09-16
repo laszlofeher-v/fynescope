@@ -208,6 +208,9 @@ func TestPscDesc_buildTriggerConditions(t *testing.T) {
 
 		// With digital enabled
 		psControl.triggerSetting.DigitalTriggerEnabled = true
+		psControl.triggerSetting.DigitalDirections = []genericps.DigitalChannelDirections{
+			{Channel: genericps.Dch0, Direction: genericps.DigitalDirectionHigh},
+		}
 		condsDig := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondTrue)
 		if condsDig[0].Digital != genericps.CondTrue {
 			t.Errorf("expected digital CondTrue when enabled, got %v", condsDig[0].Digital)

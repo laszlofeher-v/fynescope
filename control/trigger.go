@@ -124,8 +124,20 @@ func (psControl *PscDesc) triggerMonitor() {
 	}
 }
 
+func (psControl *PscDesc) hasActiveDigitalTrigger() bool {
+	if !psControl.triggerSetting.DigitalTriggerEnabled {
+		return false
+	}
+	for _, d := range psControl.triggerSetting.DigitalDirections {
+		if d.Direction != genericps.DigitalDontCare {
+			return true
+		}
+	}
+	return false
+}
+
 func (psControl *PscDesc) applyDigitalTrigger() (err error) {
-	if psControl.triggerSetting.DigitalTriggerEnabled {
+	if psControl.hasActiveDigitalTrigger() {
 		err = psControl.Con.SetTriggerDigitalPortProperties(psControl.triggerSetting.DigitalDirections)
 		if err != nil {
 			slog.Error("applyDigitalTrigger SetTriggerDigitalPortProperties:", "error:", err)
@@ -187,7 +199,7 @@ func (psControl *PscDesc) sendDigitalTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendSimpleTrigger() (err error) {
-	if psControl.triggerSetting.DigitalTriggerEnabled {
+	if psControl.hasActiveDigitalTrigger() {
 		return psControl.sendAdvancedTrigger()
 	}
 	at := int16(0)
@@ -803,7 +815,7 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 // channels are set to CondDontCare.
 func (psControl *PscDesc) buildTriggerConditions(condMain, pwqCond genericps.TriggerRespBase) []genericps.TriggerConditions {
 	digCond := genericps.CondDontCare
-	if psControl.triggerSetting.DigitalTriggerEnabled {
+	if psControl.hasActiveDigitalTrigger() {
 		digCond = genericps.CondTrue
 	}
 	var triggerConditions []genericps.TriggerConditions
