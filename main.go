@@ -621,7 +621,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 					return
 				}
 
-				w.Hide()
+				w.Close()
 			})
 		}()
 	})
