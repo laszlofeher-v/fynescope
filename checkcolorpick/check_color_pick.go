@@ -7,6 +7,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 
 	"fyne.io/fyne/v2/theme"
@@ -171,8 +172,62 @@ func (ccpr *checkColorPickRenderer) Layout(size fyne.Size) {
 	ccpr.focusIndicator.Resize(size)
 	ccpr.bg.Resize(size)
 }
+func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
+	if root == nil || target == nil {
+		return false
+	}
+	if root == target {
+		return true
+	}
+	switch c := root.(type) {
+	case *fyne.Container:
+		for _, child := range c.Objects {
+			if canvasContains(child, target) {
+				return true
+			}
+		}
+	case *container.AppTabs:
+		if sel := c.Selected(); sel != nil {
+			if canvasContains(sel.Content, target) {
+				return true
+			}
+		}
+	case *container.Scroll:
+		return canvasContains(c.Content, target)
+	case *container.Split:
+		return canvasContains(c.Leading, target) || canvasContains(c.Trailing, target)
+	case fyne.Widget:
+		r := c.CreateRenderer()
+		if r != nil {
+			for _, child := range r.Objects() {
+				if canvasContains(child, target) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isCanvasMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
+	if c == nil || target == nil {
+		return false
+	}
+	if canvasContains(c.Content(), target) {
+		return true
+	}
+	if c.Overlays() != nil && c.Overlays().Top() != nil {
+		if canvasContains(c.Overlays().Top(), target) {
+			return true
+		}
+	}
+	return false
+}
+
 func (ccp *CheckColorPick) MouseIn(e *desktop.MouseEvent) {
-	ccp.window.Canvas().Focus(ccp)
+	if ccp.window != nil && ccp.window.Canvas() != nil && isCanvasMounted(ccp.window.Canvas(), ccp) {
+		ccp.window.Canvas().Focus(ccp)
+	}
 	ccp.Refresh()
 }
 func (ccp *CheckColorPick) MouseDown(e *desktop.MouseEvent) {

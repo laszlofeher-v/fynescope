@@ -4,8 +4,61 @@ import (
 	"math"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 )
+
+func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
+	if root == nil || target == nil {
+		return false
+	}
+	if root == target {
+		return true
+	}
+	switch c := root.(type) {
+	case *fyne.Container:
+		for _, child := range c.Objects {
+			if canvasContains(child, target) {
+				return true
+			}
+		}
+	case *container.AppTabs:
+		if sel := c.Selected(); sel != nil {
+			if canvasContains(sel.Content, target) {
+				return true
+			}
+		}
+	case *container.Scroll:
+		return canvasContains(c.Content, target)
+	case *container.Split:
+		return canvasContains(c.Leading, target) || canvasContains(c.Trailing, target)
+	case fyne.Widget:
+		r := c.CreateRenderer()
+		if r != nil {
+			for _, child := range r.Objects() {
+				if canvasContains(child, target) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isCanvasMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
+	if c == nil || target == nil {
+		return false
+	}
+	if canvasContains(c.Content(), target) {
+		return true
+	}
+	if c.Overlays() != nil && c.Overlays().Top() != nil {
+		if canvasContains(c.Overlays().Top(), target) {
+			return true
+		}
+	}
+	return false
+}
 
 var _ fyne.Disableable = (*DigitArray)(nil)
 var _ fyne.Draggable = (*DigitArray)(nil)
@@ -43,7 +96,9 @@ func (d7 *DigitArray) Tapped(event *fyne.PointEvent) {
 	d7.lock.Unlock()
 
 	if focus {
-		d7.Window.Canvas().Focus(d7)
+		if d7.Window != nil && d7.Window.Canvas() != nil && isCanvasMounted(d7.Window.Canvas(), d7) {
+			d7.Window.Canvas().Focus(d7)
+		}
 	}
 	d7.Refresh()
 }
@@ -345,7 +400,9 @@ func (d7 *DigitArray) MouseIn(e *desktop.MouseEvent) {
 	d7.lock.Unlock()
 
 	if focus {
-		d7.Window.Canvas().Focus(d7)
+		if d7.Window != nil && d7.Window.Canvas() != nil && isCanvasMounted(d7.Window.Canvas(), d7) {
+			d7.Window.Canvas().Focus(d7)
+		}
 	}
 	d7.Refresh()
 }
@@ -364,7 +421,9 @@ func (d7 *DigitArray) MouseMoved(e *desktop.MouseEvent) {
 	d7.lock.Unlock()
 
 	if focus {
-		d7.Window.Canvas().Focus(d7)
+		if d7.Window != nil && d7.Window.Canvas() != nil && isCanvasMounted(d7.Window.Canvas(), d7) {
+			d7.Window.Canvas().Focus(d7)
+		}
 	}
 	d7.Refresh()
 }

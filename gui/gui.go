@@ -468,6 +468,9 @@ func (scp *ScpDesc) saveRasterToPng() {
 		img = scp.ftScopeFullScreen
 	}
 	if img != nil {
+		if IsFuzzer() {
+			return
+		}
 		bg := scp.theme.Color(ColorNameSignalBackground, 0)
 		opaqueImg := compositeOverBackground(img, bg)
 		fd := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
@@ -487,9 +490,7 @@ func (scp *ScpDesc) saveRasterToPng() {
 		if dir := scp.getLastSaveDir(); dir != nil {
 			fd.SetLocation(dir)
 		}
-		if !IsFuzzer() {
-			fd.Show()
-		}
+		fd.Show()
 	}
 }
 
@@ -587,6 +588,10 @@ func (scp *ScpDesc) toggleGifRecording() {
 					close(frameChan)
 
 					fyne.Do(func() {
+						if IsFuzzer() {
+							go wg.Wait()
+							return
+						}
 						fd := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
 							if err != nil {
 								slog.Error("file save error", "err", err)
@@ -681,13 +686,11 @@ func (scp *ScpDesc) toggleGifRecording() {
 							}()
 						}, scp.Window)
 						fd.SetFilter(storage.NewExtensionFileFilter([]string{".gif"}))
-						fd.SetFileName(time.Now().Format("window_20060102_150405.gif"))
+						fd.SetFileName(time.Now().Format("screen_20060102_150405.gif"))
 						if dir := scp.getLastSaveDir(); dir != nil {
 							fd.SetLocation(dir)
 						}
-						if !IsFuzzer() {
-							fd.Show()
-						}
+						fd.Show()
 					})
 					return
 				}
@@ -699,6 +702,9 @@ func (scp *ScpDesc) toggleGifRecording() {
 func (scp *ScpDesc) saveWindowToPng() {
 	img := scp.Window.Canvas().Capture()
 	if img != nil {
+		if IsFuzzer() {
+			return
+		}
 		bg := scp.theme.Color(theme.ColorNameMenuBackground, 0) // Or ColorNameSignalBackground
 		opaqueImg := compositeOverBackground(img, bg)
 
@@ -729,9 +735,7 @@ func (scp *ScpDesc) saveWindowToPng() {
 		if dir := scp.getLastSaveDir(); dir != nil {
 			fd.SetLocation(dir)
 		}
-		if !IsFuzzer() {
-			fd.Show()
-		}
+		fd.Show()
 	}
 }
 

@@ -98,7 +98,6 @@ func (d7rend *disp7ArrayRenderer) refreshNumber(segmentWidth float32) {
 			} else {
 				so.StrokeColor = d7rend.d7array.OffColor
 			}
-			fyne.Do(so.Refresh)
 		case *canvas.Circle:
 			if d7rend.d7array.dpPos >= 0 {
 				so.StrokeWidth = segmentWidth / 2
@@ -110,7 +109,6 @@ func (d7rend *disp7ArrayRenderer) refreshNumber(segmentWidth float32) {
 					so.FillColor = d7rend.d7array.OffColor
 				}
 			}
-			fyne.Do(so.Refresh)
 		default:
 		}
 	}
