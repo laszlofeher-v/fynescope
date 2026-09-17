@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -775,4 +776,39 @@ func TestScrolled(t *testing.T) {
 	assert.Equal(t, 5555, disp.Value, "Scroll should do nothing when readonly")
 	disp.Scrolled(&fyne.ScrollEvent{Scrolled: fyne.NewDelta(0, -1)})
 	assert.Equal(t, 5555, disp.Value, "Scroll should do nothing when readonly")
+}
+
+func TestDigitRendererRefresh(t *testing.T) {
+	a := test.NewApp()
+	w := a.NewWindow("Test")
+	onColor := color.NRGBA{R: 0, G: 255, B: 0, A: 255}
+	disp, err := NewCustomDisp7Array(2, 0, 99, 0, UnSigned, TrailingZeroes, w, onColor, ReadWrite, DefaultDigitWidth, DeafultDigitHeight, DefaultSkew, DefaultVCursorSpace, "V", "Hz")
+	assert.NoError(t, err)
+	w.SetContent(disp)
+
+	r := test.WidgetRenderer(disp).(*disp7ArrayRenderer)
+
+	// Set value to 0: digit 0 (LSB) val is 0. Segment g (middle line, index 6) is OFF for '0'.
+	disp.SetValue(0)
+	lineG := r.objects[numberIndex+6].(*canvas.Line)
+	assert.Equal(t, disp.OffColor, lineG.StrokeColor, "Segment g should be off for digit 0")
+
+	// Set value to 8: digit 0 val is 8. Segment g is ON for '8'.
+	disp.SetValue(8)
+	assert.Equal(t, onColor, lineG.StrokeColor, "Segment g should be on for digit 8")
+
+	// Set value to 1 via TypedKey: digit 0 val is 1. Segment g is OFF for '1'.
+	disp.digitCursor = 0
+	disp.TypedKey(&fyne.KeyEvent{Name: fyne.Key1})
+	assert.Equal(t, disp.OffColor, lineG.StrokeColor, "Segment g should be off for digit 1 after TypedKey")
+
+	// Set value to 8 via Scrolled:
+	disp.digitCursor = 0
+	disp.SetValue(7)
+	disp.Scrolled(&fyne.ScrollEvent{Scrolled: fyne.NewDelta(0, 1)})
+	assert.Equal(t, disp.CursorColor, lineG.StrokeColor, "Segment g should be CursorColor for digit 8 at active cursor")
+
+	// Test SilentSetFloatValue: set to 1.0 (dpPos 0) -> digit 0 is 1. Segment g should be off.
+	disp.SilentSetFloatValue(1.0, 0)
+	assert.Equal(t, disp.OffColor, lineG.StrokeColor, "Segment g should be off for digit 1 after SilentSetFloatValue")
 }

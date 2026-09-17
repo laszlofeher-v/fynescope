@@ -180,8 +180,9 @@ func NewDisp7Array(numOfDigits int, numOfFractionDigits, maxValue, minValue int,
 
 func (d7 *DigitArray) SetNumOfFractionDigits(numOfFractionDigits int) {
 	d7.lock.Lock()
-	defer d7.lock.Unlock()
 	d7.dpPos = numOfFractionDigits
+	d7.lock.Unlock()
+	d7.Refresh()
 }
 
 func (d7 *DigitArray) SetMinMax(minValue, maxValue int) {
@@ -229,8 +230,8 @@ func (d7 *DigitArray) DpPos() int {
 
 func (d7 *DigitArray) SilentSetValue(v int) {
 	d7.lock.Lock()
-	defer d7.lock.Unlock()
 	d7.silentSetValue(v)
+	d7.lock.Unlock()
 	d7.Refresh()
 }
 
@@ -292,8 +293,9 @@ func (d7 *DigitArray) SetLabel(label string) {
 
 func (d7 *DigitArray) SilentSetFloatValue(v float64, dpPos int) {
 	d7.lock.Lock()
-	defer d7.lock.Unlock()
 	d7.silentSetFloatValue(v, dpPos)
+	d7.lock.Unlock()
+	d7.Refresh()
 }
 
 func (d7 *DigitArray) silentSetFloatValue(v float64, dpPos int) {
