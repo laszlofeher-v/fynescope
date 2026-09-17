@@ -75,19 +75,17 @@ func StringToScopeType(s string) ScopeType {
 	if strings.HasSuffix(s, "SIM") {
 		isSim = true
 		s = strings.TrimSuffix(s, "SIM")
-		if strings.HasSuffix(s, "MSO") {
-			s = strings.TrimSuffix(s, "MSO")
-			if !strings.HasSuffix(s, "_") && !strings.HasSuffix(s, " ") && !strings.HasSuffix(s, "-") {
-				s += "_"
-			}
-			s += "MSO"
-		}
 	} else if strings.HasSuffix(s, "DEMO") {
 		isSim = true
 		s = strings.TrimSuffix(s, "DEMO")
 	}
 
-	s = strings.ReplaceAll(s, " MSO", "_MSO")
+	if strings.HasSuffix(s, "MSO") {
+		prefix := strings.TrimSuffix(s, "MSO")
+		prefix = strings.TrimRight(prefix, " _-")
+		s = prefix + "_MSO"
+	}
+
 	s = strings.ReplaceAll(s, "-", "_")
 	s = strings.ReplaceAll(s, " ", "_")
 
@@ -105,7 +103,11 @@ func StringToScopeType(s string) ScopeType {
 }
 
 func parseBaseScopeType(s string) ScopeType {
-	s = strings.ReplaceAll(s, " MSO", "_MSO")
+	if strings.HasSuffix(s, "MSO") {
+		prefix := strings.TrimSuffix(s, "MSO")
+		prefix = strings.TrimRight(prefix, " _-")
+		s = prefix + "_MSO"
+	}
 	s = strings.ReplaceAll(s, "-", "_")
 	s = strings.ReplaceAll(s, " ", "_")
 	switch s {
@@ -426,4 +428,13 @@ func (t ScopeType) IsETSCapable() bool {
 	}
 
 	return true
+}
+
+// IsMSO returns true if the scope type is an MSO (Mixed Signal Oscilloscope) model.
+func (t ScopeType) IsMSO() bool {
+	base := t.Base()
+	if base == ScopeUnknown {
+		return false
+	}
+	return strings.Contains(base.String(), "MSO")
 }

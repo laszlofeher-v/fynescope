@@ -851,9 +851,11 @@ func (scp *ScpDesc) updateTriggerModeOptions() {
 	isEtsCapable := false
 	if scp.psControl != nil {
 		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
-		if isEtsCapable && scp.psControl.ScopeModel.Base() == control.Scope2205A_MSO {
-			if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
-				isEtsCapable = false
+		if isEtsCapable && (scp.IsMSO || scp.psControl.ScopeModel.IsMSO()) {
+			if scp.Settings != nil && len(scp.Settings.Digital.Ports) >= 2 {
+				if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+					isEtsCapable = false
+				}
 			}
 		}
 	}
@@ -1862,9 +1864,11 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	isEtsCapable := false
 	if scp.psControl != nil {
 		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
-		if isEtsCapable && scp.psControl.ScopeModel.Base() == control.Scope2205A_MSO {
-			if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
-				isEtsCapable = false
+		if isEtsCapable && (scp.IsMSO || scp.psControl.ScopeModel.IsMSO()) {
+			if scp.Settings != nil && len(scp.Settings.Digital.Ports) >= 2 {
+				if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
+					isEtsCapable = false
+				}
 			}
 		}
 	}
