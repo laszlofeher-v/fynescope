@@ -71,11 +71,15 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 	// Count active channels first — needed for channelHeight/labelFontSize,
 	// which determine how far right minX must be pushed.
 	activeChannels := 0
-	if dr.scp.Settings.Digital.Ports[0].Enabled {
-		activeChannels += 8
-	}
-	if dr.scp.Settings.Digital.Ports[1].Enabled {
-		activeChannels += 8
+	for port := 0; port < 2; port++ {
+		if !dr.scp.Settings.Digital.Ports[port].Enabled {
+			continue
+		}
+		for c := 0; c < 8; c++ {
+			if dr.scp.Settings.Digital.ChannelsEnabled[port*8+c] {
+				activeChannels++
+			}
+		}
 	}
 
 	if activeChannels == 0 {
@@ -199,7 +203,6 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 
 		for c := 0; c < 8; c++ {
 			if !dr.scp.Settings.Digital.ChannelsEnabled[port*8+c] {
-				chIdx++
 				continue
 			}
 
