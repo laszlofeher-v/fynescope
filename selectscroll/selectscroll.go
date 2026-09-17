@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
@@ -152,11 +153,46 @@ func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
 	if root == target {
 		return true
 	}
-	if c, ok := root.(*fyne.Container); ok {
+	switch c := root.(type) {
+	case *fyne.Container:
 		for _, child := range c.Objects {
 			if canvasContains(child, target) {
 				return true
 			}
+		}
+	case *container.AppTabs:
+		if sel := c.Selected(); sel != nil {
+			if canvasContains(sel.Content, target) {
+				return true
+			}
+		}
+	case *container.Scroll:
+		return canvasContains(c.Content, target)
+	case *container.Split:
+		return canvasContains(c.Leading, target) || canvasContains(c.Trailing, target)
+	case fyne.Widget:
+		r := c.CreateRenderer()
+		if r != nil {
+			for _, child := range r.Objects() {
+				if canvasContains(child, target) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isCanvasMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
+	if c == nil || target == nil {
+		return false
+	}
+	if canvasContains(c.Content(), target) {
+		return true
+	}
+	if c.Overlays() != nil && c.Overlays().Top() != nil {
+		if canvasContains(c.Overlays().Top(), target) {
+			return true
 		}
 	}
 	return false
@@ -165,14 +201,16 @@ func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
 func (selScr *SelectScroll) focus() {
 	if app := fyne.CurrentApp(); app != nil && app.Driver() != nil {
 		if c := app.Driver().CanvasForObject(selScr); c != nil {
-			c.Focus(selScr)
-			if c.Focused() == selScr {
-				return
+			if isCanvasMounted(c, selScr) {
+				c.Focus(selScr)
+				if c.Focused() == selScr {
+					return
+				}
 			}
 		}
 		for _, w := range app.Driver().AllWindows() {
 			if w != nil && w.Canvas() != nil {
-				if !canvasContains(w.Canvas().Content(), selScr) {
+				if !isCanvasMounted(w.Canvas(), selScr) {
 					continue
 				}
 				w.Canvas().Focus(selScr)

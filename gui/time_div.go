@@ -732,6 +732,12 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			scp.setETSTimeDiv()
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Show()
+				if scp.etsInterleaveDisp != nil {
+					scp.etsInterleaveDisp.Show()
+				}
+				if scp.etsCyclesDisp != nil {
+					scp.etsCyclesDisp.Show()
+				}
 			}
 			if scp.etsSamplingRateDisp != nil {
 				scp.etsSamplingRateDisp.Show()
@@ -764,6 +770,12 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			scp.setNotETSTimeDiv()
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Hide()
+				if scp.etsInterleaveDisp != nil {
+					scp.etsInterleaveDisp.Hide()
+				}
+				if scp.etsCyclesDisp != nil {
+					scp.etsCyclesDisp.Hide()
+				}
 			}
 			if scp.etsSamplingRateDisp != nil {
 				scp.etsSamplingRateDisp.Hide()
@@ -909,6 +921,12 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 	if scp.triggerSettingMsg.Mode == control.ETS {
 		if scp.boxEtsSettings != nil {
 			scp.boxEtsSettings.Show()
+			if scp.etsInterleaveDisp != nil {
+				scp.etsInterleaveDisp.Show()
+			}
+			if scp.etsCyclesDisp != nil {
+				scp.etsCyclesDisp.Show()
+			}
 		}
 		if scp.etsSamplingRateDisp != nil {
 			scp.etsSamplingRateDisp.Show()
@@ -916,6 +934,12 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 	} else {
 		if scp.boxEtsSettings != nil {
 			scp.boxEtsSettings.Hide()
+			if scp.etsInterleaveDisp != nil {
+				scp.etsInterleaveDisp.Hide()
+			}
+			if scp.etsCyclesDisp != nil {
+				scp.etsCyclesDisp.Hide()
+			}
 		}
 		if scp.etsSamplingRateDisp != nil {
 			scp.etsSamplingRateDisp.Hide()
@@ -945,6 +969,9 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 	switch triggerTypes[scp.Settings.Trigger.Type] {
 	case control.Simple:
 		scp.boxTriggerHysteresisDisp.Hide()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Hide()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
@@ -953,9 +980,24 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
+		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Hide()
+		}
+		if scp.intervalTimeLowerDisp != nil {
+			scp.intervalTimeLowerDisp.Hide()
+		}
+		if scp.intervalTimeUpperDisp != nil {
+			scp.intervalTimeUpperDisp.Hide()
+		}
+		if scp.intervalTimeSingleDisp != nil {
+			scp.intervalTimeSingleDisp.Hide()
 		}
 	case control.Advanced:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
@@ -965,8 +1007,23 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
 		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Hide()
+		}
+		if scp.intervalTimeLowerDisp != nil {
+			scp.intervalTimeLowerDisp.Hide()
+		}
+		if scp.intervalTimeUpperDisp != nil {
+			scp.intervalTimeUpperDisp.Hide()
+		}
+		if scp.intervalTimeSingleDisp != nil {
+			scp.intervalTimeSingleDisp.Hide()
+		}
 	case control.Window:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Show()
 		}
@@ -976,8 +1033,23 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
 		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Hide()
+		}
+		if scp.intervalTimeLowerDisp != nil {
+			scp.intervalTimeLowerDisp.Hide()
+		}
+		if scp.intervalTimeUpperDisp != nil {
+			scp.intervalTimeUpperDisp.Hide()
+		}
+		if scp.intervalTimeSingleDisp != nil {
+			scp.intervalTimeSingleDisp.Hide()
+		}
 	case control.WindowPulseWidth, control.RiseFall:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Show()
 		}
@@ -988,12 +1060,16 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 			scp.boxTriggerIntervalDisp.Show()
 		}
 		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Show()
 			scp.intervalTypeSelect.SetOptions(intervalTypeOptions)
 			scp.intervalTypeSelect.Refresh()
 		}
 		scp.updateIntervalTimeGUI()
 	case control.Interval, control.PulseWidth:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
@@ -1004,22 +1080,27 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 			scp.boxTriggerIntervalDisp.Show()
 		}
 		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Show()
 			scp.intervalTypeSelect.SetOptions(intervalTypeOptions)
 			scp.intervalTypeSelect.Refresh()
 		}
 		scp.updateIntervalTimeGUI()
 	case control.Dropout:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Hide()
 		}
 		if scp.triggerLowerHysteresisDisp != nil {
-			scp.triggerLowerHysteresisDisp.Show()
+			scp.triggerLowerHysteresisDisp.Hide()
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Show()
 		}
 		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Show()
 			scp.intervalTypeSelect.SetOptions([]string{IntervalTypeGreaterThan})
 			if scp.intervalTypeSelect.Selected != IntervalTypeGreaterThan {
 				scp.intervalTypeSelect.SetSelected(IntervalTypeGreaterThan)
@@ -1029,6 +1110,9 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		scp.updateIntervalTimeGUI()
 	case control.WindowDropout:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Show()
 		}
@@ -1039,6 +1123,7 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 			scp.boxTriggerIntervalDisp.Show()
 		}
 		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Show()
 			scp.intervalTypeSelect.SetOptions([]string{IntervalTypeGreaterThan})
 			if scp.intervalTypeSelect.Selected != IntervalTypeGreaterThan {
 				scp.intervalTypeSelect.SetSelected(IntervalTypeGreaterThan)
@@ -1048,6 +1133,9 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		scp.updateIntervalTimeGUI()
 	case control.Runt:
 		scp.boxTriggerHysteresisDisp.Show()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Show()
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.Show()
 		}
@@ -1056,6 +1144,18 @@ func (scp *ScpDesc) updateTriggerUIForType() {
 		}
 		if scp.boxTriggerIntervalDisp != nil {
 			scp.boxTriggerIntervalDisp.Hide()
+		}
+		if scp.intervalTypeSelect != nil {
+			scp.intervalTypeSelect.Hide()
+		}
+		if scp.intervalTimeLowerDisp != nil {
+			scp.intervalTimeLowerDisp.Hide()
+		}
+		if scp.intervalTimeUpperDisp != nil {
+			scp.intervalTimeUpperDisp.Hide()
+		}
+		if scp.intervalTimeSingleDisp != nil {
+			scp.intervalTimeSingleDisp.Hide()
 		}
 	}
 }
@@ -1425,9 +1525,18 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		// Single mode: show only one ΔT widget, hide range pair
 		if scp.boxIntervalTimeRange != nil {
 			scp.boxIntervalTimeRange.Hide()
+			if scp.intervalTimeLowerDisp != nil {
+				scp.intervalTimeLowerDisp.Hide()
+			}
+			if scp.intervalTimeUpperDisp != nil {
+				scp.intervalTimeUpperDisp.Hide()
+			}
 		}
 		if scp.boxIntervalTimeSingle != nil {
 			scp.boxIntervalTimeSingle.Show()
+			if scp.intervalTimeSingleDisp != nil {
+				scp.intervalTimeSingleDisp.Show()
+			}
 			unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 			multiplier := getIntervalUnitMultiplier(unit)
 			var timeVal float64
@@ -1445,9 +1554,18 @@ func (scp *ScpDesc) updateIntervalTimeGUI() {
 		slog.Debug(" Range mode: show both lower/upper times, hide single ΔT widget")
 		if scp.boxIntervalTimeSingle != nil {
 			scp.boxIntervalTimeSingle.Hide()
+			if scp.intervalTimeSingleDisp != nil {
+				scp.intervalTimeSingleDisp.Hide()
+			}
 		}
 		if scp.boxIntervalTimeRange != nil {
 			scp.boxIntervalTimeRange.Show()
+			if scp.intervalTimeLowerDisp != nil {
+				scp.intervalTimeLowerDisp.Show()
+			}
+			if scp.intervalTimeUpperDisp != nil {
+				scp.intervalTimeUpperDisp.Show()
+			}
 			unit := getBaseTimeUnit(scp.Settings.Time.Unit)
 			multiplier := getIntervalUnitMultiplier(unit)
 			scp.intervalTimeLowerDisp.SetUnit(unit)
@@ -1629,14 +1747,14 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.timeUnitSelect = selectscroll.NewSelectScroll(units, scp.onTimeUnitChange, milliSec+div)
 	scp.timeUnitSelect.SilentSetSelected(scp.Settings.Time.Unit)
 	scp.timeUnit = tu[scp.timeUnitSelect.Selected]
-	addToTest(scp.timeUnitSelect, unitSelectId, -1)
+	addToTest(scp.timeUnitSelect, unitSelectId, ftTabIndex)
 	RegisterWidgetHelp(scp.timeUnitSelect, "Timebase Unit", "Selects time scale unit: nanoseconds (ns), microseconds (µs), milliseconds (ms), or seconds (s).")
 	tOption := nsUsMsTimesSubset
 	if scp.timeUnitSelect.Selected == sec+div {
 		tOption = times
 	}
 	scp.timeSelect = selectscroll.NewSelectScroll(tOption, scp.onTimeDivChange, strconv.Itoa(500))
-	addToTest(scp.timeSelect, timeSelectId, -1)
+	addToTest(scp.timeSelect, timeSelectId, ftTabIndex)
 	RegisterWidgetHelp(scp.timeSelect, "Timebase Scale", "Adjusts horizontal time scale per division across the waveform screen.")
 	scp.timeSelect.SilentSetSelected(scp.Settings.Time.TimeDiv)
 	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
@@ -1652,7 +1770,7 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 		selected = linear
 	}
 	scp.ipmSelect.SetSelected(selected)
-	addToTest(scp.ipmSelect, ipmId, -1)
+	addToTest(scp.ipmSelect, ipmId, ftTabIndex)
 	RegisterWidgetHelp(scp.ipmSelect, "Interpolation Mode", "Selects No interpolation, Linear, SinC .")
 
 	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")
@@ -1681,7 +1799,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	addToTest(scp.triggerThresholdDisp, triggerThresholdDispId, -1)
+	addToTest(scp.triggerThresholdDisp, triggerThresholdDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.triggerThresholdDisp, "Trigger Threshold", "Sets the voltage level at which the trigger activates.")
 	scp.triggerThresholdDisp.OnChanged = func(v float64) {
 		go scp.onThresholdChange(v)
@@ -1705,7 +1823,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	addToTest(scp.triggerHysteresisDisp, triggerHysteresisDispId, -1)
+	addToTest(scp.triggerHysteresisDisp, triggerHysteresisDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.triggerHysteresisDisp, "Trigger Hysteresis", "Sets noise immunity hysteresis voltage band around trigger threshold.")
 	scp.triggerHysteresisDisp.OnChanged = func(v float64) {
 		go scp.onHysteresisChange(v)
@@ -1727,6 +1845,9 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.boxTriggerHysteresisDisp.MinSize() // pre-measure before any hide
 	if triggerTypes[scp.Settings.Trigger.Type] == control.Simple {
 		scp.boxTriggerHysteresisDisp.Hide()
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.Hide()
+		}
 	}
 
 	tType := triggerTypes[scp.Settings.Trigger.Type]
@@ -1756,7 +1877,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 
 	scp.triggerModeSelect = selectscroll.NewSelectScroll(activeTriggerModes,
 		scp.onTriggerModeChange, settings.TriggerModeRepeat)
-	addToTest(scp.triggerModeSelect, triggerModeSelectId, -1)
+	addToTest(scp.triggerModeSelect, triggerModeSelectId, ftTabIndex)
 	RegisterWidgetHelp(scp.triggerModeSelect, "Trigger Mode", "Selects acquisition trigger mode: Auto, Repeat, Single, or ETS.")
 	scp.triggerModeSelect.SilentSetSelected(scp.Settings.Trigger.Mode)
 	scp.triggerSettingMsg.Mode = triggerModes[scp.Settings.Trigger.Mode]
@@ -1778,7 +1899,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	triggerTypes[settings.TriggerTypeInterval] = control.Interval
 	scp.triggerTypeSelect = selectscroll.NewSelectScroll(activeTypeOptions,
 		scp.onTriggerTypeChange, settings.TriggerTypeWindowPulseWidth)
-	addToTest(scp.triggerTypeSelect, triggerTypeSelectId, -1)
+	addToTest(scp.triggerTypeSelect, triggerTypeSelectId, ftTabIndex)
 	RegisterWidgetHelp(scp.triggerTypeSelect, "Trigger Type", "Selects the hardware trigger condition type.")
 	scp.triggerTypeSelect.SilentSetSelected(scp.Settings.Trigger.Type)
 
@@ -1800,7 +1921,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.complexTriggerFocus = scp.newFocusCheck("Cmpx", scp.onComplexTriggerChange)
 	scp.complexTriggerFocus.SetChecked(scp.Settings.Trigger.ComplexEnabled)
 	scp.complexTriggerCheck = &scp.complexTriggerFocus.Check
-	addToTest(scp.complexTriggerFocus, "complexTriggerCheck", -1)
+	addToTest(scp.complexTriggerFocus, "complexTriggerCheck", ftTabIndex)
 	RegisterWidgetHelp(scp.complexTriggerFocus, "Complex Trigger", "Enables advanced complex hardware triggering conditions and qualifiers.")
 
 
@@ -1810,7 +1931,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 
 	scp.intervalTypeSelect = selectscroll.NewSelectScroll(intervalTypeOptions,
 		scp.onIntervalTypeChange, IntervalTypeOutOfRange)
-	addToTest(scp.intervalTypeSelect, intervalTypeSelectId, -1)
+	addToTest(scp.intervalTypeSelect, intervalTypeSelectId, ftTabIndex)
 	RegisterWidgetHelp(scp.intervalTypeSelect, "Interval Type", "Selects interval trigger type: time between rising/falling edges.")
 
 	// Convert pulse width type enum back to string
@@ -1860,7 +1981,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		go scp.onIntervalTimeLowerChange(v)
 	}
 	scp.intervalTimeLowerDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeLower / multiplier)))
-	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId, -1)
+	addToTest(scp.intervalTimeLowerDisp, intervalTimeLowerDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.intervalTimeLowerDisp, "Interval Lower Bound", "Sets minimum time interval for interval trigger condition.")
 
 	scp.intervalTimeUpperDisp, err = disp7.NewCustomDisp7Array(5, 1, 99999, 0,
@@ -1874,7 +1995,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		go scp.onIntervalTimeUpperChange(v)
 	}
 	scp.intervalTimeUpperDisp.SilentSetValue(int(math.Round(scp.Settings.Channels[scp.triggerSource].Trigger.IntervalTimeUpper / multiplier)))
-	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId, -1)
+	addToTest(scp.intervalTimeUpperDisp, intervalTimeUpperDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.intervalTimeUpperDisp, "Interval Upper Bound", "Sets maximum time interval for interval trigger condition.")
 
 	// Single ΔT display for Greater Than / Less Than modes
@@ -1888,7 +2009,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.intervalTimeSingleDisp.OnChanged = func(v float64) {
 		go scp.onIntervalTimeSingleChange(v)
 	}
-	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId, -1)
+	addToTest(scp.intervalTimeSingleDisp, intervalTimeSingleDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.intervalTimeSingleDisp, "Interval Time", "Sets target time interval for interval trigger condition.")
 
 	boxIntervalTypeUnit := container.New(layout.NewHBoxLayout(), scp.intervalTypeSelect)
@@ -1960,7 +2081,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.triggerSettingMsg.EtsInterleave = scp.Settings.Time.EtsInterleave
 	scp.etsInterleaveDisp.SilentSetValue(int(scp.Settings.Time.EtsInterleave))
-	addToTest(scp.etsInterleaveDisp, etsInterleaveDispId, -1)
+	addToTest(scp.etsInterleaveDisp, etsInterleaveDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.etsInterleaveDisp, "ETS Interleave", "Sets number of ETS interleave steps for equivalent-time sampling.")
 
 	scp.etsCyclesDisp, err = disp7.NewCustomDisp7Array(4, 0, int(maxCycles), 1,
@@ -1987,7 +2108,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	}
 	scp.triggerSettingMsg.EtsCycles = scp.Settings.Time.EtsCycles
 	scp.etsCyclesDisp.SilentSetValue(int(scp.Settings.Time.EtsCycles))
-	addToTest(scp.etsCyclesDisp, etsCyclesDispId, -1)
+	addToTest(scp.etsCyclesDisp, etsCyclesDispId, ftTabIndex)
 	RegisterWidgetHelp(scp.etsCyclesDisp, "ETS Cycles", "Sets number of repetitive cycles to acquire for ETS reconstruction.")
 
 	scp.etsSamplingRateDisp, err = disp7.NewCustomDisp7Array(4, 1, 9999, 0,
@@ -2018,9 +2139,30 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	scp.boxTriggerIntervalDisp.Show()
 	scp.triggerDisplays.MinSize() // seed ratchet while all rows are visible
 	scp.boxEtsSettings.Hide()
+	if scp.etsInterleaveDisp != nil {
+		scp.etsInterleaveDisp.Hide()
+	}
+	if scp.etsCyclesDisp != nil {
+		scp.etsCyclesDisp.Hide()
+	}
 	scp.etsSamplingRateDisp.Hide()
 	scp.boxTriggerHysteresisDisp.Hide()
+	if scp.triggerHysteresisDisp != nil {
+		scp.triggerHysteresisDisp.Hide()
+	}
 	scp.boxTriggerIntervalDisp.Hide()
+	if scp.intervalTypeSelect != nil {
+		scp.intervalTypeSelect.Hide()
+	}
+	if scp.intervalTimeLowerDisp != nil {
+		scp.intervalTimeLowerDisp.Hide()
+	}
+	if scp.intervalTimeUpperDisp != nil {
+		scp.intervalTimeUpperDisp.Hide()
+	}
+	if scp.intervalTimeSingleDisp != nil {
+		scp.intervalTimeSingleDisp.Hide()
+	}
 	return scp.triggerDisplays, nil
 }
 

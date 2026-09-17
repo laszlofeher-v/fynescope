@@ -125,11 +125,46 @@ func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
 	if root == target {
 		return true
 	}
-	if c, ok := root.(*fyne.Container); ok {
+	switch c := root.(type) {
+	case *fyne.Container:
 		for _, child := range c.Objects {
 			if canvasContains(child, target) {
 				return true
 			}
+		}
+	case *container.AppTabs:
+		if sel := c.Selected(); sel != nil {
+			if canvasContains(sel.Content, target) {
+				return true
+			}
+		}
+	case *container.Scroll:
+		return canvasContains(c.Content, target)
+	case *container.Split:
+		return canvasContains(c.Leading, target) || canvasContains(c.Trailing, target)
+	case fyne.Widget:
+		r := c.CreateRenderer()
+		if r != nil {
+			for _, child := range r.Objects() {
+				if canvasContains(child, target) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func isCanvasObjectMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
+	if c == nil || target == nil {
+		return false
+	}
+	if canvasContains(c.Content(), target) {
+		return true
+	}
+	if c.Overlays() != nil && c.Overlays().Top() != nil {
+		if canvasContains(c.Overlays().Top(), target) {
+			return true
 		}
 	}
 	return false
@@ -144,17 +179,9 @@ func focusObject(obj fyne.Focusable) {
 		return
 	}
 	co, _ := obj.(fyne.CanvasObject)
-	if co != nil {
-		if c := app.Driver().CanvasForObject(co); c != nil {
-			c.Focus(obj)
-			if c.Focused() == obj {
-				return
-			}
-		}
-	}
 	for _, w := range app.Driver().AllWindows() {
 		if w != nil && w.Canvas() != nil {
-			if co != nil && !canvasContains(w.Canvas().Content(), co) {
+			if co != nil && !isCanvasObjectMounted(w.Canvas(), co) {
 				continue
 			}
 			w.Canvas().Focus(obj)
@@ -170,14 +197,18 @@ func (scp *ScpDesc) focusWidget(obj fyne.Focusable) {
 	if scp == nil || obj == nil {
 		return
 	}
+	co, _ := obj.(fyne.CanvasObject)
 	if scp.Window != nil && scp.Window.Canvas() != nil {
-		scp.Window.Canvas().Focus(obj)
-		if scp.Window.Canvas().Focused() == obj {
-			return
+		if co != nil && isCanvasObjectMounted(scp.Window.Canvas(), co) {
+			scp.Window.Canvas().Focus(obj)
+			if scp.Window.Canvas().Focused() == obj {
+				return
+			}
 		}
 	}
 	focusObject(obj)
 }
+
 
 func containsCanvasObject(objs []fyne.CanvasObject, target fyne.CanvasObject) bool {
 	for _, obj := range objs {
@@ -479,7 +510,7 @@ func (scp *ScpDesc) findHoveredTabItem() *container.TabItem {
 }
 
 func (scp *ScpDesc) checkTabHoverFocus() {
-	if scp == nil || scp.controlTab == nil || !scp.IsHelpEnabled() {
+	if IsFuzzer() || scp == nil || scp.controlTab == nil || !scp.IsHelpEnabled() {
 		return
 	}
 	hoveredItem := scp.findHoveredTabItem()
@@ -829,6 +860,9 @@ func (scp *ScpDesc) findFocusedWidget() (fyne.Focusable, fyne.Canvas) {
 }
 
 func (scp *ScpDesc) startFocusHelp() {
+	if IsFuzzer() {
+		return
+	}
 	scp.hookAllWindows()
 	scp.helpMu.Lock()
 	if scp.helpQuit != nil {
@@ -866,7 +900,7 @@ func (scp *ScpDesc) stopFocusHelp() {
 }
 
 func (scp *ScpDesc) checkFocusHelp() {
-	if !scp.IsHelpEnabled() {
+	if IsFuzzer() || !scp.IsHelpEnabled() {
 		if scp.IsHelpVisible() {
 			scp.hideHelpPopUp()
 		}
@@ -934,7 +968,7 @@ func (scp *ScpDesc) showHelpPopUp(focused fyne.Focusable, canvas fyne.Canvas, ti
 	scp.helpMu.Lock()
 	defer scp.helpMu.Unlock()
 
-	if !scp.IsHelpEnabled() {
+	if IsFuzzer() || !scp.IsHelpEnabled() {
 		return
 	}
 

@@ -353,7 +353,8 @@ func wait() {
 // It executes fn on the UI thread, waits for it to finish, and then sleeps
 // for the calibrated duration to allow GUI operations, animations, and raster
 // rendering to settle before dispatching the next automated interaction.
-func doEvent(fn func()) {
+// It returns true if the event executed successfully, or false if it timed out.
+func doEvent(fn func()) bool {
 	fuzzerEventMtx.RLock()
 	defer fuzzerEventMtx.RUnlock()
 	done := make(chan struct{})
@@ -363,10 +364,15 @@ func doEvent(fn func()) {
 	})
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
-		log.Println("Warning: doEvent timed out waiting for UI thread")
+		wait()
+		return true
+	case <-time.After(10 * time.Second):
+		log.Println("ERROR: doEvent timed out waiting for UI thread")
+		buf := make([]byte, 1<<20)
+		n := runtime.Stack(buf, true)
+		log.Println(string(buf[:n]))
+		return false
 	}
-	wait()
 }
 
 var keyNames = []fyne.KeyName{
@@ -390,15 +396,12 @@ func randKey(name string) bool {
 	case *disp7.DigitArray:
 		slog.Debug("randKey", "name", name)
 		key := keyNames[rand.Intn(len(keyNames))]
-		doEvent(func() {
-			c.Window.Canvas().Focus(c)
-			c.KeyDown(&fyne.KeyEvent{Name: key})
-			c.KeyUp(&fyne.KeyEvent{Name: key})
-			c.Window.Canvas().Unfocus()
+		return doEvent(func() {
+			c.TypedKey(&fyne.KeyEvent{Name: key})
 		})
 	case *digitEntry:
 		slog.Debug("randKey", "name", name)
-		doEvent(func() {
+		return doEvent(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -408,7 +411,7 @@ func randKey(name string) bool {
 		})
 	case *widget.Entry:
 		slog.Debug("randKey", "name", name)
-		doEvent(func() {
+		return doEvent(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -418,7 +421,7 @@ func randKey(name string) bool {
 		})
 	case *framelessEntry:
 		slog.Debug("randKey", "name", name)
-		doEvent(func() {
+		return doEvent(func() {
 			if rand.Float32() < 0.2 && len(c.Text) > 0 {
 				c.TypedKey(&fyne.KeyEvent{Name: fyne.KeyBackspace})
 			} else {
@@ -429,19 +432,18 @@ func randKey(name string) bool {
 	case fyne.Focusable:
 		slog.Debug("randKey", "name", name)
 		key := keyNames[rand.Intn(len(keyNames))]
-		doEvent(func() {
+		return doEvent(func() {
 			c.TypedKey(&fyne.KeyEvent{Name: key})
 		})
 	case keyer:
 		slog.Debug("randKey", "name", name)
 		key := keyNames[rand.Intn(len(keyNames))]
-		doEvent(func() {
+		return doEvent(func() {
 			c.typedKey(0, 0, key)
 		})
 	default:
 		return false
 	}
-	return true
 }
 func internalTap(name string, isFuzzer bool) bool {
 	controlsMtx.RLock()
@@ -463,7 +465,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			var targetText string
 			switch name {
 			case ftFuncId:
@@ -487,7 +489,7 @@ func internalTap(name string, isFuzzer bool) bool {
 			case vchFuncId:
 				targetText = "vch"
 			case decodeFuncId:
-				targetText = "Decode"
+				targetText = "decode"
 			case filterFuncId:
 				targetText = "filter"
 			default:
@@ -509,7 +511,7 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 			n := rand.Intn(len(c.Options))
-			doEvent(func() {
+			return doEvent(func() {
 				c.SetSelectedIndex(n)
 			})
 		} else {
@@ -522,14 +524,14 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			c.SetChecked(!c.Checked)
 		})
 	case *widget.Check:
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			c.SetChecked(!c.Checked)
 		})
 
@@ -540,19 +542,19 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		doEvent(func() {
+		res := doEvent(func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
 		})
 		if isFuzzer && (name == fullScreenId || name == restoreScreenId) {
 			time.Sleep(300 * time.Millisecond)
 		}
+		return res
 	default:
 		if !isFuzzer {
 			log.Printf("%s cannot use type %T\n", name, c)
 		}
 		return false
 	}
-	return true
 }
 
 // randTap simulates a random tap (click) event on the target widget.
@@ -577,6 +579,7 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		n = -n
 	}
 
+	allOk := true
 	switch c := c.(type) {
 	case *screenRaster:
 		if isFuzzer {
@@ -586,7 +589,7 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 			n = 2
 		}
 		for ; n > 0; n-- {
-			doEvent(func() {
+			if !doEvent(func() {
 				if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
 					return
 				}
@@ -605,14 +608,16 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 					},
 				}
 				c.Scrolled(e)
-			})
+			}) {
+				allOk = false
+			}
 		}
 	case *sliderscroll.SliderScroll:
 		if isFuzzer {
 			slog.Debug("randScroll", "name", name)
 		}
 		e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-		doEvent(func() {
+		allOk = doEvent(func() {
 			c.Scrolled(e)
 		})
 	case *selectscroll.SelectScroll:
@@ -624,9 +629,11 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 		}
 		for ; n > 0; n-- {
 			e := &fyne.ScrollEvent{Scrolled: fyne.Delta{DX: delta, DY: delta}}
-			doEvent(func() {
+			if !doEvent(func() {
 				c.Scrolled(e)
-			})
+			}) {
+				allOk = false
+			}
 		}
 	case *disp7.DigitArray:
 		if isFuzzer {
@@ -636,7 +643,7 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 			n = 2
 		}
 		for ; n > 0; n-- {
-			doEvent(func() {
+			if !doEvent(func() {
 				if int(c.Size().Width) <= 0 {
 					return
 				}
@@ -651,12 +658,14 @@ func internalScroll(name string, n int, isFuzzer bool) bool {
 					},
 				}
 				c.Scrolled(e)
-			})
+			}) {
+				allOk = false
+			}
 		}
 	default:
 		return false
 	}
-	return true
+	return allOk
 }
 
 // randScroll simulates a random scrolling event on the target widget.
@@ -681,7 +690,7 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			if isFuzzer && (int(c.Size().Width) <= 0 || int(c.Size().Height) <= 0) {
 				return
 			}
@@ -699,20 +708,19 @@ func internalDrag(name string, delta float32, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	case *disp7.DigitArray:
 		if isFuzzer {
 			slog.Debug("randDrag", "name", name)
 		}
-		doEvent(func() {
+		return doEvent(func() {
 			c.Dragged(&fyne.DragEvent{Dragged: fyne.NewDelta(delta, delta)})
 		})
 	default:
 		return false
 	}
-	return true
 }
 
 // randDrag simulates a random dragging event on the target widget
@@ -958,10 +966,9 @@ func randClosePopup(scp *ScpDesc) bool {
 				if isFuzzer := true; isFuzzer {
 					slog.Debug("randClosePopup")
 				}
-				doEvent(func() {
+				return doEvent(func() {
 					top.Hide()
 				})
-				return true
 			}
 		}
 	}
@@ -1116,7 +1123,39 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 	}()
 
+	statusTickerStop := make(chan struct{})
+	statusTickerDone := make(chan struct{})
+	go func() {
+		defer close(statusTickerDone)
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				uptime := time.Since(startTime)
+				remaining := duration - uptime
+				if remaining < 0 {
+					remaining = 0
+				}
+				evs := atomic.LoadUint64(&eventCount)
+				errs := atomic.LoadUint64(&errorCount)
+				fyne.Do(func() {
+					if statusWin != nil && uptimeLabel != nil {
+						uptimeLabel.SetText(fmt.Sprintf("Uptime: %v", uptime.Round(time.Second)))
+						remainingLabel.SetText(fmt.Sprintf("Remaining: %v", remaining.Round(time.Second)))
+						eventsLabel.SetText(fmt.Sprintf("Events: %d", evs))
+						errorsLabel.SetText(fmt.Sprintf("Errors: %d", errs))
+					}
+				})
+			case <-statusTickerStop:
+				return
+			}
+		}
+	}()
+
 	defer func() {
+		close(statusTickerStop)
+		<-statusTickerDone
 		if statusWin != nil {
 			fyne.Do(func() {
 				statusWin.Close()
@@ -1160,12 +1199,8 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	ready := make(chan bool)
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
-		var currentTab int
+		currentTab := scp.getActiveFunctionIndex()
 		controlsMtx.RLock()
-		if tabs, ok := controls[ftFuncId].Obj.(*container.AppTabs); ok {
-			currentTab = tabs.SelectedIndex()
-		}
-
 		validKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
 		validKeys = append(validKeys, tabValidKeys[-1]...)
 		if currentTab != -1 {
@@ -1205,24 +1240,11 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			log.Println("Interrupted by signal")
 			return
 		case executed := <-ready:
-			if executed {
-				atomic.AddUint64(&eventCount, 1)
+			if !executed {
+				time.Sleep(10 * time.Millisecond)
+				continue
 			}
-			evs := atomic.LoadUint64(&eventCount)
-			if evs%10 == 0 {
-				uptime := time.Since(startTime)
-				remaining := time.Until(deadline)
-				if remaining < 0 {
-					remaining = 0
-				}
-				errs := atomic.LoadUint64(&errorCount)
-				fyne.Do(func() {
-					uptimeLabel.SetText(fmt.Sprintf("Uptime: %v", uptime.Round(time.Second)))
-					remainingLabel.SetText(fmt.Sprintf("Remaining: %v", remaining.Round(time.Second)))
-					eventsLabel.SetText(fmt.Sprintf("Events: %d", evs))
-					errorsLabel.SetText(fmt.Sprintf("Errors: %d", errs))
-				})
-			}
+			atomic.AddUint64(&eventCount, 1)
 		case <-time.After(timeout):
 			log.Println("Timed out ", selectedKey, op)
 			buf := make([]byte, 1<<20)

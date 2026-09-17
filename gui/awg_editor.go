@@ -608,6 +608,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		if scp.awgWindow == nil {
 			return
 		}
+		if IsFuzzer() {
+			return
+		}
 		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 			if err != nil || reader == nil {
 				return
@@ -646,14 +649,15 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 				fd.SetLocation(lister)
 			}
 		}
-		if !IsFuzzer() {
-			fd.Show()
-		}
+		fd.Show()
 	})
 	addToTest(importCsvBtn, "awgImportCsvBtn", -1)
 
 	exportCsvBtn := widget.NewButton("Export CSV", func() {
 		if scp.awgWindow == nil {
+			return
+		}
+		if IsFuzzer() {
 			return
 		}
 		fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
@@ -683,9 +687,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 				fd.SetLocation(lister)
 			}
 		}
-		if !IsFuzzer() {
-			fd.Show()
-		}
+		fd.Show()
 	})
 	addToTest(exportCsvBtn, "awgExportCsvBtn", -1)
 
