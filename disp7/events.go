@@ -213,21 +213,23 @@ func (d7 *DigitArray) TypedRune(r rune) {
 }
 func (d7 *DigitArray) FocusGained() {
 	d7.lock.Lock()
-	defer d7.lock.Unlock()
 	if d7.Readonly {
+		d7.lock.Unlock()
 		return
 	}
 	d7.digitCursor = len(d7.digits) - 1
+	d7.lock.Unlock()
 	d7.Refresh()
 }
 
 func (d7 *DigitArray) FocusLost() {
 	d7.lock.Lock()
-	defer d7.lock.Unlock()
 	if d7.Readonly {
+		d7.lock.Unlock()
 		return
 	}
 	d7.digitCursor = digitCursorOut
+	d7.lock.Unlock()
 	d7.Refresh()
 }
 
@@ -436,7 +438,9 @@ func (d7 *DigitArray) MouseOut() {
 	if readonly {
 		return
 	}
-	d7.Window.Canvas().Unfocus()
+	if d7.Window != nil && d7.Window.Canvas() != nil {
+		d7.Window.Canvas().Unfocus()
+	}
 	d7.lock.Lock()
 	d7.digitCursor = digitCursorOut
 	d7.lock.Unlock()

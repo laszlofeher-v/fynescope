@@ -39,30 +39,34 @@ func (d7rend *disp7ArrayRenderer) refreshSign() {
 }
 
 func (d7rend *disp7ArrayRenderer) refreshUnit() {
-	d7rend.objects[unitIndex] = d7rend.d7array.unit
-	text := d7rend.objects[unitIndex].(*canvas.Text)
-	text.Color = d7rend.d7array.onColor
+	if d7rend.d7array.unit != nil {
+		d7rend.objects[unitIndex] = d7rend.d7array.unit
+		text := d7rend.objects[unitIndex].(*canvas.Text)
+		text.Color = d7rend.d7array.onColor
+	}
 }
 
 func (d7rend *disp7ArrayRenderer) refreshLabel() {
-	d7rend.objects[labelIndex] = d7rend.d7array.label
-	text := d7rend.objects[labelIndex].(*canvas.Text)
-	text.Color = d7rend.d7array.onColor
+	if d7rend.d7array.label != nil {
+		d7rend.objects[labelIndex] = d7rend.d7array.label
+		text := d7rend.objects[labelIndex].(*canvas.Text)
+		text.Color = d7rend.d7array.onColor
+	}
 }
 
 func (d7rend *disp7ArrayRenderer) Refresh() {
 	d7rend.d7array.OffColor = theme.Color(theme.ColorNameBackground)
 	segmentWidth := d7rend.d7array.segmentWidth
-	if d7rend.d7array.unit != nil {
-		d7rend.refreshUnit()
-	}
-	if d7rend.d7array.label != nil {
-		d7rend.refreshLabel()
-	}
+	d7rend.refreshUnit()
+	d7rend.refreshLabel()
 	if d7rend.d7array.signed == Signed {
 		d7rend.refreshSign()
 	}
 	d7rend.refreshNumber(segmentWidth)
+	canvas.Refresh(d7rend.d7array)
+	if d7rend.d7array.Window != nil && d7rend.d7array.Window.Canvas() != nil {
+		d7rend.d7array.Window.Canvas().Refresh(d7rend.d7array)
+	}
 }
 
 func (d7rend *disp7ArrayRenderer) refreshNumber(segmentWidth float32) {
@@ -220,6 +224,8 @@ func (d7 *DigitArray) CreateRenderer() fyne.WidgetRenderer {
 	}
 	objects[signIndexMinus] = canvas.NewLine(col)
 	objects[signIndexPlus] = canvas.NewLine(col)
+	objects[labelIndex] = canvas.NewText("", color.Transparent)
+	objects[unitIndex] = canvas.NewText("", color.Transparent)
 	r.Refresh()
 	return r
 }
