@@ -82,6 +82,13 @@ func TestStringToScopeType(t *testing.T) {
 		})
 	}
 
+	// Test real hardware MSO strings (without space or underscore)
+	assert.Equal(t, Scope2206B_MSO, StringToScopeType("2206BMSO"))
+	assert.Equal(t, Scope2207B_MSO, StringToScopeType("2207BMSO"))
+	assert.Equal(t, Scope2208B_MSO, StringToScopeType("2208BMSO"))
+	assert.Equal(t, Scope2205A_MSO, StringToScopeType("2205AMSO"))
+	assert.Equal(t, Scope3206D_MSO, StringToScopeType("3206DMSO"))
+
 	// Test SIM and DEMO variants
 	assert.Equal(t, Scope2206B+ScopeSimulatedOffset, StringToScopeType("2206BSIM"))
 	assert.Equal(t, Scope2206B_MSO+ScopeSimulatedOffset, StringToScopeType("2206BMSOSIM"))
@@ -126,10 +133,25 @@ func TestScopeTypeBase(t *testing.T) {
 	assert.Equal(t, ScopeUnknown, ScopeUnknown.Base())
 }
 
+func TestScopeTypeIsMSO(t *testing.T) {
+	assert.True(t, Scope2206B_MSO.IsMSO())
+	assert.True(t, (Scope2206B_MSO + ScopeSimulatedOffset).IsMSO())
+	assert.True(t, Scope2205A_MSO.IsMSO())
+	assert.True(t, Scope3206D_MSO.IsMSO())
+
+	assert.False(t, Scope2206B.IsMSO())
+	assert.False(t, (Scope2206B + ScopeSimulatedOffset).IsMSO())
+	assert.False(t, ScopeUnknown.IsMSO())
+	assert.False(t, Scope4444.IsMSO())
+}
+
 func TestScopeTypeIsETSCapable(t *testing.T) {
 	// ETS capable scopes (2000B, 3000, 5000, 6000)
 	assert.True(t, Scope2206B.IsETSCapable())
 	assert.True(t, (Scope2206B + ScopeSimulatedOffset).IsETSCapable())
+	assert.True(t, Scope2206B_MSO.IsETSCapable())
+	assert.True(t, (Scope2206B_MSO + ScopeSimulatedOffset).IsETSCapable())
+	assert.True(t, StringToScopeType("2206BMSO").IsETSCapable())
 	assert.True(t, Scope3206D.IsETSCapable())
 	assert.True(t, Scope5444D.IsETSCapable())
 	assert.True(t, Scope6404E.IsETSCapable())
@@ -140,3 +162,4 @@ func TestScopeTypeIsETSCapable(t *testing.T) {
 	assert.False(t, Scope4444.IsETSCapable())
 	assert.False(t, Scope4824A.IsETSCapable())
 }
+

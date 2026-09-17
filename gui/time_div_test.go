@@ -2,11 +2,12 @@ package gui
 
 import (
 	"fynescope/control"
+	"fynescope/selectscroll"
+	"fynescope/settings"
 	"testing"
 
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
-	"fynescope/selectscroll"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,3 +74,49 @@ func TestTimeDiv_SampleUnitDown(t *testing.T) {
 	assert.Equal(t, 0, scp.sampleRateSelect.SelectedIndex())
 	assert.Equal(t, 2, scp.sampleUnitSelect.SelectedIndex()) // MHz
 }
+
+func TestTimeDiv_UpdateTriggerModeOptions_2206BMSO(t *testing.T) {
+	test.NewApp()
+	scopeModel := control.StringToScopeType("2206BMSO")
+	assert.Equal(t, control.Scope2206B_MSO, scopeModel)
+	assert.True(t, scopeModel.IsETSCapable())
+	assert.True(t, scopeModel.IsMSO())
+
+	scp := &ScpDesc{
+		psControl: &control.PscDesc{
+			ScopeModel: scopeModel,
+			Info:       "2206BMSO",
+		},
+		IsMSO: true,
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: false},
+					{Enabled: false},
+				},
+			},
+			Trigger: settings.TriggerSettings{
+				Mode: settings.TriggerModeRepeat,
+			},
+		},
+		triggerModeSelect: selectscroll.NewSelectScroll(triggerModeOptions, func(s string, e selectscroll.Exception) {}, settings.TriggerModeRepeat),
+	}
+
+	// When digital ports are disabled, ETS mode should be available in trigger mode options
+	scp.updateTriggerModeOptions()
+	opts := scp.triggerModeSelect.Options
+	assert.Contains(t, opts, settings.TriggerModeETS)
+
+	// When digital port 0 is enabled, ETS mode should be removed
+	scp.Settings.Digital.Ports[0].Enabled = true
+	scp.updateTriggerModeOptions()
+	opts = scp.triggerModeSelect.Options
+	assert.NotContains(t, opts, settings.TriggerModeETS)
+
+	// When digital port 0 is disabled again, ETS mode should be restored
+	scp.Settings.Digital.Ports[0].Enabled = false
+	scp.updateTriggerModeOptions()
+	opts = scp.triggerModeSelect.Options
+	assert.Contains(t, opts, settings.TriggerModeETS)
+}
+
