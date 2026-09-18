@@ -1083,7 +1083,18 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			})
 		})
 
-		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		host := os.Getenv("FUZZER_HOST")
+		if host == "" {
+			host = "127.0.0.1"
+		}
+		portStr := os.Getenv("FUZZER_PORT")
+		if portStr == "" {
+			portStr = "0"
+		}
+		ln, err := net.Listen("tcp", host+":"+portStr)
+		if err != nil && portStr != "0" {
+			ln, err = net.Listen("tcp", host+":0")
+		}
 		if err != nil {
 			log.Printf("Fuzzer status server: failed to listen: %v", err)
 			return 0, func() {}
