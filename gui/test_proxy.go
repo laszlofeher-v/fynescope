@@ -3,6 +3,7 @@
 package gui
 
 import (
+	"encoding/json"
 	"fmt"
 	"fynescope/disp7"
 	"fynescope/selectscroll"
@@ -12,6 +13,9 @@ import (
 	"log/slog"
 	"math"
 	"math/rand"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -26,10 +30,9 @@ import (
 	"fynescope/genericps"
 	"fynescope/settings"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-
-	"fyne.io/fyne/v2"
 )
 
 const (
@@ -161,12 +164,12 @@ type TestControl struct {
 }
 
 var (
-	sleepTime      = 100 * time.Millisecond
-	sleepTimeMu    sync.RWMutex
-	activeScp      *ScpDesc
-	controls       map[string]TestControl
-	tabValidKeys   map[int][]string
-	controlsMtx    sync.RWMutex
+	sleepTime    = 100 * time.Millisecond
+	sleepTimeMu  sync.RWMutex
+	activeScp    *ScpDesc
+	controls     map[string]TestControl
+	tabValidKeys map[int][]string
+	controlsMtx  sync.RWMutex
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
@@ -1012,29 +1015,99 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		slog.SetDefault(slog.New(origSlogHandler))
 	}()
 
-	var (
-		statusWin      fyne.Window
-		uptimeLabel    *widget.Label
-		remainingLabel *widget.Label
-		eventsLabel    *widget.Label
-		errorsLabel    *widget.Label
-	)
+	// startFuzzerStatusServer starts a plain HTTP server on an available port and
+	// serves fuzzer statistics without touching the Fyne UI thread.
+	// It returns the chosen port (0 if startup failed) and a stop function.
+	startFuzzerStatusServer := func() (port int, stop func()) {
+		const statusHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fuzzer Status</title>
+  <style>
+    body{font-family:monospace;background:#111;color:#ccc;margin:2em;}
+    h1{color:#7bf;margin-bottom:.5em;}
+    table{border-collapse:collapse;min-width:280px;}
+    td{padding:6px 14px;border-bottom:1px solid #333;}
+    td:first-child{color:#888;}
+    td:last-child{color:#fff;font-weight:bold;}
+    #dot{display:inline-block;width:10px;height:10px;border-radius:50%;
+         background:#4f4;margin-right:6px;animation:blink 1s step-start infinite;}
+    @keyframes blink{50%{opacity:0;}}
+  </style>
+</head>
+<body>
+  <h1><span id="dot"></span>Fuzzer Status</h1>
+  <table id="tbl">
+    <tr><td>Uptime</td><td id="uptime">-</td></tr>
+    <tr><td>Remaining</td><td id="remaining">-</td></tr>
+    <tr><td>Events</td><td id="events">-</td></tr>
+    <tr><td>Errors</td><td id="errors">-</td></tr>
+  </table>
+  <script>
+    async function refresh() {
+      try {
+        const r = await fetch('/fuzzer/status');
+        if (!r.ok) return;
+        const d = await r.json();
+        document.getElementById('uptime').textContent    = d.uptime    || '-';
+        document.getElementById('remaining').textContent = d.remaining || '-';
+        document.getElementById('events').textContent    = d.events    || '-';
+        document.getElementById('errors').textContent    = d.errors    || '-';
+      } catch(e) {}
+    }
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>`
 
-	fyne.DoAndWait(func() {
-		statusWin = scp.App.NewWindow("Fuzzer Status")
-		uptimeLabel = widget.NewLabel("Uptime: 0s")
-		remainingLabel = widget.NewLabel(fmt.Sprintf("Remaining: %v", duration))
-		eventsLabel = widget.NewLabel("Events: 0")
-		errorsLabel = widget.NewLabel("Errors: 0")
+		mux := http.NewServeMux()
+		mux.HandleFunc("/fuzzer/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprint(w, statusHTML)
+		})
+		mux.HandleFunc("/fuzzer/status", func(w http.ResponseWriter, r *http.Request) {
+			uptime := time.Since(startTime)
+			remaining := duration - uptime
+			if remaining < 0 {
+				remaining = 0
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-store")
+			json.NewEncoder(w).Encode(map[string]string{
+				"uptime":    uptime.Round(time.Second).String(),
+				"remaining": remaining.Round(time.Second).String(),
+				"events":    fmt.Sprintf("%d", atomic.LoadUint64(&eventCount)),
+				"errors":    fmt.Sprintf("%d", atomic.LoadUint64(&errorCount)),
+			})
+		})
 
-		statusWin.SetContent(container.NewVBox(
-			uptimeLabel,
-			remainingLabel,
-			eventsLabel,
-			errorsLabel,
-		))
-		statusWin.Show()
-	})
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			log.Printf("Fuzzer status server: failed to listen: %v", err)
+			return 0, func() {}
+		}
+		srv := &http.Server{Handler: mux}
+		go func() {
+			if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+				log.Printf("Fuzzer status server error: %v", err)
+			}
+		}()
+		port = ln.Addr().(*net.TCPAddr).Port
+		u := fmt.Sprintf("http://127.0.0.1:%d/fuzzer/", port)
+		log.Printf("Fuzzer status: %s", u)
+		if scp.App != nil {
+			if parsedURL, err := url.Parse(u); err == nil {
+				scp.App.OpenURL(parsedURL)
+			}
+		}
+		return port, func() { _ = srv.Close() }
+	}
+
+	statusPort, stopStatusServer := startFuzzerStatusServer()
+	_ = statusPort
+	defer stopStatusServer()
 
 	// writeFuzzerRecord writes a snapshot of the current fuzzer state to path.
 	// completed indicates whether the fuzzer ran to its full deadline.
@@ -1123,44 +1196,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 	}()
 
-	statusTickerStop := make(chan struct{})
-	statusTickerDone := make(chan struct{})
-	go func() {
-		defer close(statusTickerDone)
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				uptime := time.Since(startTime)
-				remaining := duration - uptime
-				if remaining < 0 {
-					remaining = 0
-				}
-				evs := atomic.LoadUint64(&eventCount)
-				errs := atomic.LoadUint64(&errorCount)
-				fyne.Do(func() {
-					if statusWin != nil && uptimeLabel != nil {
-						uptimeLabel.SetText(fmt.Sprintf("Uptime: %v", uptime.Round(time.Second)))
-						remainingLabel.SetText(fmt.Sprintf("Remaining: %v", remaining.Round(time.Second)))
-						eventsLabel.SetText(fmt.Sprintf("Events: %d", evs))
-						errorsLabel.SetText(fmt.Sprintf("Errors: %d", errs))
-					}
-				})
-			case <-statusTickerStop:
-				return
-			}
-		}
-	}()
-
 	defer func() {
-		close(statusTickerStop)
-		<-statusTickerDone
-		if statusWin != nil {
-			fyne.Do(func() {
-				statusWin.Close()
-			})
-		}
 		// Stop the periodic flush goroutine and wait for it to exit.
 		close(flushStop)
 		<-flushDone
