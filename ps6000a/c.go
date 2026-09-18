@@ -185,9 +185,9 @@ func ps6000aFlashLed(handle int16, start int16) (err error) {
 var regLpDataReadyGo DataReady // registered go callback function
 
 //export ps6000aLpDataReadyGo
-func ps6000aLpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func ps6000aLpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, pParameter unsafe.Pointer) {
 	if regLpDataReadyGo != nil {
-		regLpDataReadyGo(handle, status, noOfSamples, overflow, param) // call registered go callback function
+		regLpDataReadyGo(handle, status, noOfSamples, overflow, nil) // call registered go callback function
 	}
 	return
 }
@@ -204,7 +204,7 @@ func ps6000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 		(C.PICO_RATIO_MODE)(downSampleRatioMode),
 		(C.uint64_t)(segmentIndex),
 		unsafe.Pointer(C.ps6000aLpDataReady),
-		unsafe.Pointer(&param))
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesAsync:  %s", psc.StatStr(int(stat)))
 	}
@@ -313,9 +313,9 @@ var regLpStreamingReadyGo StreamingReady // registered go callback function
 
 //export ps6000aLpStreamingReadyGo
 func ps6000aLpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
-	triggeredAt uint32, triggered, autoStop int16, param interface{}) {
+	triggeredAt uint32, triggered, autoStop int16, pParameter unsafe.Pointer) {
 	if regLpStreamingReadyGo != nil {
-		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, param) // call registered go callback function
+		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, nil) // call registered go callback function
 	}
 	return
 }
@@ -463,13 +463,13 @@ var regLpBlockReadyGo BlockReady
 //export ps6000aLpBlockReadyGo
 func ps6000aLpBlockReadyGo(handle int16, status int, param unsafe.Pointer) {
 	if regLpBlockReadyGo != nil {
-		regLpBlockReadyGo(handle, status, param)
+		regLpBlockReadyGo(handle, status, nil)
 	}
 }
 
 func ps6000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples uint64,
 	timeBase uint64, overSample int16, segmentIndex uint64, lpBlockReadyGoPar BlockReady,
-	param interface{}) (timeIndisposedMs int32, err error) {
+	pParameter unsafe.Pointer) (timeIndisposedMs int32, err error) {
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	slog.Debug("ps6000aRunBlock", "handle", handle, "noOfPreTriggerSamples", noOfPreTriggerSamples, "noOfPostTriggerSamples", noOfPostTriggerSamples, "timeBase", timeBase, "segmentIndex", segmentIndex)
 	var timeMs float64

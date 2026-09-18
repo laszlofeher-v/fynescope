@@ -158,9 +158,9 @@ func ps4000aFlashLed(handle int16, start int16) (err error) {
 var regLpDataReadyGo DataReady // registered go callback function
 
 //export ps4000aLpDataReadyGo
-func ps4000aLpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func ps4000aLpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, pParameter unsafe.Pointer) {
 	if regLpDataReadyGo != nil {
-		regLpDataReadyGo(handle, status, noOfSamples, overflow, param) // call registered go callback function
+		regLpDataReadyGo(handle, status, noOfSamples, overflow, nil) // call registered go callback function
 	}
 	return
 }
@@ -177,7 +177,7 @@ func ps4000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRati
 		(C.PS4000A_RATIO_MODE)(downSampleRatioMode),
 		(C.uint)(segmentIndex),
 		(C.ps4000aLpDataReady), // C callback function in callbacks.go
-		unsafe.Pointer(&param))
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetValuesAsync:  %s", psc.StatStr(int(stat)))
 	}
@@ -318,9 +318,9 @@ var regLpStreamingReadyGo StreamingReady // registered go callback function
 
 //export ps4000aLpStreamingReadyGo
 func ps4000aLpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
-	triggeredAt uint32, triggered, autoStop int16, param interface{}) {
+	triggeredAt uint32, triggered, autoStop int16, pParameter unsafe.Pointer) {
 	if regLpStreamingReadyGo != nil {
-		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, param) // call registered go callback function
+		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, nil) // call registered go callback function
 	}
 	return
 }
@@ -330,7 +330,7 @@ func ps4000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar Streami
 	slog.Debug("ps4000aGetStreamingLatestValues", "handle", handle, "lpStreamingReadyGoPar", lpStreamingReadyGoPar, "param", param)
 	stat := C.ps4000aGetStreamingLatestValues((C.short)(handle),
 		(C.ps4000aStreamingReady)(C.ps4000aLpStreamingReady), // C callback function in callbacks.go
-		unsafe.Pointer(&param))
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("GetStreamingLatestValues:  %s", psc.StatStr(int(stat)))
 	}
@@ -493,9 +493,9 @@ func ps4000aRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalT
 var regLpBlockReadyGo BlockReady // registered go callback function
 
 //export ps4000aLpBlockReadyGo
-func ps4000aLpBlockReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param interface{}) {
+func ps4000aLpBlockReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, pParameter unsafe.Pointer) {
 	if regLpBlockReadyGo != nil {
-		regLpBlockReadyGo(handle, status, param) // call registered go callback function
+		regLpBlockReadyGo(handle, status, nil) // call registered go callback function
 	}
 	return
 }
@@ -508,7 +508,7 @@ func ps4000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples
 	stat := C.ps4000aRunBlock((C.short)(handle), (C.int)(noOfPreTriggerSamples),
 		(C.int)(noOfPostTriggerSamples), (C.uint)(timeBase),
 		(*C.int)(&timeIndisposedMs), (C.uint)(segmentIndex), (C.ps4000aBlockReady)(C.ps4000aLpBlockReady),
-		unsafe.Pointer(&param))
+		nil)
 	if stat != C.PICO_OK {
 		err = fmt.Errorf("RunBlock:  %s", psc.StatStr(int(stat)))
 	}
