@@ -1,0 +1,28 @@
+Website = "https://github.com/laszlofeher-v/fynescope"
+
+[Details]
+Icon = "pictures/icon1.png"
+Name = "fynescope"
+ID = "com.github.laszlofeher-v.fynescope"
+Version = "1.1.0"
+Build = 1
+
+[Source]
+Repo = "https://github.com/laszlofeher-v/fynescope"
+
+[LinuxAndBSD]
+GenericName = "PC Oscilloscope"
+Categories = ["Development", "Utility"]
+Comment = "A prototype graphical user interface and control Linux application for PicoScope 2000A Series PC Oscilloscopes"
+Keywords = ["oscilloscope", "picoscope", "fynescope"]
+
+[Release]
+Developer = "László, Fehér"
+
+[Migrations]
+fyneDo = true
+
+Screenshots = [
+    "pictures/signal.png",
+    "pictures/bodeplot.png",
+]
