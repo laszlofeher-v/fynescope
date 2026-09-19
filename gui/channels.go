@@ -659,7 +659,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		enableChanged, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
 		fyne.Size{Width: checkColorPickMinSize, Height: checkColorPickMinSize})
 	addToTest(channelViewer.enableCheckbox, chEnableId+chId, ftTabIndex)
-	RegisterWidgetHelp(channelViewer.enableCheckbox, "Channel Enable", "Enables or disables waveform display and signal acquisition for this channel.")
+	RegisterWidgetHelp(channelViewer.enableCheckbox, "Channel Enable", "Enables or disables waveform display and signal acquisition for this channel. Right-click opens the color selector.")
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
 	invert = scp.newFocusCheck("Inv", inverted)

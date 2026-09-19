@@ -594,6 +594,8 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			editor.generateWaveform(selected)
 		}
 	}, "Select Waveform")
+	addToTest(waveformSelect, "awgWaveformSelect", -1)
+	RegisterWidgetHelp(waveformSelect, "AWG Waveform Option", "Select the type of waveform (e.g., Sine, Square, UART, Last Waveform) to load into the AWG.")
 
 	clearBtn := widget.NewButton("Clear", func() {
 		if scp.awgWindow == nil {
@@ -603,6 +605,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		waveformSelect.ClearSelected()
 	})
 	addToTest(clearBtn, "awgClearBtn", -1)
+	RegisterWidgetHelp(clearBtn, "Clear Waveform", "Clears the currently generated waveform from the AWG editor.")
 
 	importCsvBtn := widget.NewButton("Import CSV", func() {
 		if scp.awgWindow == nil {
@@ -652,6 +655,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		fd.Show()
 	})
 	addToTest(importCsvBtn, "awgImportCsvBtn", -1)
+	RegisterWidgetHelp(importCsvBtn, "Import CSV", "Imports waveform data points from a CSV file.")
 
 	exportCsvBtn := widget.NewButton("Export CSV", func() {
 		if scp.awgWindow == nil {
@@ -690,6 +694,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		fd.Show()
 	})
 	addToTest(exportCsvBtn, "awgExportCsvBtn", -1)
+	RegisterWidgetHelp(exportCsvBtn, "Export CSV", "Exports the current waveform data points to a CSV file.")
 
 	patternGenBtn := widget.NewButton("Pattern Gen", func() {
 		if scp.awgWindow == nil {
@@ -709,10 +714,14 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		scp.patternWindow.Resize(fyne.NewSize(500, 250))
 
 		binEntry := widget.NewEntry()
+		RegisterWidgetHelp(binEntry, "Binary Pattern", "Enter the digital pattern as a binary string (e.g., 101010).")
 		hexEntry := widget.NewEntry()
+		RegisterWidgetHelp(hexEntry, "Hex Pattern", "Enter the digital pattern as a hexadecimal string (e.g., AA).")
 		highEntry := widget.NewEntry()
+		RegisterWidgetHelp(highEntry, "High Level (%)", "Sets the high voltage level for the pattern generator as a percentage.")
 		highEntry.SetText("100")
 		lowEntry := widget.NewEntry()
+		RegisterWidgetHelp(lowEntry, "Low Level (%)", "Sets the low voltage level for the pattern generator as a percentage.")
 		lowEntry.SetText("0")
 
 		updatingBin := false
@@ -848,6 +857,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 			scp.patternWindow.Close()
 		})
 		addToTest(closeBtn, "awgPatternCloseBtn", -1)
+		RegisterWidgetHelp(closeBtn, "Close Pattern Generator", "Closes the pattern generator window.")
 
 		content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
 		scp.patternWindow.SetContent(content)
@@ -857,6 +867,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		scp.patternWindow.Show()
 	})
 	addToTest(patternGenBtn, "awgPatternGenBtn", -1)
+	RegisterWidgetHelp(patternGenBtn, "Pattern Generator", "Opens the digital pattern generator to create custom digital bitstreams.")
 
 	var err error
 	pointsDisp, err = disp7.NewCustomDisp7Array(5, 0, 32768, 10,
@@ -884,6 +895,7 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 		}
 	})
 	addToTest(applyBtn, "awgApplyBtn", -1)
+	RegisterWidgetHelp(applyBtn, "Apply to Generator", "Applies the drawn or generated waveform to the oscilloscope's arbitrary waveform generator.")
 	applyBtn.Importance = widget.HighImportance
 
 	toolbar := container.NewHBox(
@@ -921,10 +933,13 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 	scp.patternWindow.Resize(fyne.NewSize(500, 400))
 
 	textEntry := widget.NewEntry()
+	RegisterWidgetHelp(textEntry, "UART Text", "Enter the text to encode as a UART serial waveform.")
 	textEntry.MultiLine = true
 	highEntry := widget.NewEntry()
+	RegisterWidgetHelp(highEntry, "UART High Level (%)", "Sets the high voltage level for the UART waveform as a percentage.")
 	highEntry.SetText("100")
 	lowEntry := widget.NewEntry()
+	RegisterWidgetHelp(lowEntry, "UART Low Level (%)", "Sets the low voltage level for the UART waveform as a percentage.")
 	lowEntry.SetText("0")
 	suggestedFreqLabel := widget.NewLabel("N/A")
 	var updateWaveform func()
@@ -936,6 +951,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		}
 	}, "Select Baudrate")
 	baudrateSelect.SetSelected("115200")
+	RegisterWidgetHelp(baudrateSelect, "UART Baud Rate", "Select the baud rate for the generated UART waveform.")
 
 	bitNumsSelect := selectscroll.NewSelectScroll([]string{"5", "6", "7", "8", "9"}, func(s string, ex selectscroll.Exception) {
 		if updateWaveform != nil {
@@ -943,18 +959,21 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		}
 	}, "Data Bits")
 	bitNumsSelect.SetSelected("8")
+	RegisterWidgetHelp(bitNumsSelect, "UART Data Bits", "Select the number of data bits for the UART waveform.")
 	paritySelect := selectscroll.NewSelectScroll([]string{"None", "Even", "Odd", "Mark", "Space"}, func(s string, ex selectscroll.Exception) {
 		if updateWaveform != nil {
 			updateWaveform()
 		}
 	}, "Parity")
 	paritySelect.SetSelected("None")
+	RegisterWidgetHelp(paritySelect, "UART Parity", "Select the parity bit configuration for the UART waveform.")
 	stopBitsSelect := selectscroll.NewSelectScroll([]string{"1", "1.5", "2"}, func(s string, ex selectscroll.Exception) {
 		if updateWaveform != nil {
 			updateWaveform()
 		}
 	}, "Stop Bits")
 	stopBitsSelect.SetSelected("1")
+	RegisterWidgetHelp(stopBitsSelect, "UART Stop Bits", "Select the number of stop bits for the UART waveform.")
 
 	bitOrderSelect := selectscroll.NewSelectScroll([]string{"LSB First", "MSB First"}, func(s string, ex selectscroll.Exception) {
 		if updateWaveform != nil {
@@ -962,6 +981,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		}
 	}, "Bit Order")
 	bitOrderSelect.SetSelected("LSB First")
+	RegisterWidgetHelp(bitOrderSelect, "UART Bit Order", "Select the transmission bit order (LSB or MSB first) for the UART waveform.")
 
 	updateWaveform = func() {
 		hlPct, errH := strconv.ParseFloat(highEntry.Text, 64)
@@ -1126,6 +1146,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 		scp.patternWindow.Close()
 	})
 	addToTest(closeBtn, "awgPatternCloseBtn", -1)
+	RegisterWidgetHelp(closeBtn, "Close UART Generator", "Closes the UART pattern generator window.")
 
 	content := container.NewBorder(nil, container.NewHBox(layout.NewSpacer(), closeBtn), nil, nil, form)
 	scp.patternWindow.SetContent(content)

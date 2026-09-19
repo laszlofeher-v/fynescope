@@ -14,6 +14,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -33,16 +34,21 @@ type tappableDnLabel struct {
 	widget.Label
 	onTapped func()
 	negated  bool
+	focused  bool
+	scp      *ScpDesc
 }
 
-func newTappableDnLabel(text string, negated bool, tapped func()) *tappableDnLabel {
-	l := &tappableDnLabel{onTapped: tapped, negated: negated}
+func newTappableDnLabel(scp *ScpDesc, text string, negated bool, tapped func()) *tappableDnLabel {
+	l := &tappableDnLabel{onTapped: tapped, negated: negated, scp: scp}
 	l.Text = text
 	l.ExtendBaseWidget(l)
 	return l
 }
 
 func (l *tappableDnLabel) Tapped(e *fyne.PointEvent) {
+	if l.scp != nil {
+		l.scp.focusWidget(l)
+	}
 	if l.onTapped != nil {
 		l.onTapped()
 	}
@@ -55,6 +61,38 @@ func (l *tappableDnLabel) setNegated(neg bool) {
 	l.Refresh()
 }
 
+func (l *tappableDnLabel) FocusGained() {
+	l.focused = true
+	l.Refresh()
+}
+
+func (l *tappableDnLabel) FocusLost() {
+	l.focused = false
+	l.Refresh()
+}
+
+func (l *tappableDnLabel) TypedRune(rune) {}
+
+func (l *tappableDnLabel) TypedKey(e *fyne.KeyEvent) {
+	if e.Name == fyne.KeySpace || e.Name == fyne.KeyReturn {
+		l.Tapped(nil)
+	}
+}
+
+func (l *tappableDnLabel) MouseIn(e *desktop.MouseEvent) {
+	if l.scp != nil {
+		l.scp.focusWidget(l)
+	}
+}
+
+func (l *tappableDnLabel) MouseMoved(e *desktop.MouseEvent) {
+	if l.scp != nil {
+		l.scp.focusWidget(l)
+	}
+}
+
+func (l *tappableDnLabel) MouseOut() {}
+
 func (l *tappableDnLabel) CreateRenderer() fyne.WidgetRenderer {
 	r := l.Label.CreateRenderer()
 	line := canvas.NewLine(theme.ForegroundColor())
@@ -62,19 +100,23 @@ func (l *tappableDnLabel) CreateRenderer() fyne.WidgetRenderer {
 	if !l.negated {
 		line.Hidden = true
 	}
-	return &tappableDnLabelRenderer{WidgetRenderer: r, label: l, line: line}
+	focusBg := canvas.NewRectangle(theme.FocusColor())
+	focusBg.Hidden = true
+	return &tappableDnLabelRenderer{WidgetRenderer: r, label: l, line: line, focusBg: focusBg}
 }
 
 type tappableDnLabelRenderer struct {
 	fyne.WidgetRenderer
-	label *tappableDnLabel
-	line  *canvas.Line
+	label   *tappableDnLabel
+	line    *canvas.Line
+	focusBg *canvas.Rectangle
 }
 
 func (r *tappableDnLabelRenderer) Layout(size fyne.Size) {
 	r.WidgetRenderer.Layout(size)
 	r.line.Position1 = fyne.NewPos(0, 2)
 	r.line.Position2 = fyne.NewPos(size.Width, 2)
+	r.focusBg.Resize(size)
 }
 
 func (r *tappableDnLabelRenderer) MinSize() fyne.Size {
@@ -84,14 +126,17 @@ func (r *tappableDnLabelRenderer) MinSize() fyne.Size {
 func (r *tappableDnLabelRenderer) Refresh() {
 	r.line.StrokeColor = theme.ForegroundColor()
 	r.line.Hidden = !r.label.negated
+	r.focusBg.Hidden = !r.label.focused
+	r.focusBg.FillColor = theme.FocusColor()
 	r.WidgetRenderer.Refresh()
 }
 
 func (r *tappableDnLabelRenderer) Objects() []fyne.CanvasObject {
 	baseObjs := r.WidgetRenderer.Objects()
-	objs := make([]fyne.CanvasObject, len(baseObjs)+1)
-	copy(objs, baseObjs)
-	objs[len(baseObjs)] = r.line
+	objs := make([]fyne.CanvasObject, len(baseObjs)+2)
+	objs[0] = r.focusBg
+	copy(objs[1:], baseObjs)
+	objs[len(objs)-1] = r.line
 	return objs
 }
 
@@ -428,7 +473,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		dn := fmt.Sprintf("D%d", chIdx)
 
 		var dnLabel *tappableDnLabel
-		dnLabel = newTappableDnLabel(dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
+		dnLabel = newTappableDnLabel(scp, dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
 			scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
 			dnLabel.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
 			scp.SaveSettings()
@@ -437,7 +482,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		})
 		addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(dnLabel, "Channel Invert", "Toggles digital signal polarity inversion (active-low state).")
+		RegisterWidgetHelp(dnLabel, "Channel Invert", "Left click inverts the channel.")
 
 		// 1. Editable label (max 6 chars, frameless)
 		labelEntry := newFramelessEntry()
@@ -472,7 +517,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}, col, fyne.NewSize(20, 20))
 		ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
 		addToTest(ccp, fmt.Sprintf("digPortCheckColorPick_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(ccp, "Digital Channel Color & Enable", "Selects trace display color and enables or disables this digital channel.")
+		RegisterWidgetHelp(ccp, "Digital Channel Color & Enable", "Selects trace display color and enables or disables this digital channel. Right-click opens the color selector.")
 
 		// 3. Trigger mode
 		initialDirStr := dirReverseMap[scp.Settings.Digital.Trigger.Directions[chIdx]]

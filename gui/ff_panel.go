@@ -417,6 +417,22 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	RegisterWidgetHelp(scp.ffMinFreqDisp, "Sweep Start Frequency", "Start frequency for Bode frequency response analysis sweep.")
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
 	RegisterWidgetHelp(scp.ffMaxFreqDisp, "Sweep Stop Frequency", "Stop frequency for Bode frequency response analysis sweep.")
+
+	addToTest(scp.ffDeltaTDisp, ffDeltaTId, ffTabIndex)
+	RegisterWidgetHelp(scp.ffDeltaTDisp, "Dwell Time (ΔT)", "Time spent at each frequency step during sweep.")
+	addToTest(targetCyclesDisp, ffCyclesId, ffTabIndex)
+	RegisterWidgetHelp(targetCyclesDisp, "Target Cycles", "Number of signal cycles to analyze per frequency step.")
+	addToTest(scp.ffStepFreqDisp, ffPtsDecId, ffTabIndex)
+	RegisterWidgetHelp(scp.ffStepFreqDisp, "Points per Decade", "Number of frequency steps per decade.")
+
+	if scp.ffAmpDisp != nil {
+		addToTest(scp.ffAmpDisp, ffAmpId, ffTabIndex)
+		RegisterWidgetHelp(scp.ffAmpDisp, "Sweep Amplitude", "Amplitude of the sweep stimulus signal.")
+	}
+	if scp.ffOffsetDisp != nil {
+		addToTest(scp.ffOffsetDisp, ffOffsetId, ffTabIndex)
+		RegisterWidgetHelp(scp.ffOffsetDisp, "Sweep Offset", "DC offset of the sweep stimulus signal.")
+	}
 	addToTest(dispUnitSelect, ffDispUnitSelectId, ffTabIndex)
 	RegisterWidgetHelp(dispUnitSelect, "Bode Display Units", "Selects frequency response display unit.")
 	addToTest(scp.useExtGenCheck, ffExtGenSelectId, ffTabIndex)
