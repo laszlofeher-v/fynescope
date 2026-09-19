@@ -811,4 +811,6 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 			fyne.Do(scp.ffRaster.Refresh)
 		}
 	}
+
+	scp.UpdateCorrelation()
 }

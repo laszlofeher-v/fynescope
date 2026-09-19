@@ -101,7 +101,7 @@ func (scp *ScpDesc) shouldDrawRaster(targetTabIndex int) bool {
 		return true
 	}
 	if scp.Settings.Window.LastDispFunction == targetTabIndex {
-		if sel == scp.genTab || sel == scp.filterTab || sel == scp.extgenTab || sel == scp.vchTab || sel == scp.digPortTab {
+		if sel == scp.genTab || sel == scp.filterTab || sel == scp.extgenTab || sel == scp.vchTab || sel == scp.digPortTab || sel == scp.corrTab {
 			return true
 		}
 	}
@@ -121,7 +121,7 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	}
 	// Global ordered list of all possible tabs
 	allTabs := []*container.TabItem{
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab,
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab,
 	}
 
 	var newItems []*container.TabItem

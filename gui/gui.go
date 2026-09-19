@@ -76,10 +76,11 @@ const (
 	vchTabIndex
 	decodeTabIndex
 	filterTabIndex
+	corrTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter", "corr"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -188,6 +189,11 @@ type (
 		decodeLayout                 *fyne.Container
 		digPortTab                   *container.TabItem
 		digPortLayout                *fyne.Container
+		corrTab                      *container.TabItem
+		corrWindow                   fyne.Window
+		corrLayout                   *fyne.Container
+		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
+		corrStrengthLabels           [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
 		psControl                    *control.PscDesc
@@ -873,8 +879,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
 	scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(true))
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
+	scp.corrLayout = container.NewMax()
+	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab)
 	if !scp.IsMSO {
 		scp.controlTab.Remove(scp.digPortTab)
 		scp.controlTab.Remove(scp.digGenTab)
@@ -919,7 +927,8 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.controlTab.Selected() == scp.filterTab ||
 			scp.controlTab.Selected() == scp.extgenTab ||
 			scp.controlTab.Selected() == scp.vchTab ||
-			scp.controlTab.Selected() == scp.digPortTab {
+			scp.controlTab.Selected() == scp.digPortTab ||
+			scp.controlTab.Selected() == scp.corrTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -1035,6 +1044,7 @@ func (scp *ScpDesc) build2000Gui() {
 	addToTest(scp.controlTab, vchFuncId, -1)
 	addToTest(scp.controlTab, decodeFuncId, -1)
 	addToTest(scp.controlTab, filterFuncId, -1)
+	addToTest(scp.controlTab, corrFuncId, -1)
 	scp.newChannelPanels(ftLayout)
 	scp.newSetTimeDivPanel(ftLayout)
 	scp.updateTriggerUIForType()
@@ -1044,6 +1054,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.newFfPanel(ffLayout)
 	scp.newRlcPanel(scp.rlcLayout)
 	scp.newDigitalFilterPanel(scp.filterLayout, true)
+	scp.newCorrPanel(scp.corrLayout, true)
 	if scp.ExtGenEnabled {
 		scp.extgenLayout.Add(scp.newExtGenTab(true))
 	}
@@ -1792,6 +1803,8 @@ func (scp *ScpDesc) getActiveFunctionIndex() int {
 		return vchTabIndex
 	case scp.decodeTab:
 		return decodeTabIndex
+	case scp.corrTab:
+		return corrTabIndex
 	default:
 		return ftTabIndex
 	}
