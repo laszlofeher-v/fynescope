@@ -64,3 +64,16 @@ func TestAwgEditor_ResizeValues(t *testing.T) {
 	editor.resizeValues(3)
 	assert.Len(t, editor.values, 3)
 }
+
+func TestAwgEditor_UartPatternGenerator(t *testing.T) {
+	a := test.NewApp()
+	_ = a
+	scp := &ScpDesc{App: a}
+	editor := newAwgEditorWidget()
+	editor.values = make([]float64, 1000)
+
+	scp.showUartPatternGenerator(editor)
+	assert.NotNil(t, scp.patternWindow)
+	scp.patternWindow.Close()
+}
+

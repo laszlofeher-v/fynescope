@@ -1018,8 +1018,8 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 
 		var samplesPerBit float64
 		if totalBits > 0 {
-			// Ensure at least 50% idle time or 20 bits of idle time so the oscilloscope can trigger cleanly between sequences
-			paddedBits := totalBits * 2.0
+			// Ensure at least 10% idle time or 20 bits of idle time so the oscilloscope can trigger cleanly between sequences
+			paddedBits := totalBits / 0.9
 			if paddedBits < totalBits+20.0 {
 				paddedBits = totalBits + 20.0
 			}
