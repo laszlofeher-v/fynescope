@@ -1,7 +1,38 @@
+// Package gui implements the Fynescope oscilloscope graphical user interface.
+// The help subsystem in this file provides contextual, focus-driven help popups
+// for every interactive widget in the UI.  When a user hovers over or focuses a
+// control for longer than FocusHelpDelay, a small floating card appears near that
+// widget explaining its purpose and usage.
+//
+// Architecture overview
+//
+//   - FocusCheck / FocusButton – thin wrappers around standard Fyne widgets that
+//     steal canvas focus on mouse-enter so that the help monitor can detect which
+//     control the user is looking at.
+//
+//   - widgetHelpRegistry – a package-level map that associates any fyne.CanvasObject
+//     instance with a WidgetHelpInfo{Title, Description} pair.  Widgets register
+//     themselves at construction time via RegisterWidgetHelp.
+//
+//   - TabFocusProxy – an invisible Focusable proxy placed in the help overlay for
+//     every AppTabs tab button.  Because tab buttons are internal Fyne widgets that
+//     cannot receive keyboard focus themselves, the proxy intercepts focus/hover and
+//     forwards keyboard navigation (Left/Right/Up/Down) to adjacent tabs.
+//
+//   - getHelpForWidget – the central help-text resolver.  It first checks the
+//     widgetHelpRegistry for an exact match, then falls back to a type-switch that
+//     derives reasonable help text from widget type and properties (label text,
+//     placeholder, option lists, etc.).
+//
+//   - startFocusHelp / checkFocusHelp – a 40 ms polling goroutine that monitors
+//     which widget is focused.  When the same widget remains focused for
+//     FocusHelpDelay without interruption, checkFocusHelp calls showHelpPopUp to
+//     display the card.
 package gui
 
 import (
 	"image/color"
+	"log/slog"
 	"reflect"
 	"strings"
 	"sync"
@@ -21,12 +52,18 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// FocusCheck is a checkbox widget that gains input focus on mouse hover and tap.
+// FocusCheck is a checkbox widget that gains canvas input focus whenever the
+// mouse enters its bounds or the user taps it.  By holding focus it triggers the
+// contextual help monitor so that a descriptive popup appears after
+// FocusHelpDelay milliseconds of hover.
 type FocusCheck struct {
 	widget.Check
-	scp *ScpDesc
+	scp *ScpDesc // back-reference to the scope for focus routing
 }
 
+// newFocusCheck creates a FocusCheck with the given label and change callback.
+// ExtendBaseWidget is called so that the custom MouseIn/MouseMoved/Tapped
+// overrides are dispatched correctly by the Fyne renderer.
 func (scp *ScpDesc) newFocusCheck(label string, changed func(bool)) *FocusCheck {
 	fc := &FocusCheck{
 		Check: widget.Check{Text: label, OnChanged: changed},
@@ -36,12 +73,18 @@ func (scp *ScpDesc) newFocusCheck(label string, changed func(bool)) *FocusCheck 
 	return fc
 }
 
+// CreateRenderer returns the standard Check renderer.  ExtendBaseWidget is
+// re-called here defensively to cope with deserialization paths that bypass the
+// constructor.
 func (fc *FocusCheck) CreateRenderer() fyne.WidgetRenderer {
 	r := fc.Check.CreateRenderer()
 	fc.ExtendBaseWidget(fc)
 	return r
 }
 
+// focus routes canvas focus to this checkbox.  When a scope reference is
+// available it uses focusWidget, which restricts focus to the scope window;
+// otherwise it falls back to the global focusObject helper.
 func (fc *FocusCheck) focus() {
 	if fc.scp != nil {
 		fc.scp.focusWidget(fc)
@@ -50,27 +93,36 @@ func (fc *FocusCheck) focus() {
 	focusObject(fc)
 }
 
+// MouseIn acquires focus when the pointer enters the checkbox, triggering the
+// help delay timer, then delegates the event to the underlying Check widget.
 func (fc *FocusCheck) MouseIn(e *desktop.MouseEvent) {
 	fc.focus()
 	fc.Check.MouseIn(e)
 }
 
+// MouseMoved refreshes focus while the pointer moves within the checkbox.
+// This keeps the help timer alive during slow mouse movement.
 func (fc *FocusCheck) MouseMoved(e *desktop.MouseEvent) {
 	fc.focus()
 	fc.Check.MouseMoved(e)
 }
 
+// Tapped acquires focus on click before delegating the toggle to the Check.
 func (fc *FocusCheck) Tapped(e *fyne.PointEvent) {
 	fc.focus()
 	fc.Check.Tapped(e)
 }
 
-// FocusButton is a button widget that gains input focus on mouse hover and tap.
+// FocusButton is a button widget that acquires canvas focus on mouse-enter and
+// tap so that the contextual help monitor can detect user intent.  It is used
+// throughout the UI as a drop-in replacement for widget.Button wherever help
+// text is desirable.
 type FocusButton struct {
 	widget.Button
-	scp *ScpDesc
+	scp *ScpDesc // back-reference to the scope for focus routing
 }
 
+// newFocusButton creates a FocusButton with a text label and tap callback.
 func (scp *ScpDesc) newFocusButton(text string, tapped func()) *FocusButton {
 	fb := &FocusButton{
 		Button: widget.Button{Text: text, OnTapped: tapped},
@@ -80,6 +132,8 @@ func (scp *ScpDesc) newFocusButton(text string, tapped func()) *FocusButton {
 	return fb
 }
 
+// newFocusButtonWithIcon creates a FocusButton that displays both an icon and a
+// text label beside it.
 func (scp *ScpDesc) newFocusButtonWithIcon(text string, icon fyne.Resource, tapped func()) *FocusButton {
 	fb := &FocusButton{
 		Button: widget.Button{Text: text, Icon: icon, OnTapped: tapped},
@@ -89,12 +143,16 @@ func (scp *ScpDesc) newFocusButtonWithIcon(text string, icon fyne.Resource, tapp
 	return fb
 }
 
+// CreateRenderer returns the standard Button renderer and re-calls
+// ExtendBaseWidget to handle deserialized instances.
 func (fb *FocusButton) CreateRenderer() fyne.WidgetRenderer {
 	r := fb.Button.CreateRenderer()
 	fb.ExtendBaseWidget(fb)
 	return r
 }
 
+// focus routes canvas focus to this button.  Prefers the scope-window focus
+// path when a scope reference is present.
 func (fb *FocusButton) focus() {
 	if fb.scp != nil {
 		fb.scp.focusWidget(fb)
@@ -103,21 +161,28 @@ func (fb *FocusButton) focus() {
 	focusObject(fb)
 }
 
+// MouseIn acquires focus on pointer-enter and forwards the event to Button.
 func (fb *FocusButton) MouseIn(e *desktop.MouseEvent) {
 	fb.focus()
 	fb.Button.MouseIn(e)
 }
 
+// MouseMoved keeps focus alive while the pointer moves over the button.
 func (fb *FocusButton) MouseMoved(e *desktop.MouseEvent) {
 	fb.focus()
 	fb.Button.MouseMoved(e)
 }
 
+// Tapped acquires focus then activates the button's tap handler.
 func (fb *FocusButton) Tapped(e *fyne.PointEvent) {
 	fb.focus()
 	fb.Button.Tapped(e)
 }
 
+// canvasContains performs a depth-first walk of the Fyne object tree rooted at
+// root and returns true if target is found anywhere within it.  It understands
+// the common Fyne container types (Container, AppTabs, Scroll, Split) as well as
+// generic widgets, whose renderer objects are inspected via CreateRenderer.
 func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
 	if root == nil || target == nil {
 		return false
@@ -155,6 +220,10 @@ func canvasContains(root fyne.CanvasObject, target fyne.CanvasObject) bool {
 	return false
 }
 
+// isCanvasObjectMounted reports whether target is part of the visible object
+// hierarchy of canvas c.  It checks both the canvas main content and the top
+// overlay (e.g. a popup) so that widgets in popups are not incorrectly deemed
+// unmounted.
 func isCanvasObjectMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
 	if c == nil || target == nil {
 		return false
@@ -170,6 +239,10 @@ func isCanvasObjectMounted(c fyne.Canvas, target fyne.CanvasObject) bool {
 	return false
 }
 
+// focusObject searches all open application windows for one whose canvas
+// contains obj (as a CanvasObject) and calls Canvas.Focus on it.  It returns
+// after the first successful focus grant.  This is the fallback used when no
+// ScpDesc reference is available.
 func focusObject(obj fyne.Focusable) {
 	if obj == nil {
 		return
@@ -209,6 +282,8 @@ func (scp *ScpDesc) focusWidget(obj fyne.Focusable) {
 	focusObject(obj)
 }
 
+// containsCanvasObject returns true if target is present in the flat slice objs.
+// Used to avoid adding duplicate children to the help overlay container.
 func containsCanvasObject(objs []fyne.CanvasObject, target fyne.CanvasObject) bool {
 	for _, obj := range objs {
 		if obj == target {
@@ -271,14 +346,20 @@ func isTabButtonHovered(item *container.TabItem) bool {
 	return hVal.Bool()
 }
 
-// TabFocusProxy is a Focusable proxy for an AppTabs TabItem, allowing tab buttons
-// to receive keyboard/mouse focus, display a visual focus outline, and trigger
-// the contextual help popup.
+// TabFocusProxy is an invisible Focusable proxy widget associated with one
+// AppTabs TabItem.  Fyne's internal tab buttons cannot receive keyboard focus
+// directly, so a zero-size proxy is laid out on top of each button inside the
+// help overlay.  This lets the help system:
+//
+//  1. Detect which tab the mouse is hovering over via checkTabHoverFocus.
+//  2. Show a focus highlight rectangle (tabFocusRect) around the active tab.
+//  3. Expose contextual help text registered in tabHelpInfo / widgetHelpRegistry.
+//  4. Allow Left/Right arrow keys to navigate between adjacent tabs.
 type TabFocusProxy struct {
 	widget.BaseWidget
-	scp     *ScpDesc
-	item    *container.TabItem
-	tabText string
+	scp     *ScpDesc           // owning scope, used for focus routing and overlay access
+	item    *container.TabItem // the real AppTabs item this proxy represents
+	tabText string             // snapshot of item.Text at creation time (avoids pointer chasing)
 }
 
 // tabHelpInfo maps a tab item text to its contextual help title and description.
@@ -298,6 +379,15 @@ var tabHelpInfo = map[string]WidgetHelpInfo{
 	"corr":    {Title: "corr Correlation", Description: "Signal correlation and comparison control."},
 }
 
+// getOrCreateTabProxy returns the TabFocusProxy for item, creating one if it
+// does not yet exist.  On creation the proxy is:
+//   - stored in scp.tabFocusProxies so subsequent calls return the same instance;
+//   - registered in widgetHelpRegistry with the help text from tabHelpInfo;
+//   - added to scp.helpOverlay so the proxy lives inside the floating overlay
+//     container and can receive Fyne hit-test events.
+//
+// The method is safe to call concurrently; it locks helpMu for the map read/write
+// and widgetHelpRegistryMtx for the registry write.
 func (scp *ScpDesc) getOrCreateTabProxy(item *container.TabItem) *TabFocusProxy {
 	if scp == nil || item == nil {
 		return nil
@@ -329,23 +419,29 @@ func (scp *ScpDesc) getOrCreateTabProxy(item *container.TabItem) *TabFocusProxy 
 	return p
 }
 
+// CreateRenderer returns a no-op renderer wrapping an empty layout container.
+// The proxy is intentionally invisible; its only purpose is to receive focus
+// and participate in the Fyne event dispatch pipeline.
 func (p *TabFocusProxy) CreateRenderer() fyne.WidgetRenderer {
 	p.ExtendBaseWidget(p)
 	return widget.NewSimpleRenderer(container.NewWithoutLayout())
 }
 
+// FocusGained shows the focus outline rectangle around the tab button.
 func (p *TabFocusProxy) FocusGained() {
 	if p.scp != nil {
 		p.scp.setTabFocusHighlight(p.item, true)
 	}
 }
 
+// FocusLost hides the focus outline rectangle when the proxy loses focus.
 func (p *TabFocusProxy) FocusLost() {
 	if p.scp != nil {
 		p.scp.setTabFocusHighlight(p.item, false)
 	}
 }
 
+// TypedRune satisfies fyne.Focusable; no action is taken for character input.
 func (p *TabFocusProxy) TypedRune(_ rune) {}
 
 // Tapped selects the tab when the user clicks on it.  The proxy is overlaid
@@ -361,6 +457,10 @@ func (p *TabFocusProxy) Tapped(_ *fyne.PointEvent) {
 	}
 }
 
+// TypedKey handles keyboard navigation for the focused tab proxy:
+//   - Space / Return  – select the associated tab.
+//   - Left / Up       – move focus to and select the previous tab.
+//   - Right / Down    – move focus to and select the next tab.
 func (p *TabFocusProxy) TypedKey(e *fyne.KeyEvent) {
 	if p.scp == nil || p.scp.controlTab == nil || p.item == nil {
 		return
@@ -391,6 +491,14 @@ func (p *TabFocusProxy) TypedKey(e *fyne.KeyEvent) {
 	}
 }
 
+// setTabFocusHighlight shows or hides a coloured stroke rectangle drawn on top
+// of the tab button identified by item.  The rectangle is added to helpOverlay
+// and positioned using the button's absolute canvas coordinates so it tracks
+// the tab button exactly regardless of window resize or scrolling.
+//
+// When visible is false, or item is nil, the rectangle is simply hidden.
+// Skips layout-stale buttons whose absolute position is (0,0) but whose
+// relative position is non-zero.
 func (scp *ScpDesc) setTabFocusHighlight(item *container.TabItem, visible bool) {
 	if scp == nil {
 		return
@@ -457,12 +565,22 @@ func (scp *ScpDesc) setTabFocusHighlight(item *container.TabItem, visible bool) 
 	scp.helpOverlay.Refresh()
 }
 
+// findHoveredTabItem returns the AppTabs TabItem whose button is currently
+// under the mouse cursor.  It uses two strategies:
+//  1. Reflect into each tab button's unexported 'hovered' field via
+//     isTabButtonHovered.  This is the fast path when Fyne has already set the
+//     flag.
+//  2. If no button reports itself as hovered (can happen on older Fyne builds
+//     or during rapid mouse movement), fall back to reading raw GLFW cursor
+//     coordinates and testing them against each button's absolute position.
 func (scp *ScpDesc) findHoveredTabItem() *container.TabItem {
 	if scp == nil || scp.controlTab == nil {
+		slog.Warn("findHoveredTabItem return nil 1")
 		return nil
 	}
 	for _, item := range scp.controlTab.Items {
 		if isTabButtonHovered(item) {
+			slog.Warn("findHoveredTabItem", "item", item)
 			return item
 		}
 	}
@@ -482,6 +600,7 @@ func (scp *ScpDesc) findHoveredTabItem() *container.TabItem {
 				if btn == nil {
 					continue
 				}
+				// slog.Warn("findHoveredTabItem -------------------", "item.Text", item.Text)
 				var absPos fyne.Position
 				if app != nil && app.Driver() != nil {
 					absPos = app.Driver().AbsolutePositionForObject(btn)
@@ -501,14 +620,21 @@ func (scp *ScpDesc) findHoveredTabItem() *container.TabItem {
 				}
 				if cursorX >= absPos.X && cursorX <= absPos.X+size.Width &&
 					cursorY >= absPos.Y && cursorY <= absPos.Y+size.Height {
+					slog.Warn("findHoveredTabItem", "item", item)
 					return item
 				}
 			}
 		}
 	}
+	slog.Warn("findHoveredTabItem return nil 2")
 	return nil
 }
 
+// checkTabHoverFocus is called every 40 ms by the help monitor goroutine.
+// It detects which tab button the mouse is hovering over and routes canvas
+// focus to the corresponding TabFocusProxy so that the help delay timer
+// starts accumulating.  When the pointer leaves all tab buttons any previously
+// focused proxy is un-focused and the highlight rectangle is hidden.
 func (scp *ScpDesc) checkTabHoverFocus() {
 	if IsFuzzer() || scp == nil || scp.controlTab == nil || !scp.IsHelpEnabled() {
 		return
@@ -535,12 +661,18 @@ func (scp *ScpDesc) checkTabHoverFocus() {
 
 var (
 	// FocusHelpDelay specifies how long a widget must remain continuously focused
-	// before the contextual help popup is automatically displayed.
+	// before the contextual help popup is automatically displayed.  Lowering this
+	// value makes help appear more quickly; raising it reduces accidental popups.
 	FocusHelpDelay = 1500 * time.Millisecond
 
-	// FocusHelpCheckInterval specifies how frequently the focus monitor checks canvas focus.
+	// FocusHelpCheckInterval specifies how frequently the focus monitor checks
+	// canvas focus.  Unused directly in the poll loop (which runs at 40 ms) but
+	// kept as a named constant for tests that want to override it.
 	FocusHelpCheckInterval = 100 * time.Millisecond
 
+	// widgetHelpRegistry maps a canvas object instance to its help text.
+	// Written at widget construction time via RegisterWidgetHelp; read by
+	// getHelpForWidget.  Access is protected by widgetHelpRegistryMtx.
 	widgetHelpRegistry    = make(map[fyne.CanvasObject]WidgetHelpInfo)
 	widgetHelpRegistryMtx sync.RWMutex
 )
@@ -586,10 +718,14 @@ func (scp *ScpDesc) SetHelpEnabled(enabled bool) {
 	scp.SaveSettings()
 }
 
+// toggleHelp flips the contextual help feature on/off.  Bound to the help
+// toolbar button so the user can suppress popups when they are not wanted.
 func (scp *ScpDesc) toggleHelp() {
 	scp.SetHelpEnabled(!scp.IsHelpEnabled())
 }
 
+// updateHelpButtonState synchronises the help toolbar button's visual
+// importance (highlighted vs dim) with the current IsHelpEnabled() value.
 func (scp *ScpDesc) updateHelpButtonState() {
 	if scp == nil || scp.helpButton == nil {
 		return
@@ -643,7 +779,16 @@ func (t *windowMouseTracker) MouseOut() {
 	}
 }
 
-// setContentWithHelp wraps the window content with a floating help overlay layer.
+// setContentWithHelp wraps the window content in a two-layer stack:
+//
+//  1. A windowMouseTracker that wraps the original content and detects when
+//     the pointer leaves the application window.
+//  2. A helpOverlay container that floats above everything and holds:
+//     - TabFocusProxy widgets (one per tab button, zero-size, invisible).
+//     - The tabFocusRect highlight rectangle.
+//     - The help card popup when it is visible.
+//
+// Must be called once during window setup, after all tabs have been created.
 func (scp *ScpDesc) setContentWithHelp(content fyne.CanvasObject) {
 	if scp == nil || scp.Window == nil {
 		return
@@ -667,6 +812,19 @@ func (scp *ScpDesc) setContentWithHelp(content fyne.CanvasObject) {
 	scp.hookWindowMouseLeave(scp.Window)
 }
 
+// getHelpForWidget resolves the contextual help title and description for the
+// given focused widget.  Resolution uses two tiers:
+//
+//  1. widgetHelpRegistry exact lookup – widgets that called RegisterWidgetHelp
+//     at construction time have their custom text returned immediately.
+//
+//  2. Heuristic type-switch fallback – derives help from the concrete widget
+//     type and its visible properties (button label, checkbox text, entry
+//     placeholder, select options, etc.).  This covers generic Fyne widgets
+//     that were not individually registered.
+//
+// Returns empty strings for screenRaster (the oscilloscope display area), which
+// must never show a help popup.
 func (scp *ScpDesc) getHelpForWidget(focused fyne.Focusable) (string, string) {
 	// Suppress waveform screen rasters explicitly: they never show help popups
 	switch focused.(type) {
@@ -771,6 +929,10 @@ func (scp *ScpDesc) getHelpForWidget(focused fyne.Focusable) (string, string) {
 	}
 }
 
+// getButtonHelp returns a (title, description) pair for a button with the
+// given label text.  It recognises several well-known labels by exact or
+// prefix match and returns tailored descriptions.  Unknown labels fall back
+// to a generic "click or press Space" message.
 func getButtonHelp(text string) (string, string) {
 	title := "Button"
 	if text != "" {
@@ -792,6 +954,11 @@ func getButtonHelp(text string) (string, string) {
 	return title, "Click or press Space/Enter to activate this action."
 }
 
+// getCheckHelp returns a (title, description) pair for a checkbox with the
+// given label text.  Labels are matched case-insensitively against a set of
+// known oscilloscope control names (Enabled, X-Axis, Inv, Trig, Pers, x10,
+// CMPX, filter types, decode options, …).  Unrecognised labels fall back to
+// a generic "toggle on/off" message.
 func getCheckHelp(text string) (string, string) {
 	title := "Checkbox"
 	if text != "" {
@@ -837,6 +1004,10 @@ func getCheckHelp(text string) (string, string) {
 	return title, "Click or press Space to toggle this option on or off."
 }
 
+// findFocusedWidget returns the currently focused Focusable widget and the
+// canvas it lives on.  It checks the scope's own window first; if nothing is
+// focused there it iterates over all open application windows.  Returns
+// (nil, nil) when nothing is focused anywhere.
 func (scp *ScpDesc) findFocusedWidget() (fyne.Focusable, fyne.Canvas) {
 	if scp == nil {
 		return nil, nil
@@ -858,6 +1029,13 @@ func (scp *ScpDesc) findFocusedWidget() (fyne.Focusable, fyne.Canvas) {
 	return nil, nil
 }
 
+// startFocusHelp launches the background help monitor goroutine.  The goroutine
+// ticks every 40 ms and calls:
+//   - checkTabHoverFocus  – routes focus to the tab proxy under the mouse.
+//   - checkFocusHelp      – decides whether to show or hide the help card.
+//
+// A quit channel (helpQuit) is created here and consumed by stopFocusHelp.
+// Calling startFocusHelp while the monitor is already running is a no-op.
 func (scp *ScpDesc) startFocusHelp() {
 	if IsFuzzer() {
 		return
@@ -888,6 +1066,8 @@ func (scp *ScpDesc) startFocusHelp() {
 	}()
 }
 
+// stopFocusHelp signals the monitor goroutine to exit by closing helpQuit and
+// hides any currently visible help popup.  Safe to call multiple times.
 func (scp *ScpDesc) stopFocusHelp() {
 	scp.helpMu.Lock()
 	if scp.helpQuit != nil {
@@ -898,6 +1078,14 @@ func (scp *ScpDesc) stopFocusHelp() {
 	scp.hideHelpPopUp()
 }
 
+// checkFocusHelp is the core of the help state machine.  Called every 40 ms
+// from the monitor goroutine (always on the Fyne main goroutine via fyne.Do).
+//
+// State transitions:
+//   - Help disabled or mouse outside window → hide popup, clear state.
+//   - Focus changed to a new widget          → reset timer, hide old popup.
+//   - Same widget focused ≥ FocusHelpDelay   → resolve help text, show popup.
+//   - Widget is a screenRaster               → always suppress popup.
 func (scp *ScpDesc) checkFocusHelp() {
 	if IsFuzzer() || !scp.IsHelpEnabled() {
 		if scp.IsHelpVisible() {
@@ -963,6 +1151,16 @@ func (scp *ScpDesc) checkFocusHelp() {
 
 }
 
+// showHelpPopUp renders and positions a floating help card near the focused
+// widget.  The card contains a bold title, a separator, and a word-wrapped
+// description.  Placement logic ensures the card stays within canvas bounds:
+//   - Horizontally clamped to [10, canvasWidth-cardWidth-10].
+//   - Vertically: shown below the widget by default; flipped above if there
+//     is not enough space below.
+//
+// If helpOverlay is available the card is embedded as an overlay child so that
+// it participates in Fyne's layout and refresh cycle without becoming a modal
+// popup.  Otherwise a traditional widget.PopUp is used as a fallback.
 func (scp *ScpDesc) showHelpPopUp(focused fyne.Focusable, canvas fyne.Canvas, title, desc string) {
 	scp.helpMu.Lock()
 	defer scp.helpMu.Unlock()
@@ -1057,6 +1255,10 @@ func (scp *ScpDesc) showHelpPopUp(focused fyne.Focusable, canvas fyne.Canvas, ti
 	}
 }
 
+// hideHelpPopUp removes the help card from the overlay (or hides the popup
+// widget) and clears scp.helpShownFor so that the help can be re-triggered
+// if the same widget is focused again later.  Safe to call when no popup is
+// visible.
 func (scp *ScpDesc) hideHelpPopUp() {
 	scp.helpMu.Lock()
 	if scp.helpCard != nil {
