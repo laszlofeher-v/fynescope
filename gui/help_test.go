@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"image/color"
 	"testing"
 	"time"
 
@@ -20,7 +21,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
-
 
 func TestHelpToggle(t *testing.T) {
 	scp := &ScpDesc{
@@ -468,6 +468,7 @@ func TestTabFocusAndHelp(t *testing.T) {
 		container.NewTabItem("vch", widget.NewLabel("vch content")),
 		container.NewTabItem("decode", widget.NewLabel("decode content")),
 		container.NewTabItem("filter", widget.NewLabel("filter content")),
+		container.NewTabItem("corr", widget.NewLabel("corr content")),
 	}
 
 	scp.controlTab = container.NewAppTabs(tabItems...)
@@ -479,6 +480,12 @@ func TestTabFocusAndHelp(t *testing.T) {
 			assert.NotNil(t, proxy)
 
 			title, desc := scp.getHelpForWidget(proxy)
+			expectedTitle := tabHelpInfo[item.Text].Title
+			if expectedTitle == "" {
+				expectedTitle = item.Text + " Tab"
+			}
+			assert.Equal(t, expectedTitle, title, "tab %s help title mismatch", item.Text)
+			t.Logf("Help for tab '%s': Title='%s', Desc='%s'\n", item.Text, title, desc)
 			assert.NotEmpty(t, title, "tab %s should have non-empty title", item.Text)
 			assert.NotEmpty(t, desc, "tab %s should have non-empty description", item.Text)
 
@@ -802,6 +809,49 @@ func TestExtendedTabHelp(t *testing.T) {
 	title, desc = scp.getHelpForWidget(decUndock)
 	assert.Equal(t, "Undock Protocol Decoder", title)
 
+	// 7. Resolution mode selector
+	resSelect := selectscroll.NewSelectScroll([]string{"Normal", "High res", "ED", "Decimate"}, func(string, selectscroll.Exception) {}, "Normal")
+	addToTest(resSelect, resSelectId, ftTabIndex)
+	RegisterWidgetHelp(resSelect, "Resolution Mode", "Select ratio mode: Normal, High res, ED, Decimate.")
+	title, desc = scp.getHelpForWidget(resSelect)
+	assert.Equal(t, "Resolution Mode", title)
+	assert.NotEmpty(t, desc)
+	// 8. f(f) sweep settings
+	ffDeltaTDisp, _ := disp7.NewCustomDisp7Array(5, 3, 10000, 0, disp7.UnSigned, disp7.NoTrailingZeroes, nil, color.Black, disp7.ReadWrite, 1, 1, 1, 1, "ΔT:", " s")
+	addToTest(ffDeltaTDisp, ffDeltaTId, ffTabIndex)
+	RegisterWidgetHelp(ffDeltaTDisp, "Dwell Time (ΔT)", "Time spent at each frequency step during sweep.")
+	title, desc = scp.getHelpForWidget(ffDeltaTDisp)
+	assert.Equal(t, "Dwell Time (ΔT)", title)
+	assert.NotEmpty(t, desc)
+
+	ffCyclesDisp, _ := disp7.NewCustomDisp7Array(3, 0, 100, 20, disp7.UnSigned, disp7.NoTrailingZeroes, nil, color.Black, disp7.ReadWrite, 1, 1, 1, 1, "Cycles:", "")
+	addToTest(ffCyclesDisp, ffCyclesId, ffTabIndex)
+	RegisterWidgetHelp(ffCyclesDisp, "Target Cycles", "Number of signal cycles to analyze per frequency step.")
+	title, desc = scp.getHelpForWidget(ffCyclesDisp)
+	assert.Equal(t, "Target Cycles", title)
+	assert.NotEmpty(t, desc)
+
+	ffPtsDecDisp, _ := disp7.NewCustomDisp7Array(3, 0, 500, 5, disp7.UnSigned, disp7.NoTrailingZeroes, nil, color.Black, disp7.ReadWrite, 1, 1, 1, 1, "Pts/dec:", "")
+	addToTest(ffPtsDecDisp, ffPtsDecId, ffTabIndex)
+	RegisterWidgetHelp(ffPtsDecDisp, "Points per Decade", "Number of frequency steps per decade.")
+	title, desc = scp.getHelpForWidget(ffPtsDecDisp)
+	assert.Equal(t, "Points per Decade", title)
+	assert.NotEmpty(t, desc)
+
+	ffAmpDisp, _ := disp7.NewCustomDisp7Array(7, 6, 2000000, 0, disp7.SignedHidden, disp7.NoTrailingZeroes, nil, color.Black, disp7.ReadWrite, 1, 1, 1, 1, "Amp  :", " V")
+	addToTest(ffAmpDisp, ffAmpId, ffTabIndex)
+	RegisterWidgetHelp(ffAmpDisp, "Sweep Amplitude", "Amplitude of the sweep stimulus signal.")
+	title, desc = scp.getHelpForWidget(ffAmpDisp)
+	assert.Equal(t, "Sweep Amplitude", title)
+	assert.NotEmpty(t, desc)
+
+	ffOffsetDisp, _ := disp7.NewCustomDisp7Array(7, 6, 2000000, -2000000, disp7.Signed, disp7.NoTrailingZeroes, nil, color.Black, disp7.ReadWrite, 1, 1, 1, 1, "Offset   :", " V")
+	addToTest(ffOffsetDisp, ffOffsetId, ffTabIndex)
+	RegisterWidgetHelp(ffOffsetDisp, "Sweep Offset", "DC offset of the sweep stimulus signal.")
+	title, desc = scp.getHelpForWidget(ffOffsetDisp)
+	assert.Equal(t, "Sweep Offset", title)
+	assert.NotEmpty(t, desc)
+
 	// 6. Heuristic fallbacks for unregistered controls
 	unregCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(bool) {})
 	title, desc = scp.getHelpForWidget(unregCheck)
@@ -902,6 +952,3 @@ func TestPanelCreationHelpRegistration(t *testing.T) {
 	title, _ = scp.getHelpForWidget(newBtnCtrl.Obj.(fyne.Focusable))
 	assert.Equal(t, "New Virtual Channel", title)
 }
-
-
-

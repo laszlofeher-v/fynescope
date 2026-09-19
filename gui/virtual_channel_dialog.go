@@ -166,6 +166,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		scp.refreshRasters()
 	}, defaultCol, minSz)
 	enableWidget.Val = true
+	RegisterWidgetHelp(enableWidget, "Virtual Channel Enable", "Enables or disables this virtual channel. Right-click opens the color selector.")
 
 	extraFields := container.NewVBox(
 		widget.NewLabel("V/div:"), vRangeSelect,

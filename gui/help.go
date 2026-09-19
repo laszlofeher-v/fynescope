@@ -209,7 +209,6 @@ func (scp *ScpDesc) focusWidget(obj fyne.Focusable) {
 	focusObject(obj)
 }
 
-
 func containsCanvasObject(objs []fyne.CanvasObject, target fyne.CanvasObject) bool {
 	for _, obj := range objs {
 		if obj == target {
@@ -284,18 +283,19 @@ type TabFocusProxy struct {
 
 // tabHelpInfo maps a tab item text to its contextual help title and description.
 var tabHelpInfo = map[string]WidgetHelpInfo{
-	"f(t)": {Title: "f(t) Scope", Description: "Time domain oscilloscope waveform display mode."},
-	"f(v)": {Title: "f(v) X-Y Mode", Description: "Voltage vs voltage Lissajous X-Y waveform display mode."},
-	"FFT":  {Title: "FFT Spectrum", Description: "Fast Fourier Transform frequency spectrum analyzer display mode."},
-	"f(f)": {Title: "f(f) Bode Plot", Description: "Frequency response analysis and Bode plot sweep mode."},
-	"RLC":  {Title: "RLC Meter", Description: "Generator signal dispatch and simulated analog filters."},
+	"f(t)":    {Title: "f(t) Scope", Description: "Time domain oscilloscope waveform display mode."},
+	"f(v)":    {Title: "f(v) X-Y Mode", Description: "Voltage vs voltage Lissajous X-Y waveform display mode."},
+	"FFT":     {Title: "FFT Spectrum", Description: "Fast Fourier Transform frequency spectrum analyzer display mode."},
+	"f(f)":    {Title: "f(f) Bode Plot", Description: "Frequency response analysis and Bode plot sweep mode."},
+	"RLC":     {Title: "RLC Meter", Description: "Generator signal dispatch and simulated analog filters."},
 	"digital": {Title: "Digital Channels", Description: "Mixed-signal logic analyzer digital input port configuration."},
-	"gen":    {Title: "Signal Generator", Description: "Internal AWG waveform signal generator controls."},
-	"extgen": {Title: "External Generator", Description: "External SCPI programmable signal generator controls."},
-	"digGen": {Title: "Digital Generator", Description: "Digital pattern generator stimulus output controls."},
-	"vch":    {Title: "Virtual Channels", Description: "Mathematical and virtual channel waveform definitions."},
-	"decode": {Title: "Protocol Decoder", Description: "Serial protocol decoding for UART, SPI, and I2C buses."},
-	"filter": {Title: "Digital Filter", Description: "Digital signal filter configuration and parameters."},
+	"gen":     {Title: "Signal Generator", Description: "Internal AWG waveform signal generator controls."},
+	"extgen":  {Title: "External Generator", Description: "External SCPI programmable signal generator controls."},
+	"digGen":  {Title: "digGen Digital Generator", Description: "Simulated digital signal generator control."},
+	"vch":     {Title: "vch Virtual Channels", Description: "Virtual channel control."},
+	"decode":  {Title: "decode Protocol Decoder", Description: "Serial bus protocol decoder control."},
+	"filter":  {Title: "filter Digital Filter", Description: "Digital signal filter control."},
+	"corr":    {Title: "corr Correlation", Description: "Signal correlation and comparison control."},
 }
 
 func (scp *ScpDesc) getOrCreateTabProxy(item *container.TabItem) *TabFocusProxy {
@@ -564,7 +564,6 @@ func RegisterWidgetHelp(obj fyne.CanvasObject, title, description string) {
 	}
 	widgetHelpRegistryMtx.Unlock()
 }
-
 
 // IsHelpEnabled returns whether the contextual focus help feature is currently active.
 func (scp *ScpDesc) IsHelpEnabled() bool {

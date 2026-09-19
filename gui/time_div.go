@@ -1777,6 +1777,8 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 
 	scp.resSelect = selectscroll.NewSelectScroll(resolutionModeOptions, scp.onResolutionModeChange, "Normal")
 	scp.resSelect.SetSelected(scp.Settings.Time.ResolutionMode)
+	addToTest(scp.resSelect, resSelectId, ftTabIndex)
+	RegisterWidgetHelp(scp.resSelect, "Resolution Mode", "Select ratio mode: Normal, High res, ED, Decimate.")
 
 	hbox := container.New(layout.NewHBoxLayout(), scp.timeSelect, scp.timeUnitSelect, scp.ipmSelect)
 

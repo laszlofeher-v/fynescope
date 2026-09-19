@@ -362,7 +362,6 @@ func lpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, over
 func ps2000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingReady, param interface{}) (err error) {
 	regLpStreamingReadyGo = lpStreamingReadyGoPar
 	regLpStreamingReadyParam = param
-	slog.Debug("ps2000aGetStreamingLatestValues", "handle", handle, "lpStreamingReadyGoPar", lpStreamingReadyGoPar, "param", param)
 	stat := C.ps2000aGetStreamingLatestValues((C.short)(handle),
 		(C.ps2000aStreamingReady)(C.lpStreamingReady), // C callback function in callbacks.go
 		nil)
