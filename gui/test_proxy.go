@@ -134,6 +134,8 @@ const (
 	digGenFuncId   = "digGenFunc"
 	vchFuncId      = "vchFunc"
 	decodeFuncId   = "decodeFunc"
+	corrFuncId     = "corrFunc"
+	corrUndockBtn  = "corrUndockBtn"
 	rlcTypeId      = "rlcType"
 	rlcRId         = "rlcR"
 	rlcRUnitId     = "rlcRUnit"
