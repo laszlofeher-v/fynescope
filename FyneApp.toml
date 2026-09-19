@@ -4,7 +4,7 @@ Website = "https://github.com/laszlofeher-v/fynescope"
 Icon = "pictures/icon1.png"
 Name = "fynescope"
 ID = "com.github.laszlofeher-v.fynescope"
-Version = "1.1.0"
+Version = "1.3.0"
 Build = 1
 
 [Source]
