@@ -173,7 +173,7 @@ type (
 		bodeBuffers                  [][]bodePoint
 		maxSamplingRate              uint32
 		segmentIndex                 uint32 // maxSamplingRate: sample/sec
-		controlTab                   *FocusableAppTabs
+		controlTab                   *container.AppTabs
 		dftTab                       *container.TabItem
 		fraTab                       *container.TabItem
 		ftTab                        *container.TabItem
@@ -192,8 +192,12 @@ type (
 		corrTab                      *container.TabItem
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
-		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*FocusableLabel
-		corrStrengthLabels           [genericps.MaxChannel][genericps.MaxChannel]*FocusableLabel
+		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
+		corrStrengthLabels           [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
+		corrTypeSelect               *selectscroll.SelectScroll
+		corrSelectedType             string
+		corrSelectedPair             string
+		corrXCFRaster                *corrXCFRaster
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
 		psControl                    *control.PscDesc
@@ -743,7 +747,7 @@ func (scp *ScpDesc) refreshRasters() {
 	}
 	fyne.Do(func() {
 		targetFunction := scp.Settings.Window.Function
-		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex {
+		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == vchTabIndex || targetFunction == digPortTabIndex || targetFunction == corrTabIndex {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -873,7 +877,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.corrLayout = container.NewMax()
 	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
-	scp.controlTab = NewFocusableAppTabs(
+	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab)
 	if !scp.IsMSO {
 		scp.controlTab.Remove(scp.digPortTab)
@@ -902,25 +906,23 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.controlTab.OnSelected = func(t *container.TabItem) {
 		prevTab := scp.Settings.Window.Function
-		newTab := scp.getActiveFunctionIndex()
+		newTab := scp.getFunctionIndex(t)
 		scp.handleTabTransition(prevTab, newTab)
 
-		if scp.Settings.Window.LastDispFunction != scp.Settings.Window.Function {
-			switch scp.Settings.Window.Function {
-			case ftTabIndex, fvTabIndex, dftTabIndex, ffTabIndex:
-				scp.Settings.Window.LastDispFunction = scp.Settings.Window.Function
-			}
-		}
 		scp.Settings.Window.Function = newTab
+		switch newTab {
+		case ftTabIndex, fvTabIndex, dftTabIndex, ffTabIndex:
+			scp.Settings.Window.LastDispFunction = newTab
+		}
 		slog.Debug("tab", "t", *t)
 
 		targetFunction := scp.Settings.Window.Function
-		if scp.controlTab.Selected() == scp.genTab ||
-			scp.controlTab.Selected() == scp.filterTab ||
-			scp.controlTab.Selected() == scp.extgenTab ||
-			scp.controlTab.Selected() == scp.vchTab ||
-			scp.controlTab.Selected() == scp.digPortTab ||
-			scp.controlTab.Selected() == scp.corrTab {
+		if t == scp.genTab ||
+			t == scp.filterTab ||
+			t == scp.extgenTab ||
+			t == scp.vchTab ||
+			t == scp.digPortTab ||
+			t == scp.corrTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -984,14 +986,18 @@ func (scp *ScpDesc) build2000Gui() {
 
 		}
 	}
-	scp.controlTab.SelectTabIndex(scp.Settings.Window.Function)
-
-	// Ensure the correct raster is displayed on startup since SelectTabIndex may not trigger OnSelected if already at 0
+	initTabItem := scp.getTabItem(scp.Settings.Window.Function)
 	targetFunctionInit := scp.Settings.Window.Function
 	if scp.Settings.Window.Function == genTabIndex ||
 		scp.Settings.Window.Function == filterTabIndex ||
-		scp.Settings.Window.Function == extgenTabIndex {
-		scp.controlTab.SelectTabIndex(scp.Settings.Window.LastDispFunction)
+		scp.Settings.Window.Function == extgenTabIndex ||
+		scp.Settings.Window.Function == vchTabIndex ||
+		scp.Settings.Window.Function == digPortTabIndex ||
+		scp.Settings.Window.Function == corrTabIndex {
+		initTabItem = scp.getTabItem(scp.Settings.Window.LastDispFunction)
+	}
+	if initTabItem != nil {
+		scp.controlTab.Select(initTabItem)
 	}
 	switch targetFunctionInit {
 	case dftTabIndex:
@@ -1015,7 +1021,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
-	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex {
+	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex && targetFunctionInit != corrTabIndex && targetFunctionInit != vchTabIndex {
 		scp.timeZoomButton.Hide()
 	}
 
@@ -1739,11 +1745,11 @@ func (e *numericalEntry) TypedRune(r rune) {
 	}
 }
 
-func (scp *ScpDesc) getActiveFunctionIndex() int {
-	if scp.controlTab == nil || scp.controlTab.Selected() == nil {
+func (scp *ScpDesc) getFunctionIndex(tab *container.TabItem) int {
+	if tab == nil {
 		return ftTabIndex
 	}
-	switch scp.controlTab.Selected() {
+	switch tab {
 	case scp.ftTab:
 		return ftTabIndex
 	case scp.fvTab:
@@ -1773,6 +1779,46 @@ func (scp *ScpDesc) getActiveFunctionIndex() int {
 	default:
 		return ftTabIndex
 	}
+}
+
+func (scp *ScpDesc) getTabItem(funcIndex int) *container.TabItem {
+	switch funcIndex {
+	case ftTabIndex:
+		return scp.ftTab
+	case fvTabIndex:
+		return scp.fvTab
+	case dftTabIndex:
+		return scp.dftTab
+	case ffTabIndex:
+		return scp.ffTab
+	case rlcTabIndex:
+		return scp.rlcTab
+	case genTabIndex:
+		return scp.genTab
+	case filterTabIndex:
+		return scp.filterTab
+	case extgenTabIndex:
+		return scp.extgenTab
+	case digGenTabIndex:
+		return scp.digGenTab
+	case digPortTabIndex:
+		return scp.digPortTab
+	case vchTabIndex:
+		return scp.vchTab
+	case decodeTabIndex:
+		return scp.decodeTab
+	case corrTabIndex:
+		return scp.corrTab
+	default:
+		return scp.ftTab
+	}
+}
+
+func (scp *ScpDesc) getActiveFunctionIndex() int {
+	if scp.controlTab == nil {
+		return ftTabIndex
+	}
+	return scp.getFunctionIndex(scp.controlTab.Selected())
 }
 
 // sendTriggerUpdate serializes and coalesces trigger updates sent to the hardware.

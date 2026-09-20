@@ -9,6 +9,7 @@ import (
 	"log"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
 )
 
 func (scp *ScpDesc) FunctionalTestUnit() error {
@@ -32,7 +33,7 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 	fyne.Do(func() {
 		scp.Settings.Window.DemoGenActiveTab = 0
 		if len(scp.genLayout.Objects) > 0 {
-			if tabs, ok := scp.genLayout.Objects[0].(*FocusableAppTabs); ok {
+			if tabs, ok := scp.genLayout.Objects[0].(*container.AppTabs); ok {
 				tabs.SelectIndex(0)
 			}
 		}

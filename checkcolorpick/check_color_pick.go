@@ -2,7 +2,6 @@ package checkcolorpick
 
 import (
 	"image/color"
-	"log/slog"
 
 	"fyne.io/fyne/v2/driver/desktop"
 
@@ -109,12 +108,10 @@ func (ccp *CheckColorPick) MinSize() fyne.Size {
 }
 
 func (ccp *CheckColorPick) FocusGained() {
-	slog.Warn("FocusGained")
 	ccp.focused = true
 	ccp.Refresh()
 }
 func (ccp *CheckColorPick) FocusLost() {
-	slog.Warn("FocusLost")
 	ccp.focused = false
 	ccp.Refresh()
 }

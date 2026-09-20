@@ -13,7 +13,7 @@ func (scp *ScpDesc) updateAcquisitionParameters() {
 	}
 
 	effectiveFunction := scp.getActiveFunctionIndex()
-	if scp.controlTab.Selected() == scp.genTab || scp.controlTab.Selected() == scp.filterTab || scp.controlTab.Selected() == scp.extgenTab || scp.controlTab.Selected() == scp.vchTab {
+	if scp.controlTab.Selected() == scp.genTab || scp.controlTab.Selected() == scp.filterTab || scp.controlTab.Selected() == scp.extgenTab || scp.controlTab.Selected() == scp.vchTab || scp.controlTab.Selected() == scp.digPortTab || scp.controlTab.Selected() == scp.corrTab {
 		effectiveFunction = scp.Settings.Window.LastDispFunction
 	}
 

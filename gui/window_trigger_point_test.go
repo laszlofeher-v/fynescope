@@ -7,6 +7,7 @@ import (
 	"image"
 	"testing"
 
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestWindowTriggerPointViewer_MouseEvents(t *testing.T) {
 		psControl:           &control.PscDesc{},
 		theme:               theme.DefaultTheme(),
 		tzRepartition:       createFlag(),
-		controlTab:          NewFocusableAppTabs(),
+		controlTab:          container.NewAppTabs(),
 		Settings:            settings.NewDefaultSettings(),
 		channelCount:        genericps.QuadScope,
 		ftScopeSignalScreen: image.NewRGBA(image.Rect(0, 0, 100, 100)),

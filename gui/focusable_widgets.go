@@ -33,12 +33,12 @@ func (l *FocusableLabel) requestFocus() {
 	}
 }
 
-func (l *FocusableLabel) FocusGained()            { l.Refresh() }
-func (l *FocusableLabel) FocusLost()              { l.Refresh() }
+func (l *FocusableLabel) FocusGained()            {}
+func (l *FocusableLabel) FocusLost()              {}
 func (l *FocusableLabel) TypedRune(rune)          {}
 func (l *FocusableLabel) TypedKey(*fyne.KeyEvent) {}
 
-func (l *FocusableLabel) MouseDown(*desktop.MouseEvent)  { l.requestFocus() }
+func (l *FocusableLabel) MouseDown(*desktop.MouseEvent)  {}
 func (l *FocusableLabel) MouseUp(*desktop.MouseEvent)    {}
 func (l *FocusableLabel) MouseIn(*desktop.MouseEvent)    {}
 func (l *FocusableLabel) MouseOut()                      {}
@@ -71,12 +71,12 @@ func (i *FocusableIcon) requestFocus() {
 	}
 }
 
-func (i *FocusableIcon) FocusGained()            { i.Refresh() }
-func (i *FocusableIcon) FocusLost()              { i.Refresh() }
+func (i *FocusableIcon) FocusGained()            {}
+func (i *FocusableIcon) FocusLost()              {}
 func (i *FocusableIcon) TypedRune(rune)          {}
 func (i *FocusableIcon) TypedKey(*fyne.KeyEvent) {}
 
-func (i *FocusableIcon) MouseDown(*desktop.MouseEvent)  { i.requestFocus() }
+func (i *FocusableIcon) MouseDown(*desktop.MouseEvent)  {}
 func (i *FocusableIcon) MouseUp(*desktop.MouseEvent)    {}
 func (i *FocusableIcon) MouseIn(*desktop.MouseEvent)    {}
 func (i *FocusableIcon) MouseOut()                      {}
@@ -108,12 +108,12 @@ func (p *FocusableProgressBar) requestFocus() {
 	}
 }
 
-func (p *FocusableProgressBar) FocusGained()            { p.Refresh() }
-func (p *FocusableProgressBar) FocusLost()              { p.Refresh() }
+func (p *FocusableProgressBar) FocusGained()            {}
+func (p *FocusableProgressBar) FocusLost()              {}
 func (p *FocusableProgressBar) TypedRune(rune)          {}
 func (p *FocusableProgressBar) TypedKey(*fyne.KeyEvent) {}
 
-func (p *FocusableProgressBar) MouseDown(*desktop.MouseEvent)  { p.requestFocus() }
+func (p *FocusableProgressBar) MouseDown(*desktop.MouseEvent)  {}
 func (p *FocusableProgressBar) MouseUp(*desktop.MouseEvent)    {}
 func (p *FocusableProgressBar) MouseIn(*desktop.MouseEvent)    {}
 func (p *FocusableProgressBar) MouseOut()                      {}
