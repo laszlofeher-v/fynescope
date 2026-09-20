@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	defaultMul = 100.0
+	defaultMul = 1000.0
 )
 
 type (
@@ -47,6 +47,9 @@ func (slScr *SliderScroll) SilentSetValue(v float64) {
 }
 
 func (slScr *SliderScroll) MouseDown(event *desktop.MouseEvent) {
+	if slScr.mul == 0 {
+		slScr.mul = defaultMul
+	}
 	if event.Button == desktop.MouseButtonTertiary {
 		if slScr.mul < 1e6 {
 			slScr.mul = 10 * slScr.mul
@@ -61,11 +64,49 @@ func (slScr *SliderScroll) MouseDown(event *desktop.MouseEvent) {
 func (slScr *SliderScroll) MouseUp(event *desktop.MouseEvent) {
 }
 
-// TODO up,down left,right, pagedown,pageup
+func (slScr *SliderScroll) FocusGained() {
+	slScr.Refresh()
+}
+
+func (slScr *SliderScroll) FocusLost() {
+	slScr.Refresh()
+}
+
+func (slScr *SliderScroll) TypedRune(rune) {
+}
+
+func (slScr *SliderScroll) TypedKey(event *fyne.KeyEvent) {
+	if slScr.mul == 0 {
+		slScr.mul = defaultMul
+	}
+	switch event.Name {
+	case fyne.KeyUp, fyne.KeyRight:
+		slScr.SetValue(slScr.Value + slScr.mul)
+	case fyne.KeyDown, fyne.KeyLeft:
+		slScr.SetValue(slScr.Value - slScr.mul)
+	case fyne.KeyPageUp:
+		slScr.SetValue(slScr.Value + slScr.mul*10)
+	case fyne.KeyPageDown:
+		slScr.SetValue(slScr.Value - slScr.mul*10)
+	}
+}
+
 func (slScr *SliderScroll) Scrolled(event *fyne.ScrollEvent) {
+	if slScr.mul == 0 {
+		slScr.mul = defaultMul
+	}
 	// if event.Scrolled.DY > 0 {
 	slScr.SetValue(slScr.Value + slScr.mul*float64(event.Scrolled.DY))
 	// } else {
 	// slScr.SetValue(slScr.Value - slScr.mul)
 	// }
+}
+
+func (slScr *SliderScroll) MouseIn(e *desktop.MouseEvent) {
+}
+
+func (slScr *SliderScroll) MouseOut() {
+}
+
+func (slScr *SliderScroll) MouseMoved(e *desktop.MouseEvent) {
 }

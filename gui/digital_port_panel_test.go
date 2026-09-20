@@ -9,6 +9,8 @@ import (
 	"fynescope/disp7"
 	"fynescope/genericps"
 	"fynescope/settings"
+
+	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -205,10 +207,8 @@ func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
 		assert.NotNil(t, negCtrl.Obj, "Expected %s object to be non-nil", negCheckId)
 		assert.Equal(t, digPortTabIndex, negCtrl.Tab)
 
-		fc, isFC := negCtrl.Obj.(*FocusCheck)
-		assert.True(t, isFC, "Expected %s to be *FocusCheck", negCheckId)
-		title, _ := scp.getHelpForWidget(fc)
-		assert.Equal(t, "Negate Label", title)
+		_, isFC := negCtrl.Obj.(*widget.Check)
+		assert.True(t, isFC, "Expected %s to be *widget.Check", negCheckId)
 
 		assert.True(t, labelOk, "Expected %s to be registered in controls", labelEntryId)
 		assert.NotNil(t, labelCtrl.Obj, "Expected %s object to be non-nil", labelEntryId)
@@ -255,10 +255,6 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 	assert.True(t, isD7_0, "digPort0LogicLevelDisp must be *disp7.DigitArray")
 	assert.Equal(t, 228, d7_0.Value)
 
-	title0, desc0 := scp.getHelpForWidget(d7_0)
-	assert.Equal(t, "Port 0 Logic Level", title0)
-	assert.Contains(t, desc0, "–32767 (–5 V) to 32767 (+5 V)")
-
 	// Verify Port 1 Logic Level Disp
 	assert.True(t, p1Ok, "Expected digPort1LogicLevelDisp to be registered in controls")
 	assert.NotNil(t, p1Ctrl.Obj, "digPort1LogicLevelDisp object should not be nil")
@@ -267,10 +263,6 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 	d7_1, isD7_1 := p1Ctrl.Obj.(*disp7.DigitArray)
 	assert.True(t, isD7_1, "digPort1LogicLevelDisp must be *disp7.DigitArray")
 	assert.Equal(t, -305, d7_1.Value)
-
-	title1, desc1 := scp.getHelpForWidget(d7_1)
-	assert.Equal(t, "Port 1 Logic Level", title1)
-	assert.Contains(t, desc1, "–32767 (–5 V) to 32767 (+5 V)")
 
 	// Drain any messages sent during initialization
 	for len(setCh) > 0 {
@@ -303,4 +295,3 @@ func TestDigitalPortPanel_LogicLevelDisp(t *testing.T) {
 		t.Fatal("Expected SetDigitalPortCh message for Port 1")
 	}
 }
-

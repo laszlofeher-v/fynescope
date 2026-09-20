@@ -43,9 +43,9 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 
 	list := widget.NewList(
 		func() int { return len(scp.Settings.VirtualChannels) },
-		func() fyne.CanvasObject { return widget.NewLabel("Virtual Channel 123456") },
+		func() fyne.CanvasObject { return NewFocusableLabel("Virtual Channel 123456") },
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*widget.Label).SetText(scp.Settings.VirtualChannels[i].Name)
+			o.(*FocusableLabel).SetText(scp.Settings.VirtualChannels[i].Name)
 		},
 	)
 
@@ -57,14 +57,11 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	}
 	exprEntry := widget.NewMultiLineEntry()
 	exprEntry.SetMinRowsVisible(3)
-	errorLabel := widget.NewLabel("")
+	errorLabel := NewFocusableLabel("")
 	errorLabel.Hide()
 
 	addToTest(nameEntry, vchNameEntryId, vchTabIndex)
-	RegisterWidgetHelp(nameEntry, "Virtual Channel Name", "Assigns an identifier name to the mathematical virtual channel (e.g. Math1).")
 	addToTest(exprEntry, vchExprEntryId, vchTabIndex)
-	RegisterWidgetHelp(exprEntry, "Math Expression", "Mathematical expression defining the virtual channel waveform (e.g. ChA + ChB, ChA - ChB, ChA * ChB).")
-
 	vRangeSelect := selectscroll.NewSelectScroll(inputRanges, func(s string, _ selectscroll.Exception) {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
@@ -78,8 +75,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		}
 		scp.refreshRasters()
 	}, "±50V")
-	RegisterWidgetHelp(vRangeSelect, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
-
 	fontScale := float32(0.7) * scp.getScreenScale()
 	var err error
 	scp.vchMaxV, err = disp7.NewCustomDisp7Array(5, 3, 99999, -99999, disp7.Signed,
@@ -115,7 +110,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	}
 	scp.vchPeriod.SilentSetValue(0)
 
-	invertCheck := scp.newFocusCheck("Invert", func(b bool) {
+	invertCheck := widget.NewCheck("Invert", func(b bool) {
 		if updatingForm || selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
 		}
@@ -128,8 +123,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		}
 		scp.refreshRasters()
 	})
-	RegisterWidgetHelp(invertCheck, "Invert Waveform", "Inverts the voltage polarity of the channel waveform.")
-
 	// CheckColorPick: left-click = toggle enabled, right-click = color picker
 	minSz := fyne.NewSize(checkColorPickMinSize, checkColorPickMinSize)
 	enableWidget := checkcolorpick.NewCheckColorPick(scp.Window, func(v bool, col color.Color) {
@@ -166,14 +159,12 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 		scp.refreshRasters()
 	}, defaultCol, minSz)
 	enableWidget.Val = true
-	RegisterWidgetHelp(enableWidget, "Virtual Channel Enable", "Enables or disables this virtual channel. Right-click opens the color selector.")
-
 	extraFields := container.NewVBox(
-		widget.NewLabel("V/div:"), vRangeSelect,
+		NewFocusableLabel("V/div:"), vRangeSelect,
 		container.NewHBox(scp.vchMaxV, scp.vchFrq),
 		container.NewHBox(scp.vchMinV, scp.vchPeriod),
 		invertCheck,
-		container.NewHBox(widget.NewLabel("Enable / Color:"), enableWidget),
+		container.NewHBox(NewFocusableLabel("Enable / Color:"), enableWidget),
 	)
 	extraFields.Hide()
 
@@ -239,8 +230,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	})
 
 	addToTest(newBtn, vchNewBtnId, vchTabIndex)
-	RegisterWidgetHelp(newBtn, "New Virtual Channel", "Creates a new mathematical virtual channel waveform.")
-
 	acceptBtn := widget.NewButton("Accept", func() {
 		if nameEntry.Text == "" {
 			errorLabel.SetText("Error: channel name must not be empty")
@@ -315,8 +304,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	})
 
 	addToTest(acceptBtn, vchAcceptBtnId, vchTabIndex)
-	RegisterWidgetHelp(acceptBtn, "Apply Expression", "Parses and activates the virtual channel mathematical formula.")
-
 	deleteBtn := widget.NewButton("Delete", func() {
 		if selectedIndex < 0 || selectedIndex >= len(scp.Settings.VirtualChannels) {
 			return
@@ -359,8 +346,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	})
 
 	addToTest(deleteBtn, vchDeleteBtnId, vchTabIndex)
-	RegisterWidgetHelp(deleteBtn, "Delete Virtual Channel", "Removes this virtual channel from waveform calculation and display.")
-
 	// Undock button: pops the content into a floating window and removes the tab.
 	var undockBtn *widget.Button
 	if undockable {
@@ -386,7 +371,6 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 			fyne.Do(winContent.Refresh)
 		})
 		addToTest(undockBtn, "vchUndockBtn", vchTabIndex)
-		RegisterWidgetHelp(undockBtn, "Undock Virtual Channels", "Opens the virtual channels panel in an independent floating window.")
 	}
 
 	// Single-column layout: channel list in top pane, form fields in bottom pane.
@@ -394,8 +378,8 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	listBox := container.NewBorder(nil, nil, nil, nil, list)
 
 	formContent := container.NewVBox(
-		widget.NewLabel("Name:"), nameEntry,
-		widget.NewLabel("Expression (A,B,C,D = physical ch.):"), exprEntry,
+		NewFocusableLabel("Name:"), nameEntry,
+		NewFocusableLabel("Expression (A,B,C,D = physical ch.):"), exprEntry,
 		errorLabel,
 		extraFields,
 	)

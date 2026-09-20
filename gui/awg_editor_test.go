@@ -76,4 +76,3 @@ func TestAwgEditor_UartPatternGenerator(t *testing.T) {
 	assert.NotNil(t, scp.patternWindow)
 	scp.patternWindow.Close()
 }
-

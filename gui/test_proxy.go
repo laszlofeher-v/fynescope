@@ -471,6 +471,52 @@ func internalTap(name string, isFuzzer bool) bool {
 	}
 
 	switch c := c.(type) {
+	case *FocusableAppTabs:
+		if isFuzzer {
+			slog.Debug("randTap", "name", name)
+		}
+		return doEvent(func() {
+			var targetText string
+			switch name {
+			case ftFuncId:
+				targetText = "f(t)"
+			case fvFuncId:
+				targetText = "f(v)"
+			case dftFuncId:
+				targetText = "FFT"
+			case ffFuncId:
+				targetText = "f(f)"
+			case rlcFuncId:
+				targetText = "RLC"
+			case digPortFuncId:
+				targetText = "digital"
+			case genFuncId:
+				targetText = "gen"
+			case extgenFuncId:
+				targetText = "extgen"
+			case digGenFuncId:
+				targetText = "digGen"
+			case vchFuncId:
+				targetText = "vch"
+			case decodeFuncId:
+				targetText = "decode"
+			case filterFuncId:
+				targetText = "filter"
+			default:
+				if len(c.Items) > 0 {
+					c.SelectIndex(rand.Intn(len(c.Items)))
+				}
+				return
+			}
+			if targetText != "" {
+				for idx, item := range c.Items {
+					if item.Text == targetText {
+						c.SelectIndex(idx)
+						break
+					}
+				}
+			}
+		})
 	case *container.AppTabs:
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
@@ -530,13 +576,7 @@ func internalTap(name string, isFuzzer bool) bool {
 			}
 			return false
 		}
-	case *FocusCheck:
-		if isFuzzer {
-			slog.Debug("randTap", "name", name)
-		}
-		return doEvent(func() {
-			c.SetChecked(!c.Checked)
-		})
+
 	case *widget.Check:
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)

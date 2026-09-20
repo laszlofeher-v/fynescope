@@ -633,7 +633,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 
 	// Layout: label at top, buttons at bottom, scrollable radio list in center
 	content := container.NewBorder(
-		widget.NewLabel("Please select a device"),
+		gui.NewFocusableLabel("Please select a device"),
 		container.NewHBox(cancelButton, selectButton),
 		nil,
 		nil,

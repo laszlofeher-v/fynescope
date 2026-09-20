@@ -1,8 +1,9 @@
 package control
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func generateSamples(bits []bool, samplesPerBit int, highVal int16, lowVal int16) []int16 {

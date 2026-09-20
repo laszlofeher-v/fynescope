@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fynescope/genericps"
+
 	"github.com/stretchr/testify/assert"
 )
 

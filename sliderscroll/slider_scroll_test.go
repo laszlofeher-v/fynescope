@@ -44,15 +44,15 @@ func TestSliderScroll_MouseDown_Multiplier(t *testing.T) {
 	test.NewApp()
 
 	ss := NewSliderScroll(0, 100)
-	assert.Equal(t, 100.0, ss.mul)
+	assert.Equal(t, 1000.0, ss.mul)
 
 	// Middle click (MouseButtonTertiary) increases multiplier by 10x
 	ss.MouseDown(&desktop.MouseEvent{Button: desktop.MouseButtonTertiary})
-	assert.Equal(t, 1000.0, ss.mul)
+	assert.Equal(t, 10000.0, ss.mul)
 
 	// Right click (MouseButtonSecondary) decreases multiplier by 10x
 	ss.MouseDown(&desktop.MouseEvent{Button: desktop.MouseButtonSecondary})
-	assert.Equal(t, 100.0, ss.mul)
+	assert.Equal(t, 1000.0, ss.mul)
 
 	// Test lower limit of multiplier (10)
 	for i := 0; i < 5; i++ {

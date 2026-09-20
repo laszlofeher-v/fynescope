@@ -152,5 +152,3 @@ func TestPs2000a_SimParameterChecks(t *testing.T) {
 		assert.NoError(t, ps2000aSetTriggerChannelProperties(handle, p512, false, 0))
 	})
 }
-
-

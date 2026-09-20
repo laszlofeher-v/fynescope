@@ -51,11 +51,11 @@ func TestExecuteVoiceCommand(t *testing.T) {
 	}
 
 	var runblockClicked bool
-	scp.runblockButton = scp.newFocusButton("Run/Stop", func() {
+	scp.runblockButton = widget.NewButton("Run/Stop", func() {
 		runblockClicked = true
 	})
 
-	scp.streamEnableButton = scp.newFocusButton("Stream", func() {})
+	scp.streamEnableButton = widget.NewButton("Stream", func() {})
 
 	scp.channelViewers = make([]channelViewerDesc, scp.channelCount)
 	for i := range scp.channelViewers {

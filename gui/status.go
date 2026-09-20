@@ -22,7 +22,7 @@ const (
 )
 
 type InitStatus struct {
-	label      *widget.Label
+	label      *FocusableLabel
 	code       StatusCode
 	statusChan chan statusMessage
 	statusQuit chan struct{}
@@ -39,7 +39,7 @@ type statusMessage struct {
 
 func (scp *ScpDesc) initStatus() {
 	scp.status = &InitStatus{
-		label:      widget.NewLabel("                                                 "),
+		label:      NewFocusableLabel("                                                 "),
 		statusChan: make(chan statusMessage, 1),
 		statusQuit: make(chan struct{}),
 	}

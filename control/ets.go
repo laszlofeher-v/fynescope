@@ -334,7 +334,7 @@ func etsBlockMode(psControl *PscDesc) state {
 				}
 			}
 
-ready:
+		ready:
 			if dt := minEtsRefreshTime - time.Since(psControl.refreshTime); dt > 0 {
 				time.Sleep(dt)
 			}
@@ -355,7 +355,6 @@ ready:
 			time.Sleep(20 * time.Millisecond)
 			return run
 		}
-
 
 		for handler := start; handler != nil; {
 			handler = handler()
