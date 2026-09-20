@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/driver/desktop"
 	"github.com/stretchr/testify/assert"
-
 )
 
 func TestMain(m *testing.M) {
@@ -156,7 +155,3 @@ func TestSelectScrollMouseInFocus(t *testing.T) {
 	})
 	assert.Equal(t, sel, focused)
 }
-
-
-
-

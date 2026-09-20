@@ -162,4 +162,3 @@ func TestScopeTypeIsETSCapable(t *testing.T) {
 	assert.False(t, Scope4444.IsETSCapable())
 	assert.False(t, Scope4824A.IsETSCapable())
 }
-

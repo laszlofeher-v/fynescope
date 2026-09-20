@@ -49,34 +49,34 @@ type (
 		ChannelA, ChannelB, ChannelC, ChannelD, Ext, Aux genericps.ThresholdDirection
 	}
 	TriggerDesc struct {
-		Enabled               bool
-		TriggerADC            int16
-		LowerTriggerADC       int16
-		HysteresisADC         uint16
-		LowerHysteresisADC    uint16
-		UpperHysteresis       int32
-		LowerHysteresis       int32
-		Source                genericps.ChannelId
-		ThresholdDirection    genericps.ThresholdDirection
-		ThresholdMode         genericps.ThresholdModeId
-		Mode                  TriggerModes
-		Type                  TriggerTypes
-		Mv                    int32
-		LowerMv               int32
-		ComplexProperties     []genericps.TriggerChannelProperties
-		ComplexConditions     []genericps.TriggerConditions
-		ComplexDirections     []TriggerDirections
-		IntervalType          genericps.PulseWidthType
-		IntervalTimeLower     float64
-		IntervalTimeUpper     float64
-		XOffset               float64
-		AutoTriggerMs         int16
+		Enabled                bool
+		TriggerADC             int16
+		LowerTriggerADC        int16
+		HysteresisADC          uint16
+		LowerHysteresisADC     uint16
+		UpperHysteresis        int32
+		LowerHysteresis        int32
+		Source                 genericps.ChannelId
+		ThresholdDirection     genericps.ThresholdDirection
+		ThresholdMode          genericps.ThresholdModeId
+		Mode                   TriggerModes
+		Type                   TriggerTypes
+		Mv                     int32
+		LowerMv                int32
+		ComplexProperties      []genericps.TriggerChannelProperties
+		ComplexConditions      []genericps.TriggerConditions
+		ComplexDirections      []TriggerDirections
+		IntervalType           genericps.PulseWidthType
+		IntervalTimeLower      float64
+		IntervalTimeUpper      float64
+		XOffset                float64
+		AutoTriggerMs          int16
 		DigitalTriggerEnabled  bool
 		DigitalDirections      []genericps.DigitalChannelDirections
 		DigitalAnalogOperand   genericps.TriggerOperand
 		DigitalChannelsOperand genericps.TriggerOperand
 		EtsInterleave          int16
-		EtsCycles             int16
+		EtsCycles              int16
 	}
 	TriggerDescMsg struct {
 		TriggerDesc

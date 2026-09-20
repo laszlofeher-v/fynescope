@@ -222,8 +222,6 @@ func (selScr *SelectScroll) focus() {
 	}
 }
 
-
-
 // Tapped focuses this select widget and opens the dropdown menu.
 func (selScr *SelectScroll) Tapped(event *fyne.PointEvent) {
 	selScr.focus()

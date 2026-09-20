@@ -396,14 +396,14 @@ func (scp *ScpDesc) minMaxDisp(chIndex genericps.ChannelId) (
 func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	var (
 		invertTriggerIpm *fyne.Container
-		invert           *FocusCheck
-		x10              *FocusCheck
+		invert           *widget.Check
+		x10              *widget.Check
 		vRange           *selectscroll.SelectScroll
-		trigger          *FocusCheck
+		trigger          *widget.Check
 
-		channelViewer    *channelViewerDesc
-		channel          *settings.ChSettings
-		ranges           []string
+		channelViewer *channelViewerDesc
+		channel       *settings.ChSettings
+		ranges        []string
 	)
 	channelViewer = &scp.channelViewers[chIndex]
 	channel = &scp.Settings.Channels[chIndex]
@@ -449,7 +449,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.EnableChannel(chIndex, c)
 	}
 	inverted := func(c bool) {
-		scp.focusWidget(invert)
+		if scp.Window != nil && scp.Window.Canvas() != nil {
+			scp.Window.Canvas().Focus(invert)
+		}
 		scp.Settings.Channels[chIndex].Inverted = c
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
@@ -458,7 +460,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.SaveSettings()
 	}
 	x10Changed := func(c bool) {
-		scp.focusWidget(x10)
+		if scp.Window != nil && scp.Window.Canvas() != nil {
+			scp.Window.Canvas().Focus(x10)
+		}
 		scp.changeChannelX10(chIndex, c)
 	}
 
@@ -488,7 +492,9 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		setChannel()
 	}
 	triggerSelected := func(checked bool) {
-		scp.focusWidget(trigger)
+		if scp.Window != nil && scp.Window.Canvas() != nil {
+			scp.Window.Canvas().Focus(trigger)
+		}
 		if !channel.Enabled { // TODO is it impossible?
 
 			channel.TriggerSource = false
@@ -642,11 +648,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		channelOffsetBox = container.New(layout.NewHBoxLayout(),
 			scp.channelViewers[chIndex].offset)
 		addToTest(scp.channelViewers[chIndex].offset, chOffsetId+chId, ftTabIndex)
-		RegisterWidgetHelp(scp.channelViewers[chIndex].offset, "Voltage Offset", "Adjusts vertical DC voltage offset level for this channel.")
 		return
 	}
 
-	idLabel := widget.NewLabel(chId)
+	idLabel := NewFocusableLabel(chId)
 	channelViewer.filterWarning = canvas.NewText("⚠️", color.NRGBA{255, 0, 0, 255})
 	channelViewer.filterWarning.TextStyle.Bold = true
 	if scp.isDigitalFilterEnabled(chIndex) {
@@ -659,24 +664,22 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		enableChanged, scp.Settings.Channels[chIndex].Col[scp.Settings.ChannelColorIndex],
 		fyne.Size{Width: checkColorPickMinSize, Height: checkColorPickMinSize})
 	addToTest(channelViewer.enableCheckbox, chEnableId+chId, ftTabIndex)
-	RegisterWidgetHelp(channelViewer.enableCheckbox, "Channel Enable", "Enables or disables waveform display and signal acquisition for this channel. Right-click opens the color selector.")
 	enableCh := container.New(layout.NewHBoxLayout(),
 		channelViewer.enableCheckbox, idLabel, container.NewCenter(channelViewer.filterWarning))
-	invert = scp.newFocusCheck("Inv", inverted)
+	invert = widget.NewCheck("Inv", inverted)
 	invert.SetChecked(scp.Settings.Channels[chIndex].Inverted)
-	channelViewer.invertCheckbox = &invert.Check
+	channelViewer.invertCheckbox = invert
 	addToTest(invert, invertId+chId, ftTabIndex)
-	RegisterWidgetHelp(invert, "Invert Waveform", "Inverts the voltage polarity of the channel waveform.")
-	trigger = scp.newFocusCheck("Trig", triggerSelected)
-	channelViewer.triggerCheckbox = &trigger.Check
-	scp.triggerCheck = append(scp.triggerCheck, &trigger.Check)
+	trigger = widget.NewCheck("Trig", triggerSelected)
+	channelViewer.triggerCheckbox = trigger
+	scp.triggerCheck = append(scp.triggerCheck, trigger)
 	addToTest(trigger, triggerCheckId+chId, ftTabIndex)
-	RegisterWidgetHelp(trigger, "Trigger Source", "Selects this analog channel as the primary source for hardware triggering.")
-
-	var pers *FocusCheck
+	var pers *widget.Check
 	persSelected := func(checked bool) {
 		if pers != nil {
-			scp.focusWidget(pers)
+			if scp.Window != nil && scp.Window.Canvas() != nil {
+				scp.Window.Canvas().Focus(pers)
+			}
 		}
 		channel.Persistence = checked
 		scp.Settings.Channels[chIndex].Persistence = checked
@@ -686,12 +689,10 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		scp.refreshRasters()
 		scp.SaveSettings()
 	}
-	pers = scp.newFocusCheck("Pers", persSelected)
+	pers = widget.NewCheck("Pers", persSelected)
 	pers.SetChecked(scp.Settings.Channels[chIndex].Persistence)
-	channelViewer.persistenceCheckbox = &pers.Check
+	channelViewer.persistenceCheckbox = pers
 	addToTest(pers, persId+chId, ftTabIndex)
-	RegisterWidgetHelp(pers, "Persistence", "Accumulates past waveform traces on screen to visualize noise, jitter, and intermittent events.")
-
 	rangesEnum, err := scp.psControl.ChannelRanges(chIndex)
 	switch {
 	case err != nil:
@@ -707,20 +708,17 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	if s, ok := rangeEnumToString[vr]; ok {
 		vRange.SetSelected(s)
 	}
-	x10 = scp.newFocusCheck("X10", x10Changed)
+	x10 = widget.NewCheck("X10", x10Changed)
 	x10.SetChecked(scp.Settings.Channels[chIndex].X10)
 	addToTest(x10, x10Id+chId, ftTabIndex)
-	RegisterWidgetHelp(x10, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
-	channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, &x10.Check)
+	channelViewer.x10Checkboxes = append(channelViewer.x10Checkboxes, x10)
 
 	channelViewer.vRangeSelects = append(channelViewer.vRangeSelects, vRange)
 	addToTest(vRange, vRangeId+chId, ftTabIndex)
-	RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
 	acdc := selectscroll.NewSelectScroll([]string{"AC", "DC"}, cChanged, "AC")
 	acdc.SetSelected(coupleTypeNames[scp.Settings.Channels[chIndex].CoupleType])
 	channelViewer.acdcSelect = acdc
 	addToTest(acdc, acdcId+chId, ftTabIndex)
-	RegisterWidgetHelp(acdc, "Input Coupling", "Selects input coupling: DC coupling, AC coupling (blocks DC bias), or 50-ohm termination.")
 	var activeTriggerDirectionOptions []string
 	tType := scp.Settings.Trigger.Type
 	if tType == settings.TriggerTypeWindow || tType == settings.TriggerTypeWindowPulseWidth || tType == settings.TriggerTypeWindowDropout {
@@ -740,8 +738,6 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		triggerTypeChanged, defaultDir)
 	channelViewer.triggerDirectionSelect = triggerDirection
 	addToTest(triggerDirection, triggerDirectionId, ftTabIndex)
-	RegisterWidgetHelp(triggerDirection, "Trigger Direction", "Selects the trigger threshold edge slope: Rising edge, Falling edge, Above, or Below.")
-
 	// Validate that the saved setting is valid for the current options
 	savedName := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]
 	valid := false

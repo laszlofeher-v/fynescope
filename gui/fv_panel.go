@@ -15,7 +15,7 @@ import (
 
 func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 	vbox := container.New(layout.NewVBoxLayout())
-	var xChecks []*FocusCheck
+	var xChecks []*widget.Check
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		chIndex := genericps.ChannelId(i)
@@ -32,23 +32,19 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		scp.channelViewers[chIndex].fvNameLabel = label
 
 		// Enabled Checkbox
-		enabledCheck := scp.newFocusCheck("Enabled", func(b bool) {
+		enabledCheck := widget.NewCheck("Enabled", func(b bool) {
 			scp.EnableChannel(chIndex, b)
 		})
 		enabledCheck.SetChecked(scp.Settings.Channels[chIndex].Enabled)
-		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, &enabledCheck.Check)
+		scp.channelViewers[chIndex].enableChecks = append(scp.channelViewers[chIndex].enableChecks, enabledCheck)
 		addToTest(enabledCheck, fvEnableId+chName, fvTabIndex)
-		RegisterWidgetHelp(enabledCheck, "Channel Enable (f(v))", "Enables or disables this channel for X-Y voltage vs voltage display.")
-
 		// X-Axis Check
-		xCheck := scp.newFocusCheck("X-Axis", nil)
+		xCheck := widget.NewCheck("X-Axis", nil)
 		if scp.Settings.Channels[chIndex].FvMode == settings.FvArgument {
 			xCheck.SetChecked(true)
 		}
 		xChecks = append(xChecks, xCheck)
 		addToTest(xCheck, fvXCheckId+chName, fvTabIndex)
-		RegisterWidgetHelp(xCheck, "X-Axis Mode", "Selects this channel as the horizontal X-axis signal for f(v) X-Y mode.")
-
 		// Range Selector
 		rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
 		var ranges []string
@@ -60,25 +56,21 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		}, "+500m")
 		scp.channelViewers[chIndex].vRangeSelects = append(scp.channelViewers[chIndex].vRangeSelects, vRange)
 		addToTest(vRange, fvVRangeId+chName, fvTabIndex)
-		RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale (volts or millivolts per screen division).")
-
 		vr := scp.Settings.Channels[chIndex].VRange
 		if s, ok := rangeEnumToString[vr]; ok {
 			vRange.SetSelected(s)
 		}
 
 		// X10 Checkbox
-		x10Check := scp.newFocusCheck("X10", func(c bool) {
+		x10Check := widget.NewCheck("X10", func(c bool) {
 			scp.changeChannelX10(chIndex, c)
 		})
 		x10Check.SetChecked(scp.Settings.Channels[chIndex].X10)
-		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, &x10Check.Check)
+		scp.channelViewers[chIndex].x10Checkboxes = append(scp.channelViewers[chIndex].x10Checkboxes, x10Check)
 		addToTest(x10Check, fvX10Id+chName, fvTabIndex)
-		RegisterWidgetHelp(x10Check, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
-
 		// Arrange settings to minimize width (f(t) style)
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, xCheck)
-		row2 := container.New(layout.NewHBoxLayout(), widget.NewLabel("Range:"), vRange, x10Check)
+		row2 := container.New(layout.NewHBoxLayout(), NewFocusableLabel("Range:"), vRange, x10Check)
 
 		chBox := container.New(layout.NewVBoxLayout(), row1, row2)
 		if i > 0 {

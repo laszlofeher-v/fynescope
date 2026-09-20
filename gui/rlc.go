@@ -11,14 +11,13 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 )
 
 func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 	vbox := container.New(layout.NewVBoxLayout())
 
 	// Add title label for clarity
-	title := widget.NewLabelWithStyle("Simulator RLC Filter", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title := NewFocusableLabelWithStyle("Simulator RLC Filter", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	vbox.Add(title)
 
 	for i := 0; i < int(scp.channelCount); i++ {
@@ -65,8 +64,6 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		}
 		genSourceSelect.SetSelected("Gen " + string(rune('A'+int(chSettings.RlcFilter.GeneratorSource))))
 		addToTest(genSourceSelect, "rlcGenSource"+chStr, rlcTabIndex)
-		RegisterWidgetHelp(genSourceSelect, "Generator Stimulus Source", "Selects signal generator source to drive through the simulated RLC circuit.")
-
 		filterTypes := []string{settings.RlcFilterTypeDisabled, "Lowpass RC", "Lowpass RL", "Highpass RC", "Highpass RL", "Lowpass LC", "Highpass LC"}
 		typeSelect := selectscroll.NewSelectScroll(filterTypes, func(s string, exc selectscroll.Exception) {
 			chSettings.RlcFilter.Type = s
@@ -85,7 +82,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 
 		// Helper to build entry + unit selector
 		buildInput := func(labelStr string, value *float64, unit *string, units []string, valId string, unitId string) *fyne.Container {
-			lbl := widget.NewLabel(labelStr)
+			lbl := NewFocusableLabel(labelStr)
 			entry := newNumericalEntry()
 
 			// Format correctly without trailing zeros
@@ -118,14 +115,8 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			// Register component-specific help based on label
 			switch labelStr {
 			case "R:":
-				RegisterWidgetHelp(entry, "Resistor Value (R)", "Sets resistance value for the RLC filter circuit.")
-				RegisterWidgetHelp(unitSelect, "Resistor Unit", "Selects resistance unit (mΩ, Ω, kΩ, MΩ).")
 			case "L:":
-				RegisterWidgetHelp(entry, "Inductor Value (L)", "Sets inductance value for the RLC filter circuit.")
-				RegisterWidgetHelp(unitSelect, "Inductor Unit", "Selects inductance unit (µH, mH, H).")
 			case "C:":
-				RegisterWidgetHelp(entry, "Capacitor Value (C)", "Sets capacitance value for the RLC filter circuit.")
-				RegisterWidgetHelp(unitSelect, "Capacitor Unit", "Selects capacitance unit (pF, nF, µF, mF).")
 			}
 			return container.NewHBox(lbl, entryContainer, unitSelect)
 		}
@@ -166,7 +157,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 
 		row1 := container.NewHBox(
 			channelLabel,
-			widget.NewLabel("Source:"),
+			NewFocusableLabel("Source:"),
 			genSourceSelect,
 		)
 
@@ -179,8 +170,6 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		)
 
 		addToTest(typeSelect, rlcTypeId+chStr, rlcTabIndex)
-		RegisterWidgetHelp(typeSelect, "RLC Filter Topology", "Selects simulated filter configuration: Lowpass, Highpass or Bandpass.")
-
 		notifySim() // initialize sim with current settings on startup
 		vbox.Add(controls)
 	}

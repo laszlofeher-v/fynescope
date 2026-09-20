@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log/slog"
 	"math"
 
 	"fynescope/control"
@@ -130,10 +129,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 	if maxScreenTime <= 0 {
 		maxScreenTime = 1
 	}
-
 	unit := float64(maxX-minX) / maxScreenTime
-	slog.Debug("gen", "maxScreenTime", maxScreenTime, "w", w, "unit", unit, "minX", minX)
-
 	for port := 0; port < 2; port++ {
 		if !dr.scp.Settings.Digital.Ports[port].Enabled {
 			continue
@@ -299,8 +295,6 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 		triggerX := float64(triggerTimeOffset)*unit + float64(labelOffset)
 
 		if triggerX >= float64(minX) && triggerX <= float64(maxX) {
-			slog.Debug("", "minX", minX, "maxX", maxX)
-			slog.Debug("", "triggerX", triggerX, "trTimeOffset", triggerTimeOffset, "unit", unit)
 			xInt := int(math.Round(triggerX))
 			lineCol := dr.scp.theme.Color(theme.ColorNameForeground, 0)
 			for y := 0; y < h; y++ {

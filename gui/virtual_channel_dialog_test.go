@@ -21,7 +21,7 @@ func TestVirtualChannelDialog_BuildContent(t *testing.T) {
 		tzRepartition: createFlag(),
 		repartition:   createFlag(),
 		Window:        test.NewWindow(container.NewVBox()), // provide a valid window
-		controlTab:    container.NewAppTabs(),
+		controlTab:    NewFocusableAppTabs(),
 		Settings:      settings.NewDefaultSettings(),
 		channelCount:  genericps.QuadScope,
 	}
@@ -56,7 +56,7 @@ func TestVirtualChannelDialog_UndockDedup(t *testing.T) {
 		tzRepartition: createFlag(),
 		repartition:   createFlag(),
 		Window:        test.NewWindow(container.NewVBox()),
-		controlTab:    container.NewAppTabs(),
+		controlTab:    NewFocusableAppTabs(),
 		Settings:      settings.NewDefaultSettings(),
 		channelCount:  genericps.QuadScope,
 	}

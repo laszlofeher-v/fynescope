@@ -6,7 +6,7 @@
   <img src="pictures/signal.png" width="100%" alt="Fynescope Interface Screenshot">
 </p>
 
-`fynescope` is a cross-platform (Windows and Linux) graphical user interface and control application for PicoScope PC Oscilloscopes (focusing on the PicoScope 2000A and 2000A MSO Series). It is written in Go and built on the [Fyne](https://fyne.io/) widget toolkit and the PicoScope 2000A series SDK.
+`fynescope` is a cross-platform (Windows and Linux) graphical user interface and control application for PicoScope PC Oscilloscopes (focusing on the PicoScope 2000B and 2000B MSO Series). It is written in Go and built on the [Fyne](https://fyne.io/) widget toolkit and the PicoScope 2000A series SDK.
 
 Whether connected to physical hardware or running offline in simulated demo mode, `fynescope` delivers a fast, responsive, and feature-rich oscilloscope experience.
 

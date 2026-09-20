@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/test"
-	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +39,7 @@ func TestTimeDiv_CheckTimeZoomConstraint(t *testing.T) {
 	scp.timeZoomWindow = nil
 	assert.True(t, scp.checkTimeZoomConstraint(500, -9))
 
-	scp.timeZoomWindow = test.NewWindow(widget.NewLabel(""))
+	scp.timeZoomWindow = test.NewWindow(NewFocusableLabel(""))
 	scp.timeZoomMaxScreenTime = 1000 * 1e-9 * 10
 	// 5000ns < 10000ns original
 	assert.True(t, scp.checkTimeZoomConstraint(500, -9))
@@ -119,4 +118,3 @@ func TestTimeDiv_UpdateTriggerModeOptions_2206BMSO(t *testing.T) {
 	opts = scp.triggerModeSelect.Options
 	assert.Contains(t, opts, settings.TriggerModeETS)
 }
-

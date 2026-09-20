@@ -73,31 +73,31 @@ import (
 )
 
 const (
-	picoOk                             = 0x00000000
-	picoMaxUnitsOpened                 = 0x00000001
-	picoMemoryFail                     = 0x00000002
-	picoNotFound                       = 0x00000003
-	picoNotResponding                  = 0x00000007
-	picoInvalidHandle                  = 0x0000000C
-	picoInvalidParameter               = 0x0000000D
-	picoInvalidTimebase                = 0x0000000E
-	picoInvalidVoltageRange            = 0x0000000F
-	picoInvalidChannel                 = 0x00000010
-	picoNullParameter                  = 0x00000016
-	picoTooManySamples                 = 0x0000001D
-	picoTooManySegments                = 0x0000001E
-	picoPulseWidthQualifier            = 0x0000001F
-	picoSegmentOutOfRange              = 0x00000026
-	picoInvalidInfo                    = 0x00000029
-	picoInfoUnavailable                = 0x0000002A
-	picoInvalidSampleInterval          = 0x0000002B
-	picoSigGenParam                    = 0x0000002E
-	picoSiggenOutputOverVoltage        = 0x00000035
-	picoInvalidBuffer                  = 0x00000037
-	picoInvalidCoupling                = 0x00000045
-	picoAnalogueOffsetOutOfRange       = 0x00000059
-	picoInvalidDigitalPort             = 0x00000113
-	picoInvalidTriggerProperty         = 0x0000000D
+	picoOk                       = 0x00000000
+	picoMaxUnitsOpened           = 0x00000001
+	picoMemoryFail               = 0x00000002
+	picoNotFound                 = 0x00000003
+	picoNotResponding            = 0x00000007
+	picoInvalidHandle            = 0x0000000C
+	picoInvalidParameter         = 0x0000000D
+	picoInvalidTimebase          = 0x0000000E
+	picoInvalidVoltageRange      = 0x0000000F
+	picoInvalidChannel           = 0x00000010
+	picoNullParameter            = 0x00000016
+	picoTooManySamples           = 0x0000001D
+	picoTooManySegments          = 0x0000001E
+	picoPulseWidthQualifier      = 0x0000001F
+	picoSegmentOutOfRange        = 0x00000026
+	picoInvalidInfo              = 0x00000029
+	picoInfoUnavailable          = 0x0000002A
+	picoInvalidSampleInterval    = 0x0000002B
+	picoSigGenParam              = 0x0000002E
+	picoSiggenOutputOverVoltage  = 0x00000035
+	picoInvalidBuffer            = 0x00000037
+	picoInvalidCoupling          = 0x00000045
+	picoAnalogueOffsetOutOfRange = 0x00000059
+	picoInvalidDigitalPort       = 0x00000113
+	picoInvalidTriggerProperty   = 0x0000000D
 )
 
 //export Gops2000aMemorySegments

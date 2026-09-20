@@ -173,7 +173,7 @@ type (
 		bodeBuffers                  [][]bodePoint
 		maxSamplingRate              uint32
 		segmentIndex                 uint32 // maxSamplingRate: sample/sec
-		controlTab                   *container.AppTabs
+		controlTab                   *FocusableAppTabs
 		dftTab                       *container.TabItem
 		fraTab                       *container.TabItem
 		ftTab                        *container.TabItem
@@ -192,8 +192,8 @@ type (
 		corrTab                      *container.TabItem
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
-		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
-		corrStrengthLabels           [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
+		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*FocusableLabel
+		corrStrengthLabels           [genericps.MaxChannel][genericps.MaxChannel]*FocusableLabel
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
 		psControl                    *control.PscDesc
@@ -247,16 +247,16 @@ type (
 		triggerModeSelect            *selectscroll.SelectScroll
 		triggerTypeSelect            *selectscroll.SelectScroll
 		Settings                     *settings.PsSettings
-		runblockButton               *FocusButton
+		runblockButton               *widget.Button
 		toolbar                      *fyne.Container
-		streamEnableButton           *FocusButton
+		streamEnableButton           *widget.Button
 		etsInterleaveDisp            *disp7.DigitArray
 		etsCyclesDisp                *disp7.DigitArray
 		etsSamplingRateDisp          *disp7.DigitArray
 		boxEtsSettings               *fyne.Container
 		apiServer                    *APIServer
 		apiServerMu                  sync.Mutex
-		// actualSampleTime                    *widget.Label
+		// actualSampleTime                    *FocusableLabel
 
 		triggerCheck               []*widget.Check
 		displayBuffers             [][]float32 // signal stored in mv
@@ -280,8 +280,8 @@ type (
 		ftDivsY                    [numberOfDivs + 1]float32
 		fvDivsX                    [numberOfDivs + 1]float32
 		fvDivsY                    [numberOfDivs + 1]float32
-		binWidthLabel              *widget.Label
-		dftDataCollectionTimeLabel *widget.Label
+		binWidthLabel              *FocusableLabel
+		dftDataCollectionTimeLabel *FocusableLabel
 		dftSampleRateSelect        *selectscroll.SelectScroll
 		dftSampleUnitSelect        *selectscroll.SelectScroll
 		dftMinFreqDisp             *disp7.DigitArray
@@ -292,8 +292,8 @@ type (
 		FfAutoRangeEnabled         bool
 		useExtGenCheck             *widget.Check
 		complexTriggerCheck        *widget.Check
-		complexTriggerFocus        *FocusCheck
-		timeZoomButton             *FocusButton
+		complexTriggerFocus        *widget.Check
+		timeZoomButton             *widget.Button
 
 		timeZoomWindow            fyne.Window
 		timeZoomRaster            *screenRaster
@@ -321,18 +321,10 @@ type (
 		gifFrames                 *gif.GIF
 		gifTicker                 *time.Ticker
 		gifStopChan               chan struct{}
-		recordGifButton           *FocusButton
-		helpButton                *FocusButton
-		helpPopUp                 *widget.PopUp
-		helpOverlay               *fyne.Container
-		helpCard                  *fyne.Container
+		recordGifButton           *widget.Button
 		tabFocusRect              *canvas.Rectangle
-		tabFocusProxies           map[*container.TabItem]*TabFocusProxy
-		helpQuit                  chan struct{}
 		currentFocused            fyne.Focusable
-		helpShownFor              fyne.Focusable
 		focusedSince              time.Time
-		helpMu                    sync.Mutex
 	}
 )
 
@@ -613,10 +605,10 @@ func (scp *ScpDesc) toggleGifRecording() {
 
 							totalFrames := capturedFrames.Load()
 
-							progressBar := widget.NewProgressBar()
+							progressBar := NewFocusableProgressBar()
 							progressBar.Min = 0
 							progressBar.Max = 1
-							statusLabel := widget.NewLabel(fmt.Sprintf("Quantizing frames 0 / %d (0%%)", totalFrames))
+							statusLabel := NewFocusableLabel(fmt.Sprintf("Quantizing frames 0 / %d (0%%)", totalFrames))
 							statusLabel.Alignment = fyne.TextAlignCenter
 							progressContent := container.NewVBox(progressBar, statusLabel)
 							progressDlg := dialog.NewCustom("Generating GIF", "Cancel", progressContent, scp.Window)
@@ -844,11 +836,11 @@ func (scp *ScpDesc) build2000Gui() {
 	initMaps()
 	sortInputRanges()
 	var (
-		themeChangeAction *FocusButton
-		changeSide        *FocusButton
-		restoreScreen     *FocusButton
-		fullScreen        *FocusButton
-		logout            *FocusButton
+		themeChangeAction *widget.Button
+		changeSide        *widget.Button
+		restoreScreen     *widget.Button
+		fullScreen        *widget.Button
+		logout            *widget.Button
 		content           *fyne.Container
 	)
 
@@ -881,7 +873,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.corrLayout = container.NewMax()
 	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
-	scp.controlTab = container.NewAppTabs(
+	scp.controlTab = NewFocusableAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab)
 	if !scp.IsMSO {
 		scp.controlTab.Remove(scp.digPortTab)
@@ -1020,7 +1012,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.ffRaster.Hide()
 	}
 
-	scp.timeZoomButton = scp.newFocusButtonWithIcon("", theme.SearchIcon(), func() {
+	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
 	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex {
@@ -1029,7 +1021,6 @@ func (scp *ScpDesc) build2000Gui() {
 
 	for _, item := range scp.controlTab.Items {
 		if item != nil {
-			scp.getOrCreateTabProxy(item)
 		}
 	}
 	addToTest(scp.controlTab, ftFuncId, -1)
@@ -1059,7 +1050,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.extgenLayout.Add(scp.newExtGenTab(true))
 	}
 	left := container.New(layout.NewVBoxLayout())
-	themeChangeAction = scp.newFocusButtonWithIcon("", theme.CheckButtonIcon(), func() {
+	themeChangeAction = widget.NewButtonWithIcon("", theme.CheckButtonIcon(), func() {
 		if scp.theme == Theme(settings.DarkTheme) {
 			scp.theme = Theme(settings.LightTheme)
 			scp.Settings.Theme = settings.LightTheme
@@ -1090,9 +1081,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.SaveSettings()
 	})
 	addToTest(themeChangeAction, themeChangeActionId, -1)
-	RegisterWidgetHelp(themeChangeAction, "Toggle Theme", "Switches the user interface color scheme between dark theme and light theme.")
-
-	scp.streamEnableButton = scp.newFocusButton(streamEnabledLabel, func() {
+	scp.streamEnableButton = widget.NewButton(streamEnabledLabel, func() {
 		if scp.psControl == nil {
 			return
 		}
@@ -1109,7 +1098,7 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	scp.updateStreamButtonState()
 
-	scp.runblockButton = scp.newFocusButtonWithIcon("", theme.MediaPlayIcon(), func() {
+	scp.runblockButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
 		if !scp.running {
 			scp.clearAllFtPersistentLayers()
 			scp.clearAllDftPersistentLayers()
@@ -1193,7 +1182,6 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 	})
 	addToTest(scp.runblockButton, runblockButtonId, -1)
-	RegisterWidgetHelp(scp.runblockButton, "Run / Pause", "Starts or stops continuous oscilloscope waveform acquisition and display updates.")
 	setfullscreen := func() {
 		scp.Settings.Window.Fullscreen = true
 		scp.Window.SetFullScreen(true)
@@ -1218,7 +1206,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.psControl.ResolutionMode.Store(int32(mode))
 
 	scp.initStatus()
-	var saveRasterButton, saveWindowButton *FocusButton
+	var saveRasterButton, saveWindowButton *widget.Button
 	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
 	if scp.runningMode != genericps.ScopeMode {
 		if scp.psControl != nil {
@@ -1245,7 +1233,6 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
-			scp.toolbar.Add(scp.helpButton)
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.status.label)
@@ -1269,60 +1256,44 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(restoreScreen)
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
-			scp.toolbar.Add(scp.helpButton)
 			scp.toolbar.Add(logout)
 			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateBackIcon())
 		}
 		scp.toolbar.Refresh()
-		scp.setContentWithHelp(content)
+		scp.Window.SetContent(content)
 	}
-	saveRasterButton = scp.newFocusButtonWithIcon("R", theme.DocumentSaveIcon(), func() {
+	saveRasterButton = widget.NewButtonWithIcon("R", theme.DocumentSaveIcon(), func() {
 		scp.saveRasterToPng()
 	})
-	saveWindowButton = scp.newFocusButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
+	saveWindowButton = widget.NewButtonWithIcon("W", theme.DocumentSaveIcon(), func() {
 		scp.saveWindowToPng()
 	})
-	scp.recordGifButton = scp.newFocusButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
+	scp.recordGifButton = widget.NewButtonWithIcon("GIF", theme.MediaRecordIcon(), func() {
 		scp.toggleGifRecording()
 	})
 
-	fullScreen = scp.newFocusButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
-	restoreScreen = scp.newFocusButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
-	changeSide = scp.newFocusButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
+	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
+	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
+	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
 	}
 	addToTest(saveRasterButton, "saveRasterButton", -1)
-	RegisterWidgetHelp(saveRasterButton, "Save Raster (R)", "Saves the current waveform signal screen to a PNG image file.")
-
 	addToTest(saveWindowButton, "saveWindowButton", -1)
-	RegisterWidgetHelp(saveWindowButton, "Save Window (W)", "Captures and saves the entire application window to a PNG image file.")
 	if scp.recordGifButton != nil {
 		addToTest(scp.recordGifButton, "recordGifButton", -1)
-		RegisterWidgetHelp(scp.recordGifButton, "Record GIF", "Records live oscilloscope display frames and saves them as an animated GIF image file.")
 	}
 	if scp.streamEnableButton != nil {
 		addToTest(scp.streamEnableButton, "streamEnableButton", -1)
-		RegisterWidgetHelp(scp.streamEnableButton, "Streaming Mode", "Toggles real-time streaming acquisition mode for continuous gapless data capture.")
 	}
 	if scp.timeZoomButton != nil {
 		addToTest(scp.timeZoomButton, "timeZoomButton", -1)
-		RegisterWidgetHelp(scp.timeZoomButton, "Time Zoom", "Opens the Time Zoom window to examine high-resolution details of captured waveforms.")
 	}
 	addToTest(fullScreen, fullScreenId, -1)
-	RegisterWidgetHelp(fullScreen, "Full Screen", "Expands the oscilloscope window to occupy the entire display monitor.")
 	addToTest(restoreScreen, restoreScreenId, -1)
-	RegisterWidgetHelp(restoreScreen, "Restore Window", "Restores the oscilloscope window from full screen to normal windowed size.")
 	addToTest(changeSide, changeSideId, -1)
-	RegisterWidgetHelp(changeSide, "Move Controls", "Relocates the side control panel between the left and right sides of the waveform screen.")
-	scp.helpButton = scp.newFocusButtonWithIcon("", theme.HelpIcon(), func() {
-		scp.toggleHelp()
-	})
-	scp.updateHelpButtonState()
-	addToTest(scp.helpButton, helpButtonId, -1)
-	RegisterWidgetHelp(scp.helpButton, "Help Toggle (?)", "Toggles contextual focus help on or off. When enabled, holding focus on any control for a moment displays helpful guidance on its functionality.")
-	logout = scp.newFocusButtonWithIcon("", theme.LogoutIcon(), func() {
+	logout = widget.NewButtonWithIcon("", theme.LogoutIcon(), func() {
 		if scp.psControl != nil {
 			scp.psControl.Shutdown()
 		}
@@ -1330,12 +1301,9 @@ func (scp *ScpDesc) build2000Gui() {
 			close(scp.status.statusQuit)
 			scp.status.statusQuit = nil
 		}
-		scp.stopFocusHelp()
 		scp.App.Quit()
 	})
 	addToTest(logout, "logout", -1)
-	RegisterWidgetHelp(logout, "Disconnect & Quit", "Safely stops data capture, shuts down scope hardware, saves settings, and quits the application.")
-
 	if scp.Settings.Window.LeftControl {
 		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
@@ -1348,7 +1316,6 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(restoreScreen)
 		scp.toolbar.Add(changeSide)
 		scp.toolbar.Add(themeChangeAction)
-		scp.toolbar.Add(scp.helpButton)
 		scp.toolbar.Add(logout)
 		scp.toolbar.Add(layout.NewSpacer())
 		scp.toolbar.Add(scp.status.label)
@@ -1365,7 +1332,6 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(restoreScreen)
 		scp.toolbar.Add(changeSide)
 		scp.toolbar.Add(themeChangeAction)
-		scp.toolbar.Add(scp.helpButton)
 		scp.toolbar.Add(logout)
 		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
 	}
@@ -1501,7 +1467,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.channelViewers[i].dftDisplayOffsetInt = scp.Settings.Channels[i].DftDisplayVOffset
 		}
 	}
-	scp.setContentWithHelp(content)
+	scp.Window.SetContent(content)
 }
 
 func (scp *ScpDesc) updateDigitalSplit() {
@@ -1753,7 +1719,6 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	}
 	scp.Window.Show()
 	scp.hookWindowMouseLeave(scp.Window)
-	scp.startFocusHelp()
 	return
 }
 

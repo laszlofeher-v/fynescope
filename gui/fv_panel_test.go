@@ -1,17 +1,19 @@
 package gui
 
 import (
+	"fyne.io/fyne/v2/widget"
+
 	"fynescope/control"
 	"fynescope/genericps"
 	"fynescope/settings"
 	"image/color"
 	"testing"
 
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/test"
-	"fyne.io/fyne/v2/widget"
 	"fynescope/checkcolorpick"
 	"fynescope/disp7"
+
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 )
 

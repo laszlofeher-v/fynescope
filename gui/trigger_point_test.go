@@ -7,7 +7,6 @@ import (
 	"image"
 	"testing"
 
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +19,7 @@ func TestTriggerPoint_MouseEvents(t *testing.T) {
 		psControl:     &control.PscDesc{},
 		theme:         theme.DefaultTheme(),
 		tzRepartition: createFlag(),
-		controlTab:    container.NewAppTabs(),
+		controlTab:    NewFocusableAppTabs(),
 		Settings:      settings.NewDefaultSettings(),
 		channelCount:  genericps.QuadScope,
 	}
@@ -65,7 +64,7 @@ func TestTriggerPoint_TimeMv2xy(t *testing.T) {
 		psControl:           &control.PscDesc{},
 		theme:               theme.DefaultTheme(),
 		tzRepartition:       createFlag(),
-		controlTab:          container.NewAppTabs(),
+		controlTab:          NewFocusableAppTabs(),
 		Settings:            settings.NewDefaultSettings(),
 		channelCount:        genericps.QuadScope,
 		ftScopeSignalScreen: image.NewRGBA(image.Rect(0, 0, 100, 100)),

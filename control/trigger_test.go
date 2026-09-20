@@ -491,4 +491,3 @@ func TestPscDesc_applyDigitalTrigger(t *testing.T) {
 		t.Errorf("applyDigitalTrigger (disabled) failed: %v", err)
 	}
 }
-

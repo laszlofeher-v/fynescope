@@ -75,15 +75,14 @@ func (scp *ScpDesc) newCorrPanel(panel *fyne.Container, undockable bool) {
 			fyne.Do(winContent.Refresh)
 		})
 		addToTest(undockBtn, "corrUndockBtn", corrTabIndex)
-		RegisterWidgetHelp(undockBtn, "Undock Correlation", "Opens the cross-correlation panel in an independent floating window.")
 		vbox.Add(container.NewHBox(undockBtn))
 		vbox.Add(widget.NewSeparator())
 	}
 
-	title := widget.NewLabelWithStyle("Cross-Correlation (Pearson r)", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title := NewFocusableLabelWithStyle("Cross-Correlation (Pearson r)", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	vbox.Add(title)
 
-	hint := widget.NewLabel("Correlation between enabled channel pairs, updated live.\nRange: −1 (inverse) … 0 (none) … +1 (perfect)")
+	hint := NewFocusableLabel("Correlation between enabled channel pairs, updated live.\nRange: −1 (inverse) … 0 (none) … +1 (perfect)")
 	hint.Wrapping = fyne.TextWrapWord
 	vbox.Add(hint)
 
@@ -111,10 +110,10 @@ func (scp *ScpDesc) newCorrPanel(panel *fyne.Container, undockable bool) {
 			pairLabel.TextStyle.Bold = true
 			pairLabel.TextSize = 13
 
-			rLabel := widget.NewLabel("---")
+			rLabel := NewFocusableLabel("---")
 			rLabel.Alignment = fyne.TextAlignLeading
 
-			strengthLabel := widget.NewLabel("")
+			strengthLabel := NewFocusableLabel("")
 
 			scp.corrLabels[ci][cj] = rLabel
 			scp.corrStrengthLabels[ci][cj] = strengthLabel
@@ -135,7 +134,7 @@ func (scp *ScpDesc) newCorrPanel(panel *fyne.Container, undockable bool) {
 
 // corrCell is a helper that returns a label in a fixed-width cell for column alignment.
 func corrCell(text string, width float32, bold bool) *fyne.Container {
-	lbl := widget.NewLabel(text)
+	lbl := NewFocusableLabel(text)
 	lbl.TextStyle.Bold = bold
 	return container.New(layout.NewGridWrapLayout(fyne.NewSize(width, 24)), lbl)
 }
@@ -171,7 +170,7 @@ func (scp *ScpDesc) UpdateCorrelation() {
 
 	type result struct {
 		i, j int
-		r     float64
+		r    float64
 	}
 	results := make([]result, 0, nch*(nch-1)/2)
 

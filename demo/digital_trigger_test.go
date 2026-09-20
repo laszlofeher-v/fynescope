@@ -255,4 +255,3 @@ func TestDigitalGenerator_StreamingMode(t *testing.T) {
 	}
 	assert.True(t, hasNonZero, "Streaming digital buffer should have non-zero samples")
 }
-

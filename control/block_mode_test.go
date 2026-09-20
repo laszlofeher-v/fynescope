@@ -263,4 +263,3 @@ func TestBlockModeMaxScreenTimeSampleLimit(t *testing.T) {
 	assert.LessOrEqual(t, psControl.SampleCountRequired, uint64(67108864))
 	assert.Greater(t, psControl.SampleCountRequired, uint64(0))
 }
-

@@ -51,12 +51,7 @@ func (scp *ScpDesc) onMouseLeftWindow() {
 			}
 		}
 	}
-	scp.setTabFocusHighlight(nil, false)
-	scp.hideHelpPopUp()
-	scp.helpMu.Lock()
 	scp.currentFocused = nil
-	scp.helpShownFor = nil
-	scp.helpMu.Unlock()
 }
 
 // hookWindowMouseLeave hooks GLFW's cursor enter/leave callback to detect

@@ -47,7 +47,9 @@ func newTappableDnLabel(scp *ScpDesc, text string, negated bool, tapped func()) 
 
 func (l *tappableDnLabel) Tapped(e *fyne.PointEvent) {
 	if l.scp != nil {
-		l.scp.focusWidget(l)
+		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
+			l.scp.Window.Canvas().Focus(l)
+		}
 	}
 	if l.onTapped != nil {
 		l.onTapped()
@@ -81,13 +83,17 @@ func (l *tappableDnLabel) TypedKey(e *fyne.KeyEvent) {
 
 func (l *tappableDnLabel) MouseIn(e *desktop.MouseEvent) {
 	if l.scp != nil {
-		l.scp.focusWidget(l)
+		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
+			l.scp.Window.Canvas().Focus(l)
+		}
 	}
 }
 
 func (l *tappableDnLabel) MouseMoved(e *desktop.MouseEvent) {
 	if l.scp != nil {
-		l.scp.focusWidget(l)
+		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
+			l.scp.Window.Canvas().Focus(l)
+		}
 	}
 }
 
@@ -275,9 +281,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		})
 	}
 
-	title := widget.NewLabelWithStyle("Digital Channels", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	title := NewFocusableLabelWithStyle("Digital Channels", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
-	trigEnableCheck := scp.newFocusCheck("Enable Digital Trigger", func(v bool) {
+	trigEnableCheck := widget.NewCheck("Enable Digital Trigger", func(v bool) {
 		scp.Settings.Digital.Trigger.Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalTrigger()
@@ -319,30 +325,25 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	trigHeader := container.NewVBox(
 		trigEnableCheck,
 		layout.NewSpacer(),
-		widget.NewLabel("Channels:"),
+		NewFocusableLabel("Channels:"),
 		channelsLogicSelect,
-		widget.NewLabel("Analog/Digital:"),
+		NewFocusableLabel("Analog/Digital:"),
 		operandSelect,
 	)
 
 	if undockable && undockBtn != nil {
 		addToTest(undockBtn, "digPortUndockBtn", digPortTabIndex)
-		RegisterWidgetHelp(undockBtn, "Undock Digital Panel", "Opens the digital port configuration in an independent floating window.")
 		mainBox.Add(container.NewVBox(undockBtn, layout.NewSpacer(), title, trigHeader))
 	} else {
 		mainBox.Add(container.NewVBox(title, trigHeader))
 	}
 	addToTest(trigEnableCheck, "digPortTrigEnable", digPortTabIndex)
-	RegisterWidgetHelp(trigEnableCheck, "Digital Pattern Trigger", "Enables multi-channel digital logic pattern triggering.")
 	addToTest(channelsLogicSelect, "digPortChannelsLogicSelect", digPortTabIndex)
-	RegisterWidgetHelp(channelsLogicSelect, "Digital Channels Logic", "Selects logical combination operator (AND / OR) across individual digital channels.")
 	addToTest(operandSelect, "digPortOperandSelect", digPortTabIndex)
-	RegisterWidgetHelp(operandSelect, "Analog/Digital Logic Operand", "Selects logical combination operator (AND / OR) between analog trigger and digital trigger.")
-
 	port0Box := container.NewVBox()
 	port1Box := container.NewVBox()
 
-	port0EnableCheck := scp.newFocusCheck("Enable Port 0 (D0-D7)", func(v bool) {
+	port0EnableCheck := widget.NewCheck("Enable Port 0 (D0-D7)", func(v bool) {
 		scp.Settings.Digital.Ports[0].Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalSplit()
@@ -370,7 +371,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	port0EnableCheck.SetChecked(scp.Settings.Digital.Ports[0].Enabled)
 	addToTest(port0EnableCheck, "digPort0EnableCheck", digPortTabIndex)
-	RegisterWidgetHelp(port0EnableCheck, "Port 0 Enable", "Enables or disables digital input channels D0-D7.")
 	port0Box.Add(port0EnableCheck)
 
 	port0ChannelsBox := container.NewVBox()
@@ -398,7 +398,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		}
 		addToTest(port0LogicDisp, "digPort0LogicLevelDisp", digPortTabIndex)
-		RegisterWidgetHelp(port0LogicDisp, "Port 0 Logic Level", "Sets logic threshold level for digital Port 0 (D0-D7). Range: –32767 (–5 V) to 32767 (+5 V).")
 		scp.digPortLogicLevelDisp[0] = port0LogicDisp
 		if scp.runningMode != genericps.DemoMode {
 			port0Box.Add(container.NewHBox(port0LogicDisp))
@@ -406,7 +405,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	}
 	port0Box.Add(port0ChannelsBox)
 
-	port1EnableCheck := scp.newFocusCheck("Enable Port 1 (D8-D15)", func(v bool) {
+	port1EnableCheck := widget.NewCheck("Enable Port 1 (D8-D15)", func(v bool) {
 		scp.Settings.Digital.Ports[1].Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalSplit()
@@ -434,7 +433,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	port1EnableCheck.SetChecked(scp.Settings.Digital.Ports[1].Enabled)
 	addToTest(port1EnableCheck, "digPort1EnableCheck", digPortTabIndex)
-	RegisterWidgetHelp(port1EnableCheck, "Port 1 Enable", "Enables or disables digital input channels D8-D15.")
 	port1Box.Add(port1EnableCheck)
 
 	port1ChannelsBox := container.NewVBox()
@@ -456,7 +454,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		}
 		addToTest(port1LogicDisp, "digPort1LogicLevelDisp", digPortTabIndex)
-		RegisterWidgetHelp(port1LogicDisp, "Port 1 Logic Level", "Sets logic threshold level for digital Port 1 (D8-D15). Range: –32767 (–5 V) to 32767 (+5 V).")
 		scp.digPortLogicLevelDisp[1] = port1LogicDisp
 		if scp.runningMode != genericps.DemoMode {
 			port1Box.Add(container.NewHBox(port1LogicDisp))
@@ -482,8 +479,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		})
 		addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(dnLabel, "Channel Invert", "Left click inverts the channel.")
-
 		// 1. Editable label (max 6 chars, frameless)
 		labelEntry := newFramelessEntry()
 		labelEntry.SetPlaceHolder("Lbl")
@@ -501,8 +496,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		}
 		addToTest(labelEntry, fmt.Sprintf("digPortLabelEntry_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(labelEntry, "Channel Label", "Custom text label for this digital channel (up to 6 characters).")
-
 		// 2. Color & Enable picker
 		col := scp.Settings.Digital.ChannelColors[chIdx]
 		ccp := checkcolorpick.NewCheckColorPick(scp.Window, func(v bool, c color.Color) {
@@ -517,8 +510,6 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}, col, fyne.NewSize(20, 20))
 		ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
 		addToTest(ccp, fmt.Sprintf("digPortCheckColorPick_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(ccp, "Digital Channel Color & Enable", "Selects trace display color and enables or disables this digital channel. Right-click opens the color selector.")
-
 		// 3. Trigger mode
 		initialDirStr := dirReverseMap[scp.Settings.Digital.Trigger.Directions[chIdx]]
 		if initialDirStr == "" {
@@ -549,9 +540,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		trigSelects[chIdx] = trigSelect
 		trigSelect.SetSelected(initialDirStr)
 		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(trigSelect, "Digital Channel Trigger", "Selects trigger condition for this digital line: Low (0), High (1), Rising edge (R), Falling edge (F), or Don't Care (X).")
-
-		negCheck := scp.newFocusCheck("Neg", func(v bool) {
+		negCheck := widget.NewCheck("Neg", func(v bool) {
 			scp.Settings.Digital.LabelNegated[chIdx] = v
 			if scp.digitalRaster != nil {
 				scp.digitalRaster.refresh()
@@ -560,14 +549,12 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		})
 		negCheck.SetChecked(scp.Settings.Digital.LabelNegated[chIdx])
 		addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
-		RegisterWidgetHelp(negCheck, "Negate Label", "Draws an overline over the digital channel label to indicate active-low logic.")
-
 		row := container.NewHBox(
 			dnLabel,
 			labelEntry,
 			negCheck,
 			container.NewCenter(ccp),
-			widget.NewLabel("Trig:"),
+			NewFocusableLabel("Trig:"),
 			trigSelect,
 		)
 
@@ -601,7 +588,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	}
 	updateStack()
 
-	d0BottomCheck := scp.newFocusCheck("D0 at Bottom", func(v bool) {
+	d0BottomCheck := widget.NewCheck("D0 at Bottom", func(v bool) {
 		scp.Settings.Digital.D0AtBottom = v
 		scp.SaveSettings()
 		updateStack()
@@ -611,9 +598,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	d0BottomCheck.SetChecked(scp.Settings.Digital.D0AtBottom)
 	addToTest(d0BottomCheck, "digPortD0BottomCheck", digPortTabIndex)
-	RegisterWidgetHelp(d0BottomCheck, "Stack Direction", "When enabled, places D0 at the bottom of the digital signal stack.")
-
-	portTabs := container.NewAppTabs(
+	portTabs := NewFocusableAppTabs(
 		container.NewTabItem("Port 0 (D0-D7)", port0Box),
 		container.NewTabItem("Port 1 (D8-D15)", port1Box),
 	)

@@ -254,7 +254,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 }
 
 func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool) {
-	channelTabs := container.NewAppTabs()
+	channelTabs := NewFocusableAppTabs()
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		chIdx := i
@@ -275,18 +275,17 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		lblCh.TextSize = 16
 		chBox.Add(container.NewHBox(lblCh))
 
-		zeroPhaseCheck := scp.newFocusCheck("Zero Phase Delay (FiltFilt)", func(checked bool) {
+		zeroPhaseCheck := widget.NewCheck("Zero Phase Delay (FiltFilt)", func(checked bool) {
 			chSettings.DigitalFilter.ZeroPhaseEnabled = checked
 			notify()
 		})
 		zeroPhaseCheck.SetChecked(chSettings.DigitalFilter.ZeroPhaseEnabled)
 		addToTest(zeroPhaseCheck, "zeroPhaseCheck"+chStr, filterTabIndex)
-		RegisterWidgetHelp(zeroPhaseCheck, "Zero Phase Filtering", "Applies forward-backward bidirectional filtering (filtfilt) to eliminate filter phase delay.")
 		chBox.Add(zeroPhaseCheck)
 
 		// 1. Lowpass filter
 		var lpControls *fyne.Container
-		lpCheck := scp.newFocusCheck("Enable Lowpass Filter", func(checked bool) {
+		lpCheck := widget.NewCheck("Enable Lowpass Filter", func(checked bool) {
 			chSettings.DigitalFilter.LowpassEnabled = checked
 			if lpControls != nil {
 				if checked {
@@ -321,7 +320,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 			}
 		}
 		lpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), lpEntry)
-		lpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), lpEntryContainer, lpUnitSelect)
+		lpControls = container.NewHBox(NewFocusableLabel("Cutoff Frequency:"), lpEntryContainer, lpUnitSelect)
 		if chSettings.DigitalFilter.LowpassEnabled {
 			lpControls.Show()
 		} else {
@@ -330,7 +329,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 
 		// 2. Highpass filter
 		var hpControls *fyne.Container
-		hpCheck := scp.newFocusCheck("Enable Highpass Filter", func(checked bool) {
+		hpCheck := widget.NewCheck("Enable Highpass Filter", func(checked bool) {
 			chSettings.DigitalFilter.HighpassEnabled = checked
 			if hpControls != nil {
 				if checked {
@@ -365,7 +364,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 			}
 		}
 		hpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), hpEntry)
-		hpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), hpEntryContainer, hpUnitSelect)
+		hpControls = container.NewHBox(NewFocusableLabel("Cutoff Frequency:"), hpEntryContainer, hpUnitSelect)
 		if chSettings.DigitalFilter.HighpassEnabled {
 			hpControls.Show()
 		} else {
@@ -374,7 +373,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 
 		// 3. Bandpass filter
 		var bpControls *fyne.Container
-		bpCheck := scp.newFocusCheck("Enable Bandpass Filter", func(checked bool) {
+		bpCheck := widget.NewCheck("Enable Bandpass Filter", func(checked bool) {
 			chSettings.DigitalFilter.BandpassEnabled = checked
 			if bpControls != nil {
 				if checked {
@@ -432,8 +431,8 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		}
 		bpEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bpEntry2)
 		bpControls = container.NewVBox(
-			widget.NewLabel("Lower Cutoff:"), bpEntryContainer1, bpUnitSelect1,
-			widget.NewLabel("Upper Cutoff:"), bpEntryContainer2, bpUnitSelect2,
+			NewFocusableLabel("Lower Cutoff:"), bpEntryContainer1, bpUnitSelect1,
+			NewFocusableLabel("Upper Cutoff:"), bpEntryContainer2, bpUnitSelect2,
 		)
 		if chSettings.DigitalFilter.BandpassEnabled {
 			bpControls.Show()
@@ -443,7 +442,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 
 		// 4. Bandstop filter
 		var bsControls *fyne.Container
-		bsCheck := scp.newFocusCheck("Enable Bandstop Filter", func(checked bool) {
+		bsCheck := widget.NewCheck("Enable Bandstop Filter", func(checked bool) {
 			chSettings.DigitalFilter.BandstopEnabled = checked
 			if bsControls != nil {
 				if checked {
@@ -501,8 +500,8 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		}
 		bsEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bsEntry2)
 		bsControls = container.NewVBox(
-			widget.NewLabel("Lower Cutoff:"), bsEntryContainer1, bsUnitSelect1,
-			widget.NewLabel("Upper Cutoff:"), bsEntryContainer2, bsUnitSelect2,
+			NewFocusableLabel("Lower Cutoff:"), bsEntryContainer1, bsUnitSelect1,
+			NewFocusableLabel("Upper Cutoff:"), bsEntryContainer2, bsUnitSelect2,
 		)
 		if chSettings.DigitalFilter.BandstopEnabled {
 			bsControls.Show()
@@ -524,38 +523,21 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		chBox.Add(bsControls)
 
 		addToTest(lpCheck, "lpCheck"+chStr, filterTabIndex)
-		RegisterWidgetHelp(lpCheck, "Lowpass Filter", "Enables first-order IIR lowpass digital filtering for this channel.")
 		addToTest(lpEntry, "lpEntry"+chStr, filterTabIndex)
-		RegisterWidgetHelp(lpEntry, "Lowpass Cutoff Frequency", "Sets the -3dB cutoff frequency for the lowpass filter.")
 		addToTest(lpUnitSelect, "lpUnitSelect"+chStr, filterTabIndex)
-		RegisterWidgetHelp(lpUnitSelect, "Lowpass Frequency Unit", "Selects frequency unit for lowpass cutoff (Hz, kHz, MHz).")
 		addToTest(hpCheck, "hpCheck"+chStr, filterTabIndex)
-		RegisterWidgetHelp(hpCheck, "Highpass Filter", "Enables first-order IIR highpass digital filtering for this channel.")
 		addToTest(hpEntry, "hpEntry"+chStr, filterTabIndex)
-		RegisterWidgetHelp(hpEntry, "Highpass Cutoff Frequency", "Sets the -3dB cutoff frequency for the highpass filter.")
 		addToTest(hpUnitSelect, "hpUnitSelect"+chStr, filterTabIndex)
-		RegisterWidgetHelp(hpUnitSelect, "Highpass Frequency Unit", "Selects frequency unit for highpass cutoff (Hz, kHz, MHz).")
 		addToTest(bpCheck, "bpCheck"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bpCheck, "Bandpass Filter", "Enables second-order IIR bandpass digital filtering for this channel.")
 		addToTest(bpEntry1, "bpEntry1"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bpEntry1, "Bandpass Lower Cutoff", "Sets the lower frequency boundary for the bandpass filter.")
 		addToTest(bpUnitSelect1, "bpUnitSelect1"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bpUnitSelect1, "Bandpass Lower Frequency Unit", "Selects frequency unit for bandpass lower cutoff (Hz, kHz, MHz).")
 		addToTest(bpEntry2, "bpEntry2"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bpEntry2, "Bandpass Upper Cutoff", "Sets the upper frequency boundary for the bandpass filter.")
 		addToTest(bpUnitSelect2, "bpUnitSelect2"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bpUnitSelect2, "Bandpass Upper Frequency Unit", "Selects frequency unit for bandpass upper cutoff (Hz, kHz, MHz).")
 		addToTest(bsCheck, "bsCheck"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bsCheck, "Bandstop Filter", "Enables second-order IIR bandstop (notch) digital filtering for this channel.")
 		addToTest(bsEntry1, "bsEntry1"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bsEntry1, "Bandstop Lower Cutoff", "Sets the lower frequency boundary for the notch / bandstop filter.")
 		addToTest(bsUnitSelect1, "bsUnitSelect1"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bsUnitSelect1, "Bandstop Lower Frequency Unit", "Selects frequency unit for bandstop lower cutoff (Hz, kHz, MHz).")
 		addToTest(bsEntry2, "bsEntry2"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bsEntry2, "Bandstop Upper Cutoff", "Sets the upper frequency boundary for the notch / bandstop filter.")
 		addToTest(bsUnitSelect2, "bsUnitSelect2"+chStr, filterTabIndex)
-		RegisterWidgetHelp(bsUnitSelect2, "Bandstop Upper Frequency Unit", "Selects frequency unit for bandstop upper cutoff (Hz, kHz, MHz).")
-
 		tabItem := container.NewTabItem("Ch "+chStr, container.NewScroll(chBox))
 		channelTabs.Append(tabItem)
 		scp.notifyDigitalFilter(chIdx)
@@ -595,7 +577,6 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 			fyne.Do(winContent.Refresh)
 		})
 		addToTest(undockBtn, "filterUndockBtn", filterTabIndex)
-		RegisterWidgetHelp(undockBtn, "Undock Filter Panel", "Opens the digital filter settings in an independent floating window.")
 		mainContent = container.NewBorder(container.NewVBox(undockBtn, widget.NewSeparator()), nil, nil, nil, channelTabs)
 	}
 

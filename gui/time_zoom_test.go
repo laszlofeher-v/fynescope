@@ -6,7 +6,6 @@ import (
 	"fynescope/settings"
 	"testing"
 
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,7 @@ func TestTimeZoom_OpenClose(t *testing.T) {
 		psControl:     &control.PscDesc{},
 		theme:         theme.DefaultTheme(),
 		tzRepartition: createFlag(),
-		controlTab:    container.NewAppTabs(),
+		controlTab:    NewFocusableAppTabs(),
 		Settings:      settings.NewDefaultSettings(),
 		channelCount:  genericps.QuadScope,
 	}

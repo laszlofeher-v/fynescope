@@ -117,7 +117,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 		// Arrange settings to minimize width
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, phaseCheck, refCheck)
-		row2 := container.New(layout.NewHBoxLayout(), widget.NewLabel("Range:"), vRange, x10Check)
+		row2 := container.New(layout.NewHBoxLayout(), NewFocusableLabel("Range:"), vRange, x10Check)
 
 		chBox := container.New(layout.NewVBoxLayout(), row1, row2)
 		if i > 0 {
@@ -126,15 +126,10 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		vbox.Add(chBox)
 
 		addToTest(enabledCheck, ffEnableId+chName, ffTabIndex)
-		RegisterWidgetHelp(enabledCheck, "Channel Enable (Bode)", "Enables or disables this channel for Bode frequency response analysis.")
 		addToTest(phaseCheck, ffPhaseCheckId+chName, ffTabIndex)
-		RegisterWidgetHelp(phaseCheck, "Phase Trace", "Shows phase response curve on the Bode plot.")
 		addToTest(refCheck, ffRefCheckId+chName, ffTabIndex)
-		RegisterWidgetHelp(refCheck, "Reference Trace", "Shows a reference waveform trace on the Bode plot.")
 		addToTest(vRange, ffVRangeId+chName, ffTabIndex)
-		RegisterWidgetHelp(vRange, "Voltage Scale", "Sets vertical sensitivity scale for Bode plot channel.")
 		addToTest(x10Check, ffX10Id+chName, ffTabIndex)
-		RegisterWidgetHelp(x10Check, "10x Probe Attenuation", "Applies 10x voltage scaling for passive oscilloscope probes with attenuation.")
 	}
 
 	// Declare disp7 widgets first so they can be referenced in the OnChanged closure
@@ -306,8 +301,6 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		arbDbRefContainer.Hide()
 	}
 	addToTest(arbDbRefDisp, ffFuncId+"ArbRef", ffTabIndex)
-	RegisterWidgetHelp(arbDbRefDisp, "Arbitrary dB Reference", "Sets the dB reference level for arbitrary waveform display.")
-
 	if scp.Settings.Dft.DisplayUnit == "" {
 		scp.Settings.Dft.DisplayUnit = settings.UnitDBFS
 	}
@@ -332,10 +325,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	})
 	logXCheck.Checked = scp.Settings.Ff.XAxisLog
 	addToTest(logXCheck, ffFuncId+"LogX", ffTabIndex)
-	RegisterWidgetHelp(logXCheck, "Log X-Axis", "Displays frequency axis on logarithmic scale for Bode plots.")
-
-
-	dispUnitControls := container.NewHBox(widget.NewLabel(" Unit:"), dispUnitSelect, logXCheck)
+	dispUnitControls := container.NewHBox(NewFocusableLabel(" Unit:"), dispUnitSelect, logXCheck)
 
 	targetCyclesDisp, _ := disp7.NewCustomDisp7Array(3, 0,
 		100,
@@ -358,7 +348,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	targetCyclesDisp.SetValue(int(scp.Settings.Ff.TargetCycles))
 
 	// Generator controls container
-	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	genHeader := NewFocusableLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	// isSim := false
 	// if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
@@ -403,7 +393,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		genVBox.Add(genPanel)
 	}
 
-	infoHead := widget.NewLabelWithStyle("Status / Info", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	infoHead := NewFocusableLabelWithStyle("Status / Info", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	genVBox.Add(layout.NewSpacer())
 	genVBox.Add(infoHead)
 	genVBox.Add(scp.ffCurrentFreqDisp)
@@ -414,30 +404,18 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	panel.Add(genSettings)
 
 	addToTest(scp.ffMinFreqDisp, ffMinFreqId, ffTabIndex)
-	RegisterWidgetHelp(scp.ffMinFreqDisp, "Sweep Start Frequency", "Start frequency for Bode frequency response analysis sweep.")
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
-	RegisterWidgetHelp(scp.ffMaxFreqDisp, "Sweep Stop Frequency", "Stop frequency for Bode frequency response analysis sweep.")
-
 	addToTest(scp.ffDeltaTDisp, ffDeltaTId, ffTabIndex)
-	RegisterWidgetHelp(scp.ffDeltaTDisp, "Dwell Time (ΔT)", "Time spent at each frequency step during sweep.")
 	addToTest(targetCyclesDisp, ffCyclesId, ffTabIndex)
-	RegisterWidgetHelp(targetCyclesDisp, "Target Cycles", "Number of signal cycles to analyze per frequency step.")
 	addToTest(scp.ffStepFreqDisp, ffPtsDecId, ffTabIndex)
-	RegisterWidgetHelp(scp.ffStepFreqDisp, "Points per Decade", "Number of frequency steps per decade.")
-
 	if scp.ffAmpDisp != nil {
 		addToTest(scp.ffAmpDisp, ffAmpId, ffTabIndex)
-		RegisterWidgetHelp(scp.ffAmpDisp, "Sweep Amplitude", "Amplitude of the sweep stimulus signal.")
 	}
 	if scp.ffOffsetDisp != nil {
 		addToTest(scp.ffOffsetDisp, ffOffsetId, ffTabIndex)
-		RegisterWidgetHelp(scp.ffOffsetDisp, "Sweep Offset", "DC offset of the sweep stimulus signal.")
 	}
 	addToTest(dispUnitSelect, ffDispUnitSelectId, ffTabIndex)
-	RegisterWidgetHelp(dispUnitSelect, "Bode Display Units", "Selects frequency response display unit.")
 	addToTest(scp.useExtGenCheck, ffExtGenSelectId, ffTabIndex)
-	RegisterWidgetHelp(scp.useExtGenCheck, "External Generator Stimulus", "Routes Bode frequency sweep stimulus through external signal generator.")
-
 	scp.updateFfWidgetLimits()
 }
 
@@ -530,7 +508,7 @@ func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
 		}
 	}
 
-	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Sweep: Up"))
+	top := container.NewHBox(check, NewFocusableLabel("Wave: Sine"), NewFocusableLabel("Sweep: Up"))
 	box = container.NewVBox(top, scp.ffAmpDisp, scp.ffOffsetDisp)
 	return box, nil
 }
@@ -589,7 +567,7 @@ func (scp *ScpDesc) newFfDemoGenPanel() (box *fyne.Container, err error) {
 		}
 	}
 
-	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Channel: Ch A"))
+	top := container.NewHBox(check, NewFocusableLabel("Wave: Sine"), NewFocusableLabel("Channel: Ch A"))
 	box = container.NewVBox(
 		top,
 		scp.ffAmpDisp,
