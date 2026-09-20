@@ -27,7 +27,7 @@ func TestSetGeneratorFreq(t *testing.T) {
 			SetGeneratorCh: make(chan *control.GeneratorDescMsg, 10),
 			SetDemoGenCh:   make(chan *control.GeneratorDescMsg, 10),
 		},
-		controlTab: NewFocusableAppTabs(container.NewTabItem("Test", container.NewVBox())),
+		controlTab: container.NewAppTabs(container.NewTabItem("Test", container.NewVBox())),
 	}
 
 	// Test normal flow

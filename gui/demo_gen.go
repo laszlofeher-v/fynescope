@@ -684,7 +684,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		addToTest(undockButton, "demoGenUndockBtnMain", genTabIndex)
 	}
 
-	tabs := NewFocusableAppTabs()
+	tabs := container.NewAppTabs()
 	for i := 0; i < int(scp.channelCount); i++ {
 		chId := genericps.ChannelId(i)
 		genPanel, err := newGenSettings(chId, false)

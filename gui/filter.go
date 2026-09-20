@@ -254,7 +254,7 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 }
 
 func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool) {
-	channelTabs := NewFocusableAppTabs()
+	channelTabs := container.NewAppTabs()
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		chIdx := i

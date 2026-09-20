@@ -598,7 +598,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	d0BottomCheck.SetChecked(scp.Settings.Digital.D0AtBottom)
 	addToTest(d0BottomCheck, "digPortD0BottomCheck", digPortTabIndex)
-	portTabs := NewFocusableAppTabs(
+	portTabs := container.NewAppTabs(
 		container.NewTabItem("Port 0 (D0-D7)", port0Box),
 		container.NewTabItem("Port 1 (D8-D15)", port1Box),
 	)
