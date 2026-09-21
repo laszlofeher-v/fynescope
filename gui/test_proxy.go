@@ -1002,6 +1002,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 
 	var errorCount uint64
 	var eventCount uint64
+	var lastEventTimeUnix int64 = time.Now().UnixNano()
 	startTime := time.Now()
 	completed := false
 
@@ -1046,6 +1047,8 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
     <tr><td>Remaining</td><td id="remaining">-</td></tr>
     <tr><td>Events</td><td id="events">-</td></tr>
     <tr><td>Errors</td><td id="errors">-</td></tr>
+    <tr><td>Sleep Time</td><td id="sleepTime">-</td></tr>
+    <tr><td>Last Event</td><td id="lastEvent">-</td></tr>
   </table>
   <script>
     async function refresh() {
@@ -1057,6 +1060,14 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
         document.getElementById('remaining').textContent = d.remaining || '-';
         document.getElementById('events').textContent    = d.events    || '-';
         document.getElementById('errors').textContent    = d.errors    || '-';
+        document.getElementById('sleepTime').textContent = d.sleepTime || '-';
+        let le = document.getElementById('lastEvent');
+        le.textContent = d.lastEvent || '-';
+        if (d.errorTime) {
+            le.style.color = '#f55';
+        } else {
+            le.style.color = '';
+        }
       } catch(e) {}
     }
     refresh();
@@ -1076,13 +1087,20 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			if remaining < 0 {
 				remaining = 0
 			}
+			lastEvT := time.Unix(0, atomic.LoadInt64(&lastEventTimeUnix))
+			timeAgo := time.Since(lastEvT).Round(time.Millisecond)
+			isError := timeAgo > 5*time.Second
+
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-store")
-			json.NewEncoder(w).Encode(map[string]string{
+			json.NewEncoder(w).Encode(map[string]interface{}{
 				"uptime":    uptime.Round(time.Second).String(),
 				"remaining": remaining.Round(time.Second).String(),
 				"events":    fmt.Sprintf("%d", atomic.LoadUint64(&eventCount)),
 				"errors":    fmt.Sprintf("%d", atomic.LoadUint64(&errorCount)),
+				"sleepTime": GetSleepTime().String(),
+				"lastEvent": timeAgo.String(),
+				"errorTime": isError,
 			})
 		})
 
@@ -1295,6 +1313,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				continue
 			}
 			atomic.AddUint64(&eventCount, 1)
+			atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
 		case <-time.After(timeout):
 			log.Println("Timed out ", selectedKey, op)
 			buf := make([]byte, 1<<20)
