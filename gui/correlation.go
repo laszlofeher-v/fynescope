@@ -302,7 +302,7 @@ func (cr *corrXCFRaster) generate(w, h int) image.Image {
 	peakLag := peakIdx - halfLen
 	if cr.scp != nil {
 		cr.scp.addLabel(img, sigL+4, sigT+int(lblSize)+4,
-			fmt.Sprintf("peak  lag=%d  r=%.4f", peakLag, peakVal), fgColor, lblSize)
+			fmt.Sprintf("peak  lag=%+9d  r=%+.4f", peakLag, peakVal), fgColor, lblSize)
 	}
 
 	// ── X-axis labels ─────────────────────────────────────────────────────
