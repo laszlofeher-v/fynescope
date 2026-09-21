@@ -6,6 +6,10 @@ Name = "fynescope"
 ID = "com.github.laszlofeher-v.fynescope"
 Version = "1.3.0"
 Build = 1
+Screenshots = [
+    "pictures/signal.png",
+    "pictures/bodeplot.png",
+]
 
 [Source]
 Repo = "https://github.com/laszlofeher-v/fynescope"
@@ -21,8 +25,3 @@ Developer = "László, Fehér"
 
 [Migrations]
 fyneDo = true
-
-Screenshots = [
-    "pictures/signal.png",
-    "pictures/bodeplot.png",
-]

@@ -702,11 +702,11 @@ func (scp *ScpDesc) toggleGifRecording() {
 }
 
 func (scp *ScpDesc) saveWindowToPng() {
+	if IsFuzzer() {
+		return
+	}
 	img := scp.Window.Canvas().Capture()
 	if img != nil {
-		if IsFuzzer() {
-			return
-		}
 		bg := scp.theme.Color(theme.ColorNameMenuBackground, 0) // Or ColorNameSignalBackground
 		opaqueImg := compositeOverBackground(img, bg)
 

@@ -887,6 +887,11 @@ func (scp *ScpDesc) Test() {
 	}
 }
 
+type logEntry struct {
+	ts  time.Time
+	msg string
+}
+
 // errorCountingWriter is a custom io.Writer that proxies log outputs.
 // It specifically intercepts lines containing "level=ERROR", increments an atomic
 // error counter, and saves the first set of errors for the final report.
@@ -895,29 +900,60 @@ type errorCountingWriter struct {
 	count       *uint64
 	errorsMutex sync.Mutex
 	firstErrors []string
-	logFifo     []string
+	logFifo     []logEntry
 }
 
 func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	str := string(p)
 	s := strings.ToLower(str)
+	now := time.Now()
 
 	w.errorsMutex.Lock()
 	if strings.Contains(s, "level=error") {
 		atomic.AddUint64(w.count, 1)
 		if len(w.firstErrors) < maxLoggedErrors {
-			block := strings.Join(w.logFifo, "") + str
-			w.firstErrors = append(w.firstErrors, block)
+			var sb strings.Builder
+			for _, entry := range w.logFifo {
+				sb.WriteString(entry.msg)
+			}
+			sb.WriteString(str)
+			w.firstErrors = append(w.firstErrors, sb.String())
 		}
 	}
 
-	w.logFifo = append(w.logFifo, str)
-	if len(w.logFifo) > 10 {
-		w.logFifo = w.logFifo[1:]
+	w.logFifo = append(w.logFifo, logEntry{ts: now, msg: str})
+	
+	// Prune logs older than 6 seconds
+	cutoff := now.Add(-6 * time.Second)
+	var pruneIdx int
+	for i, entry := range w.logFifo {
+		if entry.ts.After(cutoff) {
+			pruneIdx = i
+			break
+		}
+	}
+	if pruneIdx > 0 {
+		w.logFifo = w.logFifo[pruneIdx:]
 	}
 	w.errorsMutex.Unlock()
 
 	return w.target.Write(p)
+}
+
+func (w *errorCountingWriter) dumpFifo() {
+	w.errorsMutex.Lock()
+	defer w.errorsMutex.Unlock()
+	if len(w.logFifo) > 0 {
+		var sb strings.Builder
+		sb.WriteString("=== BEGIN HANG LOG DUMP (LAST 6 SECONDS) ===\n")
+		for _, entry := range w.logFifo {
+			sb.WriteString(entry.msg)
+		}
+		sb.WriteString("=== END HANG LOG DUMP ===\n")
+		w.logFifo = nil // Clear after dump to prevent repeated dumps for the same hang
+		
+		fmt.Fprint(w.target, sb.String())
+	}
 }
 
 // randCloseWindow randomly selects a non-main window and closes it.
@@ -954,9 +990,15 @@ func randCloseWindow(scp *ScpDesc) bool {
 	defer fuzzerEventMtx.Unlock()
 
 	wait() // let any in-flight event already submitted to fyne.Do finish
+	closeDone := make(chan struct{})
 	fyne.Do(func() {
+		defer close(closeDone)
 		target.Close()
 	})
+	select {
+	case <-closeDone:
+	case <-time.After(3 * time.Second):
+	}
 	wait() // allow GLFW to process the window-destroyed notification
 	return true
 }
@@ -979,6 +1021,47 @@ func randClosePopup(scp *ScpDesc) bool {
 		}
 	}
 	return false
+}
+
+type fuzzerOpType int
+
+const (
+	fuzzerOpTap fuzzerOpType = iota
+	fuzzerOpKey
+	fuzzerOpScroll
+	fuzzerOpDrag
+)
+
+func getSupportedOps(c fyne.CanvasObject) []fuzzerOpType {
+	if c == nil || !c.Visible() {
+		return nil
+	}
+	switch c.(type) {
+	case *screenRaster:
+		return []fuzzerOpType{fuzzerOpTap, fuzzerOpDrag, fuzzerOpScroll}
+	case *sliderscroll.SliderScroll:
+		return []fuzzerOpType{fuzzerOpDrag, fuzzerOpScroll}
+	case *disp7.DigitArray:
+		return []fuzzerOpType{fuzzerOpKey, fuzzerOpScroll, fuzzerOpDrag}
+	case *selectscroll.SelectScroll:
+		return []fuzzerOpType{fuzzerOpTap, fuzzerOpScroll}
+	case *container.Scroll:
+		return []fuzzerOpType{fuzzerOpScroll}
+	case *widget.Select:
+		return []fuzzerOpType{fuzzerOpScroll, fuzzerOpTap}
+	case *digitEntry, *widget.Entry, *framelessEntry:
+		return []fuzzerOpType{fuzzerOpKey, fuzzerOpTap}
+	case *container.AppTabs:
+		return []fuzzerOpType{fuzzerOpTap}
+	case *widget.Check:
+		return []fuzzerOpType{fuzzerOpTap}
+	case *widget.Button, fyne.Tappable:
+		return []fuzzerOpType{fuzzerOpTap}
+	case fyne.Focusable, keyer:
+		return []fuzzerOpType{fuzzerOpKey, fuzzerOpTap}
+	default:
+		return []fuzzerOpType{fuzzerOpTap}
+	}
 }
 
 // Random is the primary entry point for the Automated UI Fuzzer.
@@ -1154,11 +1237,17 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		defer f.Close()
 
 		uptime := time.Since(startTime)
+		stopTime := time.Now()
 
 		logBuildDate := buildDate
 		if logBuildDate == "" {
 			logBuildDate = startTime.Format("2006-01-02")
 		}
+
+		fmt.Fprintf(f, "Start Time: %s\n", startTime.Format(time.RFC3339))
+		fmt.Fprintf(f, "Stop Time: %s\n", stopTime.Format(time.RFC3339))
+		osStr, cpuStr, memStr, gpuStr := getSystemConfig()
+		fmt.Fprintf(f, "Configuration: OS: %s, CPU: %s, Memory: %s, Video Card: %s\n", osStr, cpuStr, memStr, gpuStr)
 
 		fmt.Fprintf(f, "Commit ID: %s\n", commitID)
 		fmt.Fprintf(f, "Version: %s\n", programVersion)
@@ -1218,10 +1307,26 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		defer close(flushDone)
 		ticker := time.NewTicker(60 * time.Second)
 		defer ticker.Stop()
+		hangTicker := time.NewTicker(1 * time.Second)
+		defer hangTicker.Stop()
+
+		var lastHangEventUnix int64
+
 		for {
 			select {
 			case <-ticker.C:
 				writeFuzzerRecord(inProgressPath, false)
+			case <-hangTicker.C:
+				evTs := atomic.LoadInt64(&lastEventTimeUnix)
+				lastEvT := time.Unix(0, evTs)
+				if time.Since(lastEvT) > 5*time.Second {
+					if evTs != lastHangEventUnix {
+						lastHangEventUnix = evTs
+						// Hang detected
+						log.Printf("level=ERROR Hang detected: no event for %v. Dumping 6s log...", time.Since(lastEvT).Round(time.Millisecond))
+						customWriter.dumpFifo()
+					}
+				}
 			case <-flushStop:
 				return
 			}
@@ -1262,60 +1367,133 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigChan)
 
-	// Remove unused keys array 'a'
-	op := 0
-	ready := make(chan bool)
 	deadline := time.Now().Add(duration)
 	for time.Now().Before(deadline) {
+		// Periodically close open subwindows or overlays if any exist
+		windows := scp.App.Driver().AllWindows()
+		var subWindows []fyne.Window
+		for _, w := range windows {
+			if w != scp.Window && w.Title() != "Fuzzer Status" {
+				subWindows = append(subWindows, w)
+			}
+		}
+
+		hasPopup := false
+		for _, w := range windows {
+			if w.Canvas() != nil && w.Canvas().Overlays() != nil && w.Canvas().Overlays().Top() != nil {
+				hasPopup = true
+				break
+			}
+		}
+
+		if hasPopup && rand.Intn(100) < 5 {
+			ready := make(chan bool, 1)
+			go func() {
+				ready <- randClosePopup(scp)
+			}()
+			select {
+			case <-sigChan:
+				log.Println("Interrupted by signal")
+				return
+			case executed := <-ready:
+				if executed {
+					atomic.AddUint64(&eventCount, 1)
+					atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
+				}
+				continue
+			case <-time.After(timeout):
+				log.Println("Timed out randClosePopup")
+				return
+			}
+		}
+
+		if len(subWindows) > 0 && rand.Intn(100) < 5 {
+			ready := make(chan bool, 1)
+			go func() {
+				ready <- randCloseWindow(scp)
+			}()
+			select {
+			case <-sigChan:
+				log.Println("Interrupted by signal")
+				return
+			case executed := <-ready:
+				if executed {
+					atomic.AddUint64(&eventCount, 1)
+					atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
+				}
+				continue
+			case <-time.After(timeout):
+				log.Println("Timed out randCloseWindow")
+				return
+			}
+		}
+
 		currentTab := scp.getActiveFunctionIndex()
 		controlsMtx.RLock()
-		validKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
-		validKeys = append(validKeys, tabValidKeys[-1]...)
+		candidateKeys := make([]string, 0, len(tabValidKeys[-1])+len(tabValidKeys[currentTab]))
+		candidateKeys = append(candidateKeys, tabValidKeys[-1]...)
 		if currentTab != -1 {
-			validKeys = append(validKeys, tabValidKeys[currentTab]...)
+			candidateKeys = append(candidateKeys, tabValidKeys[currentTab]...)
+		}
+
+		validKeys := make([]string, 0, len(candidateKeys))
+		for _, k := range candidateKeys {
+			if ctrl, ok := controls[k]; ok && ctrl.Obj != nil && ctrl.Obj.Visible() {
+				validKeys = append(validKeys, k)
+			}
 		}
 		controlsMtx.RUnlock()
+
 		if len(validKeys) == 0 {
 			time.Sleep(10 * time.Millisecond)
 			continue
 		}
 		selectedKey := validKeys[rand.Intn(len(validKeys))]
 
-		op = rand.Intn(100)
+		controlsMtx.RLock()
+		ctrl, ok := controls[selectedKey]
+		controlsMtx.RUnlock()
+		if !ok || ctrl.Obj == nil || !ctrl.Obj.Visible() {
+			continue
+		}
+
+		ops := getSupportedOps(ctrl.Obj)
+		if len(ops) == 0 {
+			continue
+		}
+		selectedOp := ops[rand.Intn(len(ops))]
+
+		ready := make(chan bool, 1)
 		go func() {
-			n := 0
 			executed := false
-			switch {
-			case op < 25:
+			switch selectedOp {
+			case fuzzerOpDrag:
 				n := rand.Intn(32) - 16
 				executed = randDrag(selectedKey, float32(n))
-			case op < 50:
-				n = rand.Intn(10) - 5
+			case fuzzerOpScroll:
+				n := rand.Intn(10) - 5
 				executed = randScroll(selectedKey, n)
-			case op < 75:
-				executed = randTap(selectedKey)
-			case op < 96:
+			case fuzzerOpKey:
 				executed = randKey(selectedKey)
-			case op < 98:
-				executed = randCloseWindow(scp)
 			default:
-				executed = randClosePopup(scp)
+				executed = randTap(selectedKey)
 			}
 			ready <- executed
 		}()
+
 		select {
 		case <-sigChan:
 			log.Println("Interrupted by signal")
 			return
 		case executed := <-ready:
 			if !executed {
-				time.Sleep(10 * time.Millisecond)
+				time.Sleep(5 * time.Millisecond)
 				continue
 			}
 			atomic.AddUint64(&eventCount, 1)
 			atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
 		case <-time.After(timeout):
-			log.Println("Timed out ", selectedKey, op)
+			log.Println("Timed out ", selectedKey, selectedOp)
 			buf := make([]byte, 1<<20)
 			n := runtime.Stack(buf, true)
 			log.Println(string(buf[:n]))
@@ -1323,4 +1501,54 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		}
 	}
 	completed = true
+}
+
+func getSystemConfig() (osStr, cpuStr, memStr, gpuStr string) {
+	osStr = runtime.GOOS
+	cpuStr = "Unknown CPU"
+	memStr = "Unknown Memory"
+	gpuStr = "Unknown GPU"
+
+	switch runtime.GOOS {
+	case "linux":
+		if out, err := exec.Command("sh", "-c", "grep 'model name' /proc/cpuinfo | head -n 1").Output(); err == nil {
+			cpuStr = strings.TrimSpace(strings.TrimPrefix(string(out), "model name\t: "))
+		}
+		if out, err := exec.Command("sh", "-c", "grep 'MemTotal' /proc/meminfo").Output(); err == nil {
+			memStr = strings.TrimSpace(strings.TrimPrefix(string(out), "MemTotal:       "))
+		}
+		if out, err := exec.Command("sh", "-c", "lspci | grep -i 'vga\\|3d\\|display' | head -n 1").Output(); err == nil && len(out) > 0 {
+			gpuStr = strings.TrimSpace(string(out))
+		}
+	case "darwin":
+		if out, err := exec.Command("sysctl", "-n", "machdep.cpu.brand_string").Output(); err == nil {
+			cpuStr = strings.TrimSpace(string(out))
+		}
+		if out, err := exec.Command("sysctl", "-n", "hw.memsize").Output(); err == nil {
+			memStr = strings.TrimSpace(string(out))
+		}
+		if out, err := exec.Command("sh", "-c", "system_profiler SPDisplaysDataType | grep 'Chipset Model' | head -n 1").Output(); err == nil && len(out) > 0 {
+			gpuStr = strings.TrimSpace(strings.TrimPrefix(string(out), "      Chipset Model: "))
+		}
+	case "windows":
+		if out, err := exec.Command("wmic", "cpu", "get", "name").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 1 {
+				cpuStr = strings.TrimSpace(lines[1])
+			}
+		}
+		if out, err := exec.Command("wmic", "computersystem", "get", "totalphysicalmemory").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 1 {
+				memStr = strings.TrimSpace(lines[1])
+			}
+		}
+		if out, err := exec.Command("wmic", "path", "win32_VideoController", "get", "name").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 1 {
+				gpuStr = strings.TrimSpace(lines[1])
+			}
+		}
+	}
+	return
 }
