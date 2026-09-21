@@ -130,6 +130,16 @@ For a complete breakdown of supported functionality versus limitations, please s
 
 ---
 
+## Development Tools
+
+`fynescope` was developed with the following tools:
+
+- **[LiteIDE](https://github.com/visualfc/liteide)** — primary Go IDE used throughout the project.
+- **[Antigravity](https://antigravity.dev)** — AI-powered coding assistant (by Google DeepMind) used for pair programming, refactoring, and documentation.
+- **AI assistance** — various AI language models were used to help design algorithms, coding, code review, and writing tests and documentation.
+
+---
+
 ## License
 
 This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.  
