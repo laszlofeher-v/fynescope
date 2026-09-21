@@ -208,6 +208,7 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 	if psControl.hasActiveDigitalTrigger() {
 		return psControl.sendAdvancedTrigger()
 	}
+	_ = psControl.applyDigitalTrigger() // Ensure digital trigger is cleared on the device
 	at := int16(0)
 	if psControl.triggerSetting.Mode == Auto {
 		at = autoTriggerMs
