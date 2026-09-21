@@ -445,7 +445,6 @@ func ps2000aSetSimpleTrigger(handle int16, enable bool, source ChannelId, thresh
 func ps2000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
 
-	slog.Debug("ps2000aSetDataBuffer", "handle", handle, "ch", ch /* "bufferIn", bufferIn,*/, "segmentIndex", segmentIndex, "mode", mode)
 	stat := C.ps2000aSetDataBuffer((C.short)(handle), (C.int)(ch), (*C.short)(&bufferIn[0]),
 		(C.int)(len(bufferIn)), (C.uint)(segmentIndex),
 		(C.PS2000A_RATIO_MODE)(mode))
@@ -456,7 +455,6 @@ func ps2000aSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentI
 }
 
 func ps2000aSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
-	slog.Debug("ps2000aSetDataBuffers", "handle", handle, "ch", ch, "bufferMax", bufferMax, "bufferMin", bufferMin, "segmentIndex", segmentIndex, "mode", mode)
 	stat := C.ps2000aSetDataBuffers((C.short)(handle), (C.int)(ch), (*C.short)(&bufferMax[0]),
 		(*C.short)(&bufferMin[0]), (C.int)(len(bufferMax)), (C.uint)(segmentIndex),
 		(C.PS2000A_RATIO_MODE)(mode))

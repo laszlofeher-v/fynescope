@@ -182,8 +182,9 @@ var (
 	// holds a write lock so no new events reach GLFW while a window is torn down.
 	fuzzerEventMtx sync.RWMutex
 	FuzzerCommitID string
+	minFuzzerSleepTime = 150 * time.Millisecond
+	minFuzzerSleepMu   sync.RWMutex
 )
-
 // GetSleepTime returns the current dynamically calculated sleep duration,
 // adjusting for full-screen mode if currently active.
 func GetSleepTime() time.Duration {
@@ -191,6 +192,15 @@ func GetSleepTime() time.Duration {
 	d := sleepTime
 	scp := activeScp
 	sleepTimeMu.RUnlock()
+
+	if IsFuzzer() {
+		minFuzzerSleepMu.RLock()
+		minSleep := minFuzzerSleepTime
+		minFuzzerSleepMu.RUnlock()
+		if d < minSleep {
+			d = minSleep
+		}
+	}
 
 	if scp != nil && scp.Window != nil {
 		if scp.Window.FullScreen() || (scp.Settings != nil && scp.Settings.Window.Fullscreen) {
@@ -209,16 +219,28 @@ func GetSleepTime() time.Duration {
 
 // SetSleepTime safely updates the sleep duration.
 func SetSleepTime(d time.Duration) {
+	if IsFuzzer() {
+		minFuzzerSleepMu.RLock()
+		minSleep := minFuzzerSleepTime
+		minFuzzerSleepMu.RUnlock()
+		if d < minSleep {
+			d = minSleep
+		}
+	}
 	sleepTimeMu.Lock()
 	defer sleepTimeMu.Unlock()
 	sleepTime = d
 }
+
 
 // CalibrateSleepTime calculates the optimal sleepTime based on CPU and Video speed.
 // It benchmarks CPU computation latency and UI thread event dispatch latency,
 // measures OpenGL window canvas rendering/capture time, and computes a sleepTime
 // that allows the GUI to reliably process commands without lagging or freezing.
 func (scp *ScpDesc) CalibrateSleepTime() time.Duration {
+	if IsFuzzer() {
+		return 150 * time.Millisecond
+	}
 	sleepTimeMu.Lock()
 	activeScp = scp
 	sleepTimeMu.Unlock()
@@ -1325,6 +1347,18 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 						// Hang detected
 						log.Printf("level=ERROR Hang detected: no event for %v. Dumping 6s log...", time.Since(lastEvT).Round(time.Millisecond))
 						customWriter.dumpFifo()
+						
+						// Increase the minimum fuzzer sleep time, capping at 1000ms
+						minFuzzerSleepMu.Lock()
+						minFuzzerSleepTime += 50 * time.Millisecond
+						if minFuzzerSleepTime > 1000 * time.Millisecond {
+							minFuzzerSleepTime = 1000 * time.Millisecond
+						}
+						newSleep := minFuzzerSleepTime
+						minFuzzerSleepMu.Unlock()
+						
+						SetSleepTime(newSleep)
+						log.Printf("level=WARN Increased fuzzer sleepTime to %v to prevent further hangs", newSleep)
 					}
 				}
 			case <-flushStop:

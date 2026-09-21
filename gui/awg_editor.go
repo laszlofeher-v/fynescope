@@ -689,6 +689,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	})
 	addToTest(exportCsvBtn, "awgExportCsvBtn", -1)
 	patternGenBtn := widget.NewButton("Pattern Gen", func() {
+		if IsFuzzer() {
+			return
+		}
 		if scp.awgWindow == nil {
 			return
 		}
