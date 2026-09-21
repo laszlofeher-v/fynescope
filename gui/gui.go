@@ -1189,6 +1189,9 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	addToTest(scp.runblockButton, runblockButtonId, -1)
 	setfullscreen := func() {
+		if IsFuzzer() {
+			return
+		}
 		scp.Settings.Window.Fullscreen = true
 		scp.Window.SetFullScreen(true)
 		go func() {
@@ -1197,6 +1200,9 @@ func (scp *ScpDesc) build2000Gui() {
 		}()
 	}
 	setnofullscreen := func() {
+		if IsFuzzer() {
+			return
+		}
 		scp.Settings.Window.Fullscreen = false
 		scp.Window.SetFullScreen(false)
 		go func() {
