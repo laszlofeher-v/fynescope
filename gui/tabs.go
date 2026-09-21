@@ -115,7 +115,6 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	// ensure tab is not already in Items
 	for _, t := range scp.controlTab.Items {
 		if t == tab {
-			scp.controlTab.Select(tab)
 			return
 		}
 	}
@@ -143,5 +142,4 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 
 	scp.controlTab.Items = newItems
 	scp.controlTab.Refresh()
-	scp.controlTab.Select(tab)
 }

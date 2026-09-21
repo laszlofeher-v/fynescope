@@ -236,6 +236,14 @@ func (scp *ScpDesc) updateDigitalTrigger() {
 }
 
 func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
+	if genericps.DigitalDirectionRising == 0 && genericps.DigitalDontCare == 0 {
+		genericps.DigitalDontCare = 0
+		genericps.DigitalDirectionLow = 1
+		genericps.DigitalDirectionHigh = 2
+		genericps.DigitalDirectionRising = 3
+		genericps.DigitalDirectionFalling = 4
+		genericps.DigitalDirectionRisingOrFalling = 5
+	}
 	dirOptions := []string{digitalDc, low, high, up, down, upDown}
 	dirMap := map[string]genericps.DigitalDirection{
 		digitalDc: genericps.DigitalDontCare,
@@ -265,6 +273,8 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 			onWindowClose := func() {
 				scp.digPortWindow = nil
+				scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(true))
+				scp.digPortTab.Content = scp.digPortLayout
 				scp.dockTab(scp.digPortTab)
 				scp.controlTab.SelectIndex(ftTabIndex)
 				fyne.Do(scp.digPortTab.Content.Refresh)
@@ -519,13 +529,13 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			if dirVal, ok := dirMap[sel]; ok {
 				scp.Settings.Digital.Trigger.Directions[chIdx] = dirVal
 
-				if dirVal == genericps.DigitalDirectionRising || dirVal == genericps.DigitalDirectionFalling || dirVal == genericps.DigitalDirectionRisingOrFalling {
+				if sel == up || sel == down || sel == upDown {
 					for j := 0; j < 16; j++ {
 						if j != chIdx {
 							d := scp.Settings.Digital.Trigger.Directions[j]
 							if d == genericps.DigitalDirectionRising || d == genericps.DigitalDirectionFalling || d == genericps.DigitalDirectionRisingOrFalling {
 								scp.Settings.Digital.Trigger.Directions[j] = genericps.DigitalDontCare
-								if trigSelects[j] != nil {
+								if trigSelects[j] != nil && trigSelects[j].Selected != digitalDc {
 									trigSelects[j].SetSelected(digitalDc)
 								}
 							}

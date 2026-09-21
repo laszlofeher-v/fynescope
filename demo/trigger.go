@@ -163,8 +163,17 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	var intervalSourceCh int = -1
 	var intervalEntryLevel float64 = 0
 
+	iter := 0
+	maxIters := td.maxIterations
+	if maxIters <= 0 {
+		maxIters = 100000
+	}
 	t := float64(0)
 	for t < maxTime {
+		if iter >= maxIters {
+			break
+		}
+		iter++
 		// Evaluate digital conditions at time t
 		digitalMatched := false
 		if digitalActive {

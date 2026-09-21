@@ -268,7 +268,16 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		}
 
 		reqSamples := uint32(pre + post)
-		found, triggerTime := triggerDetector.FindTriggerPoint(signalFunc, reqSamples, 1.0, dt)
+		maxIter := int(reqSamples)
+		if maxIter < 1000 {
+			maxIter = 1000
+		}
+		if maxIter > 100000 {
+			maxIter = 100000
+		}
+		triggerDetector.SetMaxIterations(maxIter)
+		maxTime := float64(maxIter) * dt
+		found, triggerTime := triggerDetector.FindTriggerPoint(signalFunc, reqSamples, maxTime, dt)
 		if found {
 			for ch := 0; ch < 4; ch++ {
 				buf := buffers[ch]
@@ -297,8 +306,9 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 					var aggMax float64 = -math.MaxFloat64
 					var decimateVal float64
 
-					for r := 0; r < downSampleRatio; r++ {
-						rawIdx := i*downSampleRatio + r
+					if downSampleMode == 2 || downSampleRatio <= 1 {
+						// Decimate or 1:1: only evaluate raw sample at r = 0
+						rawIdx := i * downSampleRatio
 						rt := (float64(rawIdx)-float64(pre))*dt + triggerTime
 
 						if etsEnabled && ch == 0 {
@@ -309,16 +319,33 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 							}
 						}
 
-						val := calculateSampleLevelAtTime(rt, ch)
-						aggSum += val
-						if val < aggMin {
-							aggMin = val
-						}
-						if val > aggMax {
-							aggMax = val
-						}
-						if r == 0 {
-							decimateVal = val
+						decimateVal = calculateSampleLevelAtTime(rt, ch)
+						aggMin = decimateVal
+						aggMax = decimateVal
+					} else {
+						for r := 0; r < downSampleRatio; r++ {
+							rawIdx := i*downSampleRatio + r
+							rt := (float64(rawIdx)-float64(pre))*dt + triggerTime
+
+							if etsEnabled && ch == 0 {
+								t0Fs := 1e15 * float64(pre) * dt
+								rteFs := float64(rawIdx) * dt * 1e15
+								if i < len(etsTimeBuffer) {
+									etsTimeBuffer[i] = int64(rteFs - t0Fs)
+								}
+							}
+
+							val := calculateSampleLevelAtTime(rt, ch)
+							aggSum += val
+							if val < aggMin {
+								aggMin = val
+							}
+							if val > aggMax {
+								aggMax = val
+							}
+							if r == 0 {
+								decimateVal = val
+							}
 						}
 					}
 

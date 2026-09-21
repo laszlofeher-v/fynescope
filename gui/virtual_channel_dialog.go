@@ -356,6 +356,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 			}
 			onWindowClose := func() {
 				scp.virtualChWindow = nil
+				scp.vchTab.Content = scp.buildVirtualChannelContent(true)
 				scp.dockTab(scp.vchTab)
 				scp.controlTab.SelectIndex(ftTabIndex)
 				fyne.Do(scp.vchTab.Content.Refresh)

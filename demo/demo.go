@@ -536,8 +536,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					downSampleRatio = 1
 				}
 
-				for r := uint32(0); r < downSampleRatio; r++ {
-					rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)
+				if (downSampleRatioMode != RatioModeAverage && downSampleRatioMode != RatioModeAggregate) || downSampleRatio <= 1 {
+					rawSampleIndex := float64(t)*float64(downSampleRatio) - float64(nOfPreTrSamples)
 					rt := rawSampleIndex*dt + triggerTime
 
 					levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
@@ -549,15 +549,33 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 						levelFloat = acFilters[ch].Step(levelFloat)
 					}
 
-					aggSum += levelFloat
-					if levelFloat < aggMin {
-						aggMin = levelFloat
-					}
-					if levelFloat > aggMax {
-						aggMax = levelFloat
-					}
-					if r == 0 {
-						decimateVal = levelFloat
+					decimateVal = levelFloat
+					aggMin = levelFloat
+					aggMax = levelFloat
+				} else {
+					for r := uint32(0); r < downSampleRatio; r++ {
+						rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)
+						rt := rawSampleIndex*dt + triggerTime
+
+						levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
+
+						if filters[ch] != nil {
+							levelFloat = filters[ch].Step(levelFloat)
+						}
+						if acFilters[ch] != nil {
+							levelFloat = acFilters[ch].Step(levelFloat)
+						}
+
+						aggSum += levelFloat
+						if levelFloat < aggMin {
+							aggMin = levelFloat
+						}
+						if levelFloat > aggMax {
+							aggMax = levelFloat
+						}
+						if r == 0 {
+							decimateVal = levelFloat
+						}
 					}
 				}
 
