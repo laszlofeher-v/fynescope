@@ -17,17 +17,18 @@ Whether connected to physical hardware or running offline in simulated demo mode
 - **Time-Domain Oscilloscope `f(t)`**: Multi-channel waveform capture, vertical and time divisions, linear and $\sin(x)/x$ interpolation, persistence, and an independent **Time Zoom** window for simultaneous wide-scale and detail inspection.
 - **Mixed-Signal (MSO) Support**: Digital channel visualization (D0–D15) for MSO models (e.g. 2206B MSO), digital edge/pattern triggers, configurable logic thresholds (TTL, CMOS, ECL, or custom levels), and flexible channel stacking.
 - **Comprehensive Triggering**: Simple Edge, Advanced Edge, Window, Interval, Pulse Width, Window Pulse Width, Runt, Dropout, Window Dropout, Logic, and Complex multi-channel triggers.
-- **Protocol Decoding**: Built-in serial protocol decoding for **UART** and **SPI** directly from captured analog signals, complete with inline frame token overlays and error flags.
+- **Protocol Decoding**: Built-in serial protocol decoding for **UART** and **SPI** on analog channels, complete with inline frame token overlays and error flags.
 - **Spectrum Analyzer `FFT`**: Real-time frequency-domain analysis with linear/logarithmic frequency axes.
 - **Frequency Response Analysis `f(f)` / Bode Plots**: Automated frequency sweeps with magnitude and phase response plots, auto-ranging support, and integration with the built-in AWG or external SCPI signal generators.
 - **X-Y Mode `f(v)`**: Plot one channel against another to analyze phase relationships and Lissajous patterns.
 - **Virtual / Math Channels**: Create real-time computed channels from physical inputs using arbitrary mathematical expressions (e.g. `chA + chB`, `chA * chB`, offsets, and scaling) via the [`expr`](https://github.com/antonmedv/expr) engine.
 - **Digital & Analog Filters**: Real-time low-pass, high-pass, band-pass, and band-stop digital filters (FIR/IIR) with Zero-Phase (FiltFilt) capability, plus simulated RLC filters in demo mode.
+- **Correlation Calculation**: Real-time Pearson scalar correlation and Cross-Correlation function calculation between channels.
 - **Signal Generator / AWG**: Full control of built-in arbitrary waveform generators (sine, square, triangle, ramp, DC, noise, and sweeps).
+- **SCPI Support**: Control external SCPI signal generators over USB for automated testing and Bode plot generation.
 - **Hardware-Free Demo Mode**: Built-in signal simulator generating multi-channel analog waveforms, digital patterns, sweeps, noise — explore the full UI without physical hardware.
 - **Remote Web Server & Voice Control**: Live MJPEG streaming to any web browser with hands-free voice commands via the Web Speech API (`-webport`), protected by basic authentication.
 - **Remote HTTPS REST API**: Query oscilloscope status and configure parameters programmatically over a secure REST API (`-apiport`, `-apiauth`).
-- **Contextual Help**: Widget help on hover for quick on-screen guidance.
 
 ---
 
