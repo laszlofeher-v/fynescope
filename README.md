@@ -6,7 +6,9 @@
   <img src="pictures/signal.png" width="100%" alt="Fynescope Interface Screenshot">
 </p>
 
-`fynescope` is a cross-platform (Windows and Linux) graphical user interface and control application for PicoScope PC Oscilloscopes (focusing on the PicoScope 2000B and 2000B MSO Series). It is written in Go and built on the [Fyne](https://fyne.io/) widget toolkit and the PicoScope 2000A series SDK.
+**Supported Platforms:** Linux, Windows 11 (x64, ARM64 / Raspberry Pi 4 and newer).
+
+`fynescope` is a graphical user interface and control application for PicoScope PC Oscilloscopes (focusing on the PicoScope 2000B and 2000B MSO Series). It is written in Go and built on the [Fyne](https://fyne.io/) widget toolkit and the PicoScope 2000A series SDK.
 
 Whether connected to physical hardware or running offline in simulated demo mode, `fynescope` delivers a fast, responsive, and feature-rich oscilloscope experience.
 
@@ -19,7 +21,7 @@ Whether connected to physical hardware or running offline in simulated demo mode
 - **Comprehensive Triggering**: Simple Edge, Advanced Edge, Window, Interval, Pulse Width, Window Pulse Width, Runt, Dropout, Window Dropout, Logic, and Complex multi-channel triggers.
 - **Protocol Decoding**: Built-in serial protocol decoding for **UART** and **SPI** on analog channels, complete with inline frame token overlays and error flags.
 - **Spectrum Analyzer `FFT`**: Real-time frequency-domain analysis with linear/logarithmic frequency axes.
-- **Frequency Response Analysis `f(f)` / Bode Plots**: Automated frequency sweeps with magnitude and phase response plots, auto-ranging support, and integration with the built-in AWG or external SCPI signal generators.
+- **Frequency Response Analysis `f(f)` / Bode Plots**: Automated frequency sweeps with magnitude and phase response plots and integration with the built-in AWG or external SCPI signal generators.
 - **X-Y Mode `f(v)`**: Plot one channel against another to analyze phase relationships and Lissajous patterns.
 - **Virtual / Math Channels**: Create real-time computed channels from physical inputs using arbitrary mathematical expressions (e.g. `chA + chB`, `chA * chB`, offsets, and scaling) via the [`expr`](https://github.com/antonmedv/expr) engine.
 - **Digital & Analog Filters**: Real-time low-pass, high-pass, band-pass, and band-stop digital filters (FIR/IIR) with Zero-Phase (FiltFilt) capability, plus simulated RLC filters in demo mode.
@@ -34,37 +36,24 @@ Whether connected to physical hardware or running offline in simulated demo mode
 
 ## Quick Start
 
+For complete, step-by-step setup guides (including Windows toolchain setup, Linux packages, Raspberry Pi, and driver downloads), please refer to the **[Getting Started Wiki](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)**.
+
 ### 1. Run in Demo Mode (No Hardware or PicoSDK Required)
 
 You can run `fynescope` immediately in pure-Go demo mode without installing any PicoScope drivers or C toolchains:
 
 ```bash
-# Run directly
 go run -tags=demo . -demo
-
-# Or build the binary
-go build -tags=demo -o fynescope .
-./fynescope -demo
 ```
 
-### 2. Build with Real Hardware Support (Linux & Windows)
+### 2. Build with Real Hardware Support
 
-Requires Go 1.27, a C compiler (GCC via MSYS2 on Windows, or standard GCC on Linux), and the official PicoScope SDK (`libps2000a`).
-
-For complete, step-by-step setup guides (including Windows toolchain setup, Linux packages, Raspberry Pi, and driver downloads), refer to [github-wiki/Getting-Started.md](github-wiki/Getting-Started.md) (also available on the [online Wiki](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)):
+Requires Go 1.27, a C compiler, and the official PicoScope SDK (`libps2000a`). See the Wiki for installation instructions.
 
 ```bash
-# Clone the repository
 git clone https://github.com/laszlofeher-v/fynescope.git
 cd fynescope
-
-# Download dependencies
-go mod tidy
-
-# Build native binary
 go build -o fynescope .
-
-# Launch application (auto-detects connected PicoScope)
 ./fynescope
 ```
 
@@ -85,7 +74,6 @@ go build -o fynescope .
 ./fynescope -webport=8080             # Start live MJPEG stream & voice control web server
 ./fynescope -apiport=8443             # Start HTTPS remote control REST API server
 ./fynescope -gif                      # Enable UI button to export animated GIFs
-./fynescope -ff-auto-range            # Enable auto-ranging during Bode frequency sweeps
 ./fynescope -loglevel=info            # Log verbosity: debug, info, warning, error
 ./fynescope -about                    # Display version, build date, and license information
 ```
@@ -105,7 +93,7 @@ go build -o fynescope .
 
 ## Documentation
 
-Comprehensive guides are available locally in the repository's [github-wiki/](github-wiki/) directory and published online on the **[GitHub Wiki](https://github.com/laszlofeher-v/fynescope/wiki)**:
+Comprehensive guides are available in the repository's [github-wiki/](github-wiki/) directory and published online on the **[GitHub Wiki](https://github.com/laszlofeher-v/fynescope/wiki)**:
 
 - **[Getting Started](github-wiki/Getting-Started.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)): Detailed setup for Linux, Windows, and Raspberry Pi, driver installation, build tags, and CLI flags.
 - **[Features and Controls](github-wiki/Features-and-Controls.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Features-and-Controls)): Visual indicators, mouse shortcuts, zooming, and media export controls.
