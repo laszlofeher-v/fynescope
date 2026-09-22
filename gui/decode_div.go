@@ -118,13 +118,60 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 
 	chRange := scp.Settings.Channels[settings.Channel1].VRange
 
+	predefinedThresholds := map[string]float64{
+		"TTL (1.5V)":        1.5,
+		"CMOS 5V (2.5V)":    2.5,
+		"CMOS 3.3V (1.65V)": 1.65,
+		"CMOS 2.5V (1.25V)": 1.25,
+		"CMOS 1.8V (0.9V)":  0.9,
+		"ECL (-1.3V)":       -1.3,
+	}
+	thresholdOrder := []string{
+		"Custom", "TTL (1.5V)", "CMOS 5V (2.5V)", "CMOS 3.3V (1.65V)", "CMOS 2.5V (1.25V)", "CMOS 1.8V (0.9V)", "ECL (-1.3V)",
+	}
+
 	thresholdMv := scp.adcToMv(float64(settings.Threshold), chRange)
 	thresholdEntry := widget.NewEntry()
 	thresholdEntry.SetText(strconv.FormatFloat(thresholdMv/1000.0, 'f', -1, 64))
+	
+	var thresholdSelect *selectscroll.SelectScroll
+	thresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, _ selectscroll.Exception) {
+		if sel == "Custom" {
+			return
+		}
+		if val, ok := predefinedThresholds[sel]; ok {
+			thresholdEntry.SetText(strconv.FormatFloat(val, 'f', -1, 64))
+		}
+	}, "Custom")
+	
+	currV := thresholdMv / 1000.0
+	initialSel := "Custom"
+	for k, v := range predefinedThresholds {
+		if v > currV-0.01 && v < currV+0.01 {
+			initialSel = k
+			break
+		}
+	}
+	thresholdSelect.SetSelected(initialSel)
+
 	thresholdEntry.OnChanged = func(s string) {
 		if valV, err := strconv.ParseFloat(s, 64); err == nil {
 			currRange := scp.Settings.Channels[settings.Channel1].VRange
 			settings.Threshold = int16(scp.mvToAdc(int32(valV*1000.0), currRange))
+			
+			matched := false
+			for k, v := range predefinedThresholds {
+				if v > valV-0.01 && v < valV+0.01 {
+					if thresholdSelect.Selected != k {
+						thresholdSelect.SetSelected(k)
+					}
+					matched = true
+					break
+				}
+			}
+			if !matched && thresholdSelect.Selected != "Custom" {
+				thresholdSelect.SetSelected("Custom")
+			}
 		}
 	}
 	hysteresisMv := scp.adcToMv(float64(settings.Hysteresis), chRange)
@@ -205,7 +252,9 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 	if settings.Protocol == "UART" {
 		form.Append("Show Bit Lines", showBitstartsCheck)
 	}
-	form.Append("Threshold (V)", thresholdEntry)
+	
+	thresholdContainer := container.NewBorder(nil, nil, nil, thresholdSelect, thresholdEntry)
+	form.Append("Threshold (V)", thresholdContainer)
 	form.Append("Hysteresis (V)", hysteresisEntry)
 
 	var undockBtn *widget.Button
