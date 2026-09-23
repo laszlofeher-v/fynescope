@@ -1651,7 +1651,6 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	case "2206BMSO":
-		slog.Warn("2206BMSO not tested")
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	case "2207BMSO":
