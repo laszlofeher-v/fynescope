@@ -470,6 +470,9 @@ func (psControl *PscDesc) NewChannels(numberOfChannels int) {
 
 func (psControl *PscDesc) ChannelRanges(chIndex genericps.ChannelId) (ranges []int32,
 	err error) {
+	if psControl == nil || psControl.Con == nil {
+		return nil, nil
+	}
 	allowedRanges := make([]int32, 32)
 	length, err := psControl.Con.GetChannelInformation(genericps.ChannelInfoRanges,
 		0, allowedRanges, chIndex)

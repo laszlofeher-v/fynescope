@@ -102,7 +102,16 @@ var (
 	rangeEnumToString             map[genericps.RangeEnum]string
 )
 
+func init() {
+	initMaps()
+	sortInputRanges()
+}
+
 func initMaps() {
+	if genericps.TriggerRising == 0 && genericps.TriggerFalling == 0 {
+		genericps.TriggerRising = 2
+		genericps.TriggerFalling = 3
+	}
 	coupleTypes = make(map[string]genericps.Coupling)
 	coupleTypes[ac] = genericps.Ac
 	coupleTypes[dc] = genericps.Dc
@@ -774,12 +783,16 @@ func (scp *ScpDesc) SetChannelColors(col color.Color,
 	channelViewer := scp.channelViewers[chIndex]
 	cfg := &scp.Settings.Channels[chIndex]
 	cfg.Col[scp.Settings.ChannelColorIndex] = col.(color.NRGBA)
-	if channelViewer.enableCheckbox.Val &&
-		channelViewer.triggerCheckbox.Checked {
-		scp.triggerThresholdDisp.SetOncolor(
-			cfg.Col[scp.Settings.ChannelColorIndex])
-		scp.triggerHysteresisDisp.SetOncolor(
-			cfg.Col[scp.Settings.ChannelColorIndex])
+	if channelViewer.enableCheckbox != nil && channelViewer.enableCheckbox.Val &&
+		channelViewer.triggerCheckbox != nil && channelViewer.triggerCheckbox.Checked {
+		if scp.triggerThresholdDisp != nil {
+			scp.triggerThresholdDisp.SetOncolor(
+				cfg.Col[scp.Settings.ChannelColorIndex])
+		}
+		if scp.triggerHysteresisDisp != nil {
+			scp.triggerHysteresisDisp.SetOncolor(
+				cfg.Col[scp.Settings.ChannelColorIndex])
+		}
 		if scp.triggerLowerThresholdDisp != nil {
 			scp.triggerLowerThresholdDisp.SetOncolor(cfg.Col[scp.Settings.ChannelColorIndex])
 		}
@@ -869,12 +882,16 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 		scp.setTrigger(true, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection, 1000, scp.Settings.Time.TriggerTimeOffset)
 	}
-	max, min, err := scp.psControl.Con.GetAnalogueOffset(int(
-		scp.Settings.Channels[chIndex].VRange),
-		scp.Settings.Channels[chIndex].CoupleType)
-	scp.channelViewers[chIndex].offset.SetMinMax(int(min*1000),
-		int(max*1000))
-	slog.Debug("AnalogueOffset", "max", max, "min", min, "err", err)
+	if scp.psControl != nil && scp.psControl.Con != nil {
+		max, min, err := scp.psControl.Con.GetAnalogueOffset(int(
+			scp.Settings.Channels[chIndex].VRange),
+			scp.Settings.Channels[chIndex].CoupleType)
+		if int(chIndex) < len(scp.channelViewers) && scp.channelViewers[chIndex].offset != nil {
+			scp.channelViewers[chIndex].offset.SetMinMax(int(min*1000),
+				int(max*1000))
+		}
+		slog.Debug("AnalogueOffset", "max", max, "min", min, "err", err)
+	}
 	scp.ffFullRefresh = true
 	scp.refreshRasters()
 	scp.clearAllFtPersistentLayers()
@@ -882,17 +899,21 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 
 	// Update the device
 	channelCopy := scp.Settings.Channels[chIndex]
-	go func(c settings.ChSettings) {
-		scp.psControl.SetChannelCh <- &c
-	}(channelCopy)
-	if channelViewer.enableCheckbox.Val &&
-		channelViewer.triggerCheckbox.Checked {
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+	if scp.psControl != nil && scp.psControl.SetChannelCh != nil {
+		go func(c settings.ChSettings) {
+			scp.psControl.SetChannelCh <- &c
+		}(channelCopy)
+	}
+	if channelViewer.enableCheckbox != nil && channelViewer.enableCheckbox.Val &&
+		channelViewer.triggerCheckbox != nil && channelViewer.triggerCheckbox.Checked {
+		if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
+		}
 	}
 	scp.SaveSettings()
 }
@@ -909,10 +930,14 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	}
 	scp.clearAllDftPersistentLayers()
 
-	rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
 	var ranges []string
-	for _, r := range rangesEnum {
-		ranges = append(ranges, inputRanges[r])
+	if scp.psControl != nil && scp.psControl.Con != nil {
+		rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
+		for _, r := range rangesEnum {
+			if int(r) < len(inputRanges) {
+				ranges = append(ranges, inputRanges[r])
+			}
+		}
 	}
 
 	indexChanged := false
@@ -967,17 +992,21 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 		// Just send channel update since X10 state changed
 		channel.ID = chIndex
 		channelCopy := scp.Settings.Channels[chIndex]
-		go func(c settings.ChSettings) {
-			scp.psControl.SetChannelCh <- &c
-		}(channelCopy)
-		if channelViewer.enableCheckbox.Val &&
-			channelViewer.triggerCheckbox.Checked {
-			triggerCopy := scp.triggerSettingMsg
-			triggerCopy.Done = make(chan struct{}, 1)
-			go func(t control.TriggerDescMsg) {
-				scp.psControl.SetTriggerCh <- &t
-				<-t.Done
-			}(triggerCopy)
+		if scp.psControl != nil && scp.psControl.SetChannelCh != nil {
+			go func(c settings.ChSettings) {
+				scp.psControl.SetChannelCh <- &c
+			}(channelCopy)
+		}
+		if channelViewer.enableCheckbox != nil && channelViewer.enableCheckbox.Val &&
+			channelViewer.triggerCheckbox != nil && channelViewer.triggerCheckbox.Checked {
+			if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+				triggerCopy := scp.triggerSettingMsg
+				triggerCopy.Done = make(chan struct{}, 1)
+				go func(t control.TriggerDescMsg) {
+					scp.psControl.SetTriggerCh <- &t
+					<-t.Done
+				}(triggerCopy)
+			}
 		}
 		scp.ffFullRefresh = true
 		scp.refreshRasters()
@@ -991,12 +1020,14 @@ func (scp *ScpDesc) EnableChannel(chIndex genericps.ChannelId, c bool) {
 	channelViewer := &scp.channelViewers[chIndex]
 
 	if !c {
-		if scp.triggerCheck[chIndex].Checked {
+		if int(chIndex) < len(scp.triggerCheck) && scp.triggerCheck[chIndex] != nil && scp.triggerCheck[chIndex].Checked {
 			scp.triggerCheck[chIndex].Checked = false
 			scp.triggerCheck[chIndex].Refresh()
 			channel.TriggerSource = false
 			scp.triggerSource = dontCare
-			scp.triggerDisplays.Hide()
+			if scp.triggerDisplays != nil {
+				scp.triggerDisplays.Hide()
+			}
 			scp.setTrigger(c, chIndex, 0, channel.Trigger.TriggerDirection,
 				1000, scp.Settings.Time.TriggerTimeOffset)
 		}
@@ -1028,16 +1059,20 @@ func (scp *ScpDesc) EnableChannel(chIndex genericps.ChannelId, c bool) {
 	// Update device
 	channel.ID = chIndex
 	channelCopy := *channel
-	go func(c settings.ChSettings) {
-		scp.psControl.SetChannelCh <- &c
-	}(channelCopy)
+	if scp.psControl != nil && scp.psControl.SetChannelCh != nil {
+		go func(c settings.ChSettings) {
+			scp.psControl.SetChannelCh <- &c
+		}(channelCopy)
+	}
 	if channel.Enabled && channel.TriggerSource {
-		triggerCopy := scp.triggerSettingMsg
-		triggerCopy.Done = make(chan struct{}, 1)
-		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
-			<-t.Done
-		}(triggerCopy)
+		if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+			triggerCopy := scp.triggerSettingMsg
+			triggerCopy.Done = make(chan struct{}, 1)
+			go func(t control.TriggerDescMsg) {
+				scp.psControl.SetTriggerCh <- &t
+				<-t.Done
+			}(triggerCopy)
+		}
 	}
 }
 

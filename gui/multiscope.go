@@ -88,10 +88,45 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 		statusIndicator.Refresh()
 	})
 	
+	// Common trigger channel selector: "None", "Ch A", "Ch B", ... and "D0".."D15"
+	var trigOptions []string
+	trigOptions = append(trigOptions, "None")
+	count := int(scp.channelCount)
+	if count == 0 {
+		count = 2
+	}
+	for i := 0; i < count && i < 4; i++ {
+		trigOptions = append(trigOptions, fmt.Sprintf("Ch %c", 'A'+i))
+	}
+	for i := 0; i < 16; i++ {
+		trigOptions = append(trigOptions, fmt.Sprintf("D%d", i))
+	}
+
+	curTrig := scp.Settings.Multiscope.CommonTrigger
+	if curTrig == "" {
+		curTrig = "Ch A"
+	}
+	scp.multiCommonTrigSelect = widget.NewSelect(trigOptions, func(s string) {
+		scp.Settings.Multiscope.CommonTrigger = s
+		scp.applyCommonTrigger(s)
+		scp.SaveSettings()
+	})
+	scp.multiCommonTrigSelect.SetSelected(curTrig)
+
+	syncSettingsBtn := tastybutton.NewTastyButton("Sync Settings", tastybutton.Green, func() {
+		scp.publishMultiSync()
+	})
+
+	scp.multiServerStatusLabel = widget.NewLabel("")
+	
 	serverView := container.NewVBox(
 		widget.NewLabel("Server Port:"),
 		serverPortDisp,
 		container.NewHBox(startServerBtn, stopServerBtn, widget.NewLabel("Status:"), statusIndicatorContainer),
+		widget.NewLabel("Common Trigger Channel:"),
+		scp.multiCommonTrigSelect,
+		syncSettingsBtn,
+		scp.multiServerStatusLabel,
 		scp.multiClientsLabel,
 	)
 
@@ -120,12 +155,16 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 		scp.disconnectMultiClient()
 	})
 
+	scp.multiSyncStatusLabel = widget.NewLabel("Sync Status: Idle")
+
 	clientView := container.NewVBox(
 		widget.NewLabel("Server IP:"),
 		clientIPEntry,
 		widget.NewLabel("Server Port:"),
 		clientPortDisp,
 		container.NewHBox(connectClientBtn, disconnectClientBtn),
+		widget.NewLabel("Multiscope Sync:"),
+		scp.multiSyncStatusLabel,
 	)
 
 	selectMode := func(mode string) {
