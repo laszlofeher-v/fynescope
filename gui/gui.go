@@ -31,6 +31,7 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -77,10 +78,11 @@ const (
 	decodeTabIndex
 	filterTabIndex
 	corrTabIndex
+	multiTabIndex
 )
 
 var (
-	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter", "corr"}
+	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter", "corr", "multiscope"}
 
 	dontCare genericps.ChannelId = -1 // trigger is disabled
 	chA                          = genericps.ChA
@@ -190,6 +192,13 @@ type (
 		digPortTab                   *container.TabItem
 		digPortLayout                *fyne.Container
 		corrTab                      *container.TabItem
+		multiTab                     *container.TabItem
+		multiLayout                  *fyne.Container
+		multiServer                  net.Listener
+		multiClients                 []net.Conn
+		multiClientConn              net.Conn
+		multiServerMu                sync.Mutex
+		multiClientsLabel            *widget.Label
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
 		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
@@ -747,7 +756,7 @@ func (scp *ScpDesc) refreshRasters() {
 	}
 	fyne.Do(func() {
 		targetFunction := scp.Settings.Window.Function
-		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == vchTabIndex || targetFunction == digPortTabIndex || targetFunction == corrTabIndex {
+		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == vchTabIndex || targetFunction == digPortTabIndex || targetFunction == corrTabIndex || targetFunction == multiTabIndex {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -877,8 +886,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.corrLayout = container.NewMax()
 	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
+	scp.multiLayout = scp.newMultiscopePanel()
+	scp.multiTab = container.NewTabItem(tabNames[multiTabIndex], scp.multiLayout)
 	scp.controlTab = container.NewAppTabs(
-		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab)
+		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab, scp.multiTab)
 	if !scp.IsMSO {
 		scp.controlTab.Remove(scp.digPortTab)
 		scp.controlTab.Remove(scp.digGenTab)
@@ -922,7 +933,8 @@ func (scp *ScpDesc) build2000Gui() {
 			t == scp.extgenTab ||
 			t == scp.vchTab ||
 			t == scp.digPortTab ||
-			t == scp.corrTab {
+			t == scp.corrTab ||
+			t == scp.multiTab {
 			targetFunction = scp.Settings.Window.LastDispFunction
 		}
 
@@ -993,7 +1005,8 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.Settings.Window.Function == extgenTabIndex ||
 		scp.Settings.Window.Function == vchTabIndex ||
 		scp.Settings.Window.Function == digPortTabIndex ||
-		scp.Settings.Window.Function == corrTabIndex {
+		scp.Settings.Window.Function == corrTabIndex ||
+		scp.Settings.Window.Function == multiTabIndex {
 		initTabItem = scp.getTabItem(scp.Settings.Window.LastDispFunction)
 	}
 	if initTabItem != nil {
@@ -1021,7 +1034,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
-	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex && targetFunctionInit != corrTabIndex && targetFunctionInit != vchTabIndex {
+	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex && targetFunctionInit != corrTabIndex && targetFunctionInit != vchTabIndex && targetFunctionInit != multiTabIndex {
 		scp.timeZoomButton.Hide()
 	}
 
@@ -1781,6 +1794,8 @@ func (scp *ScpDesc) getFunctionIndex(tab *container.TabItem) int {
 		return decodeTabIndex
 	case scp.corrTab:
 		return corrTabIndex
+	case scp.multiTab:
+		return multiTabIndex
 	default:
 		return ftTabIndex
 	}
@@ -1814,6 +1829,8 @@ func (scp *ScpDesc) getTabItem(funcIndex int) *container.TabItem {
 		return scp.decodeTab
 	case corrTabIndex:
 		return scp.corrTab
+	case multiTabIndex:
+		return scp.multiTab
 	default:
 		return scp.ftTab
 	}
