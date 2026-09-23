@@ -648,6 +648,13 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 		_ = scp.StopAPIServer()
 	}
 
+	if scp.IsMultiServerRunning() {
+		scp.StopMultiServer()
+	}
+	if scp.IsMultiClientConnected() {
+		scp.DisconnectMultiClient()
+	}
+
 	// Cleanup: close connection and save settings if a device was connected
 	if con != nil {
 		con.CloseUnit()
