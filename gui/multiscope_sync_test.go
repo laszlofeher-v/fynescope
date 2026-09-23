@@ -47,7 +47,8 @@ func TestBuildMultiSyncMessage(t *testing.T) {
 	scp.Settings.Channels[0].Trigger.Mv = 150
 	scp.Settings.Channels[0].Trigger.TriggerDirection = genericps.TriggerRising
 
-	msg := scp.buildMultiSyncMessage()
+	msg, err := scp.buildMultiSyncMessage()
+	require.NoError(t, err)
 	require.NotNil(t, msg)
 	assert.Equal(t, "SyncSettings", msg.Type)
 	assert.Equal(t, "Ch A", msg.CommonTrigger)
@@ -210,6 +211,8 @@ func TestApplyMultiSyncParams(t *testing.T) {
 }
 
 func TestMultiscopeTCPSyncRoundtrip(t *testing.T) {
+	genericps.ChA = genericps.ChannelId(0)
+	genericps.ChB = genericps.ChannelId(1)
 	app := test.NewApp()
 	defer app.Quit()
 	w := app.NewWindow("Test")
@@ -233,6 +236,7 @@ func TestMultiscopeTCPSyncRoundtrip(t *testing.T) {
 		},
 	}
 	server.Settings.Multiscope.CommonTrigger = "Ch B"
+	server.triggerSource = genericps.ChB
 	server.Settings.Time.TimeDiv = "50"
 	server.Settings.Time.Unit = "ns"
 	server.startMultiServer(port)

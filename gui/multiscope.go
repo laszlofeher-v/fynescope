@@ -11,6 +11,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -54,7 +56,7 @@ func getLocalIPs() string {
 	return ips
 }
 
-func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
+func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	ipStr := getLocalIPs()
 	ipLabel := widget.NewLabel(fmt.Sprintf("Host IP(s): %s", ipStr))
 
@@ -88,33 +90,12 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 		statusIndicator.Refresh()
 	})
 	
-	// Common trigger channel selector: "None", "Ch A", "Ch B", ... and "D0".."D15"
-	var trigOptions []string
-	trigOptions = append(trigOptions, "None")
-	count := int(scp.channelCount)
-	if count == 0 {
-		count = 2
-	}
-	for i := 0; i < count && i < 4; i++ {
-		trigOptions = append(trigOptions, fmt.Sprintf("Ch %c", 'A'+i))
-	}
-	for i := 0; i < 16; i++ {
-		trigOptions = append(trigOptions, fmt.Sprintf("D%d", i))
-	}
-
-	curTrig := scp.Settings.Multiscope.CommonTrigger
-	if curTrig == "" {
-		curTrig = "Ch A"
-	}
-	scp.multiCommonTrigSelect = widget.NewSelect(trigOptions, func(s string) {
-		scp.Settings.Multiscope.CommonTrigger = s
-		scp.applyCommonTrigger(s)
-		scp.SaveSettings()
-	})
-	scp.multiCommonTrigSelect.SetSelected(curTrig)
-
+	
 	syncSettingsBtn := tastybutton.NewTastyButton("Sync Settings", tastybutton.Green, func() {
-		scp.publishMultiSync()
+		err := scp.publishMultiSync()
+		if err != nil {
+			dialog.ShowError(err, scp.Window)
+		}
 	})
 
 	scp.multiServerStatusLabel = widget.NewLabel("")
@@ -123,8 +104,6 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 		widget.NewLabel("Server Port:"),
 		serverPortDisp,
 		container.NewHBox(startServerBtn, stopServerBtn, widget.NewLabel("Status:"), statusIndicatorContainer),
-		widget.NewLabel("Common Trigger Channel:"),
-		scp.multiCommonTrigSelect,
 		syncSettingsBtn,
 		scp.multiServerStatusLabel,
 		scp.multiClientsLabel,
@@ -195,8 +174,38 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 	}
 	selectMode(scp.Settings.Multiscope.Mode)
 
+	var topRow fyne.CanvasObject = ipLabel
+
+	if undockable {
+		undockBtn := widget.NewButtonWithIcon("Undock", theme.ViewFullScreenIcon(), func() {
+			if scp.multiWindow != nil {
+				scp.multiWindow.RequestFocus()
+				return
+			}
+			onWindowClose := func() {
+				scp.multiWindow = nil
+				scp.multiLayout = scp.newMultiscopePanel(true)
+				scp.multiTab.Content = scp.multiLayout
+				scp.dockTab(scp.multiTab)
+				scp.controlTab.SelectIndex(ftTabIndex)
+				fyne.Do(scp.multiTab.Content.Refresh)
+			}
+			scp.multiWindow = scp.App.NewWindow("Multiscope")
+			winContent := scp.newMultiscopePanel(false)
+			scp.controlTab.Remove(scp.multiTab)
+			scp.multiWindow.SetContent(winContent)
+			scp.multiWindow.SetOnClosed(onWindowClose)
+			scp.multiWindow.Resize(fyne.NewSize(350, 700))
+			scp.controlTab.SelectIndex(ftTabIndex)
+			scp.multiWindow.Show()
+			fyne.Do(winContent.Refresh)
+		})
+		addToTest(undockBtn, "multiUndockBtn", multiTabIndex)
+		topRow = container.NewHBox(ipLabel, layout.NewSpacer(), undockBtn)
+	}
+
 	return container.NewVBox(
-		ipLabel,
+		topRow,
 		modeSelection,
 		contentContainer,
 	)

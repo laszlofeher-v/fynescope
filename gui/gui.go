@@ -201,7 +201,6 @@ type (
 		multiClientsLabel            *widget.Label
 		multiSyncStatusLabel         *widget.Label
 		multiServerStatusLabel       *widget.Label
-		multiCommonTrigSelect        *widget.Select
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
 		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
@@ -245,6 +244,7 @@ type (
 		virtualChWindow              fyne.Window
 		decodeWindow                 fyne.Window
 		digPortWindow                fyne.Window
+		multiWindow                  fyne.Window
 		digPortLogicLevelDisp        [2]*disp7.DigitArray
 		triggerDisplays              *fyne.Container
 		dftRaster                    *screenRaster
@@ -895,7 +895,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
 	scp.corrLayout = container.NewMax()
 	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
-	scp.multiLayout = scp.newMultiscopePanel()
+	scp.multiLayout = scp.newMultiscopePanel(true)
 	scp.multiTab = container.NewTabItem(tabNames[multiTabIndex], scp.multiLayout)
 	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab, scp.multiTab)

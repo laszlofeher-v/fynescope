@@ -141,6 +141,7 @@ const (
 	decodeFuncId   = "decodeFunc"
 	corrFuncId     = "corrFunc"
 	corrUndockBtn  = "corrUndockBtn"
+	multiUndockBtn = "multiUndockBtn"
 	rlcTypeId      = "rlcType"
 	rlcRId         = "rlcR"
 	rlcRUnitId     = "rlcRUnit"
