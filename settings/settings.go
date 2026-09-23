@@ -235,10 +235,11 @@ type (
 		ShowBitstarts bool   `yaml:"showbitstarts"`
 	}
 	MultiscopeSettings struct {
-		Mode       string `yaml:"mode"`
-		ServerPort int    `yaml:"serverport"`
-		ClientPort int    `yaml:"clientport"`
-		ClientIP   string `yaml:"clientip"`
+		Mode          string `yaml:"mode"`
+		ServerPort    int    `yaml:"serverport"`
+		ClientPort    int    `yaml:"clientport"`
+		ClientIP      string `yaml:"clientip"`
+		CommonTrigger string `yaml:"commontrigger"`
 	}
 	PsSettings struct {
 		Theme               ThemeType              `yaml:"theme"`
@@ -302,7 +303,7 @@ func NewDefaultSettings() *PsSettings {
 		Window: WindowSettings{Width: 1366, Height: 768, LeftControl: false,
 			Function: 0, HelpEnabled: &defaultHelpEnabled},
 		ScreenSize: ScreenSize1920x1080,
-		Multiscope: MultiscopeSettings{Mode: "Server", ServerPort: 50000, ClientPort: 50000, ClientIP: ""},
+		Multiscope: MultiscopeSettings{Mode: "Server", ServerPort: 50000, ClientPort: 50000, ClientIP: "", CommonTrigger: "Ch A"},
 		Time: TimeSettings{Unit: defaultTimeUnit, TriggerTimeOffset: 0, TimeDiv: defaultTime,
 			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit,
 			ResolutionMode: "Normal"},

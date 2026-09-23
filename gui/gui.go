@@ -195,10 +195,13 @@ type (
 		multiTab                     *container.TabItem
 		multiLayout                  *fyne.Container
 		multiServer                  net.Listener
-		multiClients                 []net.Conn
+		multiClients                 []multiClientInfo
 		multiClientConn              net.Conn
 		multiServerMu                sync.Mutex
 		multiClientsLabel            *widget.Label
+		multiSyncStatusLabel         *widget.Label
+		multiServerStatusLabel       *widget.Label
+		multiCommonTrigSelect        *widget.Select
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
 		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
@@ -791,6 +794,9 @@ func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {
 	return (math.Round(float64(raw) * float64(genericps.InputRanges[chRange]) / float64(scp.MaxValue)))
 }
 func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
+	if int(chRange) >= len(genericps.InputRanges) || genericps.InputRanges[chRange] == 0 {
+		return 0
+	}
 	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
 	if adc > scp.MaxValue {
 		adc = scp.MaxValue
@@ -801,6 +807,9 @@ func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
 }
 
 func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
+	if int(chRange) >= len(genericps.InputRanges) || genericps.InputRanges[chRange] == 0 {
+		return 0
+	}
 	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
 	if adc > scp.MaxValue {
 		adc = scp.MaxValue
