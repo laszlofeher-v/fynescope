@@ -56,6 +56,25 @@ func getLocalIPs() string {
 	return ips
 }
 
+// SetMultiscopeMode updates the multiscope mode ("Server" or "Client").
+// If switching to "Client" while the server is running, the server is stopped first.
+// If switching to "Server" while the client is connected, the client is disconnected first.
+func (scp *ScpDesc) SetMultiscopeMode(mode string) {
+	if mode == "Client" {
+		if scp.IsMultiServerRunning() {
+			scp.StopMultiServer()
+		}
+	} else if mode == "Server" {
+		if scp.IsMultiClientConnected() {
+			scp.DisconnectMultiClient()
+		}
+	}
+	if scp.Settings != nil {
+		scp.Settings.Multiscope.Mode = mode
+		scp.SaveSettings()
+	}
+}
+
 func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	ipStr := getLocalIPs()
 	ipLabel := widget.NewLabel(fmt.Sprintf("Host IP(s): %s", ipStr))
@@ -76,18 +95,19 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 
 	scp.multiClientsLabel = widget.NewLabel("Connected Clients:\nNone")
 	
-	statusIndicator := canvas.NewCircle(color.NRGBA{R: 200, G: 0, B: 0, A: 255})
+	statusColor := color.NRGBA{R: 200, G: 0, B: 0, A: 255}
+	if scp.IsMultiServerRunning() {
+		statusColor = color.NRGBA{R: 0, G: 200, B: 0, A: 255}
+	}
+	statusIndicator := canvas.NewCircle(statusColor)
+	scp.multiServerStatusIndicator = statusIndicator
 	statusIndicatorContainer := container.NewGridWrap(fyne.NewSize(16, 16), statusIndicator)
 
 	startServerBtn := tastybutton.NewTastyButton("Start Server", tastybutton.Green, func() {
 		scp.startMultiServer(serverPortDisp.Value)
-		statusIndicator.FillColor = color.NRGBA{R: 0, G: 200, B: 0, A: 255}
-		statusIndicator.Refresh()
 	})
 	stopServerBtn := tastybutton.NewTastyButton("Stop Server", tastybutton.Red, func() {
 		scp.stopMultiServer()
-		statusIndicator.FillColor = color.NRGBA{R: 200, G: 0, B: 0, A: 255}
-		statusIndicator.Refresh()
 	})
 	
 	
@@ -100,11 +120,16 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 
 	scp.multiServerStatusLabel = widget.NewLabel("")
 	
+	remoteChannelsBtn := tastybutton.NewTastyButton("Remote Channels...", tastybutton.Orange, func() {
+		scp.openRemoteChannelsWindow()
+	})
+
 	serverView := container.NewVBox(
 		widget.NewLabel("Server Port:"),
 		serverPortDisp,
 		container.NewHBox(startServerBtn, stopServerBtn, widget.NewLabel("Status:"), statusIndicatorContainer),
 		syncSettingsBtn,
+		remoteChannelsBtn,
 		scp.multiServerStatusLabel,
 		scp.multiClientsLabel,
 	)
@@ -147,6 +172,8 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	)
 
 	selectMode := func(mode string) {
+		scp.SetMultiscopeMode(mode)
+
 		contentContainer.Objects = nil
 		if mode == "Server" {
 			serverBtn.Style = tastybutton.Green
@@ -157,8 +184,6 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 			clientBtn.Style = tastybutton.Green
 			contentContainer.Add(clientView)
 		}
-		scp.Settings.Multiscope.Mode = mode
-		scp.SaveSettings()
 		serverBtn.Refresh()
 		clientBtn.Refresh()
 		contentContainer.Refresh()

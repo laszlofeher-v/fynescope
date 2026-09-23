@@ -830,6 +830,88 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 			drawVchLinear()
 		}
 	}
+
+	// Draw remote channels
+	sv.scp.remoteChannelsMu.RLock()
+	for _, rch := range sv.scp.remoteChannels {
+		if !rch.Enabled || len(rch.Buffer) == 0 {
+			continue
+		}
+		displayBuffer := rch.Buffer
+		yScale := h / float64(2.0*genericps.RangeValuesMv[rch.VRange])
+		col := rch.Color
+		yOffset := sv.scp.offsetNToFtY(rch.DisplayVOffset)
+		offsetFloat := float64(zeroOffset) + yOffset
+
+		var leftPadding float64
+		var extra float64
+		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
+			totalSamples := len(displayBuffer)
+			displaySamples := totalSamples / control.SincWMultiplier
+			leftPadding = float64(totalSamples-displaySamples) / 2.0
+			extra = 0
+		} else {
+			leftPadding = float64(control.LeftOut)
+			extra = 1
+		}
+
+		t0 := (-leftPadding*sv.scp.controlSamplingTimeInterval +
+			float64(sv.scp.controlXRoundError) +
+			float64(sv.scp.controlTriggerTimeOffset)/1e15) * unit
+		if !sv.isTimeZoom {
+			t0 -= sv.scp.timeZoomBoxOffset * unit
+		}
+		t0 -= extra * deltaT
+
+		var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
+		if sv.isTimeZoom {
+			targetImg = sv.scp.timeZoomScopeSignalScreen.(draw.Image)
+		}
+
+		drawRchLinear := func() {
+			prevX := t0 + float64(bounds.Min.X)
+			s := displayBuffer[0]
+			if rch.Inverted {
+				s = -s
+			}
+			prevY := -yScale*float64(s) + offsetFloat
+			for j := 1; j < len(displayBuffer); j++ {
+				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				s := displayBuffer[j]
+				if rch.Inverted {
+					s = -s
+				}
+				y := -yScale*float64(s) + offsetFloat
+				drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
+				prevX = x
+				prevY = y
+			}
+		}
+
+		drawRchDot := func() {
+			for j := 0; j < len(displayBuffer); j++ {
+				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				s := displayBuffer[j]
+				if rch.Inverted {
+					s = -s
+				}
+				y := -yScale*float64(s) + offsetFloat
+				ix := int(x)
+				iy := int(y)
+				if ix >= bounds.Min.X && ix < bounds.Max.X && iy >= bounds.Min.Y && iy < bounds.Max.Y {
+					targetImg.Set(ix, iy, col)
+				}
+			}
+		}
+
+		switch sv.scp.Settings.Time.Interpolation {
+		case settings.Dot:
+			drawRchDot()
+		default:
+			drawRchLinear()
+		}
+	}
+	sv.scp.remoteChannelsMu.RUnlock()
 }
 
 func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle) (tAtCursor float64, instV, instVCur []float32) {
@@ -1395,9 +1477,17 @@ func (scp *ScpDesc) drawTzDivisions() {
 			chCol = scp.Settings.Channels[channelIndex].Col[scp.Settings.ChannelColorIndex]
 		} else {
 			vchIdx := channelIndex - int(scp.channelCount)
-			if vchIdx < len(scp.ftVChannelLabels) {
+			if scp.Settings != nil && vchIdx < len(scp.Settings.VirtualChannels) {
 				offsetInt = scp.Settings.VirtualChannels[vchIdx].DisplayVOffset
 				chCol = scp.Settings.VirtualChannels[vchIdx].Col[scp.Settings.ChannelColorIndex]
+			} else if scp.Settings != nil {
+				rchIdx := vchIdx - len(scp.Settings.VirtualChannels)
+				scp.remoteChannelsMu.RLock()
+				if rchIdx < len(scp.remoteChannels) {
+					offsetInt = scp.remoteChannels[rchIdx].DisplayVOffset
+					chCol = scp.remoteChannels[rchIdx].Color
+				}
+				scp.remoteChannelsMu.RUnlock()
 			}
 		}
 
@@ -1490,6 +1580,38 @@ func (scp *ScpDesc) clipFtChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 			}
 		}
 	}
+
+	scp.remoteChannelsMu.RLock()
+	scp.ftRemoteChannelLabels = make([]ftRemoteChannelLabelViewer, len(scp.remoteChannels))
+	for rIdx := range scp.remoteChannels {
+		rch := &scp.remoteChannels[rIdx]
+		if rch.Enabled {
+			scp.ftRemoteChannelLabels[rIdx] = newFtRemoteChannelLabelViewer(scp.ftScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				rIdx, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, false)
+			scp.addFtDrawer(&scp.ftRemoteChannelLabels[rIdx])
+
+			switch {
+			case leftColumnCount > 1:
+				scp.ftRemoteChannelLabels[rIdx].leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				scp.ftRemoteChannelLabels[rIdx].leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				scp.ftRemoteChannelLabels[rIdx].leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+		}
+	}
+	scp.remoteChannelsMu.RUnlock()
+
 	return
 }
 
@@ -1607,6 +1729,38 @@ func (scp *ScpDesc) clipTzChRangeScrs(w, h float32) (leftMargin, rightMargin flo
 			}
 		}
 	}
+
+	scp.remoteChannelsMu.RLock()
+	scp.tzRemoteChannelLabels = make([]ftRemoteChannelLabelViewer, len(scp.remoteChannels))
+	for rIdx := range scp.remoteChannels {
+		rch := &scp.remoteChannels[rIdx]
+		if rch.Enabled {
+			scp.tzRemoteChannelLabels[rIdx] = newFtRemoteChannelLabelViewer(scp.timeZoomScopeFullScreen,
+				image.Rect(int(math.Round(float64(start))), 0, int(math.Round(float64(end))), int(math.Round(float64(h-defaultTimeMargin)))),
+				rIdx, image.Rect(int(math.Round(float64(leftMargin))), defaultTopMargin,
+					int(math.Round(float64(w-rightMargin))), int(math.Round(float64(h-defaultBottomMargin)))), false, scp, true)
+			scp.addTzDrawer(&scp.tzRemoteChannelLabels[rIdx])
+
+			switch {
+			case leftColumnCount > 1:
+				scp.tzRemoteChannelLabels[rIdx].leftLabel = true
+				leftColumnCount--
+				start = end
+				end += scp.rangeMargin
+			case leftColumnCount == 1:
+				scp.tzRemoteChannelLabels[rIdx].leftLabel = true
+				leftColumnCount--
+				start = w - rightMargin
+				end = start + scp.rangeMargin
+			default:
+				scp.tzRemoteChannelLabels[rIdx].leftLabel = false
+				start = end
+				end += scp.rangeMargin
+			}
+		}
+	}
+	scp.remoteChannelsMu.RUnlock()
+
 	return
 }
 

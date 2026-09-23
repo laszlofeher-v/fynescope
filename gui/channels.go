@@ -218,11 +218,20 @@ func (scp *ScpDesc) numberOfEnabledChannels() (n int, set uint64) {
 
 func (scp *ScpDesc) numberOfAllEnabledChannels() int {
 	n, _ := scp.numberOfEnabledChannels()
-	for _, vch := range scp.Settings.VirtualChannels {
-		if vch.Enabled {
+	if scp.Settings != nil {
+		for _, vch := range scp.Settings.VirtualChannels {
+			if vch.Enabled {
+				n++
+			}
+		}
+	}
+	scp.remoteChannelsMu.RLock()
+	for _, rch := range scp.remoteChannels {
+		if rch.Enabled {
 			n++
 		}
 	}
+	scp.remoteChannelsMu.RUnlock()
 	return n
 }
 

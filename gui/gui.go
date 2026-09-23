@@ -103,6 +103,20 @@ type (
 		hysteresis int32
 		mv         int32
 	}
+	RemoteChannelDesc struct {
+		ClientID       string              `json:"client_id"`
+		RemoteChanIdx  int                 `json:"remote_chan_idx"`
+		Name           string              `json:"name"`
+		Enabled        bool                `json:"enabled"`
+		VRange         genericps.RangeEnum `json:"range"`
+		CoupleType     genericps.Coupling  `json:"coupling"`
+		Offset         float32             `json:"offset"`
+		Inverted       bool                `json:"inverted"`
+		X10            bool                `json:"x10"`
+		DisplayVOffset int                 `json:"display_v_offset"`
+		Color          color.NRGBA         `json:"color"`
+		Buffer         []float32           `json:"-"`
+	}
 
 	ScpDesc struct {
 		Measure                     MeasureDesc
@@ -201,6 +215,13 @@ type (
 		multiClientsLabel            *widget.Label
 		multiSyncStatusLabel         *widget.Label
 		multiServerStatusLabel       *widget.Label
+		multiServerStatusIndicator   *canvas.Circle
+		remoteChannelsMu             sync.RWMutex
+		remoteChannels               []RemoteChannelDesc
+		remoteChannelsWindow         fyne.Window
+		remoteChannelsContainer      *fyne.Container
+		ftRemoteChannelLabels        []ftRemoteChannelLabelViewer
+		tzRemoteChannelLabels        []ftRemoteChannelLabelViewer
 		corrWindow                   fyne.Window
 		corrLayout                   *fyne.Container
 		corrLabels                   [genericps.MaxChannel][genericps.MaxChannel]*widget.Label
@@ -1116,83 +1137,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.runblockButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), func() {
 		if !scp.running {
-			scp.clearAllFtPersistentLayers()
-			scp.clearAllDftPersistentLayers()
-			if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
-				scp.psControl.DisplayStatus("", control.Info)
-			}
-			if scp.getActiveFunctionIndex() == ffTabIndex {
-				if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
-					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
-				}
-				if scp.Settings.Ff.PtsDec <= 0 {
-					scp.psControl.DisplayStatus("Error: Points per decade cannot be 0", control.Warning)
-					return
-				}
-				// Set up the generator in non-sweep mode; the app controls stepping.
-				if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
-					scp.applyFfDemoGenSettings(false)
-					scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
-				} else {
-					scp.applyFfGenSettings(false)
-					scp.applyFfGenSettings(scp.Settings.FfGen.On)
-				}
-			} else {
-				if scp.Settings.GenPanel.On {
-					scp.applyInternalGenSettings(true)
-				}
-				for i := 0; i < int(scp.channelCount); i++ {
-					scp.applyDemoGenSettings(genericps.ChannelId(i), &scp.Settings.DemoGenPanel[i])
-				}
-			}
-			if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
-				// External generator frequency will be set via setGeneratorFreq during the sweep.
-			}
-
-			if scp.getActiveFunctionIndex() == ffTabIndex {
-				scp.ResetFfSweep()
-				// User requirement: When f(f) is selected then the run button starts the generators that are checked on.
-				// Start the application-controlled logarithmic frequency sweep.
-				scp.startFfSweep()
-			}
-
-			// Ensure acquisition parameters (screen time, sample width) match the
-			// currently selected tab before starting the capture.  Without this,
-			// pressing Run on the f(f) tab for the first time would use stale
-			// f(t) parameters and the Bode sweep would not start.
-			scp.updateAcquisitionParameters()
-
-			var err error
-			scp.running = true
-			scp.runblockButton.SetIcon(theme.MediaPauseIcon())
-
-			// Force re-apply trigger settings so the device is synchronized on run.
-			triggerCopy := scp.triggerSettingMsg
-			triggerCopy.Done = make(chan struct{}, 1)
-			scp.psControl.SetTriggerCh <- &triggerCopy
-			<-triggerCopy.Done
-
-			switch scp.triggerSettingMsg.Mode {
-			case control.ETS:
-
-				err = scp.psControl.SetETSMode()
-			default: // Auto, Repeat, Single, and our forced Auto for f(v)
-				err = scp.psControl.SetBlockMode()
-				if scp.triggerSettingMsg.Mode == control.Single {
-					scp.runblockButton.SetIcon(theme.MediaPlayIcon())
-					scp.running = false
-				}
-			}
-			if err == nil {
-
-				// set unit
-				// change default from GS/s to nsUsMssubSetIndex
-				// set when running and timing changed
-
-			} else {
-				scp.runblockButton.SetIcon(theme.MediaPlayIcon())
-				slog.Error("", "run error:", err)
-			}
+			scp.StartRunning()
 		} else {
 			scp.StopRunning()
 		}
@@ -1475,6 +1420,7 @@ func (scp *ScpDesc) build2000Gui() {
 			// scp.updateBinWidth()
 			// scp.updateDftDataCollectionTime()
 			scp.refreshRasters() // it calls draw method in signalviewer
+			scp.sendClientWaveforms()
 		})
 	}
 
@@ -1516,6 +1462,83 @@ func (scp *ScpDesc) updateDigitalSplit() {
 	}
 }
 
+// StartRunning starts the capture or sweep operation and synchronizes with connected Multiscope clients.
+func (scp *ScpDesc) StartRunning() {
+	if scp.running {
+		return
+	}
+	scp.clearAllFtPersistentLayers()
+	scp.clearAllDftPersistentLayers()
+	if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
+		scp.psControl.DisplayStatus("", control.Info)
+	}
+	if scp.getActiveFunctionIndex() == ffTabIndex {
+		if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
+			scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
+		}
+		if scp.Settings.Ff.PtsDec <= 0 {
+			scp.psControl.DisplayStatus("Error: Points per decade cannot be 0", control.Warning)
+			return
+		}
+		// Set up the generator in non-sweep mode; the app controls stepping.
+		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+			scp.applyFfDemoGenSettings(false)
+			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
+		} else {
+			scp.applyFfGenSettings(false)
+			scp.applyFfGenSettings(scp.Settings.FfGen.On)
+		}
+	} else {
+		if scp.Settings.GenPanel.On {
+			scp.applyInternalGenSettings(true)
+		}
+		for i := 0; i < int(scp.channelCount); i++ {
+			scp.applyDemoGenSettings(genericps.ChannelId(i), &scp.Settings.DemoGenPanel[i])
+		}
+	}
+	if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
+		// External generator frequency will be set via setGeneratorFreq during the sweep.
+	}
+
+	if scp.getActiveFunctionIndex() == ffTabIndex {
+		scp.ResetFfSweep()
+		// User requirement: When f(f) is selected then the run button starts the generators that are checked on.
+		// Start the application-controlled logarithmic frequency sweep.
+		scp.startFfSweep()
+	}
+
+	// Ensure acquisition parameters (screen time, sample width) match the
+	// currently selected tab before starting the capture.
+	scp.updateAcquisitionParameters()
+
+	var err error
+	scp.running = true
+	scp.runblockButton.SetIcon(theme.MediaPauseIcon())
+
+	// Force re-apply trigger settings so the device is synchronized on run.
+	triggerCopy := scp.triggerSettingMsg
+	triggerCopy.Done = make(chan struct{}, 1)
+	scp.psControl.SetTriggerCh <- &triggerCopy
+	<-triggerCopy.Done
+
+	switch scp.triggerSettingMsg.Mode {
+	case control.ETS:
+		err = scp.psControl.SetETSMode()
+	default: // Auto, Repeat, Single, and our forced Auto for f(v)
+		err = scp.psControl.SetBlockMode()
+		if scp.triggerSettingMsg.Mode == control.Single {
+			scp.runblockButton.SetIcon(theme.MediaPlayIcon())
+			scp.running = false
+		}
+	}
+	if err == nil {
+		scp.broadcastMultiStart()
+	} else {
+		scp.runblockButton.SetIcon(theme.MediaPlayIcon())
+		slog.Error("", "run error:", err)
+	}
+}
+
 // StopRunning stops the current capture or sweep operation and updates the run button UI.
 func (scp *ScpDesc) StopRunning() {
 	scp.stopFfSweep() // stop any running Bode sweep
@@ -1523,6 +1546,7 @@ func (scp *ScpDesc) StopRunning() {
 	if err == nil {
 		scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 		scp.running = false
+		scp.broadcastMultiStop()
 	} else {
 		slog.Error("", "Stop returned", err)
 	}

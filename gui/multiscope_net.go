@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"log/slog"
 	"net"
 	"strconv"
@@ -57,9 +58,93 @@ type MultiChannelSyncParams struct {
 	TriggerHysteresis int32   `json:"trigger_hysteresis"`
 }
 
+type StartAcquisitionMsg struct {
+	Type string `json:"type"` // "StartAcquisition"
+}
+
+type StopAcquisitionMsg struct {
+	Type string `json:"type"` // "StopAcquisition"
+}
+
+type RemoteChannelInfo struct {
+	RemoteChanIdx int     `json:"remote_chan_idx"`
+	Name          string  `json:"name"`
+	Enabled       bool    `json:"enabled"`
+	VRange        string  `json:"v_range"`
+	CoupleType    string  `json:"couple_type"`
+	Offset        float32 `json:"offset"`
+	Inverted      bool    `json:"inverted"`
+	X10           bool    `json:"x10"`
+	ColorR        uint8   `json:"color_r"`
+	ColorG        uint8   `json:"color_g"`
+	ColorB        uint8   `json:"color_b"`
+}
+
+type RemoteChannelsAnnounceMsg struct {
+	Type     string              `json:"type"` // "RemoteChannelsAnnounce"
+	ClientID string              `json:"client_id"`
+	Channels []RemoteChannelInfo `json:"channels"`
+}
+
+type RemoteWaveformMsg struct {
+	Type          string    `json:"type"` // "RemoteWaveform"
+	ClientID      string    `json:"client_id"`
+	RemoteChanIdx int       `json:"remote_chan_idx"`
+	Name          string    `json:"name"`
+	Samples       []float32 `json:"samples"`
+}
+
+var remoteChannelDefaultColors = []color.NRGBA{
+	{R: 255, G: 165, B: 0, A: 255},   // Orange
+	{R: 180, G: 80, B: 240, A: 255},  // Purple
+	{R: 0, G: 210, B: 210, A: 255},   // Cyan
+	{R: 255, G: 105, B: 180, A: 255}, // Hot Pink
+	{R: 50, G: 205, B: 50, A: 255},   // Lime
+	{R: 255, G: 215, B: 0, A: 255},   // Gold
+}
+
+// IsMultiServerRunning returns true if the multiscope server is currently running.
+func (scp *ScpDesc) IsMultiServerRunning() bool {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+	return scp.multiServer != nil
+}
+
+// IsMultiClientConnected returns true if the multiscope client is currently connected.
+func (scp *ScpDesc) IsMultiClientConnected() bool {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+	return scp.multiClientConn != nil
+}
+
+// StartMultiServer starts the multiscope server on the specified port.
+func (scp *ScpDesc) StartMultiServer(port int) {
+	scp.startMultiServer(port)
+}
+
+// StopMultiServer stops the multiscope server and disconnects any connected clients.
+func (scp *ScpDesc) StopMultiServer() {
+	scp.stopMultiServer()
+}
+
+// ConnectMultiClient connects the multiscope client to the server at ip:port.
+func (scp *ScpDesc) ConnectMultiClient(ip string, port int) {
+	scp.connectMultiClient(ip, port)
+}
+
+// DisconnectMultiClient disconnects the multiscope client from the server.
+func (scp *ScpDesc) DisconnectMultiClient() {
+	scp.disconnectMultiClient()
+}
+
 func (scp *ScpDesc) startMultiServer(port int) {
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
+
+	if scp.multiClientConn != nil {
+		slog.Warn("Multiscope client is connected; disconnecting client before starting server")
+		scp.disconnectMultiClientLocked()
+	}
 
 	if scp.multiServer != nil {
 		slog.Warn("Multiscope server is already running")
@@ -73,6 +158,12 @@ func (scp *ScpDesc) startMultiServer(port int) {
 		return
 	}
 	scp.multiServer = l
+	if scp.multiServerStatusIndicator != nil {
+		fyne.Do(func() {
+			scp.multiServerStatusIndicator.FillColor = color.NRGBA{R: 0, G: 200, B: 0, A: 255}
+			scp.multiServerStatusIndicator.Refresh()
+		})
+	}
 	slog.Info("Multiscope server started", "addr", addr)
 
 	go func() {
@@ -92,10 +183,7 @@ func (scp *ScpDesc) startMultiServer(port int) {
 	}()
 }
 
-func (scp *ScpDesc) stopMultiServer() {
-	scp.multiServerMu.Lock()
-	defer scp.multiServerMu.Unlock()
-
+func (scp *ScpDesc) stopMultiServerLocked() {
 	if scp.multiServer != nil {
 		scp.multiServer.Close()
 		scp.multiServer = nil
@@ -108,7 +196,19 @@ func (scp *ScpDesc) stopMultiServer() {
 	}
 	scp.multiClients = nil
 	scp.updateConnectedClientsLabel()
+	if scp.multiServerStatusIndicator != nil {
+		fyne.Do(func() {
+			scp.multiServerStatusIndicator.FillColor = color.NRGBA{R: 200, G: 0, B: 0, A: 255}
+			scp.multiServerStatusIndicator.Refresh()
+		})
+	}
 	slog.Info("Multiscope server stopped")
+}
+
+func (scp *ScpDesc) stopMultiServer() {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+	scp.stopMultiServerLocked()
 }
 
 func (scp *ScpDesc) updateConnectedClientsLabel() {
@@ -140,6 +240,7 @@ func (scp *ScpDesc) updateConnectedClientsLabel() {
 }
 
 func (scp *ScpDesc) handleMultiClient(conn net.Conn) {
+	clientRemoteAddr := conn.RemoteAddr().String()
 	defer func() {
 		conn.Close()
 		scp.multiServerMu.Lock()
@@ -151,20 +252,42 @@ func (scp *ScpDesc) handleMultiClient(conn net.Conn) {
 		}
 		scp.updateConnectedClientsLabel()
 		scp.multiServerMu.Unlock()
+
+		// Remove disconnected client's remote channels
+		scp.remoteChannelsMu.Lock()
+		newChans := make([]RemoteChannelDesc, 0, len(scp.remoteChannels))
+		for _, rch := range scp.remoteChannels {
+			if rch.ClientID != clientRemoteAddr {
+				newChans = append(newChans, rch)
+			}
+		}
+		scp.remoteChannels = newChans
+		scp.remoteChannelsMu.Unlock()
+
+		fyne.Do(func() {
+			if scp.remoteChannelsWindow != nil {
+				scp.updateRemoteChannelsWindow()
+			}
+			setFlag(scp.repartition)
+			scp.refreshRasters()
+		})
 	}()
 
-	slog.Info("Client connected", "addr", conn.RemoteAddr().String())
+	slog.Info("Client connected", "addr", clientRemoteAddr)
 
 	scanner := bufio.NewScanner(conn)
+	scanBuf := make([]byte, 1024*1024)
+	scanner.Buffer(scanBuf, 10*1024*1024)
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		slog.Info("Received from client", "data", line)
 
 		var base struct {
 			Type string `json:"type"`
 		}
 		if err := json.Unmarshal([]byte(line), &base); err == nil {
-			if base.Type == "ClientInfo" {
+			switch base.Type {
+			case "ClientInfo":
 				var info MultiClientInfoMsg
 				if err := json.Unmarshal([]byte(line), &info); err == nil {
 					scp.multiServerMu.Lock()
@@ -177,6 +300,78 @@ func (scp *ScpDesc) handleMultiClient(conn net.Conn) {
 					scp.updateConnectedClientsLabel()
 					scp.multiServerMu.Unlock()
 				}
+			case "RemoteChannelsAnnounce":
+				var announce RemoteChannelsAnnounceMsg
+				if err := json.Unmarshal([]byte(line), &announce); err == nil {
+					scp.remoteChannelsMu.Lock()
+					for _, chInfo := range announce.Channels {
+						vRange := genericps.Range_1v
+						if vr, ok := vRanges[chInfo.VRange]; ok {
+							vRange = vr
+						}
+						couple := genericps.Dc
+						if chInfo.CoupleType == "AC" {
+							couple = genericps.Ac
+						}
+
+						found := false
+						for idx := range scp.remoteChannels {
+							if scp.remoteChannels[idx].ClientID == clientRemoteAddr && scp.remoteChannels[idx].RemoteChanIdx == chInfo.RemoteChanIdx {
+								scp.remoteChannels[idx].VRange = vRange
+								scp.remoteChannels[idx].CoupleType = couple
+								scp.remoteChannels[idx].Offset = chInfo.Offset
+								scp.remoteChannels[idx].Inverted = chInfo.Inverted
+								scp.remoteChannels[idx].X10 = chInfo.X10
+								found = true
+								break
+							}
+						}
+						if !found {
+							colorIdx := len(scp.remoteChannels) % len(remoteChannelDefaultColors)
+							chColor := remoteChannelDefaultColors[colorIdx]
+							if chInfo.ColorR > 0 || chInfo.ColorG > 0 || chInfo.ColorB > 0 {
+								chColor = color.NRGBA{R: chInfo.ColorR, G: chInfo.ColorG, B: chInfo.ColorB, A: 255}
+							}
+							displayName := fmt.Sprintf("%s (%s)", chInfo.Name, clientRemoteAddr)
+							scp.remoteChannels = append(scp.remoteChannels, RemoteChannelDesc{
+								ClientID:       clientRemoteAddr,
+								RemoteChanIdx:  chInfo.RemoteChanIdx,
+								Name:           displayName,
+								Enabled:        true,
+								VRange:         vRange,
+								CoupleType:     couple,
+								Offset:         chInfo.Offset,
+								Inverted:       chInfo.Inverted,
+								X10:            chInfo.X10,
+								DisplayVOffset: 0,
+								Color:          chColor,
+							})
+						}
+					}
+					scp.remoteChannelsMu.Unlock()
+
+					fyne.Do(func() {
+						scp.openRemoteChannelsWindow()
+						setFlag(scp.repartition)
+						scp.refreshRasters()
+					})
+				}
+			case "RemoteWaveform":
+				var wf RemoteWaveformMsg
+				if err := json.Unmarshal([]byte(line), &wf); err == nil {
+					scp.remoteChannelsMu.Lock()
+					for idx := range scp.remoteChannels {
+						if scp.remoteChannels[idx].ClientID == clientRemoteAddr && scp.remoteChannels[idx].RemoteChanIdx == wf.RemoteChanIdx {
+							scp.remoteChannels[idx].Buffer = wf.Samples
+							break
+						}
+					}
+					scp.remoteChannelsMu.Unlock()
+
+					fyne.Do(func() {
+						scp.refreshRasters()
+					})
+				}
 			}
 		}
 	}
@@ -185,6 +380,11 @@ func (scp *ScpDesc) handleMultiClient(conn net.Conn) {
 func (scp *ScpDesc) connectMultiClient(ip string, port int) {
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
+
+	if scp.multiServer != nil {
+		slog.Warn("Multiscope server is running; stopping server before connecting client")
+		scp.stopMultiServerLocked()
+	}
 
 	if scp.multiClientConn != nil {
 		slog.Warn("Multiscope client is already connected")
@@ -227,21 +427,31 @@ func (scp *ScpDesc) connectMultiClient(ip string, port int) {
 		}
 
 		scanner := bufio.NewScanner(conn)
+		scanBuf := make([]byte, 1024*1024)
+		scanner.Buffer(scanBuf, 10*1024*1024)
+
 		for scanner.Scan() {
 			line := scanner.Text()
-			slog.Info("Received from server", "data", line)
 
 			var base struct {
 				Type string `json:"type"`
 			}
 			if err := json.Unmarshal([]byte(line), &base); err == nil {
-				if base.Type == "SyncSettings" {
+				switch base.Type {
+				case "SyncSettings":
 					var syncMsg MultiSyncMessage
 					if err := json.Unmarshal([]byte(line), &syncMsg); err == nil {
 						fyne.Do(func() {
 							scp.applyMultiSyncParams(&syncMsg)
 						})
 					}
+				case "StartAcquisition":
+					slog.Info("Received StartAcquisition from server")
+					scp.sendRemoteChannelsAnnounce()
+					fyne.Do(scp.StartRunning)
+				case "StopAcquisition":
+					slog.Info("Received StopAcquisition from server")
+					fyne.Do(scp.StopRunning)
 				}
 			}
 		}
@@ -261,10 +471,7 @@ func (scp *ScpDesc) connectMultiClient(ip string, port int) {
 	}()
 }
 
-func (scp *ScpDesc) disconnectMultiClient() {
-	scp.multiServerMu.Lock()
-	defer scp.multiServerMu.Unlock()
-
+func (scp *ScpDesc) disconnectMultiClientLocked() {
 	if scp.multiClientConn != nil {
 		scp.multiClientConn.Close()
 		scp.multiClientConn = nil
@@ -275,6 +482,12 @@ func (scp *ScpDesc) disconnectMultiClient() {
 			scp.multiSyncStatusLabel.SetText("Sync Status: Disconnected")
 		})
 	}
+}
+
+func (scp *ScpDesc) disconnectMultiClient() {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+	scp.disconnectMultiClientLocked()
 }
 
 func parseTriggerDirection(dirStr string) genericps.ThresholdDirection {
@@ -686,3 +899,136 @@ func (scp *ScpDesc) publishMultiSync() error {
 	}
 	return nil
 }
+
+func (scp *ScpDesc) broadcastMultiStart() {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+
+	if len(scp.multiClients) == 0 {
+		return
+	}
+	msg := StartAcquisitionMsg{Type: "StartAcquisition"}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return
+	}
+	data = append(data, '\n')
+	for _, client := range scp.multiClients {
+		if client.Conn != nil {
+			client.Conn.Write(data)
+		}
+	}
+	slog.Info("Broadcasted StartAcquisition to multiscope clients", "count", len(scp.multiClients))
+}
+
+func (scp *ScpDesc) broadcastMultiStop() {
+	scp.multiServerMu.Lock()
+	defer scp.multiServerMu.Unlock()
+
+	if len(scp.multiClients) == 0 {
+		return
+	}
+	msg := StopAcquisitionMsg{Type: "StopAcquisition"}
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return
+	}
+	data = append(data, '\n')
+	for _, client := range scp.multiClients {
+		if client.Conn != nil {
+			client.Conn.Write(data)
+		}
+	}
+	slog.Info("Broadcasted StopAcquisition to multiscope clients", "count", len(scp.multiClients))
+}
+
+func (scp *ScpDesc) sendRemoteChannelsAnnounce() {
+	scp.multiServerMu.Lock()
+	conn := scp.multiClientConn
+	scp.multiServerMu.Unlock()
+
+	if conn == nil || scp.Settings == nil {
+		return
+	}
+
+	clientID := conn.LocalAddr().String()
+	var channels []RemoteChannelInfo
+	for i := 0; i < int(scp.channelCount) && i < len(scp.Settings.Channels); i++ {
+		ch := scp.Settings.Channels[i]
+		if ch.Enabled {
+			col := ch.Col[scp.Settings.ChannelColorIndex]
+			vRangeStr := rangeEnumToString[ch.VRange]
+			if vRangeStr == "" {
+				vRangeStr = "±1V"
+			}
+			coupleStr := "DC"
+			if ch.CoupleType == 0 {
+				coupleStr = "AC"
+			}
+			name := fmt.Sprintf("Ch %c", 'A'+i)
+			channels = append(channels, RemoteChannelInfo{
+				RemoteChanIdx: i,
+				Name:          name,
+				Enabled:       true,
+				VRange:        vRangeStr,
+				CoupleType:    coupleStr,
+				Offset:        ch.Offset,
+				Inverted:      ch.Inverted,
+				X10:           ch.X10,
+				ColorR:        col.R,
+				ColorG:        col.G,
+				ColorB:        col.B,
+			})
+		}
+	}
+
+	msg := RemoteChannelsAnnounceMsg{
+		Type:     "RemoteChannelsAnnounce",
+		ClientID: clientID,
+		Channels: channels,
+	}
+	if data, err := json.Marshal(msg); err == nil {
+		data = append(data, '\n')
+		conn.Write(data)
+		slog.Info("Sent remote channels announce to server", "channelCount", len(channels))
+	}
+}
+
+func (scp *ScpDesc) sendClientWaveforms() {
+	scp.multiServerMu.Lock()
+	conn := scp.multiClientConn
+	scp.multiServerMu.Unlock()
+
+	if conn == nil || scp.Settings == nil {
+		return
+	}
+
+	clientID := conn.LocalAddr().String()
+	for i := 0; i < int(scp.channelCount) && i < len(scp.Settings.Channels); i++ {
+		ch := scp.Settings.Channels[i]
+		if !ch.Enabled {
+			continue
+		}
+		if i >= len(scp.displayBuffers) || len(scp.displayBuffers[i]) == 0 {
+			continue
+		}
+
+		buf := scp.displayBuffers[i]
+		samples := make([]float32, len(buf))
+		copy(samples, buf)
+
+		name := fmt.Sprintf("Ch %c", 'A'+i)
+		msg := RemoteWaveformMsg{
+			Type:          "RemoteWaveform",
+			ClientID:      clientID,
+			RemoteChanIdx: i,
+			Name:          name,
+			Samples:       samples,
+		}
+		if data, err := json.Marshal(msg); err == nil {
+			data = append(data, '\n')
+			conn.Write(data)
+		}
+	}
+}
+
