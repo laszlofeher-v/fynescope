@@ -63,7 +63,14 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 
 	// Server View Components
 	serverPortDisp, _ := disp7.NewDisp7Array(5, 0, 65535, 0, disp7.UnSigned, scp.Window, theme.PrimaryColorNamed("green"), disp7.ReadWrite)
-	serverPortDisp.SilentSetValue(50000)
+	if scp.Settings.Multiscope.ServerPort == 0 {
+		scp.Settings.Multiscope.ServerPort = 50000
+	}
+	serverPortDisp.SilentSetValue(scp.Settings.Multiscope.ServerPort)
+	serverPortDisp.OnChanged = func(v float64) {
+		scp.Settings.Multiscope.ServerPort = int(v)
+		scp.SaveSettings()
+	}
 
 	scp.multiClientsLabel = widget.NewLabel("Connected Clients:\nNone")
 	
@@ -91,8 +98,20 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 	// Client View Components
 	clientIPEntry := widget.NewEntry()
 	clientIPEntry.SetPlaceHolder("Enter Server IP")
+	clientIPEntry.SetText(scp.Settings.Multiscope.ClientIP)
+	clientIPEntry.OnChanged = func(s string) {
+		scp.Settings.Multiscope.ClientIP = s
+		scp.SaveSettings()
+	}
 	clientPortDisp, _ := disp7.NewDisp7Array(5, 0, 65535, 0, disp7.UnSigned, scp.Window, theme.PrimaryColorNamed("green"), disp7.ReadWrite)
-	clientPortDisp.SilentSetValue(50000)
+	if scp.Settings.Multiscope.ClientPort == 0 {
+		scp.Settings.Multiscope.ClientPort = 50000
+	}
+	clientPortDisp.SilentSetValue(scp.Settings.Multiscope.ClientPort)
+	clientPortDisp.OnChanged = func(v float64) {
+		scp.Settings.Multiscope.ClientPort = int(v)
+		scp.SaveSettings()
+	}
 
 	connectClientBtn := tastybutton.NewTastyButton("Connect", tastybutton.Green, func() {
 		scp.connectMultiClient(clientIPEntry.Text, clientPortDisp.Value)
@@ -120,6 +139,8 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 			clientBtn.Style = tastybutton.Green
 			contentContainer.Add(clientView)
 		}
+		scp.Settings.Multiscope.Mode = mode
+		scp.SaveSettings()
 		serverBtn.Refresh()
 		clientBtn.Refresh()
 		contentContainer.Refresh()
@@ -130,7 +151,10 @@ func (scp *ScpDesc) newMultiscopePanel() *fyne.Container {
 
 	modeSelection := container.NewHBox(serverBtn, clientBtn)
 	
-	selectMode("Server")
+	if scp.Settings.Multiscope.Mode == "" {
+		scp.Settings.Multiscope.Mode = "Server"
+	}
+	selectMode(scp.Settings.Multiscope.Mode)
 
 	return container.NewVBox(
 		ipLabel,

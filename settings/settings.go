@@ -234,6 +234,12 @@ type (
 		Hysteresis    int32  `yaml:"hysteresis"`
 		ShowBitstarts bool   `yaml:"showbitstarts"`
 	}
+	MultiscopeSettings struct {
+		Mode       string `yaml:"mode"`
+		ServerPort int    `yaml:"serverport"`
+		ClientPort int    `yaml:"clientport"`
+		ClientIP   string `yaml:"clientip"`
+	}
 	PsSettings struct {
 		Theme               ThemeType              `yaml:"theme"`
 		ChannelColorIndex   ChannelColorIndexType  `yaml:"channelcolorindex"`
@@ -252,6 +258,7 @@ type (
 		VirtualChannels     []VirtualChSettings    `yaml:"virtualchannels"`
 		Decode              DecodeSettings         `yaml:"decode"`
 		Digital             DigitalSettings        `yaml:"digital"`
+		Multiscope          MultiscopeSettings     `yaml:"multiscope"`
 		StreamEnabled       *bool                  `yaml:"streamenabled,omitempty"`
 	}
 )
@@ -295,6 +302,7 @@ func NewDefaultSettings() *PsSettings {
 		Window: WindowSettings{Width: 1366, Height: 768, LeftControl: false,
 			Function: 0, HelpEnabled: &defaultHelpEnabled},
 		ScreenSize: ScreenSize1920x1080,
+		Multiscope: MultiscopeSettings{Mode: "Server", ServerPort: 50000, ClientPort: 50000, ClientIP: ""},
 		Time: TimeSettings{Unit: defaultTimeUnit, TriggerTimeOffset: 0, TimeDiv: defaultTime,
 			Interpolation: Raw, SampleRate: defaultSamplerate, SampleRateUnit: defaultSampleRateUnit,
 			ResolutionMode: "Normal"},
