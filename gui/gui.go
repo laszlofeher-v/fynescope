@@ -925,6 +925,7 @@ func (scp *ScpDesc) build2000Gui() {
 		case ftTabIndex, fvTabIndex, dftTabIndex, ffTabIndex:
 			scp.Settings.Window.LastDispFunction = newTab
 		}
+		scp.SaveSettings()
 		slog.Debug("tab", "t", *t)
 
 		targetFunction := scp.Settings.Window.Function
@@ -998,44 +999,31 @@ func (scp *ScpDesc) build2000Gui() {
 
 		}
 	}
-	initTabItem := scp.getTabItem(scp.Settings.Window.Function)
-	targetFunctionInit := scp.Settings.Window.Function
-	if scp.Settings.Window.Function == genTabIndex ||
-		scp.Settings.Window.Function == filterTabIndex ||
-		scp.Settings.Window.Function == extgenTabIndex ||
-		scp.Settings.Window.Function == vchTabIndex ||
-		scp.Settings.Window.Function == digPortTabIndex ||
-		scp.Settings.Window.Function == corrTabIndex ||
-		scp.Settings.Window.Function == multiTabIndex {
-		initTabItem = scp.getTabItem(scp.Settings.Window.LastDispFunction)
-	}
-	if initTabItem != nil {
-		scp.controlTab.Select(initTabItem)
-	}
-	switch targetFunctionInit {
-	case dftTabIndex:
-		scp.ftRaster.Hide()
-		scp.fvRaster.Hide()
-		scp.ffRaster.Hide()
-	case fvTabIndex:
-		scp.ftRaster.Hide()
-		scp.dftRaster.Hide()
-		scp.ffRaster.Hide()
-	case ffTabIndex:
-		scp.ftRaster.Hide()
-		scp.dftRaster.Hide()
-		scp.fvRaster.Hide()
-	default:
-		scp.dftRaster.Hide()
-		scp.fvRaster.Hide()
-		scp.ffRaster.Hide()
-	}
 
 	scp.timeZoomButton = widget.NewButtonWithIcon("", theme.SearchIcon(), func() {
 		scp.openTimeZoomWindow()
 	})
-	if targetFunctionInit != ftTabIndex && targetFunctionInit != rlcTabIndex && targetFunctionInit != genTabIndex && targetFunctionInit != filterTabIndex && targetFunctionInit != extgenTabIndex && targetFunctionInit != digGenTabIndex && targetFunctionInit != digPortTabIndex && targetFunctionInit != corrTabIndex && targetFunctionInit != vchTabIndex && targetFunctionInit != multiTabIndex {
-		scp.timeZoomButton.Hide()
+
+	initTabItem := scp.getTabItem(scp.Settings.Window.Function)
+	isTabPresent := false
+	for _, item := range scp.controlTab.Items {
+		if item == initTabItem {
+			isTabPresent = true
+			break
+		}
+	}
+	if !isTabPresent {
+		initTabItem = scp.ftTab
+	}
+
+	if initTabItem != nil {
+		if scp.controlTab.Selected() == initTabItem {
+			if scp.controlTab.OnSelected != nil {
+				scp.controlTab.OnSelected(initTabItem)
+			}
+		} else {
+			scp.controlTab.Select(initTabItem)
+		}
 	}
 
 	for _, item := range scp.controlTab.Items {
