@@ -29,6 +29,7 @@ type MultiSyncMessage struct {
 	Type              string                     `json:"type"` // "SyncSettings"
 	CommonTrigger     string                     `json:"common_trigger"`
 	TriggerMode       string                     `json:"trigger_mode"`
+	TriggerType       string                     `json:"trigger_type,omitempty"`
 	TriggerDirection  string                     `json:"trigger_direction,omitempty"`
 	TriggerMv         int32                      `json:"trigger_mv,omitempty"`
 	TriggerHysteresis int32                      `json:"trigger_hysteresis,omitempty"`
@@ -318,19 +319,33 @@ func formatTriggerDirection(dir genericps.ThresholdDirection) string {
 	}
 }
 
-func (scp *ScpDesc) buildMultiSyncMessage() *MultiSyncMessage {
+func (scp *ScpDesc) buildMultiSyncMessage() (*MultiSyncMessage, error) {
 	if scp.Settings == nil {
-		return &MultiSyncMessage{Type: "SyncSettings"}
+		return &MultiSyncMessage{Type: "SyncSettings"}, nil
 	}
 
-	commonTrig := scp.Settings.Multiscope.CommonTrigger
-	if commonTrig == "" {
-		if scp.multiCommonTrigSelect != nil && scp.multiCommonTrigSelect.Selected != "" {
-			commonTrig = scp.multiCommonTrigSelect.Selected
-		} else {
-			commonTrig = "Ch A"
+	actualTrig := ""
+	trigCount := 0
+	if scp.Settings.Digital.Trigger.Enabled {
+		for i := 0; i < 16; i++ {
+			if scp.Settings.Digital.Trigger.Directions[i] != genericps.DigitalDontCare {
+				if trigCount == 0 {
+					actualTrig = fmt.Sprintf("D%d", i)
+				}
+				trigCount++
+			}
 		}
+	} else if scp.triggerSource != dontCare {
+		actualTrig = fmt.Sprintf("Ch %c", 'A'+int(scp.triggerSource))
+		trigCount++
 	}
+	
+	if trigCount != 1 {
+		return nil, fmt.Errorf("no single source trigger selected (found %d)", trigCount)
+	}
+
+	commonTrig := actualTrig
+	scp.Settings.Multiscope.CommonTrigger = commonTrig
 
 	timeDiv := scp.Settings.Time.TimeDiv
 	if scp.timeSelect != nil && scp.timeSelect.Selected != "" {
@@ -352,6 +367,7 @@ func (scp *ScpDesc) buildMultiSyncMessage() *MultiSyncMessage {
 		Type:              "SyncSettings",
 		CommonTrigger:     commonTrig,
 		TriggerMode:       scp.Settings.Trigger.Mode,
+		TriggerType:       scp.Settings.Trigger.Type,
 		TimeDiv:           timeDiv,
 		TimeUnit:          timeUnit,
 		TriggerTimeOffset: scp.Settings.Time.TriggerTimeOffset,
@@ -403,8 +419,7 @@ func (scp *ScpDesc) buildMultiSyncMessage() *MultiSyncMessage {
 			TriggerHysteresis: ch.Trigger.Hysteresis,
 		})
 	}
-
-	return msg
+	return msg, nil
 }
 
 func (scp *ScpDesc) applyCommonTrigger(triggerName string) {
@@ -599,11 +614,17 @@ func (scp *ScpDesc) applyMultiSyncParams(msg *MultiSyncMessage) {
 		}
 	}
 
-	// 3. Trigger Mode
+	// 3. Trigger Mode & Type
 	if msg.TriggerMode != "" {
 		scp.Settings.Trigger.Mode = msg.TriggerMode
 		if scp.triggerModeSelect != nil {
 			scp.triggerModeSelect.SetSelected(msg.TriggerMode)
+		}
+	}
+	if msg.TriggerType != "" {
+		scp.Settings.Trigger.Type = msg.TriggerType
+		if scp.triggerTypeSelect != nil {
+			scp.triggerTypeSelect.SetSelected(msg.TriggerType)
 		}
 	}
 
@@ -615,9 +636,6 @@ func (scp *ScpDesc) applyMultiSyncParams(msg *MultiSyncMessage) {
 	// 5. Common Trigger
 	if msg.CommonTrigger != "" {
 		scp.Settings.Multiscope.CommonTrigger = msg.CommonTrigger
-		if scp.multiCommonTrigSelect != nil {
-			scp.multiCommonTrigSelect.SetSelected(msg.CommonTrigger)
-		}
 		scp.applyCommonTrigger(msg.CommonTrigger)
 	}
 
@@ -633,18 +651,15 @@ func (scp *ScpDesc) applyMultiSyncParams(msg *MultiSyncMessage) {
 	scp.SaveSettings()
 }
 
-func (scp *ScpDesc) publishMultiSync() {
-	if scp.multiCommonTrigSelect != nil && scp.multiCommonTrigSelect.Selected != "" {
-		scp.Settings.Multiscope.CommonTrigger = scp.multiCommonTrigSelect.Selected
-		scp.applyCommonTrigger(scp.multiCommonTrigSelect.Selected)
-		scp.SaveSettings()
+func (scp *ScpDesc) publishMultiSync() error {
+	msg, err := scp.buildMultiSyncMessage()
+	if err != nil {
+		return err
 	}
-
-	msg := scp.buildMultiSyncMessage()
 	data, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("Failed to marshal multiscope sync message", "err", err)
-		return
+		return err
 	}
 	data = append(data, '\n')
 
@@ -669,4 +684,5 @@ func (scp *ScpDesc) publishMultiSync() {
 			scp.multiServerStatusLabel.SetText(fmt.Sprintf("Synced to %d client(s) at %s", count, time.Now().Format("15:04:05")))
 		})
 	}
+	return nil
 }
