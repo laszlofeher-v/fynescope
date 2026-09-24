@@ -126,6 +126,9 @@ func (psControl *PscDesc) triggerMonitor() {
 }
 
 func (psControl *PscDesc) hasActiveDigitalTrigger() bool {
+	if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+		return false
+	}
 	if !psControl.triggerSetting.DigitalTriggerEnabled {
 		return false
 	}
@@ -138,6 +141,9 @@ func (psControl *PscDesc) hasActiveDigitalTrigger() bool {
 }
 
 func (psControl *PscDesc) applyDigitalTrigger() (err error) {
+	if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+		return nil
+	}
 	if psControl.hasActiveDigitalTrigger() {
 		err = psControl.Con.SetTriggerDigitalPortProperties(psControl.triggerSetting.DigitalDirections)
 		if err != nil {
@@ -169,6 +175,9 @@ func (psControl *PscDesc) applyDigitalTrigger() (err error) {
 }
 
 func (psControl *PscDesc) sendDigitalTrigger() (err error) {
+	if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+		return nil
+	}
 	at := psControl.autoTriggerMilliseconds32()
 	err = psControl.applyDigitalTrigger()
 	if err != nil {
@@ -377,11 +386,10 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerFalling {
 		pwqDir = genericps.TriggerFalling
 	}
-	err = psControl.disablePwq(pwqDir)
-	if err != nil {
-		slog.Error("SetPulseWidthQualifier disable:", "error:", err)
+	if pwqErr := psControl.disablePwq(pwqDir); pwqErr != nil {
+		slog.Error("SetPulseWidthQualifier disable:", "error:", pwqErr)
 	}
-	return
+	return nil
 }
 
 func (psControl *PscDesc) sendWindowTrigger() (err error) {
@@ -410,11 +418,10 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerFalling {
 		pwqDir = genericps.TriggerFalling
 	}
-	err = psControl.disablePwq(pwqDir)
-	if err != nil {
-		slog.Error("SetPulseWidthQualifier disable:", "error:", err)
+	if pwqErr := psControl.disablePwq(pwqDir); pwqErr != nil {
+		slog.Error("SetPulseWidthQualifier disable:", "error:", pwqErr)
 	}
-	return
+	return nil
 }
 
 func (psControl *PscDesc) sendRuntTrigger() (err error) {
@@ -443,11 +450,10 @@ func (psControl *PscDesc) sendRuntTrigger() (err error) {
 	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerNegativeRunt {
 		pwqDir = genericps.TriggerFalling
 	}
-	err = psControl.disablePwq(pwqDir)
-	if err != nil {
-		slog.Error("SetPulseWidthQualifier disable:", "error:", err)
+	if pwqErr := psControl.disablePwq(pwqDir); pwqErr != nil {
+		slog.Error("SetPulseWidthQualifier disable:", "error:", pwqErr)
 	}
-	return
+	return nil
 }
 
 func (psControl *PscDesc) sendIntervalTrigger() (err error) {

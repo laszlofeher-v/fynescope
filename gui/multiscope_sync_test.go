@@ -93,6 +93,7 @@ func TestApplyCommonTrigger(t *testing.T) {
 		Settings:     settings.NewDefaultSettings(),
 		psControl:    psc,
 		triggerCheck: make([]*widget.Check, 2),
+		IsMSO:        true,
 	}
 	scp.triggerCheck[0] = widget.NewCheck("Ch A", func(bool) {})
 	scp.triggerCheck[1] = widget.NewCheck("Ch B", func(bool) {})

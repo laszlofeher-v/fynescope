@@ -192,6 +192,11 @@ const (
 )
 
 func (scp *ScpDesc) updateDigitalTrigger() {
+	if scp.psControl != nil && scp.psControl.ScopeModel != control.ScopeUnknown && !scp.psControl.ScopeModel.IsMSO() {
+		scp.triggerSettingMsg.DigitalTriggerEnabled = false
+		scp.triggerSettingMsg.DigitalDirections = nil
+		return
+	}
 	var dirs []genericps.DigitalChannelDirections
 	for i := 0; i < 16; i++ {
 		portIdx := i / 8
@@ -306,6 +311,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	title := NewFocusableLabelWithStyle("Digital Channels", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	trigEnableCheck := widget.NewCheck("Enable Digital Trigger", func(v bool) {
+		if !scp.IsMSO {
+			return
+		}
 		scp.Settings.Digital.Trigger.Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalTrigger()
@@ -366,6 +374,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	port1Box := container.NewVBox()
 
 	port0EnableCheck := widget.NewCheck("Enable Port 0 (D0-D7)", func(v bool) {
+		if !scp.IsMSO {
+			return
+		}
 		scp.Settings.Digital.Ports[0].Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalSplit()
@@ -462,6 +473,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	port0Box.Add(port0ChannelsBox)
 
 	port1EnableCheck := widget.NewCheck("Enable Port 1 (D8-D15)", func(v bool) {
+		if !scp.IsMSO {
+			return
+		}
 		scp.Settings.Digital.Ports[1].Enabled = v
 		scp.SaveSettings()
 		scp.updateDigitalSplit()

@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"fyne.io/fyne/v2"
 	"fynescope/genericps"
 	"fynescope/settings"
+
+	"fyne.io/fyne/v2"
 )
 
 type multiClientInfo struct {
@@ -552,7 +553,7 @@ func (scp *ScpDesc) buildMultiSyncMessage() (*MultiSyncMessage, error) {
 		actualTrig = fmt.Sprintf("Ch %c", 'A'+int(scp.triggerSource))
 		trigCount++
 	}
-	
+
 	if trigCount != 1 {
 		return nil, fmt.Errorf("no single source trigger selected (found %d)", trigCount)
 	}
@@ -666,6 +667,10 @@ func (scp *ScpDesc) applyCommonTrigger(triggerName string) {
 	}
 
 	if strings.HasPrefix(strings.ToUpper(triggerName), "D") {
+		if !scp.IsMSO {
+			slog.Warn("Ignoring digital trigger on non-MSO scope", "trigger", triggerName)
+			return
+		}
 		digIdx, err := strconv.Atoi(strings.TrimPrefix(strings.ToUpper(triggerName), "D"))
 		if err == nil && digIdx >= 0 && digIdx < 16 {
 			// Disable analog trigger
@@ -842,7 +847,7 @@ func (scp *ScpDesc) applyMultiSyncParams(msg *MultiSyncMessage) {
 	}
 
 	// 4. Digital Channel trigger direction if specified
-	if msg.DigitalDirection != 0 && msg.DigitalChannel >= 0 && msg.DigitalChannel < 16 {
+	if scp.IsMSO && msg.DigitalDirection != 0 && msg.DigitalChannel >= 0 && msg.DigitalChannel < 16 {
 		scp.Settings.Digital.Trigger.Directions[msg.DigitalChannel] = msg.DigitalDirection
 	}
 
@@ -1031,4 +1036,3 @@ func (scp *ScpDesc) sendClientWaveforms() {
 		}
 	}
 }
-

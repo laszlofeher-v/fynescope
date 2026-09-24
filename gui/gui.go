@@ -1175,7 +1175,7 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.initStatus()
 	var saveRasterButton, saveWindowButton *widget.Button
 	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
-	if scp.runningMode != genericps.ScopeMode {
+	if scp.runningMode != genericps.ScopeMode && scp.IsMSO {
 		if scp.psControl != nil {
 			go func(p0, p1 settings.DigitalPortSettings) {
 				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p0}
@@ -1421,6 +1421,10 @@ func (scp *ScpDesc) build2000Gui() {
 			// scp.updateDftDataCollectionTime()
 			scp.refreshRasters() // it calls draw method in signalviewer
 			scp.sendClientWaveforms()
+			if scp.triggerSettingMsg.Mode == control.Single {
+				scp.runblockButton.SetIcon(theme.MediaPlayIcon())
+				scp.running = false
+			}
 		})
 	}
 
@@ -1526,20 +1530,20 @@ func (scp *ScpDesc) StartRunning() {
 		err = scp.psControl.SetETSMode()
 	default: // Auto, Repeat, Single, and our forced Auto for f(v)
 		err = scp.psControl.SetBlockMode()
-		if scp.triggerSettingMsg.Mode == control.Single {
-			scp.runblockButton.SetIcon(theme.MediaPlayIcon())
-			scp.running = false
-		}
 	}
 	if err == nil {
 		scp.broadcastMultiStart()
 	} else {
 		scp.runblockButton.SetIcon(theme.MediaPlayIcon())
+		scp.running = false
 		slog.Error("", "run error:", err)
 	}
 }
 
-// StopRunning stops the current capture or sweep operation and updates the run button UI.
+func (scp *ScpDesc) IsRunning() bool {
+	return scp.running
+}
+
 func (scp *ScpDesc) StopRunning() {
 	scp.stopFfSweep() // stop any running Bode sweep
 	err := scp.psControl.Stop()
@@ -1574,6 +1578,23 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.psControl.ScopeModel = control.StringToScopeType(scp.psControl.Info)
 	slog.Debug("scope ", "info string", scp.psControl.Info)
 	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO") || scp.psControl.Info == demo.ScopeDemoVariantInfo
+	if !scp.IsMSO {
+		scp.Settings.Digital.Ports[0].Enabled = false
+		scp.Settings.Digital.Ports[1].Enabled = false
+		scp.Settings.Digital.Trigger.Enabled = false
+		for i := range scp.Settings.Digital.ChannelsEnabled {
+			scp.Settings.Digital.ChannelsEnabled[i] = false
+		}
+		for i := range scp.Settings.Digital.Trigger.Directions {
+			scp.Settings.Digital.Trigger.Directions[i] = genericps.DigitalDontCare
+		}
+		scp.triggerSettingMsg.DigitalTriggerEnabled = false
+		scp.triggerSettingMsg.DigitalDirections = nil
+		if scp.psControl != nil {
+			scp.psControl.SetDigitalPortEnabled(0, false)
+			scp.psControl.SetDigitalPortEnabled(1, false)
+		}
+	}
 	// TODO select preconfigured gui description, including
 	// channel count
 	// e.g. ETS mode is available, voltage, frequency ranges

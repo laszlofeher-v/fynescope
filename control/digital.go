@@ -10,12 +10,22 @@ func (psControl *PscDesc) setDigitalPort() (err error) {
 	if psControl.getDigitalPortCh == nil {
 		return nil
 	}
+	if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+		for i := 0; i < 2; i++ {
+			psControl.digitalPortsEnabled[i].Store(false)
+		}
+		return nil
+	}
 	psControl.getDigitalPortCh <- &psControl.getDigitalPort
 	for <-psControl.getDigitalPort.newSettings {
 		chset := psControl.getDigitalPort.portSettings
 		err = psControl.Con.SetDigitalPort(chset.Port, chset.Settings.Enabled, chset.Settings.Threshold)
 		if err != nil {
 			slog.Error("SetDigitalPort", "error:", err)
+			portIdx := int(chset.Port - genericps.Port0)
+			if portIdx >= 0 && portIdx < 2 {
+				psControl.digitalPortsEnabled[portIdx].Store(false)
+			}
 			err = nil // don't fail setEverything if digital ports are unsupported on this model
 		}
 		psControl.getDigitalPortCh <- &psControl.getDigitalPort
@@ -34,6 +44,10 @@ func (psControl *PscDesc) digitalPortMonitor() {
 	storeSettings := func(setMsg *DigitalPortMsg) (nextFunc eventHandlerFunc) {
 		portIdx := int(setMsg.Port - genericps.Port0)
 		if portIdx < 0 || portIdx > 1 {
+			return unchanged
+		}
+		if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+			psControl.digitalPortsEnabled[portIdx].Store(false)
 			return unchanged
 		}
 		psControl.digitalPortsEnabled[portIdx].Store(setMsg.Settings.Enabled)
