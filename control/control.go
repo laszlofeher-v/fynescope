@@ -275,13 +275,13 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	psControl.getGeneratorCh = make(chan *getGeneratorMsg)
 	psControl.getGenerator.newSetting = make(chan bool)
 
-	psControl.SetChannelCh = make(chan *settings.ChSettings)
+	psControl.SetChannelCh = make(chan *settings.ChSettings, 16)
 	psControl.getChannelCh = make(chan *getChannelMsg)
 	psControl.getChannel.newSettings = make(chan bool)
 	psControl.getNumOfEnabledCh = make(chan *getNumOfEnabledChMsg)
 	psControl.getNumOfEnabled.n = make(chan int)
 
-	psControl.SetDigitalPortCh = make(chan *DigitalPortMsg)
+	psControl.SetDigitalPortCh = make(chan *DigitalPortMsg, 16)
 	psControl.getDigitalPortCh = make(chan *getDigitalPortMsg)
 	psControl.getDigitalPort.newSettings = make(chan bool)
 
@@ -448,6 +448,12 @@ func (psControl *PscDesc) numberOfEnabledAnalogChannels() (n int) {
 
 func (psControl *PscDesc) NumberOfEnabledAnalogChannels() int {
 	return psControl.numberOfEnabledAnalogChannels()
+}
+
+func (psControl *PscDesc) SetDigitalPortEnabled(port int, enabled bool) {
+	if port >= 0 && port < 2 {
+		psControl.digitalPortsEnabled[port].Store(enabled)
+	}
 }
 
 func (psControl *PscDesc) NewChannels(numberOfChannels int) {

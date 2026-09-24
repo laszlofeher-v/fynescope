@@ -81,7 +81,7 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 	}
 
 	for i := 0; i < 2; i++ {
-		if !psControl.digitalPortsEnabled[i].Load() {
+		if (psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO()) || !psControl.digitalPortsEnabled[i].Load() {
 			continue
 		}
 		if len(psControl.digitalReceiveBuffer) < 2 {
@@ -122,6 +122,8 @@ func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (e
 		}
 		if err != nil {
 			slog.Error("SetDataBuffer digital", "error:", err)
+			psControl.digitalPortsEnabled[i].Store(false)
+			err = nil
 		}
 	}
 	return
