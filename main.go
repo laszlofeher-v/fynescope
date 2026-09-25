@@ -132,7 +132,11 @@ var (
 		"gui/help.go":                             false,
 		"gui/interval_trigger_point.go":           false,
 		"gui/measure.go":                          false,
+		"gui/multiscope.go":                       false,
+		"gui/multiscope_net.go":                   false,
+		"gui/multiscope_nomulti.go":               false,
 		"gui/raster.go":                           false,
+		"gui/remote_channels_panel.go":            false,
 		"gui/rlc.go":                              false,
 		"gui/runt_trigger_point.go":               false,
 		"gui/screen_draw.go":                      false,
@@ -155,6 +159,8 @@ var (
 		"main.go":                                 false,
 		"main_extgen_noscpi.go":                   false,
 		"main_extgen_scpi.go":                     false,
+		"main_multi.go":                           false,
+		"main_nomulti.go":                         false,
 		"ps2000/c.go":                             false,
 		"ps2000/callbacks.go":                     false,
 		"ps2000/connection.go":                    false,
@@ -375,7 +381,7 @@ func startProfile(n int) error {
 //	 -screensize: 1920x1080 | 1366x768 | 1280x720 | 1024x768
 //	 -gif: enables GIF generation button
 //	 -ff-auto-range: enables auto ranging during Bode sweep
-func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string, apiPort *int, apiAuth, apiAuthView *string) {
+func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCountExplicit bool, extGenEnabled bool, multiEnabled bool, screenSize *string, screenSizeExplicit bool, webPort *int, webPortNoVoice *int, webAuth, webAuthView *string, gifEnabled, ffAutoRange *bool, simName *string, apiPort *int, apiAuth, apiAuthView *string) {
 	logLevel = flag.String("loglevel", "warning", "-loglevel=info | debug | warning | error")
 	profile = flag.Bool("profile", false, "-profile=true")
 	demoOnly = flag.Bool("demo", false, "-demo=true")
@@ -390,6 +396,7 @@ func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCo
 	apiAuthView = flag.String("apiauth-view", "", "-apiauth-view=user:pass (credentials for read-only remote API access)")
 	inTestMode := strings.HasSuffix(os.Args[0], ".test") || strings.Contains(os.Args[0], "/_test/")
 	extGenFlag := registerExtGenFlag(inTestMode)
+	multiFlag := registerMultiFlag()
 	screenSize = flag.String("screensize", settings.ScreenSize1920x1080, "-screensize=1920x1080 | 1366x768 | 1280x720 | 1024x768")
 	gifEnabled = flag.Bool("gif", false, "-gif=true (enables GIF generation button)")
 	ffAutoRange = flag.Bool("ff-auto-range", false, "-ff-auto-range=true (enables auto ranging during Bode sweep)")
@@ -418,6 +425,7 @@ func parseFlags() (profile, demoOnly *bool, logLevel *string, chCount *int, chCo
 	}
 
 	extGenEnabled = *extGenFlag
+	multiEnabled = *multiFlag
 	return
 }
 
@@ -683,7 +691,7 @@ func main() {
 	)
 
 	// Process command-line arguments
-	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simName, apiPort, apiAuth, apiAuthView := parseFlags()
+	profile, demoOnly, logLevel, chCount, chCountExplicit, extGenEnabled, multiEnabled, explicitScreenSize, isScreenSizeExplicit, webPort, webPortNoVoice, webAuth, webAuthView, gifEnabled, ffAutoRange, simName, apiPort, apiAuth, apiAuthView := parseFlags()
 	setLogging(logLevel)
 
 	err = demo.SetChannelCount(*chCount, chCountExplicit)
@@ -700,6 +708,7 @@ func main() {
 	// Initialize the GUI application
 	scp := &gui.ScpDesc{
 		ExtGenEnabled:      extGenEnabled,
+		MultiEnabled:       multiEnabled,
 		GifEnabled:         *gifEnabled,
 		FfAutoRangeEnabled: *ffAutoRange,
 	}

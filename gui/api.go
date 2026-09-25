@@ -60,6 +60,7 @@ type ScopeInfo struct {
 	TimeUnit      int    `json:"time_unit"`
 	TimeUnitStr   string `json:"time_unit_str"`
 	ExtGenEnabled bool   `json:"ext_gen_enabled"`
+	MultiEnabled  bool   `json:"multi_enabled"`
 }
 
 // ChannelInfo describes the current runtime settings and properties of an oscilloscope channel.
@@ -209,6 +210,7 @@ func (scp *ScpDesc) GetInfo() ScopeInfo {
 		TimeUnit:      scp.timeUnit,
 		TimeUnitStr:   timeUnitToString(scp.timeUnit),
 		ExtGenEnabled: scp.ExtGenEnabled,
+		MultiEnabled:  scp.MultiEnabled,
 	}
 }
 

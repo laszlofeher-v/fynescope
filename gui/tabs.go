@@ -112,6 +112,9 @@ func (scp *ScpDesc) dockTab(tab *container.TabItem) {
 	if tab == nil || scp.controlTab == nil {
 		return
 	}
+	if tab == scp.multiTab && !scp.MultiEnabled {
+		return
+	}
 	// ensure tab is not already in Items
 	for _, t := range scp.controlTab.Items {
 		if t == tab {

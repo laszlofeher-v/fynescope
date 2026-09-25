@@ -1,3 +1,5 @@
+//go:build multi
+
 package gui
 
 import (
@@ -21,6 +23,7 @@ func TestMultiscopeTabRestorationAndRasters(t *testing.T) {
 		Settings:     settings.NewDefaultSettings(),
 		psControl:    &control.PscDesc{},
 		theme:        theme.DefaultTheme(),
+		MultiEnabled: true,
 	}
 
 	// Set saved settings: multiscope was the last function, with f(v) as last displayed function

@@ -326,6 +326,7 @@ type (
 		SettingFileName            string
 		extGen                     control.ExtGenDesc
 		ExtGenEnabled              bool
+		MultiEnabled               bool
 		FfAutoRangeEnabled         bool
 		useExtGenCheck             *widget.Check
 		complexTriggerCheck        *widget.Check
@@ -932,6 +933,9 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 	if scp.runningMode == genericps.ScopeMode {
 		scp.controlTab.Remove(scp.digGenTab)
+	}
+	if !scp.MultiEnabled {
+		scp.controlTab.Remove(scp.multiTab)
 	}
 
 	scp.activeRasterContainer = container.NewMax(scp.ftRaster, scp.dftRaster, scp.fvRaster, scp.ffRaster)

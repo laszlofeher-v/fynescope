@@ -1,8 +1,11 @@
+//go:build multi
+
 package gui
 
 import (
 	"fmt"
 	"fynescope/disp7"
+	"fynescope/settings"
 	"net"
 
 	"fynescope/tastybutton"
@@ -76,6 +79,9 @@ func (scp *ScpDesc) SetMultiscopeMode(mode string) {
 }
 
 func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
+	if scp.Settings == nil {
+		scp.Settings = settings.NewDefaultSettings()
+	}
 	ipStr := getLocalIPs()
 	ipLabel := widget.NewLabel(fmt.Sprintf("Host IP(s): %s", ipStr))
 

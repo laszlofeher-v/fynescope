@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fynescope/control"
 	"fynescope/demo"
 	"fynescope/disp7"
 	"fynescope/genericps"
@@ -101,12 +102,58 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	// Port Checkboxes
 	port0Check := widget.NewCheck("Port0", func(checked bool) {
 		settings.Port0Enabled = checked
+		if checked {
+			scp.Settings.Digital.Ports[0].Enabled = true
+			if scp.psControl != nil {
+				go func() {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: scp.Settings.Digital.Ports[0]}
+				}()
+			}
+			anyChEnabled := false
+			for i := 0; i < 8; i++ {
+				if scp.Settings.Digital.ChannelsEnabled[i] {
+					anyChEnabled = true
+					break
+				}
+			}
+			if !anyChEnabled {
+				for i := 0; i < 8; i++ {
+					scp.Settings.Digital.ChannelsEnabled[i] = true
+				}
+			}
+			scp.updateDigitalSplit()
+			scp.updateDigitalTrigger()
+			scp.updateTriggerModeOptions()
+		}
 		scp.applyDemoDigitalGenSettings()
 	})
 	port0Check.SetChecked(settings.Port0Enabled)
 
 	port1Check := widget.NewCheck("Port1", func(checked bool) {
 		settings.Port1Enabled = checked
+		if checked {
+			scp.Settings.Digital.Ports[1].Enabled = true
+			if scp.psControl != nil {
+				go func() {
+					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: scp.Settings.Digital.Ports[1]}
+				}()
+			}
+			anyChEnabled := false
+			for i := 8; i < 16; i++ {
+				if scp.Settings.Digital.ChannelsEnabled[i] {
+					anyChEnabled = true
+					break
+				}
+			}
+			if !anyChEnabled {
+				for i := 8; i < 16; i++ {
+					scp.Settings.Digital.ChannelsEnabled[i] = true
+				}
+			}
+			scp.updateDigitalSplit()
+			scp.updateDigitalTrigger()
+			scp.updateTriggerModeOptions()
+		}
 		scp.applyDemoDigitalGenSettings()
 	})
 	port1Check.SetChecked(settings.Port1Enabled)
