@@ -17,7 +17,7 @@ import (
 )
 
 func (scp *ScpDesc) applyDemoDigitalGenSettings() {
-	if scp.psControl != nil && scp.psControl.Con != nil {
+	if scp.psControl != nil && scp.psControl.GetCon() != nil {
 		set := scp.Settings.DigitalDemoGenPanel
 
 		// Set port-enable flags atomically and immediately so the next
@@ -46,7 +46,7 @@ func (scp *ScpDesc) applyDemoDigitalGenSettings() {
 		}
 
 		go func(set settings.DigitalDemoGenSettings) {
-			_ = scp.psControl.Con.SetDemoDigitalGen(
+			_ = scp.psControl.GetCon().SetDemoDigitalGen(
 				set.Port0Enabled,
 				set.Port1Enabled,
 				set.Frequency,
@@ -106,7 +106,7 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 			scp.Settings.Digital.Ports[0].Enabled = true
 			if scp.psControl != nil {
 				go func() {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: scp.Settings.Digital.Ports[0]}
+					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: scp.Settings.Digital.Ports[0]})
 				}()
 			}
 			anyChEnabled := false
@@ -135,7 +135,7 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 			scp.Settings.Digital.Ports[1].Enabled = true
 			if scp.psControl != nil {
 				go func() {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: scp.Settings.Digital.Ports[1]}
+					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: scp.Settings.Digital.Ports[1]})
 				}()
 			}
 			anyChEnabled := false

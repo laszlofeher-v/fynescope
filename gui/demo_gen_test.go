@@ -30,7 +30,7 @@ func TestApplyDemoGenSettings(t *testing.T) {
 	scp.applyDemoGenSettings(genericps.ChA, genSettings)
 
 	select {
-	case msg := <-scp.psControl.SetDemoGenCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetDemoGenCh:
 		assert.Equal(t, genericps.ChA, msg.Channel)
 		assert.True(t, msg.On)
 		assert.Equal(t, genericps.Sine, msg.WaveType)
@@ -53,7 +53,7 @@ func TestApplyDemoGenSettings(t *testing.T) {
 	scp.applyDemoGenSettings(genericps.ChB, genSettings)
 
 	select {
-	case msg := <-scp.psControl.SetDemoGenCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetDemoGenCh:
 		assert.Equal(t, genericps.ChB, msg.Channel)
 		assert.Equal(t, genericps.SweepUp, msg.SweepType)
 		assert.Equal(t, float64(100), msg.StartFrequency)
@@ -69,7 +69,7 @@ func TestApplyDemoGenSettings(t *testing.T) {
 	scp.applyDemoGenSettings(genericps.ChA, genSettings)
 
 	select {
-	case msg := <-scp.psControl.SetDemoGenCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetDemoGenCh:
 		assert.False(t, msg.On)
 		assert.Equal(t, float64(0), msg.DwellTime)
 		assert.Equal(t, int32(0), msg.OffsetVoltage)

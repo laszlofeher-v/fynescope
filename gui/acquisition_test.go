@@ -19,16 +19,16 @@ func TestInStreamMode(t *testing.T) {
 
 	// When below threshold
 	scp.maxScreenTime = control.StreamThreshold - 1
-	scp.psControl.StreamEnabled.Store(true)
+	scp.psControl.SetStreamEnabled(true)
 	assert.False(t, scp.inStreamMode())
 
 	// When above threshold but stream disabled
 	scp.maxScreenTime = control.StreamThreshold
-	scp.psControl.StreamEnabled.Store(false)
+	scp.psControl.SetStreamEnabled(false)
 	assert.False(t, scp.inStreamMode())
 
 	// When above threshold and stream enabled
-	scp.psControl.StreamEnabled.Store(true)
+	scp.psControl.SetStreamEnabled(true)
 	assert.True(t, scp.inStreamMode())
 }
 
@@ -42,11 +42,11 @@ func TestUpdateStreamButtonState(t *testing.T) {
 	scp.psControl = &control.PscDesc{}
 	scp.streamEnableButton = widget.NewButton("", nil)
 
-	scp.psControl.StreamEnabled.Store(true)
+	scp.psControl.SetStreamEnabled(true)
 	scp.updateStreamButtonState()
 	assert.Equal(t, streamEnabledLabel, scp.streamEnableButton.Text)
 
-	scp.psControl.StreamEnabled.Store(false)
+	scp.psControl.SetStreamEnabled(false)
 	scp.updateStreamButtonState()
 	assert.Equal(t, streamDisabledLabel, scp.streamEnableButton.Text)
 }

@@ -125,7 +125,7 @@ func (frql *frqLabelViewer) setDispFreqOffset(dx float32) {
 		freqDelta := (float64(-dx) / float64(w)) * span
 		newMin := frql.scp.Settings.Dft.MinFreq + freqDelta
 		newMax := frql.scp.Settings.Dft.MaxFreq + freqDelta
-		fs := 1.0 / float64(frql.scp.psControl.SamplingTimeInterval)
+		fs := 1.0 / float64(frql.scp.psControl.GetSamplingTimeInterval())
 		maxFreqAvailable := fs / 2
 
 		if newMin < 0 {
@@ -492,7 +492,7 @@ func (dv *dftViewer) draw() {
 		return
 	}
 
-	fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
+	fs := 1.0 / float64(dv.scp.psControl.GetSamplingTimeInterval()) // Sampling frequency in Hz
 	maxFreqAvailable := fs / 2
 	maxFreqPlot := dv.scp.Settings.Dft.MaxFreq
 	if maxFreqPlot > maxFreqAvailable {
@@ -646,7 +646,7 @@ func (dv *dftViewer) draw() {
 		prevX := float32(bounds.Min.X)
 
 		minFreq, maxFreqPlot := dv.scp.getDftFreqRange()
-		fs := 1.0 / float64(dv.scp.psControl.SamplingTimeInterval) // Sampling frequency in Hz
+		fs := 1.0 / float64(dv.scp.psControl.GetSamplingTimeInterval()) // Sampling frequency in Hz
 		maxFreqAvailable := fs / 2
 
 		minBinIdx := int(math.Round((minFreq / maxFreqAvailable) * float64(m/2)))
@@ -1053,11 +1053,11 @@ func (scp *ScpDesc) updateBinWidth() {
 	if scp.binWidthLabel == nil {
 		return
 	}
-	if scp.psControl.SamplingTimeInterval == 0 {
+	if scp.psControl.GetSamplingTimeInterval() == 0 {
 		fyne.Do(func() { scp.binWidthLabel.SetText("BW: -") })
 		return
 	}
-	fs := 1.0 / float64(scp.psControl.SamplingTimeInterval)
+	fs := 1.0 / float64(scp.psControl.GetSamplingTimeInterval())
 	bw := fs / float64(2*scp.Settings.Dft.Bins)
 	text := fmt.Sprintf("BW: %sHz", formatFreq(bw))
 	fyne.Do(func() { scp.binWidthLabel.SetText(text) })
@@ -1483,8 +1483,8 @@ func (scp *ScpDesc) getDftFreqRange() (minFreq, maxFreqPlot float64) {
 	if maxFreqPlot <= 0 {
 		maxFreqPlot = 1e6 // Default to 1MHz if 0
 	}
-	if scp.psControl != nil && scp.psControl.SamplingTimeInterval > 0 {
-		fs := 1.0 / float64(scp.psControl.SamplingTimeInterval)
+	if scp.psControl != nil && scp.psControl.GetSamplingTimeInterval() > 0 {
+		fs := 1.0 / float64(scp.psControl.GetSamplingTimeInterval())
 		maxFreqAvailable := fs / 2
 		if maxFreqPlot > maxFreqAvailable {
 			maxFreqPlot = maxFreqAvailable

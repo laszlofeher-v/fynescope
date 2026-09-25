@@ -1984,7 +1984,7 @@ func (scp *ScpDesc) processFfData() {
 
 	// 1. Measure actual frequency using measurePeriod on the reference channel
 	refBuf := scp.displayBuffers[refCh]
-	samplingInterval := float64(scp.psControl.SamplingTimeInterval)
+	samplingInterval := float64(scp.psControl.GetSamplingTimeInterval())
 	if samplingInterval <= 0 {
 		samplingInterval = 1e-6 // fallback
 	}

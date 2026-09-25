@@ -76,8 +76,8 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		if err := scp.extGen.Connect(cfg); err != nil {
 			slog.Error("external generator connect failed", "err", err)
 			statusLabel.SetText("Error: " + err.Error())
-			if scp.psControl != nil && scp.psControl.DisplayStatus != nil {
-				scp.psControl.DisplayStatus("ExtGen: "+err.Error(), control.Warning)
+			if scp.psControl != nil {
+				scp.psControl.ShowDisplayStatus("ExtGen: "+err.Error(), control.Warning)
 			}
 		} else {
 			// If autodetection occurred, update widgets and settings
@@ -236,8 +236,8 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 				if scp.extGen.Connected() {
 					if err := scp.extGen.SetFrequency(scpiCh, v); err != nil {
 						slog.Error("external gen set freq failed", "err", err)
-						if scp.psControl != nil && scp.psControl.DisplayStatus != nil {
-							scp.psControl.DisplayStatus("ExtGen: "+err.Error(), control.Warning)
+						if scp.psControl != nil {
+							scp.psControl.ShowDisplayStatus("ExtGen: "+err.Error(), control.Warning)
 						}
 					}
 				}
@@ -425,8 +425,8 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 func (scp *ScpDesc) setExtGenFrequency(f float64) {
 	if err := scp.extGen.SetFrequency(scpi.Ch1, f); err != nil {
 		slog.Error("external gen set frequency failed", "err", err)
-		if scp.psControl != nil && scp.psControl.DisplayStatus != nil {
-			scp.psControl.DisplayStatus("ExtGen: "+err.Error(), control.Warning)
+		if scp.psControl != nil {
+			scp.psControl.ShowDisplayStatus("ExtGen: "+err.Error(), control.Warning)
 		}
 	}
 }

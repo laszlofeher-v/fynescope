@@ -654,7 +654,7 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 }
 
 func (scp *ScpDesc) onInterpolationModeChange(option string, e selectscroll.Exception) {
-	scp.psControl.SetInterpolationModeCh <- interpolationModes[option]
+	scp.psControl.SetInterpolationMode(interpolationModes[option])
 	scp.Settings.Time.Interpolation = interpolationModes[option]
 	setFlag(scp.repartition)
 	scp.clearAllFtPersistentLayers()
@@ -666,7 +666,7 @@ func (scp *ScpDesc) onInterpolationModeChange(option string, e selectscroll.Exce
 func (scp *ScpDesc) onResolutionModeChange(option string, e selectscroll.Exception) {
 	scp.Settings.Time.ResolutionMode = option
 	mode := resolutionModes[option]
-	scp.psControl.ResolutionMode.Store(int32(mode))
+	scp.psControl.SetResolutionMode(mode)
 	scp.SaveSettings()
 	if scp.running {
 		scp.psControl.RequestRestart()
@@ -806,7 +806,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 	triggerCopy.Done = make(chan struct{}, 1)
 
 	go func(t control.TriggerDescMsg, mode control.TriggerModes, p control.TriggerModes, running bool) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 
 		if mode == control.ETS {
@@ -851,8 +851,8 @@ func (scp *ScpDesc) updateTriggerModeOptions() {
 
 	isEtsCapable := false
 	if scp.psControl != nil {
-		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
-		if isEtsCapable && (scp.IsMSO || scp.psControl.ScopeModel.IsMSO()) {
+		isEtsCapable = scp.psControl.GetScopeModel().IsETSCapable()
+		if isEtsCapable && (scp.IsMSO || scp.psControl.GetScopeModel().IsMSO()) {
 			if scp.Settings != nil && len(scp.Settings.Digital.Ports) >= 2 {
 				if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
 					isEtsCapable = false
@@ -1195,7 +1195,7 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 
@@ -1209,9 +1209,9 @@ func (scp *ScpDesc) onComplexTriggerChange(checked bool) {
 func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception) {
 	if scp.getActiveFunctionIndex() == ffTabIndex && (option == settings.TriggerTypeInterval ||
 		option == settings.TriggerTypePulseWidth || option == settings.TriggerTypeDropout || option == settings.TriggerTypeWindowDropout) {
-		scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
+		scp.psControl.ShowDisplayStatus(ErrWrongFfTrigger, control.Warning)
 	} else if scp.status != nil && scp.status.Code() == StatusWrongFfTrigger {
-		scp.psControl.DisplayStatus("", control.Info)
+		scp.psControl.ShowDisplayStatus("", control.Info)
 	}
 
 	scp.Settings.Trigger.Type = option
@@ -1283,7 +1283,7 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 
@@ -1321,7 +1321,7 @@ func (scp *ScpDesc) onThresholdChange(v float64) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1407,7 +1407,7 @@ func (scp *ScpDesc) onLowerThresholdChange(v float64) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1497,7 +1497,7 @@ func (scp *ScpDesc) onIntervalTypeChange(option string, ex selectscroll.Exceptio
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1649,7 +1649,7 @@ func (scp *ScpDesc) onIntervalTimeLowerChange(v float64) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1692,7 +1692,7 @@ func (scp *ScpDesc) onIntervalTimeUpperChange(v float64) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1737,7 +1737,7 @@ func (scp *ScpDesc) onIntervalTimeSingleChange(v float64) {
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
 	go func(t control.TriggerDescMsg) {
-		scp.psControl.SetTriggerCh <- &t
+		scp.psControl.SetTrigger(&t)
 		<-t.Done
 	}(triggerCopy)
 	setFlag(scp.repartition)
@@ -1860,8 +1860,8 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	var activeTriggerModes []string
 	isEtsCapable := false
 	if scp.psControl != nil {
-		isEtsCapable = scp.psControl.ScopeModel.IsETSCapable()
-		if isEtsCapable && (scp.IsMSO || scp.psControl.ScopeModel.IsMSO()) {
+		isEtsCapable = scp.psControl.GetScopeModel().IsETSCapable()
+		if isEtsCapable && (scp.IsMSO || scp.psControl.GetScopeModel().IsMSO()) {
 			if scp.Settings != nil && len(scp.Settings.Digital.Ports) >= 2 {
 				if scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled {
 					isEtsCapable = false
@@ -2052,15 +2052,15 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 
 		// Update Effective Sampling Rate Display
 		if scp.etsSamplingRateDisp != nil {
-			rateGSs := v * float64(scp.psControl.MaxSamplingRate) / 1e9
+			rateGSs := v * float64(scp.psControl.GetMaxSamplingRate()) / 1e9
 			scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 		}
 
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
-			if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
-				scp.psControl.SetTriggerCh <- &t
+			if scp.psControl != nil && true {
+				scp.psControl.SetTrigger(&t)
 				<-t.Done
 				scp.psControl.RequestRestart()
 			}
@@ -2084,8 +2084,8 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 		triggerCopy := scp.triggerSettingMsg
 		triggerCopy.Done = make(chan struct{}, 1)
 		go func(t control.TriggerDescMsg) {
-			if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
-				scp.psControl.SetTriggerCh <- &t
+			if scp.psControl != nil && true {
+				scp.psControl.SetTrigger(&t)
 				<-t.Done
 				scp.psControl.RequestRestart()
 			}
@@ -2102,7 +2102,7 @@ func (scp *ScpDesc) newTriggerSelectionUI() (*fyne.Container, error) {
 	if err != nil {
 		return nil, err
 	}
-	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.MaxSamplingRate) / 1e9
+	rateGSs := float64(scp.Settings.Time.EtsInterleave) * float64(scp.psControl.GetMaxSamplingRate()) / 1e9
 	scp.etsSamplingRateDisp.SilentSetValue(int(math.Round(rateGSs * 10)))
 
 	boxMode := container.New(layout.NewHBoxLayout(), scp.triggerModeSelect, scp.triggerTypeSelect, scp.complexTriggerFocus)

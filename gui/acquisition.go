@@ -146,7 +146,7 @@ func (scp *ScpDesc) inStreamMode() bool {
 	if scp.psControl == nil {
 		return false
 	}
-	return scp.maxScreenTime >= control.StreamThreshold && scp.psControl.StreamEnabled.Load()
+	return scp.maxScreenTime >= control.StreamThreshold && scp.psControl.GetStreamEnabled()
 }
 
 func (scp *ScpDesc) updateStreamButtonVisibility() {
@@ -178,7 +178,7 @@ func (scp *ScpDesc) updateStreamButtonState() {
 	if scp.streamEnableButton == nil || scp.psControl == nil {
 		return
 	}
-	if scp.psControl.StreamEnabled.Load() {
+	if scp.psControl.GetStreamEnabled() {
 		scp.streamEnableButton.SetText(streamEnabledLabel)
 	} else {
 		scp.streamEnableButton.SetText(streamDisabledLabel)

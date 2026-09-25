@@ -34,8 +34,8 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		scp.channelViewers[chIdx].rlcNameLabel = channelLabel
 
 		notifySim := func() {
-			if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
-				scp.psControl.Con.SetDemoRlcFilter(genericps.ChannelId(chIdx), chSettings.RlcFilter.GeneratorSource, chSettings.RlcFilter.Enabled,
+			if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+				scp.psControl.GetCon().SetDemoRlcFilter(genericps.ChannelId(chIdx), chSettings.RlcFilter.GeneratorSource, chSettings.RlcFilter.Enabled,
 					chSettings.RlcFilter.Type, chSettings.RlcFilter.R, chSettings.RlcFilter.RUnit,
 					chSettings.RlcFilter.L, chSettings.RlcFilter.LUnit,
 					chSettings.RlcFilter.C, chSettings.RlcFilter.CUnit)

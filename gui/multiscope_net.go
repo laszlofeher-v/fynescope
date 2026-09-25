@@ -421,8 +421,8 @@ func (scp *ScpDesc) connectMultiClient(ip string, port int) {
 	go func() {
 		// Send handshake with local scope type
 		scopeType := "Demo"
-		if scp.psControl != nil && scp.psControl.Info != "" {
-			scopeType = scp.psControl.Info
+		if scp.psControl != nil && scp.psControl.GetInfo() != "" {
+			scopeType = scp.psControl.GetInfo()
 		}
 		infoMsg := MultiClientInfoMsg{
 			Type:      "ClientInfo",
@@ -831,9 +831,9 @@ func (scp *ScpDesc) applyMultiSyncParams(msg *MultiSyncMessage) {
 		// Update device
 		channelCopy := scp.Settings.Channels[chIdx]
 		channelCopy.ID = chId
-		if scp.psControl != nil && scp.psControl.SetChannelCh != nil {
+		if scp.psControl != nil && true {
 			go func(c settings.ChSettings) {
-				scp.psControl.SetChannelCh <- &c
+				scp.psControl.SetChannel(&c)
 			}(channelCopy)
 		}
 	}

@@ -77,9 +77,9 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 		demo.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 	}
 
-	if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
+	if scp.psControl != nil && true {
 		msgCopy := msg
-		go func() { scp.psControl.SetDemoGenCh <- msgCopy }()
+		go func() { scp.psControl.SetDemoGen(msgCopy) }()
 	}
 	go scp.SaveSettings()
 }

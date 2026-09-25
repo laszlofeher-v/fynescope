@@ -58,11 +58,11 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 		genSettings.On = true
 		scp.applyDemoGenSettings(genericps.ChA, genSettings)
 
-		if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
+		if scp.psControl != nil && true {
 			syncMsg := &control.GeneratorDescMsg{
 				Done: genDone,
 			}
-			go func() { scp.psControl.SetDemoGenCh <- syncMsg }()
+			go func() { scp.psControl.SetDemoGen(syncMsg) }()
 		} else {
 			genDone <- struct{}{}
 		}
@@ -82,10 +82,10 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 			scp.EnableChannel(ch, false)
 		}
 		for i := 0; i < 2; i++ {
-			scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{
+			scp.psControl.SetDigitalPort(&control.DigitalPortMsg{
 				Port:     genericps.Port0 + genericps.DigitalPort(i),
 				Settings: settings.DigitalPortSettings{Enabled: false},
-			}
+			})
 		}
 
 		scp.changeChannelRange(genericps.ChA, "±5V")
@@ -122,7 +122,7 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 	// 14. Set raw signal display mode
 	fyne.Do(func() {
 		if scp.psControl != nil {
-			scp.psControl.StreamEnabled.Store(false)
+			scp.psControl.SetStreamEnabled(false)
 		}
 
 		if scp.resSelect != nil {
