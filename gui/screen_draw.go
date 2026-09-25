@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -119,13 +118,146 @@ func drawVerticalDashedLine(img draw.Image, xf, yf0, yf1 float32, c color.Color,
 		drawLine(img, xf, y, xf, yEnd, c)
 	}
 }
-func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err error) {
 
-	x0 := int(math.Round(float64(xf0)))
-	x1 := int(math.Round(float64(xf1)))
-	y0 := int(math.Round(float64(yf0)))
-	y1 := int(math.Round(float64(yf1)))
-	// bresenham.DrawLine(img, x0, y0, x1, y1, c)
+// clipLine clips line segment (x0, y0)-(x1, y1) to bounds using Cohen-Sutherland algorithm.
+// Returns true if any part of the segment is inside bounds, false if completely outside.
+func clipLine(bounds image.Rectangle, x0, y0, x1, y1 *int) bool {
+	xMin := bounds.Min.X
+	xMax := bounds.Max.X - 1
+	yMin := bounds.Min.Y
+	yMax := bounds.Max.Y - 1
+
+	const (
+		inside = 0      // 0000
+		left   = 1 << 0 // 0001
+		right  = 1 << 1 // 0010
+		bottom = 1 << 2 // 0100
+		top    = 1 << 3 // 1000
+	)
+
+	outCode := func(x, y int) int {
+		code := inside
+		if x < xMin {
+			code |= left
+		} else if x > xMax {
+			code |= right
+		}
+		if y < yMin {
+			code |= top
+		} else if y > yMax {
+			code |= bottom
+		}
+		return code
+	}
+
+	code0 := outCode(*x0, *y0)
+	code1 := outCode(*x1, *y1)
+
+	for {
+		if (code0 | code1) == 0 {
+			// Both points inside
+			return true
+		}
+		if (code0 & code1) != 0 {
+			// Both points share an outside zone (trivial reject)
+			return false
+		}
+
+		// At least one point is outside
+		codeOut := code0
+		if codeOut == 0 {
+			codeOut = code1
+		}
+
+		var x, y int
+		if (codeOut & top) != 0 {
+			if *y1 == *y0 {
+				return false
+			}
+			x = *x0 + int(math.Round(float64(*x1-*x0)*float64(yMin-*y0)/float64(*y1-*y0)))
+			y = yMin
+		} else if (codeOut & bottom) != 0 {
+			if *y1 == *y0 {
+				return false
+			}
+			x = *x0 + int(math.Round(float64(*x1-*x0)*float64(yMax-*y0)/float64(*y1-*y0)))
+			y = yMax
+		} else if (codeOut & right) != 0 {
+			if *x1 == *x0 {
+				return false
+			}
+			y = *y0 + int(math.Round(float64(*y1-*y0)*float64(xMax-*x0)/float64(*x1-*x0)))
+			x = xMax
+		} else if (codeOut & left) != 0 {
+			if *x1 == *x0 {
+				return false
+			}
+			y = *y0 + int(math.Round(float64(*y1-*y0)*float64(xMin-*x0)/float64(*x1-*x0)))
+			x = xMin
+		}
+
+		if codeOut == code0 {
+			*x0 = x
+			*y0 = y
+			code0 = outCode(*x0, *y0)
+		} else {
+			*x1 = x
+			*y1 = y
+			code1 = outCode(*x1, *y1)
+		}
+	}
+}
+
+func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err error) {
+	if img == nil {
+		return nil
+	}
+	bounds := img.Bounds()
+	if bounds.Empty() {
+		return nil
+	}
+
+	if math.IsNaN(float64(xf0)) || math.IsNaN(float64(yf0)) || math.IsNaN(float64(xf1)) || math.IsNaN(float64(yf1)) {
+		return nil
+	}
+	if math.IsInf(float64(xf0), 0) || math.IsInf(float64(yf0), 0) || math.IsInf(float64(xf1), 0) || math.IsInf(float64(yf1), 0) {
+		return nil
+	}
+
+	bMinX := float32(bounds.Min.X)
+	bMaxX := float32(bounds.Max.X)
+	bMinY := float32(bounds.Min.Y)
+	bMaxY := float32(bounds.Max.Y)
+
+	// Trivial rejection in float coordinates
+	if (xf0 < bMinX && xf1 < bMinX) ||
+		(xf0 >= bMaxX && xf1 >= bMaxX) ||
+		(yf0 < bMinY && yf1 < bMinY) ||
+		(yf0 >= bMaxY && yf1 >= bMaxY) {
+		return nil
+	}
+
+	const maxCoord = 1e8
+	const minCoord = -1e8
+	clampF := func(v float32) float64 {
+		if v > maxCoord {
+			return maxCoord
+		}
+		if v < minCoord {
+			return minCoord
+		}
+		return float64(v)
+	}
+
+	x0 := int(math.Round(clampF(xf0)))
+	x1 := int(math.Round(clampF(xf1)))
+	y0 := int(math.Round(clampF(yf0)))
+	y1 := int(math.Round(clampF(yf1)))
+
+	if !clipLine(bounds, &x0, &y0, &x1, &y1) {
+		return nil
+	}
+
 	dx := abs(x1 - x0)
 	sx := -1
 	if x0 < x1 {
@@ -137,12 +269,12 @@ func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err er
 		sy = 1
 	}
 	error := dx + dy
+	maxIter := bounds.Dx() + bounds.Dy() + 10
 	n := 0
 	for {
 		n++
-		if n > 10000 {
-			err = fmt.Errorf("draw line >10000")
-			return
+		if n > maxIter {
+			break
 		}
 		img.Set(x0, y0, c)
 		if x0 == x1 && y0 == y1 {
@@ -164,10 +296,24 @@ func drawLine(img draw.Image, xf0, yf0, xf1, yf1 float32, c color.Color) (err er
 			y0 = y0 + sy
 		}
 	}
-	return
+	return nil
 }
 
 func drawCircle(img draw.Image, x0, y0, r float32, c color.Color) {
+	if img == nil || r <= 0 {
+		return
+	}
+	bounds := img.Bounds()
+	if bounds.Empty() {
+		return
+	}
+	bMinX := float32(bounds.Min.X)
+	bMaxX := float32(bounds.Max.X)
+	bMinY := float32(bounds.Min.Y)
+	bMaxY := float32(bounds.Max.Y)
+	if x0+r < bMinX || x0-r >= bMaxX || y0+r < bMinY || y0-r >= bMaxY {
+		return
+	}
 	r34 := 3 * r / 4
 	for r > r34 {
 		x, y, dx, dy := (r - 1), float32(0), float32(1), float32(1)
