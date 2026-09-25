@@ -3,6 +3,7 @@ package gui
 import (
 	"image"
 	"image/color"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -53,3 +54,30 @@ func TestDrawCircle(t *testing.T) {
 	edgeColor := img.At(14, 10).(color.RGBA)
 	assert.Equal(t, c, edgeColor)
 }
+
+func TestDrawLineClippingAndExtremeCoords(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	c := color.RGBA{R: 255, A: 255}
+
+	// Completely offscreen to the right (like 1.4 billion from hang log)
+	err := drawLine(img, 1415129542, 50, 1415132086, 50, c)
+	assert.NoError(t, err)
+
+	// Completely offscreen to the left
+	err = drawLine(img, -100000, 50, -50000, 50, c)
+	assert.NoError(t, err)
+
+	// Line crossing from far left to far right across image
+	err = drawLine(img, -500, 50, 500, 50, c)
+	assert.NoError(t, err)
+	assert.Equal(t, c, img.At(50, 50).(color.RGBA))
+
+	// Extreme/NaN/Inf values should not hang or panic
+	assert.NoError(t, drawLine(img, float32(math.NaN()), 0, 10, 10, c))
+	assert.NoError(t, drawLine(img, float32(math.Inf(1)), 0, 10, 10, c))
+	assert.NoError(t, drawLine(nil, 0, 0, 10, 10, c))
+
+	// Offscreen circle
+	drawCircle(img, 500, 500, 10, c)
+}
+

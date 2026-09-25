@@ -555,12 +555,25 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				}
 
 				drawDot := func() {
-					s0 := displayBuffer[0]
-					if channel.Inverted {
-						s0 = -s0
+					startIndex := 0
+					if deltaT > 0 {
+						calcStart := int((-t0)/deltaT) - 1
+						if calcStart > startIndex {
+							startIndex = calcStart
+						}
 					}
-					for i := 1; i < len(displayBuffer); i++ {
+					if startIndex >= len(displayBuffer) {
+						return
+					}
+
+					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
+						if deltaT > 0 && x > float64(bounds.Max.X+10) {
+							break
+						}
+						if x < float64(bounds.Min.X-10) {
+							continue
+						}
 						s := displayBuffer[i]
 						if channel.Inverted {
 							s = -s
@@ -581,7 +594,27 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					}
 					var prevY float64 = -yScale*float64(s0) + offsetFloat
 
-					for i := 1; i < len(displayBuffer); i++ {
+					startIndex := 1
+					if deltaT > 0 {
+						calcStart := int((-t0)/deltaT) - 1
+						if calcStart > startIndex {
+							startIndex = calcStart
+						}
+					}
+					if startIndex >= len(displayBuffer) {
+						return
+					}
+					if startIndex > 1 {
+						prevI := startIndex - 1
+						prevX = t0 + float64(prevI)*deltaT + float64(bounds.Min.X)
+						sPrev := displayBuffer[prevI]
+						if channel.Inverted {
+							sPrev = -sPrev
+						}
+						prevY = -yScale*float64(sPrev) + offsetFloat
+					}
+
+					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						s := displayBuffer[i]
 						if channel.Inverted {
@@ -595,6 +628,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						drawLine(targetImg, float32(x), float32(prevY), float32(x), float32(y), col)
 
 						prevX, prevY = x, y
+						if deltaT > 0 && x >= float64(bounds.Max.X) {
+							break
+						}
 					}
 				} //drawRaw
 
@@ -607,7 +643,27 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					}
 					var prevY float64 = -yScale*float64(s0) + offsetFloat
 
-					for i := 1; i < len(displayBuffer); i++ {
+					startIndex := 1
+					if deltaT > 0 {
+						calcStart := int((-t0)/deltaT) - 1
+						if calcStart > startIndex {
+							startIndex = calcStart
+						}
+					}
+					if startIndex >= len(displayBuffer) {
+						return
+					}
+					if startIndex > 1 {
+						prevI := startIndex - 1
+						prevX = t0 + float64(prevI)*deltaT + float64(bounds.Min.X)
+						sPrev := displayBuffer[prevI]
+						if channel.Inverted {
+							sPrev = -sPrev
+						}
+						prevY = -yScale*float64(sPrev) + offsetFloat
+					}
+
+					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						s := displayBuffer[i]
 						if channel.Inverted {
@@ -617,6 +673,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
 						prevX, prevY = x, y
+						if deltaT > 0 && x >= float64(bounds.Max.X) {
+							break
+						}
 					}
 				} //drawLinear
 
@@ -678,10 +737,32 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						return
 					}
 
-					var prevX float64 = t0 + float64(bounds.Min.X) - deltaT
-					var prevYTop, prevYBot float64
+					startIndex := 0
+					if deltaT > 0 {
+						calcStart := int((-t0)/deltaT) - 1
+						if calcStart > startIndex {
+							startIndex = calcStart
+						}
+					}
+					if startIndex >= len(displayBuffer) {
+						return
+					}
 
-					for i := 0; i < len(displayBuffer); i++ {
+					var prevX float64 = t0 + float64(startIndex)*deltaT + float64(bounds.Min.X) - deltaT
+					var prevYTop, prevYBot float64
+					if startIndex > 0 {
+						prevI := startIndex - 1
+						sMax := displayBuffer[prevI]
+						sMin := displayBufferMin[prevI]
+						if channel.Inverted {
+							sMax = -displayBufferMin[prevI]
+							sMin = -displayBuffer[prevI]
+						}
+						prevYTop = -yScale*float64(sMax) + offsetFloat
+						prevYBot = -yScale*float64(sMin) + offsetFloat
+					}
+
+					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 
 						sMax := displayBuffer[i]
@@ -716,6 +797,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						prevX = x
 						prevYTop = yTop
 						prevYBot = yBot
+						if deltaT > 0 && x >= float64(bounds.Max.X) {
+							break
+						}
 					}
 				} //drawED
 
@@ -788,13 +872,32 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 		}
 
 		drawVchLinear := func() {
+			startIndex := 1
+			if deltaT > 0 {
+				calcStart := int((-t0)/deltaT) - 1
+				if calcStart > startIndex {
+					startIndex = calcStart
+				}
+			}
+			if startIndex >= len(displayBuffer) {
+				return
+			}
 			prevX := t0 + float64(bounds.Min.X)
 			s := displayBuffer[0]
 			if vch.Inverted {
 				s = -s
 			}
 			prevY := -yScale*float64(s) + offsetFloat
-			for j := 1; j < len(displayBuffer); j++ {
+			if startIndex > 1 {
+				prevI := startIndex - 1
+				prevX = t0 + float64(prevI)*deltaT + float64(bounds.Min.X)
+				sPrev := displayBuffer[prevI]
+				if vch.Inverted {
+					sPrev = -sPrev
+				}
+				prevY = -yScale*float64(sPrev) + offsetFloat
+			}
+			for j := startIndex; j < len(displayBuffer); j++ {
 				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
 				s := displayBuffer[j]
 				if vch.Inverted {
@@ -804,12 +907,31 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
 				prevX = x
 				prevY = y
+				if deltaT > 0 && x >= float64(bounds.Max.X) {
+					break
+				}
 			}
 		}
 
 		drawVchDot := func() {
-			for j := 0; j < len(displayBuffer); j++ {
+			startIndex := 0
+			if deltaT > 0 {
+				calcStart := int((-t0)/deltaT) - 1
+				if calcStart > startIndex {
+					startIndex = calcStart
+				}
+			}
+			if startIndex >= len(displayBuffer) {
+				return
+			}
+			for j := startIndex; j < len(displayBuffer); j++ {
 				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				if deltaT > 0 && x >= float64(bounds.Max.X) {
+					break
+				}
+				if x < float64(bounds.Min.X) {
+					continue
+				}
 				s := displayBuffer[j]
 				if vch.Inverted {
 					s = -s
@@ -869,13 +991,32 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 		}
 
 		drawRchLinear := func() {
+			startIndex := 1
+			if deltaT > 0 {
+				calcStart := int((-t0)/deltaT) - 1
+				if calcStart > startIndex {
+					startIndex = calcStart
+				}
+			}
+			if startIndex >= len(displayBuffer) {
+				return
+			}
 			prevX := t0 + float64(bounds.Min.X)
 			s := displayBuffer[0]
 			if rch.Inverted {
 				s = -s
 			}
 			prevY := -yScale*float64(s) + offsetFloat
-			for j := 1; j < len(displayBuffer); j++ {
+			if startIndex > 1 {
+				prevI := startIndex - 1
+				prevX = t0 + float64(prevI)*deltaT + float64(bounds.Min.X)
+				sPrev := displayBuffer[prevI]
+				if rch.Inverted {
+					sPrev = -sPrev
+				}
+				prevY = -yScale*float64(sPrev) + offsetFloat
+			}
+			for j := startIndex; j < len(displayBuffer); j++ {
 				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
 				s := displayBuffer[j]
 				if rch.Inverted {
@@ -885,12 +1026,31 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
 				prevX = x
 				prevY = y
+				if deltaT > 0 && x >= float64(bounds.Max.X) {
+					break
+				}
 			}
 		}
 
 		drawRchDot := func() {
-			for j := 0; j < len(displayBuffer); j++ {
+			startIndex := 0
+			if deltaT > 0 {
+				calcStart := int((-t0)/deltaT) - 1
+				if calcStart > startIndex {
+					startIndex = calcStart
+				}
+			}
+			if startIndex >= len(displayBuffer) {
+				return
+			}
+			for j := startIndex; j < len(displayBuffer); j++ {
 				x := t0 + float64(j)*deltaT + float64(bounds.Min.X)
+				if deltaT > 0 && x >= float64(bounds.Max.X) {
+					break
+				}
+				if x < float64(bounds.Min.X) {
+					continue
+				}
 				s := displayBuffer[j]
 				if rch.Inverted {
 					s = -s
