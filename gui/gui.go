@@ -1252,7 +1252,7 @@ func (scp *ScpDesc) build2000Gui() {
 	}
 	addToTest(saveRasterButton, "saveRasterButton", -1)
 	addToTest(saveWindowButton, "saveWindowButton", -1)
-	if scp.recordGifButton != nil {
+	if scp.GifEnabled && scp.recordGifButton != nil {
 		addToTest(scp.recordGifButton, "recordGifButton", -1)
 	}
 	if scp.streamEnableButton != nil {
