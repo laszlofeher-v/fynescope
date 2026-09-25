@@ -1,3 +1,5 @@
+//go:build multi
+
 package gui
 
 import (
@@ -120,6 +122,7 @@ func (scp *ScpDesc) IsMultiClientConnected() bool {
 
 // StartMultiServer starts the multiscope server on the specified port.
 func (scp *ScpDesc) StartMultiServer(port int) {
+	scp.MultiEnabled = true
 	scp.startMultiServer(port)
 }
 
@@ -130,6 +133,7 @@ func (scp *ScpDesc) StopMultiServer() {
 
 // ConnectMultiClient connects the multiscope client to the server at ip:port.
 func (scp *ScpDesc) ConnectMultiClient(ip string, port int) {
+	scp.MultiEnabled = true
 	scp.connectMultiClient(ip, port)
 }
 
@@ -139,6 +143,7 @@ func (scp *ScpDesc) DisconnectMultiClient() {
 }
 
 func (scp *ScpDesc) startMultiServer(port int) {
+	scp.MultiEnabled = true
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
 
@@ -379,6 +384,7 @@ func (scp *ScpDesc) handleMultiClient(conn net.Conn) {
 }
 
 func (scp *ScpDesc) connectMultiClient(ip string, port int) {
+	scp.MultiEnabled = true
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
 
@@ -906,6 +912,9 @@ func (scp *ScpDesc) publishMultiSync() error {
 }
 
 func (scp *ScpDesc) broadcastMultiStart() {
+	if !scp.MultiEnabled {
+		return
+	}
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
 
@@ -927,6 +936,9 @@ func (scp *ScpDesc) broadcastMultiStart() {
 }
 
 func (scp *ScpDesc) broadcastMultiStop() {
+	if !scp.MultiEnabled {
+		return
+	}
 	scp.multiServerMu.Lock()
 	defer scp.multiServerMu.Unlock()
 
@@ -1000,6 +1012,9 @@ func (scp *ScpDesc) sendRemoteChannelsAnnounce() {
 }
 
 func (scp *ScpDesc) sendClientWaveforms() {
+	if !scp.MultiEnabled {
+		return
+	}
 	scp.multiServerMu.Lock()
 	conn := scp.multiClientConn
 	scp.multiServerMu.Unlock()

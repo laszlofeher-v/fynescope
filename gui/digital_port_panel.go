@@ -459,6 +459,10 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			if !matched && port0ThresholdSelect.Selected != "Custom" {
 				port0ThresholdSelect.SetSelected("Custom")
 			}
+
+			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
+				scp.psControl.DisplayStatus("Logic level changes have no effect in demo mode", control.Info)
+			}
 			
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
@@ -551,6 +555,10 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 			if !matched && port1ThresholdSelect.Selected != "Custom" {
 				port1ThresholdSelect.SetSelected("Custom")
+			}
+
+			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
+				scp.psControl.DisplayStatus("Logic level changes have no effect in demo mode", control.Info)
 			}
 			
 			if scp.psControl != nil {

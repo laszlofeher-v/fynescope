@@ -138,6 +138,7 @@ func TestScopeTypeIsMSO(t *testing.T) {
 	assert.True(t, (Scope2206B_MSO + ScopeSimulatedOffset).IsMSO())
 	assert.True(t, Scope2205A_MSO.IsMSO())
 	assert.True(t, Scope3206D_MSO.IsMSO())
+	assert.True(t, StringToScopeType("2407DEMO").IsMSO())
 
 	assert.False(t, Scope2206B.IsMSO())
 	assert.False(t, (Scope2206B + ScopeSimulatedOffset).IsMSO())

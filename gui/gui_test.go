@@ -2,7 +2,10 @@ package gui
 
 import (
 	"fynescope/genericps"
+	"fynescope/settings"
 	"testing"
+
+	"fyne.io/fyne/v2/container"
 )
 
 func TestFlags(t *testing.T) {
@@ -100,5 +103,34 @@ func TestAdcConversions(t *testing.T) {
 	expectedNeg := int32(-3000 * 32767 / 2000)
 	if adc != expectedNeg {
 		t.Errorf("Expected %v, got %v", expectedNeg, adc)
+	}
+}
+
+func TestMultiscopeDisabledRemovesTab(t *testing.T) {
+	scp := &ScpDesc{
+		MultiEnabled: false,
+		Settings:     settings.NewDefaultSettings(),
+	}
+	scp.multiLayout = scp.newMultiscopePanel(true)
+	scp.multiTab = container.NewTabItem(tabNames[multiTabIndex], scp.multiLayout)
+	scp.controlTab = container.NewAppTabs(scp.multiTab)
+
+	// When MultiEnabled is false, multiTab should be removed from controlTab
+	if !scp.MultiEnabled {
+		scp.controlTab.Remove(scp.multiTab)
+	}
+
+	for _, item := range scp.controlTab.Items {
+		if item == scp.multiTab {
+			t.Errorf("expected multiTab to be removed when MultiEnabled is false")
+		}
+	}
+
+	// Verify dockTab does not re-add multiTab when MultiEnabled is false
+	scp.dockTab(scp.multiTab)
+	for _, item := range scp.controlTab.Items {
+		if item == scp.multiTab {
+			t.Errorf("dockTab should not add multiTab when MultiEnabled is false")
+		}
 	}
 }

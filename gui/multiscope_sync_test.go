@@ -1,3 +1,5 @@
+//go:build multi
+
 package gui
 
 import (

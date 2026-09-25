@@ -436,5 +436,8 @@ func (t ScopeType) IsMSO() bool {
 	if base == ScopeUnknown {
 		return false
 	}
+	if t >= ScopeSimulatedOffset && (base == Scope2407B || base == Scope2207B) {
+		return true
+	}
 	return strings.Contains(base.String(), "MSO")
 }
