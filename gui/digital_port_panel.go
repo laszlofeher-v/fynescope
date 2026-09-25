@@ -192,7 +192,7 @@ const (
 )
 
 func (scp *ScpDesc) updateDigitalTrigger() {
-	if scp.psControl != nil && scp.psControl.ScopeModel != control.ScopeUnknown && !scp.psControl.ScopeModel.IsMSO() {
+	if scp.psControl != nil && scp.psControl.GetScopeModel() != control.ScopeUnknown && !scp.psControl.GetScopeModel().IsMSO() {
 		scp.triggerSettingMsg.DigitalTriggerEnabled = false
 		scp.triggerSettingMsg.DigitalDirections = nil
 		return
@@ -232,9 +232,9 @@ func (scp *ScpDesc) updateDigitalTrigger() {
 
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
-	if scp.psControl != nil && scp.psControl.SetTriggerCh != nil {
+	if scp.psControl != nil && true {
 		go func(t control.TriggerDescMsg) {
-			scp.psControl.SetTriggerCh <- &t
+			scp.psControl.SetTrigger(&t)
 			<-t.Done
 		}(triggerCopy)
 	}
@@ -387,7 +387,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 		if scp.psControl != nil {
 			go func(p settings.DigitalPortSettings) {
-				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p})
 			}(scp.Settings.Digital.Ports[0])
 		}
 		if scp.runningMode == genericps.DemoMode {
@@ -461,12 +461,12 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 
 			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
-				scp.psControl.DisplayStatus("Logic level changes have no effect in demo mode", control.Info)
+				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
 			}
 			
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p}
+					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p})
 				}(scp.Settings.Digital.Ports[0])
 			}
 		}
@@ -490,7 +490,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 		if scp.psControl != nil {
 			go func(p settings.DigitalPortSettings) {
-				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p})
 			}(scp.Settings.Digital.Ports[1])
 		}
 		if scp.runningMode == genericps.DemoMode {
@@ -558,12 +558,12 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 
 			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
-				scp.psControl.DisplayStatus("Logic level changes have no effect in demo mode", control.Info)
+				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
 			}
 			
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p}
+					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p})
 				}(scp.Settings.Digital.Ports[1])
 			}
 		}

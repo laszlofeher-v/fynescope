@@ -33,7 +33,7 @@ func TestSetTriggerUpperHysteresis_ValidSource(t *testing.T) {
 
 	// Consume the channel message to verify it was sent
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		msg.Done <- struct{}{} // Acknowledge
 	case <-time.After(100 * time.Millisecond):
@@ -60,7 +60,7 @@ func TestSetTriggerUpperHysteresis_InvalidSource(t *testing.T) {
 
 	// Consume the channel message to verify it was sent
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		msg.Done <- struct{}{}
 	case <-time.After(100 * time.Millisecond):
@@ -88,7 +88,7 @@ func TestSetTriggerLowerHysteresis(t *testing.T) {
 
 	// Consume the channel message
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		msg.Done <- struct{}{}
 	case <-time.After(100 * time.Millisecond):

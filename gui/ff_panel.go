@@ -242,7 +242,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.Settings.FfGen.Dwelltime = scp.Settings.Ff.DeltaT
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 			scp.applyFfDemoGenSettings(false)
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
@@ -351,7 +351,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	genHeader := NewFocusableLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	// isSim := false
-	// if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+	// if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 	// 	isSim = true
 	// }
 
@@ -372,7 +372,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.updateFfWidgetLimits()
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
 			scp.applyFfGenSettings(scp.Settings.FfGen.On)

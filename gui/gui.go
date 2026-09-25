@@ -232,7 +232,7 @@ type (
 		corrXCFRaster                *corrXCFRaster
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
-		psControl                    *control.PscDesc
+		psControl control.ScopeController
 		virtualChannelEngines        []*VirtualChannelEngine
 		vchMeasureIndex              int // index of selected virtual channel in the tab (-1 = none)
 		vchMinV                      *disp7.DigitArray
@@ -876,7 +876,7 @@ func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 }
 
 func (scp *ScpDesc) build2000Gui() {
-	scp.psControl.MaxSamplingRate = scp.maxSamplingRate
+	scp.psControl.SetMaxSamplingRate(scp.maxSamplingRate)
 	initMaps()
 	sortInputRanges()
 	var (
@@ -1027,7 +1027,7 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.running {
 			if targetFunction == fvTabIndex || targetFunction == ffTabIndex {
 				if targetFunction == ffTabIndex && (scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout) {
-					scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
+					scp.psControl.ShowDisplayStatus(ErrWrongFfTrigger, control.Warning)
 				}
 			}
 
@@ -1126,8 +1126,8 @@ func (scp *ScpDesc) build2000Gui() {
 		if scp.psControl == nil {
 			return
 		}
-		newValue := !scp.psControl.StreamEnabled.Load()
-		scp.psControl.StreamEnabled.Store(newValue)
+		newValue := !scp.psControl.GetStreamEnabled()
+		scp.psControl.SetStreamEnabled(newValue)
 		if scp.Settings != nil {
 			scp.Settings.StreamEnabled = &newValue
 			scp.SaveSettings()
@@ -1174,16 +1174,16 @@ func (scp *ScpDesc) build2000Gui() {
 	if !ok {
 		mode = genericps.RatioModeNone
 	}
-	scp.psControl.ResolutionMode.Store(int32(mode))
+	scp.psControl.SetResolutionMode(mode)
 
 	scp.initStatus()
 	var saveRasterButton, saveWindowButton *widget.Button
-	slog.Debug("build2000Gui", "scp.psControl.Info", scp.psControl.Info)
+	slog.Debug("build2000Gui", "scp.psControl.GetInfo()", scp.psControl.GetInfo())
 	if scp.runningMode != genericps.ScopeMode && scp.IsMSO {
 		if scp.psControl != nil {
 			go func(p0, p1 settings.DigitalPortSettings) {
-				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port0, Settings: p0}
-				scp.psControl.SetDigitalPortCh <- &control.DigitalPortMsg{Port: genericps.Port1, Settings: p1}
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p0})
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p1})
 			}(scp.Settings.Digital.Ports[0], scp.Settings.Digital.Ports[1])
 		}
 	}
@@ -1309,7 +1309,7 @@ func (scp *ScpDesc) build2000Gui() {
 
 	scp.updateStreamButtonVisibility()
 
-	scp.psControl.BufferCallback = func(size int) {
+	scp.psControl.SetBufferCallback(func(size int) {
 		for i := range scp.displayBuffers {
 			if size != len(scp.displayBuffers[i]) {
 				if cap(scp.displayBuffers[i]) >= size {
@@ -1328,10 +1328,10 @@ func (scp *ScpDesc) build2000Gui() {
 				}
 			}
 		}
-	}
+	})
 
-	scp.psControl.EtsBufferCallback = func(size int) {
-		scp.psControl.BufferCallback(size)
+	scp.psControl.SetEtsBufferCallback(func(size int) {
+		scp.psControl.CallBufferCallback(size)
 		if size > len(scp.etsBuffer) {
 			if cap(scp.etsBuffer) >= size {
 				scp.etsBuffer = scp.etsBuffer[:size]
@@ -1341,9 +1341,9 @@ func (scp *ScpDesc) build2000Gui() {
 		} else {
 			scp.etsBuffer = scp.etsBuffer[:size]
 		}
-	}
+	})
 
-	scp.psControl.RefreshEtsCallback = func(buffers [][]int16, etsInBuffer []int64, xRoundError float64, samplingTimeInterval float64) {
+	scp.psControl.SetRefreshEtsCallback(func(buffers [][]int16, etsInBuffer []int64, xRoundError float64, samplingTimeInterval float64) {
 		if len(scp.etsBuffer) != len(etsInBuffer) {
 			if cap(scp.etsBuffer) >= len(etsInBuffer) {
 				scp.etsBuffer = scp.etsBuffer[:len(etsInBuffer)]
@@ -1352,10 +1352,10 @@ func (scp *ScpDesc) build2000Gui() {
 			}
 		}
 		copy(scp.etsBuffer, etsInBuffer)
-		scp.psControl.RefreshCallback(buffers, nil, nil, 0, xRoundError, samplingTimeInterval)
-	}
+		scp.psControl.CallRefreshCallback(buffers, nil, nil, 0, xRoundError, samplingTimeInterval)
+	})
 
-	scp.psControl.RefreshCallback = func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
+	scp.psControl.SetRefreshCallback(func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
 		xRoundError, samplingTimeInterval float64) {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
@@ -1430,7 +1430,7 @@ func (scp *ScpDesc) build2000Gui() {
 				scp.running = false
 			}
 		})
-	}
+	})
 
 	for i := range scp.channelViewers {
 		if scp.Settings.Channels[i].Enabled {
@@ -1478,18 +1478,18 @@ func (scp *ScpDesc) StartRunning() {
 	scp.clearAllFtPersistentLayers()
 	scp.clearAllDftPersistentLayers()
 	if scp.status != nil && scp.status.Code() == StatusFrequencyCannotBeDetected {
-		scp.psControl.DisplayStatus("", control.Info)
+		scp.psControl.ShowDisplayStatus("", control.Info)
 	}
 	if scp.getActiveFunctionIndex() == ffTabIndex {
 		if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
-			scp.psControl.DisplayStatus(ErrWrongFfTrigger, control.Warning)
+			scp.psControl.ShowDisplayStatus(ErrWrongFfTrigger, control.Warning)
 		}
 		if scp.Settings.Ff.PtsDec <= 0 {
-			scp.psControl.DisplayStatus("Error: Points per decade cannot be 0", control.Warning)
+			scp.psControl.ShowDisplayStatus("Error: Points per decade cannot be 0", control.Warning)
 			return
 		}
 		// Set up the generator in non-sweep mode; the app controls stepping.
-		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+		if scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 			scp.applyFfDemoGenSettings(false)
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
@@ -1526,7 +1526,7 @@ func (scp *ScpDesc) StartRunning() {
 	// Force re-apply trigger settings so the device is synchronized on run.
 	triggerCopy := scp.triggerSettingMsg
 	triggerCopy.Done = make(chan struct{}, 1)
-	scp.psControl.SetTriggerCh <- &triggerCopy
+	scp.psControl.SetTrigger(&triggerCopy)
 	<-triggerCopy.Done
 
 	switch scp.triggerSettingMsg.Mode {
@@ -1578,10 +1578,11 @@ func (scp *ScpDesc) build2000DemoGui() {
 }
 
 func (scp *ScpDesc) SetVariant() (err error) {
-	scp.psControl.Info, err = scp.psControl.UnitVariantInfo()
-	scp.psControl.ScopeModel = control.StringToScopeType(scp.psControl.Info)
-	slog.Debug("scope ", "info string", scp.psControl.Info)
-	scp.IsMSO = strings.Contains(scp.psControl.Info, "MSO") || scp.psControl.Info == demo.ScopeDemoVariantInfo
+	info, err := scp.psControl.UnitVariantInfo()
+	scp.psControl.SetInfo(info)
+	scp.psControl.SetScopeModel(control.StringToScopeType(scp.psControl.GetInfo()))
+	slog.Debug("scope ", "info string", scp.psControl.GetInfo())
+	scp.IsMSO = strings.Contains(scp.psControl.GetInfo(), "MSO") || scp.psControl.GetInfo() == demo.ScopeDemoVariantInfo
 	if !scp.IsMSO {
 		scp.Settings.Digital.Ports[0].Enabled = false
 		scp.Settings.Digital.Ports[1].Enabled = false
@@ -1606,7 +1607,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	if err != nil {
 		return
 	}
-	switch string(scp.psControl.Info[1]) {
+	switch string(scp.psControl.GetInfo()[1]) {
 	case "1":
 		scp.MaxChannel = genericps.ChA
 		scp.channelCount = 1
@@ -1625,7 +1626,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.triggerSources = []string{"ChA", "ChB", "ChC", "ChD", "None"}
 	default:
 		scp.triggerSources = []string{"ChA", "ChB", "EXT", "None"}
-		err = fmt.Errorf("getInfo: unknown variant info %s", scp.psControl.Info)
+		err = fmt.Errorf("getInfo: unknown variant info %s", scp.psControl.GetInfo())
 		return
 	}
 	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
@@ -1646,7 +1647,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
-	switch scp.psControl.Info {
+	switch scp.psControl.GetInfo() {
 	case demo.ScopeSimVariantInfo:
 		scp.runningMode = genericps.SimMode
 		scp.maxSamplingRate = maxSampling1G
@@ -1722,7 +1723,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.build2407Gui()
 	default:
 		err = fmt.Errorf("getInfo: unknown variant info %s cannot set maximum sample rate",
-			scp.psControl.Info)
+			scp.psControl.GetInfo())
 		return
 	}
 	return
@@ -1739,7 +1740,7 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	scp.psControl = control.NewControl(con)
 	scp.Settings = cfg
 	if scp.Settings.StreamEnabled != nil {
-		scp.psControl.StreamEnabled.Store(*scp.Settings.StreamEnabled)
+		scp.psControl.SetStreamEnabled(*scp.Settings.StreamEnabled)
 	}
 	GlobalScreenScale = scp.getScreenScale()
 	scp.theme = Theme(scp.Settings.Theme)
@@ -1771,7 +1772,7 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		slog.Error("", "Menu GetInfo err=", err)
 		return
 	}
-	scp.Window.SetTitle(scp.psControl.Info)
+	scp.Window.SetTitle(scp.psControl.GetInfo())
 
 	sw, sh := scp.getScreenDimensions()
 	winW := float32(scp.Settings.Window.Width)
@@ -1894,7 +1895,7 @@ func (scp *ScpDesc) getActiveFunctionIndex() int {
 // coalesced so that the hardware always receives the latest trigger state without
 // flooding SetTriggerCh with concurrent goroutines.
 func (scp *ScpDesc) sendTriggerUpdate(msg control.TriggerDescMsg) {
-	if scp == nil || scp.psControl == nil || scp.psControl.SetTriggerCh == nil {
+	if scp == nil || scp.psControl == nil {
 		return
 	}
 	scp.triggerUpdateMu.Lock()
@@ -1912,7 +1913,7 @@ func (scp *ScpDesc) sendTriggerUpdate(msg control.TriggerDescMsg) {
 		currentMsg := initialMsg
 		for {
 			currentMsg.Done = make(chan struct{}, 1)
-			scp.psControl.SetTriggerCh <- &currentMsg
+			scp.psControl.SetTrigger(&currentMsg)
 			<-currentMsg.Done
 
 			// Rate limit hardware updates: wait 80ms before sending the next update.

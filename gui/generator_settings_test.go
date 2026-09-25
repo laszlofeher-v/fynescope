@@ -35,7 +35,7 @@ func TestSetGeneratorFreq(t *testing.T) {
 
 	// Check that a message was sent to SetGeneratorCh
 	select {
-	case <-scp.psControl.SetGeneratorCh:
+	case <-scp.psControl.(*control.PscDesc).SetGeneratorCh:
 		// success
 	default:
 		t.Error("expected message on SetGeneratorCh")

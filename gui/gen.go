@@ -78,9 +78,9 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 	msg.TriggerType = genericps.SigGenRising
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
-	if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
+	if scp.psControl != nil && true {
 		go func(m *control.GeneratorDescMsg) {
-			scp.psControl.SetGeneratorCh <- m
+			scp.psControl.SetGenerator(m)
 		}(msg)
 	}
 }
@@ -159,7 +159,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 	operationOptions := []string{operationNormal, operationPrbs, operationWhiteNoise}
 
 	if scp.psControl != nil {
-		switch scp.psControl.ScopeModel.Base() {
+		switch scp.psControl.GetScopeModel().Base() {
 		case control.Scope2204A, control.Scope2205A:
 			operationOptions = []string{operationNormal}
 			minAllowedFreq = 0.1

@@ -18,7 +18,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 	}
 
 	if scp.getActiveFunctionIndex() == ffTabIndex {
-		if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+		if scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 			// Simulator mode: only sinus wave, for generators mapped via RLC
 			activeGens := make([]bool, scp.channelCount)
 			var missingGenChannels []string
@@ -39,9 +39,9 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 			}
 
 			if len(missingGenChannels) > 0 {
-				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
+				scp.psControl.ShowDisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
 			} else if scp.status.Code() == StatusChannelNoActiveGen {
-				scp.psControl.DisplayStatus("", control.Info)
+				scp.psControl.ShowDisplayStatus("", control.Info)
 			}
 
 			for i := 0; i < int(scp.channelCount); i++ {
@@ -61,7 +61,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 							Phase:          0,
 						},
 					}
-					scp.psControl.SetDemoGenCh <- msg
+					scp.psControl.SetDemoGen(msg)
 				} else {
 					offMsg := &control.GeneratorDescMsg{
 						GeneratorDesc: control.GeneratorDesc{
@@ -69,7 +69,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 							On:      false,
 						},
 					}
-					scp.psControl.SetDemoGenCh <- offMsg
+					scp.psControl.SetDemoGen(offMsg)
 				}
 			}
 			return
@@ -88,11 +88,11 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 				On:             scp.Settings.FfGen.On,
 			},
 		}
-		scp.psControl.SetGeneratorCh <- msg
+		scp.psControl.SetGenerator(msg)
 		return
 	}
 
-	if scp.psControl.Con != nil && scp.psControl.Con.ID == genericps.DemoId {
+	if scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
 		// Simulator mode: update all enabled simulator channels
 		for i := 0; i < int(scp.channelCount); i++ {
 			msg := &control.GeneratorDescMsg{
@@ -110,7 +110,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 					On:                true,
 				},
 			}
-			scp.psControl.SetDemoGenCh <- msg
+			scp.psControl.SetDemoGen(msg)
 		}
 		return
 	}
@@ -128,7 +128,7 @@ func (scp *ScpDesc) setGeneratorFreq(f float64) {
 			ArbitraryWaveform: scp.Settings.GenPanel.ArbitraryWaveform,
 		},
 	}
-	scp.psControl.SetGeneratorCh <- msg
+	scp.psControl.SetGenerator(msg)
 }
 
 func (scp *ScpDesc) applyFfGenSettings(on bool) {
@@ -145,8 +145,8 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 			// Ensure internal generator is turned off
 			msg := &control.GeneratorDescMsg{}
 			msg.Operation = genericps.EsOff
-			if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
-				scp.psControl.SetGeneratorCh <- msg
+			if scp.psControl != nil && true {
+				scp.psControl.SetGenerator(msg)
 			}
 		}()
 		return
@@ -176,9 +176,9 @@ func (scp *ScpDesc) applyFfGenSettings(on bool) {
 	msg.TriggerType = genericps.SigGenRising
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
-	if scp.psControl != nil && scp.psControl.SetGeneratorCh != nil {
+	if scp.psControl != nil && true {
 		msgCopy := msg
-		go func() { scp.psControl.SetGeneratorCh <- msgCopy }()
+		go func() { scp.psControl.SetGenerator(msgCopy) }()
 	}
 }
 
@@ -198,15 +198,15 @@ func (scp *ScpDesc) applyFfDemoGenSettings(on bool) {
 				msg := &control.GeneratorDescMsg{}
 				msg.Channel = genericps.ChannelId(i)
 				msg.Operation = genericps.EsOff
-				if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
-					scp.psControl.SetDemoGenCh <- msg
+				if scp.psControl != nil && true {
+					scp.psControl.SetDemoGen(msg)
 				}
 			}
 		}()
 		return
 	}
 
-	if scp.psControl != nil && scp.psControl.SetDemoGenCh != nil {
+	if scp.psControl != nil && true {
 		activeGens := make([]bool, scp.channelCount)
 		var missingGenChannels []string
 
@@ -227,10 +227,10 @@ func (scp *ScpDesc) applyFfDemoGenSettings(on bool) {
 
 		if len(missingGenChannels) > 0 {
 			if scp.status != nil {
-				scp.psControl.DisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
+				scp.psControl.ShowDisplayStatus("Error: Channel "+strings.Join(missingGenChannels, ", ")+" has no active generator input", control.Warning)
 			}
 		} else if scp.status != nil && scp.status.Code() == StatusChannelNoActiveGen {
-			scp.psControl.DisplayStatus("", control.Info)
+			scp.psControl.ShowDisplayStatus("", control.Info)
 		}
 
 		for i := 0; i < int(scp.channelCount); i++ {
@@ -262,9 +262,9 @@ func (scp *ScpDesc) applyFfDemoGenSettings(on bool) {
 			msg.TriggerType = genericps.SigGenRising
 			msg.TriggerSource = genericps.SigGenNone
 			msg.ExtInThreshold = 0
-			if scp.psControl.SetDemoGenCh != nil {
+			if true {
 				msgCopy := msg
-				go func() { scp.psControl.SetDemoGenCh <- msgCopy }()
+				go func() { scp.psControl.SetDemoGen(msgCopy) }()
 			}
 		}
 	}

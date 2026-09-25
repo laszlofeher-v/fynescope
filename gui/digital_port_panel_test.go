@@ -55,7 +55,7 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 	scp.updateDigitalTrigger()
 
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		assert.True(t, msg.DigitalTriggerEnabled)
 		assert.Equal(t, genericps.OperandAnd, msg.DigitalAnalogOperand)
@@ -75,7 +75,7 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 	scp.updateDigitalTrigger()
 
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		assert.Equal(t, genericps.OperandOr, msg.DigitalChannelsOperand)
 		msg.Done <- struct{}{}
@@ -88,7 +88,7 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 	scp.updateDigitalTrigger()
 
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		assert.Len(t, msg.DigitalDirections, 1)
 		assert.Equal(t, genericps.DigitalChannel(0), msg.DigitalDirections[0].Channel)
@@ -102,7 +102,7 @@ func TestUpdateDigitalTrigger(t *testing.T) {
 	scp.updateDigitalTrigger()
 
 	select {
-	case msg := <-scp.psControl.SetTriggerCh:
+	case msg := <-scp.psControl.(*control.PscDesc).SetTriggerCh:
 		assert.NotNil(t, msg)
 		assert.Len(t, msg.DigitalDirections, 0)
 		msg.Done <- struct{}{}

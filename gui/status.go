@@ -93,7 +93,7 @@ func (scp *ScpDesc) initStatus() {
 		"": StatusNone,
 	}
 
-	scp.psControl.DisplayStatus = func(s string, errorType control.ScopeError) {
+	scp.psControl.SetDisplayStatus(func(s string, errorType control.ScopeError) {
 		if errorType == control.Fatal {
 			if scp.running {
 				scp.running = false
@@ -129,5 +129,5 @@ func (scp *ScpDesc) initStatus() {
 			default:
 			}
 		}
-	}
+	})
 }
