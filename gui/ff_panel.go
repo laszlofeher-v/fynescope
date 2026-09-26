@@ -242,7 +242,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.Settings.FfGen.Dwelltime = scp.Settings.Ff.DeltaT
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.IsDemo() {
 			scp.applyFfDemoGenSettings(false)
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
@@ -372,7 +372,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		scp.updateFfWidgetLimits()
 		scp.SaveSettings()
 
-		if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.IsDemo() {
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {
 			scp.applyFfGenSettings(scp.Settings.FfGen.On)

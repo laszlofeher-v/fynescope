@@ -1489,7 +1489,7 @@ func (scp *ScpDesc) StartRunning() {
 			return
 		}
 		// Set up the generator in non-sweep mode; the app controls stepping.
-		if scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+		if scp.psControl.IsDemo() {
 			scp.applyFfDemoGenSettings(false)
 			scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 		} else {

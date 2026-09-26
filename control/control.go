@@ -2,6 +2,7 @@ package control
 
 // No fyne dependency allowed in this package
 import (
+	"errors"
 	"fmt"
 	"fynescope/genericps"
 	"fynescope/settings"
@@ -306,8 +307,11 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	return psControl
 }
 
-func (psControl *PscDesc) getAnalogueOffset(voltageRange int,
+func (psControl *PscDesc) GetAnalogueOffset(voltageRange int,
 	coupling genericps.Coupling) (maximumVoltage, minimumVoltage float32, err error) {
+	if psControl.Con == nil {
+		return 0, 0, errors.New("no connection")
+	}
 	maximumVoltage, minimumVoltage, err =
 		psControl.Con.GetAnalogueOffset(voltageRange, coupling)
 	return

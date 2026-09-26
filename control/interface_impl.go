@@ -126,3 +126,21 @@ func (ps *PscDesc) SetInfo(info string) {
 func (ps *PscDesc) SetScopeModel(model ScopeType) {
 	ps.ScopeModel = model
 }
+
+func (ps *PscDesc) IsDemo() bool {
+	return ps.Con != nil && ps.Con.ID == genericps.DemoId
+}
+
+func (ps *PscDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64, dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error {
+	if ps.Con != nil {
+		return ps.Con.SetDemoDigitalGen(port0Enabled, port1Enabled, freq, dir, enc, mode, bitDelay)
+	}
+	return nil
+}
+
+func (ps *PscDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) error {
+	if ps.Con != nil {
+		return ps.Con.SetDemoRlcFilter(channel, genSource, enabled, filterType, r, runit, l, lunit, cval, cunit)
+	}
+	return nil
+}
