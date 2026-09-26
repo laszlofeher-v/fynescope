@@ -56,4 +56,10 @@ type ScopeController interface {
 	SetInfo(info string)
 	SetScopeModel(model ScopeType)
 	GetEtsLimits() (maxInterleave, maxCycles int16)
+
+	// Hardware / demo operations
+	GetAnalogueOffset(voltageRange int, coupling genericps.Coupling) (maximumVoltage, minimumVoltage float32, err error)
+	IsDemo() bool
+	SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64, dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error
+	SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) error
 }

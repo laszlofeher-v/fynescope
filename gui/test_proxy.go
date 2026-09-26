@@ -27,7 +27,6 @@ import (
 	"syscall"
 	"time"
 
-	"fynescope/genericps"
 	"fynescope/settings"
 
 	"fyne.io/fyne/v2"
@@ -856,7 +855,7 @@ func (scp *ScpDesc) Test() {
 		}
 		scp.Settings.GenPanel.On = true
 		scp.Settings.FfGen.On = true
-		if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.IsDemo() {
 			scp.applyDemoGenSettings(0, &scp.Settings.DemoGenPanel[0])
 			scp.applyDemoGenSettings(1, &scp.Settings.DemoGenPanel[1])
 			scp.applyFfDemoGenSettings(true)

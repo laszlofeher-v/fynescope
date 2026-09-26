@@ -28,7 +28,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		// Refresh generator panels to reflect Sine wave selection in UI
 		if scp.genLayout != nil {
 			scp.genLayout.RemoveAll()
-			if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+			if scp.psControl != nil && scp.psControl.IsDemo() {
 				scp.newDemoGenPanel(scp.genLayout, true)
 			} else {
 				scp.newGenPanel(scp.genLayout)
@@ -48,7 +48,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		if scp.psControl != nil {
 			if scp.Settings.Ff.UseExternalGen && scp.extGen.Connected() {
 				scp.syncExtGenSettings()
-			} else if scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+			} else if scp.psControl.IsDemo() {
 				scp.applyFfDemoGenSettings(false)
 				scp.applyFfDemoGenSettings(scp.Settings.FfGen.On)
 			} else {
@@ -68,7 +68,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 			scp.psControl.ShowDisplayStatus("", control.Info)
 		}
 		scp.stopFfSweep() // stop any running Bode sweep
-		if scp.psControl != nil && scp.psControl.GetCon().ID == genericps.DemoId {
+		if scp.psControl != nil && scp.psControl.IsDemo() {
 			for i := 0; i < int(scp.channelCount); i++ {
 				scp.applyDemoGenSettings(genericps.ChannelId(i), &scp.Settings.DemoGenPanel[i])
 			}

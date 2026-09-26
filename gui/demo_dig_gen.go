@@ -17,7 +17,7 @@ import (
 )
 
 func (scp *ScpDesc) applyDemoDigitalGenSettings() {
-	if scp.psControl != nil && scp.psControl.GetCon() != nil {
+	if scp.psControl != nil && scp.psControl.IsDemo() {
 		set := scp.Settings.DigitalDemoGenPanel
 
 		// Set port-enable flags atomically and immediately so the next
@@ -46,7 +46,7 @@ func (scp *ScpDesc) applyDemoDigitalGenSettings() {
 		}
 
 		go func(set settings.DigitalDemoGenSettings) {
-			_ = scp.psControl.GetCon().SetDemoDigitalGen(
+			_ = scp.psControl.SetDemoDigitalGen(
 				set.Port0Enabled,
 				set.Port1Enabled,
 				set.Frequency,

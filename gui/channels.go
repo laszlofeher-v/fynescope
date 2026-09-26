@@ -891,8 +891,8 @@ func (scp *ScpDesc) changeChannelRange(chIndex genericps.ChannelId, option strin
 		scp.setTrigger(true, chIndex, channel.Trigger.Mv,
 			channel.Trigger.TriggerDirection, 1000, scp.Settings.Time.TriggerTimeOffset)
 	}
-	if scp.psControl != nil && scp.psControl.GetCon() != nil {
-		max, min, err := scp.psControl.GetCon().GetAnalogueOffset(int(
+	if scp.psControl != nil {
+		max, min, err := scp.psControl.GetAnalogueOffset(int(
 			scp.Settings.Channels[chIndex].VRange),
 			scp.Settings.Channels[chIndex].CoupleType)
 		if int(chIndex) < len(scp.channelViewers) && scp.channelViewers[chIndex].offset != nil {
@@ -940,7 +940,7 @@ func (scp *ScpDesc) changeChannelX10(chIndex genericps.ChannelId, c bool) {
 	scp.clearAllDftPersistentLayers()
 
 	var ranges []string
-	if scp.psControl != nil && scp.psControl.GetCon() != nil {
+	if scp.psControl != nil {
 		rangesEnum, _ := scp.psControl.ChannelRanges(chIndex)
 		for _, r := range rangesEnum {
 			if int(r) < len(inputRanges) {
