@@ -1734,6 +1734,21 @@ func (scp *ScpDesc) setRangeMargin() {
 	scp.rangeMargin = right - left
 }
 
+// MenuWithController is like Menu but uses a pre-built ScopeController (e.g. a
+// netcontrol.Client for the remote GUI build) instead of creating a local one
+// from a *genericps.Connection. The caller owns the controller lifecycle.
+func (scp *ScpDesc) MenuWithController(ctrl control.ScopeController, cfg *settings.PsSettings, fileName string) (err error) {
+	scp.SettingFileName = fileName
+	scp.triggerSettingMsg.Done = make(chan struct{})
+	scp.psControl = ctrl
+	scp.Settings = cfg
+	if scp.Settings.StreamEnabled != nil {
+		scp.psControl.SetStreamEnabled(*scp.Settings.StreamEnabled)
+	}
+	GlobalScreenScale = scp.getScreenScale()
+	return scp.menuInit()
+}
+
 func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fileName string) (err error) {
 	scp.SettingFileName = fileName
 	scp.triggerSettingMsg.Done = make(chan struct{})
@@ -1743,6 +1758,10 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 		scp.psControl.SetStreamEnabled(*scp.Settings.StreamEnabled)
 	}
 	GlobalScreenScale = scp.getScreenScale()
+	return scp.menuInit()
+}
+
+func (scp *ScpDesc) menuInit() (err error) {
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
 	scp.Window = scp.App.NewWindow("")
