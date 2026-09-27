@@ -232,7 +232,7 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 			fyne.Do(winContent.Refresh)
 		})
 		addToTest(undockBtn, "multiUndockBtn", multiTabIndex)
-		topRow = container.NewHBox(ipLabel, layout.NewSpacer(), undockBtn)
+		topRow = container.NewVBox(undockBtn, ipLabel)
 	}
 
 	return container.NewVBox(
