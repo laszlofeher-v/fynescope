@@ -422,7 +422,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	if err0 == nil {
 		currentMv := int(float64(scp.Settings.Digital.Ports[0].Threshold) * 5000.0 / 32767.0)
 		port0LogicDisp.SilentSetValue(currentMv)
-		
+
 		var port0ThresholdSelect *selectscroll.SelectScroll
 		port0ThresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, ex selectscroll.Exception) {
 			if sel == "Custom" {
@@ -441,11 +441,11 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			}
 		}
 		port0ThresholdSelect.SetSelected(initialSel)
-		
+
 		port0LogicDisp.OnChanged = func(val float64) {
 			scp.Settings.Digital.Ports[0].Threshold = int16(val * 32767.0 / 5000.0)
 			scp.SaveSettings()
-			
+
 			matched := false
 			for k, v := range predefinedThresholds {
 				if int(v*1000) == int(val) {
@@ -463,7 +463,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
 				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
 			}
-			
+
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
 					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p})
@@ -472,7 +472,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 		addToTest(port0LogicDisp, "digPort0LogicLevelDisp", digPortTabIndex)
 		scp.digPortLogicLevelDisp[0] = port0LogicDisp
-		port0Box.Add(container.NewHBox(port0LogicDisp, port0ThresholdSelect))
+		port0Box.Add(container.NewVBox(port0LogicDisp, port0ThresholdSelect))
 	}
 	port0Box.Add(port0ChannelsBox)
 
@@ -519,7 +519,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	if err1 == nil {
 		currentMv := int(float64(scp.Settings.Digital.Ports[1].Threshold) * 5000.0 / 32767.0)
 		port1LogicDisp.SilentSetValue(currentMv)
-		
+
 		var port1ThresholdSelect *selectscroll.SelectScroll
 		port1ThresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, ex selectscroll.Exception) {
 			if sel == "Custom" {
@@ -542,7 +542,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		port1LogicDisp.OnChanged = func(val float64) {
 			scp.Settings.Digital.Ports[1].Threshold = int16(val * 32767.0 / 5000.0)
 			scp.SaveSettings()
-			
+
 			matched := false
 			for k, v := range predefinedThresholds {
 				if int(v*1000) == int(val) {
@@ -560,7 +560,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
 				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
 			}
-			
+
 			if scp.psControl != nil {
 				go func(p settings.DigitalPortSettings) {
 					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p})
@@ -569,7 +569,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 		addToTest(port1LogicDisp, "digPort1LogicLevelDisp", digPortTabIndex)
 		scp.digPortLogicLevelDisp[1] = port1LogicDisp
-		port1Box.Add(container.NewHBox(port1LogicDisp, port1ThresholdSelect))
+		port1Box.Add(container.NewVBox(port1LogicDisp, port1ThresholdSelect))
 	}
 	port1Box.Add(port1ChannelsBox)
 
