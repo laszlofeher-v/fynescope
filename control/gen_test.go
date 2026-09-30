@@ -186,6 +186,26 @@ func TestGeneratorMonitor_SetNewSettingWhenChanged(t *testing.T) {
 	}
 }
 
+func TestGeneratorMonitor_DoneChannelSignaled(t *testing.T) {
+	psControl, _ := setupPscDescForGenTest()
+	go psControl.generatorMonitor()
+	defer func() { psControl.stopChannel <- struct{}{} }()
+
+	done := make(chan struct{}, 1)
+	msg := &GeneratorDescMsg{
+		GeneratorDesc: GeneratorDesc{OffsetVoltage: 100, PkToPK: 2000, WaveType: genericps.Sine},
+		Done:          done,
+	}
+
+	psControl.SetGeneratorCh <- msg
+	select {
+	case <-done:
+		// Succeeded
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Timeout waiting for Done channel to be signaled")
+	}
+}
+
 // --- Set Generator Function Tests ---
 
 func TestSetGenerator_WhenChanged(t *testing.T) {

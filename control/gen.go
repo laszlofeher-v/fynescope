@@ -66,6 +66,11 @@ func (psControl *PscDesc) generatorMonitor() {
 		storedSetting      GeneratorDesc
 	)
 	storeSettings := func(msg *GeneratorDescMsg) (nextFunc eventHandlerFunc) {
+		if msg.Done != nil {
+			defer func() {
+				msg.Done <- struct{}{}
+			}()
+		}
 		if !storedSetting.Equals(&msg.GeneratorDesc) {
 			storedSetting = msg.GeneratorDesc
 			psControl.requestRestart() // restart the running state machine
