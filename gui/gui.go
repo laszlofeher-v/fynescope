@@ -1584,12 +1584,12 @@ func (scp *ScpDesc) build2000DemoGui() {
 
 }
 
-func (scp *ScpDesc) SetVariant() (err error) {
-	info, err := scp.psControl.UnitVariantInfo()
+func (scp *ScpDesc) SetVariant() (info string, err error) {
+	info, err = scp.psControl.UnitVariantInfo()
 	scp.psControl.SetInfo(info)
-	scp.psControl.SetScopeModel(control.StringToScopeType(scp.psControl.GetInfo()))
-	slog.Debug("scope ", "info string", scp.psControl.GetInfo())
-	scp.IsMSO = strings.Contains(scp.psControl.GetInfo(), "MSO") || scp.psControl.GetInfo() == demo.ScopeDemoVariantInfo
+	scp.psControl.SetScopeModel(control.StringToScopeType(info))
+	slog.Debug("scope ", "info string", info)
+	scp.IsMSO = strings.Contains(info, "MSO") || info == demo.ScopeDemoVariantInfo
 	if !scp.IsMSO {
 		scp.Settings.Digital.Ports[0].Enabled = false
 		scp.Settings.Digital.Ports[1].Enabled = false
@@ -1614,7 +1614,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	if err != nil {
 		return
 	}
-	switch string(scp.psControl.GetInfo()[1]) {
+	switch string(info[1]) {
 	case "1":
 		scp.MaxChannel = genericps.ChA
 		scp.channelCount = 1
@@ -1633,7 +1633,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.triggerSources = []string{"ChA", "ChB", "ChC", "ChD", "None"}
 	default:
 		scp.triggerSources = []string{"ChA", "ChB", "EXT", "None"}
-		err = fmt.Errorf("getInfo: unknown variant info %s", scp.psControl.GetInfo())
+		err = fmt.Errorf("getInfo: unknown variant info %s", info)
 		return
 	}
 	scp.displayBuffers = make([][]float32, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
@@ -1654,7 +1654,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 	scp.dftPersistentLayers = make([]*image.RGBA, scp.channelCount+genericps.NumOfChannelEnum(len(scp.Settings.VirtualChannels)))
 	scp.MinValue, scp.MaxValue, err = scp.psControl.MinMaxValues()
 
-	switch scp.psControl.GetInfo() {
+	switch info {
 	case demo.ScopeSimVariantInfo:
 		scp.runningMode = genericps.SimMode
 		scp.maxSamplingRate = maxSampling1G
@@ -1729,8 +1729,7 @@ func (scp *ScpDesc) SetVariant() (err error) {
 		scp.maxSamplingRate = maxSampling1G
 		scp.build2407Gui()
 	default:
-		err = fmt.Errorf("getInfo: unknown variant info %s cannot set maximum sample rate",
-			scp.psControl.GetInfo())
+		err = fmt.Errorf("getInfo: unknown variant info %s cannot set maximum sample rate", info)
 		return
 	}
 	return
@@ -1793,12 +1792,13 @@ func (scp *ScpDesc) menuInit() (err error) {
 	scp.tzRepartition = createFlag()
 	scp.ffBufferDone = make(chan struct{}, 1)
 
-	err = scp.SetVariant()
+	var info string
+	info, err = scp.SetVariant()
 	if err != nil {
 		slog.Error("", "Menu GetInfo err=", err)
 		return
 	}
-	scp.Window.SetTitle(scp.psControl.GetInfo())
+	scp.Window.SetTitle(info)
 
 	sw, sh := scp.getScreenDimensions()
 	winW := float32(scp.Settings.Window.Width)
