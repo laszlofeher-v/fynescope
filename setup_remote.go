@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"fyne.io/fyne/v2/app"
+	"fynescope/genericps"
 	"fynescope/gui"
 	"fynescope/netcontrol"
 	"fynescope/settings"
@@ -49,6 +50,9 @@ func main() {
 	}
 	defer client.Close()
 	slog.Info("connected to fynescope-server", "addr", *serverAddr)
+
+	// Initialize default genericps constants for remote GUI.
+	genericps.LoadDefaultConstants()
 
 	// Initialize the Fyne application.
 	scp := &gui.ScpDesc{}

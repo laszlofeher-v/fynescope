@@ -33,7 +33,7 @@ func TestBuildDecodeContent(t *testing.T) {
 		MinValue: -32768,
 	}
 
-	genericps.InputRanges = []int32{5000} // For adc/mv math mock
+	genericps.LoadDefaultConstants()
 
 	// Test building content while docked
 	content := scp.buildDecodeContent(true)

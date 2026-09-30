@@ -27,9 +27,8 @@ func TestBuildComplexTriggerMessage(t *testing.T) {
 	genericps.ChC = genericps.ChannelId(2)
 	genericps.ChD = genericps.ChannelId(3)
 
-	// RangeEnum is used as an index into InputRanges — use index 0 for all channels
-	vRange := genericps.RangeEnum(0)
-	genericps.InputRanges = []int32{5000}
+	genericps.LoadDefaultConstants()
+	vRange := genericps.Range_5v
 
 	scp := &ScpDesc{
 		triggerSettingMsg: control.TriggerDescMsg{},

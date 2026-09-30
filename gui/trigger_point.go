@@ -162,7 +162,7 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	}
 	mv := tp.y2mv(float64(y)) // new trigger value
 	channel := &tp.scp.Settings.Channels[tp.scp.triggerSource]
-	bound := float64(genericps.InputRanges[channel.VRange])
+	bound := float64(genericps.InputRangeMv(channel.VRange))
 	if mv < -bound || mv > bound {
 		return
 	}

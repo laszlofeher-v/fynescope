@@ -813,13 +813,19 @@ func (scp *ScpDesc) refreshRasters() {
 }
 
 func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {
-	return (math.Round(float64(raw) * float64(genericps.InputRanges[chRange]) / float64(scp.MaxValue)))
-}
-func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
-	if int(chRange) >= len(genericps.InputRanges) || genericps.InputRanges[chRange] == 0 {
+	if scp.MaxValue == 0 {
 		return 0
 	}
-	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
+	rangeMv := genericps.InputRangeMv(chRange)
+	return math.Round(float64(raw) * float64(rangeMv) / float64(scp.MaxValue))
+}
+
+func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
+	rangeMv := genericps.InputRangeMv(chRange)
+	if rangeMv == 0 || scp.MaxValue == 0 {
+		return 0
+	}
+	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(rangeMv))
 	if adc > scp.MaxValue {
 		adc = scp.MaxValue
 	} else if adc < scp.MinValue {
@@ -829,10 +835,11 @@ func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
 }
 
 func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
-	if int(chRange) >= len(genericps.InputRanges) || genericps.InputRanges[chRange] == 0 {
+	rangeMv := genericps.InputRangeMv(chRange)
+	if rangeMv == 0 || scp.MaxValue == 0 {
 		return 0
 	}
-	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(genericps.InputRanges[chRange]))
+	adc := int32(math.Round(float64(mv)*float64(scp.MaxValue)) / float64(rangeMv))
 	if adc > scp.MaxValue {
 		adc = scp.MaxValue
 	}
