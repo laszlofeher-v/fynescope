@@ -943,6 +943,229 @@ var (
 	MinThresholdDiff                               int32
 )
 
+func init() {
+	LoadDefaultConstants()
+}
+
+func InputRangeMv(r RangeEnum) int32 {
+	if int(r) >= 0 && int(r) < len(InputRanges) {
+		return InputRanges[r]
+	}
+	if RangeValuesMv != nil {
+		if v, ok := RangeValuesMv[r]; ok {
+			return int32(v)
+		}
+	}
+	if len(InputRanges) > 0 {
+		return InputRanges[0]
+	}
+	return 0
+}
+
+func LoadDefaultConstants() {
+	ChA = 0
+	ChB = 1
+	ChC = 2
+	ChD = 3
+	RatioModeNone = 0
+	RatioModeAggregate = 1
+	RatioModeDecimate = 2
+	RatioModeAverage = 3
+	Ac = 0
+	Dc = 1
+	Range_10mv = 0
+	Range_20mv = 1
+	Range_50mv = 2
+	Range_100mv = 3
+	Range_200mv = 4
+	Range_500mv = 5
+	Range_1v = 6
+	Range_2v = 7
+	Range_5v = 8
+	Range_10v = 9
+	Range_20v = 10
+	Range_50v = 11
+	Level = 0
+	Window = 1
+	CondDontCare = 0
+	CondTrue = 1
+	CondFalse = 2
+	CondMax = 3
+	TriggerAbove = 0
+	TriggerBelow = 1
+	TriggerRising = 2
+	TriggerFalling = 3
+	TriggerRisingOrFalling = 4
+	TriggerAboveLower = 5
+	TriggerBelowLower = 6
+	TriggerRisingLower = 7
+	TriggerFallingLower = 8
+	TriggerOutside = 9
+	TriggerInside = 10
+	TriggerEnter = 11
+	TriggerExit = 12
+	TriggerEnterOrExit = 13
+	TriggerPositiveRunt = 14
+	TriggerNegativeRunt = 15
+	TriggerNone = 16
+	Dch0 = 0
+	Dch1 = 1
+	Dch2 = 2
+	Dch3 = 3
+	Dch4 = 4
+	Dch5 = 5
+	Dch6 = 6
+	Dch7 = 7
+	Dch8 = 8
+	Dch9 = 9
+	Dch10 = 10
+	Dch11 = 11
+	Dch12 = 12
+	Dch13 = 13
+	Dch14 = 14
+	Dch15 = 15
+	Dch16 = 16
+	Dch17 = 17
+	Dch18 = 18
+	Dch19 = 19
+	Dch20 = 20
+	Dch21 = 21
+	Dch22 = 22
+	Dch23 = 23
+	Dch24 = 24
+	Dch25 = 25
+	Dch26 = 26
+	Dch27 = 27
+	Dch28 = 28
+	Dch29 = 29
+	Dch30 = 30
+	Dch31 = 31
+	DchMax = 32
+	DigitalDontCare = 0
+	DigitalDirectionLow = 1
+	DigitalDirectionHigh = 2
+	DigitalDirectionRising = 3
+	DigitalDirectionFalling = 4
+	DigitalDirectionRisingOrFalling = 5
+	DigitalMaxDirection = 6
+	SweepUp = 0
+	SweepDown = 1
+	SweepUpDown = 2
+	SweepDownUp = 3
+	SweepMaxTypes = 4
+	EsOff = 0
+	WhiteNoise = 1
+	Prbs = 2
+	Single = 0
+	Dual = 1
+	Quad = 2
+	MaxIndexModes = 3
+	SigGenRising = 0
+	SigGenFalling = 1
+	SigGenGateHigh = 2
+	SigGenGateLow = 3
+	SigGenNone = 0
+	SigGenScopeTrig = 1
+	SigGenAuxIn = 2
+	SigGenExtIn = 3
+	SigGenSoftTrig = 4
+	TuFs = 0
+	TuPs = 1
+	TuNs = 2
+	TuUs = 3
+	TuMs = 4
+	TuS = 5
+	HofTime = 0
+	MaxHoldOffTime = 1
+	OperandNone = 0
+	OperandOr = 1
+	OperandAnd = 2
+	OperandThen = 3
+	Port0 = 128
+	Port1 = 129
+	Port2 = 130
+	Port3 = 131
+	MaxDigitalPorts = 4
+	PicoDriverVersion = 0
+	PicoUsbVersion = 1
+	PicoHardwareVersion = 2
+	PicoVariantInfo = 3
+	PicoBatchAndSerial = 4
+	PicoCalDate = 5
+	PicoKernelVersion = 6
+	PicoDigitalHardwareVersion = 7
+	PicoAnalogueHardwareVersion = 8
+	PicoFirmwareVersion1 = 9
+	PicoFirmwareVersion2 = 10
+	PicoMacAddress = 11
+	PicoShadowCall = 12
+	PicoIppVersion = 13
+	PicoDriverPath = 14
+	PicoFirmwareVersion3 = 15
+	PicoFrontPanelFirmwareVersion3 = 16
+	PicoBootloaderVersion = 17
+	EtsOff = 0
+	EtsFast = 1
+	EtsSlow = 2
+	EtsMax = 3
+	PwTypeNone = 0
+	PwTypeLessThan = 1
+	PwTypeGreaterThan = 2
+	PwTypeInRange = 3
+	PwTypeOutOfRange = 4
+	Sine = 0
+	Square = 1
+	Triangle = 2
+	RampUp = 3
+	RampDown = 4
+	SinC = 5
+	Gaussian = 6
+	HalfSine = 7
+	DcVoltage = 8
+	InputRanges = []int32{
+		10,
+		20,
+		50,
+		100,
+		200,
+		500,
+		1000,
+		2000,
+		5000,
+		10000,
+		20000,
+		50000,
+	}
+	ChannelInfoRanges = 3
+	RangeValuesMv = map[RangeEnum]float64{
+		Range_10mv:  10.0,
+		Range_20mv:  20.0,
+		Range_50mv:  50.0,
+		Range_100mv: 100.0,
+		Range_200mv: 200.0,
+		Range_500mv: 500.0,
+		Range_1v:    1000.0,
+		Range_2v:    2000.0,
+		Range_5v:    5000.0,
+		Range_10v:   10000.0,
+		Range_20v:   20000.0,
+		Range_50v:   50000.0,
+	}
+	SineMaxFrequency = 100000000
+	SquareMaxFrequency = 100000000
+	TriangleMaxFrequency = 100000000
+	SinCMaxFrequency = 100000000
+	RampMaxFrequency = 100000000
+	HalfSineMaxFrequency = 100000000
+	GaussianMaxFrequency = 100000000
+	PrbsMaxFrequency = 100000000
+	PrbsMinFrequency = 100000000
+	MinFrequency = 0
+	AwgMinSigGenBufferSize = 1
+	AwgMaxSigGenBufferSize = 8192
+	MinThresholdDiff = 100
+}
+
 func GetMinThresholdDiff(vRange RangeEnum) int32 {
 	if vRange < 0 {
 		return MinThresholdDiff

@@ -406,6 +406,14 @@ func TimeUnitToVal(tu TimeUnits) float64 {
 	}
 	return 0
 }
+func init() {
+	LoadConstants()
+}
+
+func LoadConstants() {
+	loadConstants()
+}
+
 func loadConstants() {
 	genericps.ChA = genericps.ChannelId(ChA)
 	genericps.ChB = genericps.ChannelId(ChB)

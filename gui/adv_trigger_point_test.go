@@ -11,7 +11,7 @@ import (
 )
 
 func TestSetTriggerUpperHysteresis_ValidSource(t *testing.T) {
-	genericps.InputRanges = []int32{5000} // Mock InputRanges to prevent panic
+	genericps.LoadDefaultConstants()
 	scp := &ScpDesc{
 		triggerSource: 0,
 		Settings: &settings.PsSettings{

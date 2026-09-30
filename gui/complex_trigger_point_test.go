@@ -11,7 +11,7 @@ import (
 )
 
 func setupComplexTriggerScp() *ScpDesc {
-	genericps.InputRanges = []int32{5000, 1000}
+	genericps.LoadDefaultConstants()
 	genericps.RangeValuesMv = map[genericps.RangeEnum]float64{
 		genericps.RangeEnum(30): 5000.0,
 		genericps.RangeEnum(20): 1000.0,

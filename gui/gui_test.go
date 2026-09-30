@@ -40,9 +40,7 @@ func TestFlags(t *testing.T) {
 }
 
 func TestAdcConversions(t *testing.T) {
-	// Mock InputRanges since it's normally populated by device drivers
-	genericps.InputRanges = make([]int32, 20)
-	genericps.InputRanges[genericps.Range_2v] = 2000
+	genericps.LoadDefaultConstants()
 
 	scp := &ScpDesc{
 		MaxValue: 32767,
@@ -68,6 +66,18 @@ func TestAdcConversions(t *testing.T) {
 	mv = scp.adcToMv(0, genericps.Range_2v)
 	if mv != 0 {
 		t.Errorf("Expected 0, got %v", mv)
+	}
+
+	// Test edge cases: invalid range, zero MaxValue (should not panic)
+	if mv := scp.adcToMv(1000, genericps.RangeEnum(-1)); mv != 0 {
+		t.Errorf("Expected 0 for negative range, got %v", mv)
+	}
+	if mv := scp.adcToMv(1000, genericps.RangeEnum(999)); mv != 0 {
+		t.Errorf("Expected 0 for out of bounds range, got %v", mv)
+	}
+	zeroScp := &ScpDesc{MaxValue: 0}
+	if mv := zeroScp.adcToMv(1000, genericps.Range_2v); mv != 0 {
+		t.Errorf("Expected 0 for zero MaxValue, got %v", mv)
 	}
 
 	// Test mvToAdc

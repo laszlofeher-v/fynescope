@@ -480,7 +480,10 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 			avg.count++
 			min := float32(32767)
 			max := float32(-32768)
-			scale := float32(genericps.InputRanges[channel.VRange]) / float32(scp.MaxValue)
+			scale := float32(0)
+			if scp.MaxValue != 0 {
+				scale = float32(genericps.InputRangeMv(channel.VRange)) / float32(scp.MaxValue)
+			}
 
 			n := len(receiveBuffer)
 			if n > len(displayBuffer) {

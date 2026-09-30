@@ -268,7 +268,7 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	}
 	mv := tp.y2mv(float64(y), chIdx)
 	channel := &tp.scp.Settings.Channels[chIdx]
-	bound := float64(genericps.InputRanges[channel.VRange])
+	bound := float64(genericps.InputRangeMv(channel.VRange))
 	if mv < -bound || mv > bound {
 		return
 	}
@@ -310,7 +310,7 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	}
 	mv := tp.y2mv(float64(y), chIdx)
 	channel := &tp.scp.Settings.Channels[chIdx]
-	bound := float64(genericps.InputRanges[channel.VRange])
+	bound := float64(genericps.InputRangeMv(channel.VRange))
 	if mv < -bound || mv > bound {
 		return
 	}
