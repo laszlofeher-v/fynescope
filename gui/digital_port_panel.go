@@ -240,6 +240,240 @@ func (scp *ScpDesc) updateDigitalTrigger() {
 	}
 }
 
+// digitalPortConfig holds per-port configuration used by the builder helpers.
+type digitalPortConfig struct {
+	portIdx     int
+	portConst   genericps.DigitalPort
+	enableLabel string
+	dispLabel   string
+	testIDPfx   string
+}
+
+// digitalPorts is the static table of port configurations.
+var digitalPorts = [2]digitalPortConfig{
+	{portIdx: 0, portConst: genericps.Port0, enableLabel: "Enable Port 0 (D0-D7)", dispLabel: "Threshold: ", testIDPfx: "digPort0"},
+	{portIdx: 1, portConst: genericps.Port1, enableLabel: "Enable Port 1 (D8-D15)", dispLabel: "Logic Level: ", testIDPfx: "digPort1"},
+}
+
+// buildPortEnableCheck creates the "Enable Port N" checkbox with all required callbacks.
+func (scp *ScpDesc) buildPortEnableCheck(cfg digitalPortConfig) *widget.Check {
+	check := widget.NewCheck(cfg.enableLabel, func(v bool) {
+		if !scp.IsMSO {
+			return
+		}
+		scp.Settings.Digital.Ports[cfg.portIdx].Enabled = v
+		scp.SaveSettings()
+		scp.updateDigitalSplit()
+		scp.updateDigitalTrigger()
+		scp.updateTriggerModeOptions()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+		if scp.psControl != nil {
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: cfg.portConst, Settings: p})
+			}(scp.Settings.Digital.Ports[cfg.portIdx])
+		}
+		if scp.runningMode == genericps.DemoMode {
+			if v && scp.Settings.DigitalDemoGenPanel.Frequency <= 0 {
+				scp.Settings.DigitalDemoGenPanel.Frequency = 1000
+			}
+			if cfg.portIdx == 0 {
+				scp.Settings.DigitalDemoGenPanel.Port0Enabled = v
+			} else {
+				scp.Settings.DigitalDemoGenPanel.Port1Enabled = v
+			}
+			scp.applyDemoDigitalGenSettings()
+		}
+	})
+	check.SetChecked(scp.Settings.Digital.Ports[cfg.portIdx].Enabled)
+	addToTest(check, cfg.testIDPfx+"EnableCheck", digPortTabIndex)
+	return check
+}
+
+// buildPortThresholdControls creates the 7-segment logic-level display and the
+// predefined-threshold selector for one port. Returns nil on display init failure.
+func (scp *ScpDesc) buildPortThresholdControls(
+	cfg digitalPortConfig,
+	dispColor color.Color,
+	fontScale float32,
+	predefinedThresholds map[string]float64,
+	thresholdOrder []string,
+) fyne.CanvasObject {
+	logicDisp, err := disp7.NewCustomDisp7Array(4, 3, 5000, -5000,
+		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
+		dispColor, disp7.ReadWrite,
+		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
+		1, disp7.DefaultVCursorSpace, cfg.dispLabel, " V")
+	if err != nil {
+		return nil
+	}
+
+	currentMv := int(float64(scp.Settings.Digital.Ports[cfg.portIdx].Threshold) * 5000.0 / 32767.0)
+	logicDisp.SilentSetValue(currentMv)
+
+	var thresholdSelect *selectscroll.SelectScroll
+	thresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, ex selectscroll.Exception) {
+		if sel == "Custom" {
+			return
+		}
+		if val, ok := predefinedThresholds[sel]; ok {
+			logicDisp.SetValue(int(val * 1000.0))
+		}
+	}, "Custom")
+
+	initialSel := "Custom"
+	for k, v := range predefinedThresholds {
+		if int(v*1000) == currentMv {
+			initialSel = k
+			break
+		}
+	}
+	thresholdSelect.SetSelected(initialSel)
+
+	logicDisp.OnChanged = func(val float64) {
+		scp.Settings.Digital.Ports[cfg.portIdx].Threshold = int16(val * 32767.0 / 5000.0)
+		scp.SaveSettings()
+
+		matched := false
+		for k, v := range predefinedThresholds {
+			if int(v*1000) == int(val) {
+				if thresholdSelect.Selected != k {
+					thresholdSelect.SetSelected(k)
+				}
+				matched = true
+				break
+			}
+		}
+		if !matched && thresholdSelect.Selected != "Custom" {
+			thresholdSelect.SetSelected("Custom")
+		}
+
+		if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
+			scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
+		}
+		if scp.psControl != nil {
+			go func(p settings.DigitalPortSettings) {
+				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: cfg.portConst, Settings: p})
+			}(scp.Settings.Digital.Ports[cfg.portIdx])
+		}
+	}
+
+	addToTest(logicDisp, cfg.testIDPfx+"LogicLevelDisp", digPortTabIndex)
+	scp.digPortLogicLevelDisp[cfg.portIdx] = logicDisp
+	return container.NewVBox(logicDisp, thresholdSelect)
+}
+
+// buildChannelRow creates one per-channel row (Dn label, label entry, neg check,
+// colour/enable picker, trigger-direction selector).
+// trigSelects is the shared array so edge-trigger mutual exclusivity can be enforced.
+// Returns the row widget and the trigger SelectScroll for that channel.
+func (scp *ScpDesc) buildChannelRow(
+	chIdx int,
+	dirOptions []string,
+	dirMap map[string]genericps.DigitalDirection,
+	dirReverseMap map[genericps.DigitalDirection]string,
+	trigSelects [16]*selectscroll.SelectScroll,
+) (fyne.CanvasObject, *selectscroll.SelectScroll) {
+	dn := fmt.Sprintf("D%d", chIdx)
+
+	var dnLabel *tappableDnLabel
+	dnLabel = newTappableDnLabel(scp, dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
+		scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
+		dnLabel.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
+		scp.SaveSettings()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+	})
+	addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
+
+	// Editable label (max 6 chars, frameless)
+	labelEntry := newFramelessEntry()
+	labelEntry.SetPlaceHolder("Lbl")
+	labelEntry.SetText(scp.Settings.Digital.ChannelLabels[chIdx])
+	labelEntry.OnChanged = func(s string) {
+		runes := []rune(s)
+		if len(runes) > 6 {
+			s = string(runes[:6])
+			labelEntry.SetText(s)
+		}
+		scp.Settings.Digital.ChannelLabels[chIdx] = s
+		scp.SaveSettings()
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+	}
+	addToTest(labelEntry, fmt.Sprintf("digPortLabelEntry_%d", chIdx), digPortTabIndex)
+
+	// Color & Enable picker
+	col := scp.Settings.Digital.ChannelColors[chIdx]
+	ccp := checkcolorpick.NewCheckColorPick(scp.Window, func(v bool, c color.Color) {
+		nrgba := color.NRGBAModel.Convert(c).(color.NRGBA)
+		scp.Settings.Digital.ChannelColors[chIdx] = nrgba
+		scp.Settings.Digital.ChannelsEnabled[chIdx] = v
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+		scp.SaveSettings()
+		scp.updateDigitalTrigger()
+	}, col, fyne.NewSize(20, 20))
+	ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
+	addToTest(ccp, fmt.Sprintf("digPortCheckColorPick_%d", chIdx), digPortTabIndex)
+
+	// Trigger direction selector
+	initialDirStr := dirReverseMap[scp.Settings.Digital.Trigger.Directions[chIdx]]
+	if initialDirStr == "" {
+		initialDirStr = digitalDc
+	}
+	trigSelect := selectscroll.NewSelectScroll(dirOptions, func(sel string, ex selectscroll.Exception) {
+		if dirVal, ok := dirMap[sel]; ok {
+			scp.Settings.Digital.Trigger.Directions[chIdx] = dirVal
+
+			// Edge triggers are mutually exclusive across all channels.
+			if sel == up || sel == down || sel == upDown {
+				for j := 0; j < 16; j++ {
+					if j == chIdx {
+						continue
+					}
+					d := scp.Settings.Digital.Trigger.Directions[j]
+					if d == genericps.DigitalDirectionRising || d == genericps.DigitalDirectionFalling || d == genericps.DigitalDirectionRisingOrFalling {
+						scp.Settings.Digital.Trigger.Directions[j] = genericps.DigitalDontCare
+						if trigSelects[j] != nil && trigSelects[j].Selected != digitalDc {
+							trigSelects[j].SetSelected(digitalDc)
+						}
+					}
+				}
+			}
+
+			scp.SaveSettings()
+			scp.updateDigitalTrigger()
+		}
+	}, upDown)
+	trigSelect.SetSelected(initialDirStr)
+	addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
+
+	negCheck := widget.NewCheck("Neg", func(v bool) {
+		scp.Settings.Digital.LabelNegated[chIdx] = v
+		if scp.digitalRaster != nil {
+			scp.digitalRaster.refresh()
+		}
+		scp.SaveSettings()
+	})
+	negCheck.SetChecked(scp.Settings.Digital.LabelNegated[chIdx])
+	addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
+
+	row := container.NewHBox(
+		dnLabel,
+		labelEntry,
+		negCheck,
+		container.NewCenter(ccp),
+		NewFocusableLabel("Trig:"),
+		trigSelect,
+	)
+	return row, trigSelect
+}
+
 func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	if genericps.DigitalDirectionRising == 0 && genericps.DigitalDontCare == 0 {
 		genericps.DigitalDontCare = 0
@@ -249,6 +483,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		genericps.DigitalDirectionFalling = 4
 		genericps.DigitalDirectionRisingOrFalling = 5
 	}
+
 	dirOptions := []string{digitalDc, low, high, up, down, upDown}
 	dirMap := map[string]genericps.DigitalDirection{
 		digitalDc: genericps.DigitalDontCare,
@@ -370,306 +605,32 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	addToTest(trigEnableCheck, "digPortTrigEnable", digPortTabIndex)
 	addToTest(channelsLogicSelect, "digPortChannelsLogicSelect", digPortTabIndex)
 	addToTest(operandSelect, "digPortOperandSelect", digPortTabIndex)
-	port0Box := container.NewVBox()
-	port1Box := container.NewVBox()
-
-	port0EnableCheck := widget.NewCheck("Enable Port 0 (D0-D7)", func(v bool) {
-		if !scp.IsMSO {
-			return
-		}
-		scp.Settings.Digital.Ports[0].Enabled = v
-		scp.SaveSettings()
-		scp.updateDigitalSplit()
-		scp.updateDigitalTrigger()
-		scp.updateTriggerModeOptions()
-		if scp.digitalRaster != nil {
-			scp.digitalRaster.refresh()
-		}
-		if scp.psControl != nil {
-			go func(p settings.DigitalPortSettings) {
-				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p})
-			}(scp.Settings.Digital.Ports[0])
-		}
-		if scp.runningMode == genericps.DemoMode {
-			if v {
-				if scp.Settings.DigitalDemoGenPanel.Frequency <= 0 {
-					scp.Settings.DigitalDemoGenPanel.Frequency = 1000
-				}
-				scp.Settings.DigitalDemoGenPanel.Port0Enabled = true
-			} else {
-				scp.Settings.DigitalDemoGenPanel.Port0Enabled = false
-			}
-			scp.applyDemoDigitalGenSettings()
-		}
-	})
-	port0EnableCheck.SetChecked(scp.Settings.Digital.Ports[0].Enabled)
-	addToTest(port0EnableCheck, "digPort0EnableCheck", digPortTabIndex)
-	port0Box.Add(port0EnableCheck)
-
-	port0ChannelsBox := container.NewVBox()
-
+	// Build per-port boxes using helpers.
 	fontScale := float32(0.7) * scp.getScreenScale()
 	dispColor := theme.ForegroundColor()
 	if scp.theme != nil {
 		dispColor = scp.theme.Color(ColorNameGeneratorDisp, 0)
 	}
 
-	port0LogicDisp, err0 := disp7.NewCustomDisp7Array(4, 3, 5000, -5000,
-		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
-		dispColor, disp7.ReadWrite,
-		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
-		1, disp7.DefaultVCursorSpace, "Threshold: ", " V")
-	if err0 == nil {
-		currentMv := int(float64(scp.Settings.Digital.Ports[0].Threshold) * 5000.0 / 32767.0)
-		port0LogicDisp.SilentSetValue(currentMv)
+	portBoxes := [2]*fyne.Container{container.NewVBox(), container.NewVBox()}
+	portChannelBoxes := [2]*fyne.Container{container.NewVBox(), container.NewVBox()}
 
-		var port0ThresholdSelect *selectscroll.SelectScroll
-		port0ThresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, ex selectscroll.Exception) {
-			if sel == "Custom" {
-				return
-			}
-			if val, ok := predefinedThresholds[sel]; ok {
-				port0LogicDisp.SetValue(int(val * 1000.0))
-			}
-		}, "Custom")
-
-		initialSel := "Custom"
-		for k, v := range predefinedThresholds {
-			if int(v*1000) == currentMv {
-				initialSel = k
-				break
-			}
+	for _, cfg := range digitalPorts {
+		portBox := portBoxes[cfg.portIdx]
+		portBox.Add(scp.buildPortEnableCheck(cfg))
+		if thresholdUI := scp.buildPortThresholdControls(cfg, dispColor, fontScale, predefinedThresholds, thresholdOrder); thresholdUI != nil {
+			portBox.Add(thresholdUI)
 		}
-		port0ThresholdSelect.SetSelected(initialSel)
-
-		port0LogicDisp.OnChanged = func(val float64) {
-			scp.Settings.Digital.Ports[0].Threshold = int16(val * 32767.0 / 5000.0)
-			scp.SaveSettings()
-
-			matched := false
-			for k, v := range predefinedThresholds {
-				if int(v*1000) == int(val) {
-					if port0ThresholdSelect.Selected != k {
-						port0ThresholdSelect.SetSelected(k)
-					}
-					matched = true
-					break
-				}
-			}
-			if !matched && port0ThresholdSelect.Selected != "Custom" {
-				port0ThresholdSelect.SetSelected("Custom")
-			}
-
-			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
-				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
-			}
-
-			if scp.psControl != nil {
-				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port0, Settings: p})
-				}(scp.Settings.Digital.Ports[0])
-			}
-		}
-		addToTest(port0LogicDisp, "digPort0LogicLevelDisp", digPortTabIndex)
-		scp.digPortLogicLevelDisp[0] = port0LogicDisp
-		port0Box.Add(container.NewVBox(port0LogicDisp, port0ThresholdSelect))
+		portBox.Add(portChannelBoxes[cfg.portIdx])
 	}
-	port0Box.Add(port0ChannelsBox)
 
-	port1EnableCheck := widget.NewCheck("Enable Port 1 (D8-D15)", func(v bool) {
-		if !scp.IsMSO {
-			return
-		}
-		scp.Settings.Digital.Ports[1].Enabled = v
-		scp.SaveSettings()
-		scp.updateDigitalSplit()
-		scp.updateDigitalTrigger()
-		scp.updateTriggerModeOptions()
-		if scp.digitalRaster != nil {
-			scp.digitalRaster.refresh()
-		}
-		if scp.psControl != nil {
-			go func(p settings.DigitalPortSettings) {
-				scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p})
-			}(scp.Settings.Digital.Ports[1])
-		}
-		if scp.runningMode == genericps.DemoMode {
-			if v {
-				if scp.Settings.DigitalDemoGenPanel.Frequency <= 0 {
-					scp.Settings.DigitalDemoGenPanel.Frequency = 1000
-				}
-				scp.Settings.DigitalDemoGenPanel.Port1Enabled = true
-			} else {
-				scp.Settings.DigitalDemoGenPanel.Port1Enabled = false
-			}
-			scp.applyDemoDigitalGenSettings()
-		}
-	})
-	port1EnableCheck.SetChecked(scp.Settings.Digital.Ports[1].Enabled)
-	addToTest(port1EnableCheck, "digPort1EnableCheck", digPortTabIndex)
-	port1Box.Add(port1EnableCheck)
-
-	port1ChannelsBox := container.NewVBox()
-
-	port1LogicDisp, err1 := disp7.NewCustomDisp7Array(4, 3, 5000, -5000,
-		disp7.Signed, disp7.NoTrailingZeroes, scp.Window,
-		dispColor, disp7.ReadWrite,
-		fontScale*disp7.DefaultDigitWidth, fontScale*disp7.DeafultDigitHeight,
-		1, disp7.DefaultVCursorSpace, "Logic Level: ", " V")
-	if err1 == nil {
-		currentMv := int(float64(scp.Settings.Digital.Ports[1].Threshold) * 5000.0 / 32767.0)
-		port1LogicDisp.SilentSetValue(currentMv)
-
-		var port1ThresholdSelect *selectscroll.SelectScroll
-		port1ThresholdSelect = selectscroll.NewSelectScroll(thresholdOrder, func(sel string, ex selectscroll.Exception) {
-			if sel == "Custom" {
-				return
-			}
-			if val, ok := predefinedThresholds[sel]; ok {
-				port1LogicDisp.SetValue(int(val * 1000.0))
-			}
-		}, "Custom")
-
-		initialSel := "Custom"
-		for k, v := range predefinedThresholds {
-			if int(v*1000) == currentMv {
-				initialSel = k
-				break
-			}
-		}
-		port1ThresholdSelect.SetSelected(initialSel)
-
-		port1LogicDisp.OnChanged = func(val float64) {
-			scp.Settings.Digital.Ports[1].Threshold = int16(val * 32767.0 / 5000.0)
-			scp.SaveSettings()
-
-			matched := false
-			for k, v := range predefinedThresholds {
-				if int(v*1000) == int(val) {
-					if port1ThresholdSelect.Selected != k {
-						port1ThresholdSelect.SetSelected(k)
-					}
-					matched = true
-					break
-				}
-			}
-			if !matched && port1ThresholdSelect.Selected != "Custom" {
-				port1ThresholdSelect.SetSelected("Custom")
-			}
-
-			if scp.runningMode == genericps.DemoMode && scp.psControl != nil {
-				scp.psControl.ShowDisplayStatus("Logic level changes have no effect in demo mode", control.Info)
-			}
-
-			if scp.psControl != nil {
-				go func(p settings.DigitalPortSettings) {
-					scp.psControl.SetDigitalPort(&control.DigitalPortMsg{Port: genericps.Port1, Settings: p})
-				}(scp.Settings.Digital.Ports[1])
-			}
-		}
-		addToTest(port1LogicDisp, "digPort1LogicLevelDisp", digPortTabIndex)
-		scp.digPortLogicLevelDisp[1] = port1LogicDisp
-		port1Box.Add(container.NewVBox(port1LogicDisp, port1ThresholdSelect))
-	}
-	port1Box.Add(port1ChannelsBox)
-
-	var port0Rows []fyne.CanvasObject
-	var port1Rows []fyne.CanvasObject
+	// Build channel rows; trigSelects is shared for edge-trigger mutual exclusivity.
 	var trigSelects [16]*selectscroll.SelectScroll
+	var port0Rows, port1Rows []fyne.CanvasObject
 
 	for i := 0; i < 16; i++ {
-		chIdx := i
-		dn := fmt.Sprintf("D%d", chIdx)
-
-		var dnLabel *tappableDnLabel
-		dnLabel = newTappableDnLabel(scp, dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
-			scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
-			dnLabel.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
-			scp.SaveSettings()
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-		})
-		addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
-		// 1. Editable label (max 6 chars, frameless)
-		labelEntry := newFramelessEntry()
-		labelEntry.SetPlaceHolder("Lbl")
-		labelEntry.SetText(scp.Settings.Digital.ChannelLabels[chIdx])
-		labelEntry.OnChanged = func(s string) {
-			runes := []rune(s)
-			if len(runes) > 6 {
-				s = string(runes[:6])
-				labelEntry.SetText(s)
-			}
-			scp.Settings.Digital.ChannelLabels[chIdx] = s
-			scp.SaveSettings()
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-		}
-		addToTest(labelEntry, fmt.Sprintf("digPortLabelEntry_%d", chIdx), digPortTabIndex)
-		// 2. Color & Enable picker
-		col := scp.Settings.Digital.ChannelColors[chIdx]
-		ccp := checkcolorpick.NewCheckColorPick(scp.Window, func(v bool, c color.Color) {
-			nrgba := color.NRGBAModel.Convert(c).(color.NRGBA)
-			scp.Settings.Digital.ChannelColors[chIdx] = nrgba
-			scp.Settings.Digital.ChannelsEnabled[chIdx] = v
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-			scp.SaveSettings()
-			scp.updateDigitalTrigger()
-		}, col, fyne.NewSize(20, 20))
-		ccp.SetVal(scp.Settings.Digital.ChannelsEnabled[chIdx])
-		addToTest(ccp, fmt.Sprintf("digPortCheckColorPick_%d", chIdx), digPortTabIndex)
-		// 3. Trigger mode
-		initialDirStr := dirReverseMap[scp.Settings.Digital.Trigger.Directions[chIdx]]
-		if initialDirStr == "" {
-			initialDirStr = digitalDc
-		}
-		trigSelect := selectscroll.NewSelectScroll(dirOptions, func(sel string, ex selectscroll.Exception) {
-			if dirVal, ok := dirMap[sel]; ok {
-				scp.Settings.Digital.Trigger.Directions[chIdx] = dirVal
-
-				if sel == up || sel == down || sel == upDown {
-					for j := 0; j < 16; j++ {
-						if j != chIdx {
-							d := scp.Settings.Digital.Trigger.Directions[j]
-							if d == genericps.DigitalDirectionRising || d == genericps.DigitalDirectionFalling || d == genericps.DigitalDirectionRisingOrFalling {
-								scp.Settings.Digital.Trigger.Directions[j] = genericps.DigitalDontCare
-								if trigSelects[j] != nil && trigSelects[j].Selected != digitalDc {
-									trigSelects[j].SetSelected(digitalDc)
-								}
-							}
-						}
-					}
-				}
-
-				scp.SaveSettings()
-				scp.updateDigitalTrigger()
-			}
-		}, upDown)
-		trigSelects[chIdx] = trigSelect
-		trigSelect.SetSelected(initialDirStr)
-		addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
-		negCheck := widget.NewCheck("Neg", func(v bool) {
-			scp.Settings.Digital.LabelNegated[chIdx] = v
-			if scp.digitalRaster != nil {
-				scp.digitalRaster.refresh()
-			}
-			scp.SaveSettings()
-		})
-		negCheck.SetChecked(scp.Settings.Digital.LabelNegated[chIdx])
-		addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
-		row := container.NewHBox(
-			dnLabel,
-			labelEntry,
-			negCheck,
-			container.NewCenter(ccp),
-			NewFocusableLabel("Trig:"),
-			trigSelect,
-		)
-
+		row, ts := scp.buildChannelRow(i, dirOptions, dirMap, dirReverseMap, trigSelects)
+		trigSelects[i] = ts
 		if i < 8 {
 			port0Rows = append(port0Rows, row)
 		} else {
@@ -677,26 +638,21 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		}
 	}
 
+	rows := [2][]fyne.CanvasObject{port0Rows, port1Rows}
 	updateStack := func() {
-		port0ChannelsBox.Objects = nil
-		port1ChannelsBox.Objects = nil
-		if scp.Settings.Digital.D0AtBottom {
-			for i := len(port0Rows) - 1; i >= 0; i-- {
-				port0ChannelsBox.Add(port0Rows[i])
+		for p := 0; p < 2; p++ {
+			portChannelBoxes[p].Objects = nil
+			if scp.Settings.Digital.D0AtBottom {
+				for i := len(rows[p]) - 1; i >= 0; i-- {
+					portChannelBoxes[p].Add(rows[p][i])
+				}
+			} else {
+				for _, r := range rows[p] {
+					portChannelBoxes[p].Add(r)
+				}
 			}
-			for i := len(port1Rows) - 1; i >= 0; i-- {
-				port1ChannelsBox.Add(port1Rows[i])
-			}
-		} else {
-			for i := 0; i < len(port0Rows); i++ {
-				port0ChannelsBox.Add(port0Rows[i])
-			}
-			for i := 0; i < len(port1Rows); i++ {
-				port1ChannelsBox.Add(port1Rows[i])
-			}
+			portChannelBoxes[p].Refresh()
 		}
-		port0ChannelsBox.Refresh()
-		port1ChannelsBox.Refresh()
 	}
 	updateStack()
 
@@ -710,9 +666,10 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	})
 	d0BottomCheck.SetChecked(scp.Settings.Digital.D0AtBottom)
 	addToTest(d0BottomCheck, "digPortD0BottomCheck", digPortTabIndex)
+
 	portTabs := container.NewAppTabs(
-		container.NewTabItem("Port 0 (D0-D7)", port0Box),
-		container.NewTabItem("Port 1 (D8-D15)", port1Box),
+		container.NewTabItem("Port 0 (D0-D7)", portBoxes[0]),
+		container.NewTabItem("Port 1 (D8-D15)", portBoxes[1]),
 	)
 	addToTest(portTabs, "digPortSubTabs", digPortTabIndex)
 	mainBox.Add(d0BottomCheck)
