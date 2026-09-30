@@ -42,3 +42,5 @@ fyne-cross/tmp/linux-arm64/Icon.png
 fyne-cross/dist/linux-arm64/fynescope.tar.xz
 .gitignore
 Icon.png
+fynescope-remote
+fynescope-server
