@@ -93,20 +93,20 @@ go build -o fynescope .
 
 ## Documentation
 
-Comprehensive guides are available in the repository's [github-wiki/](github-wiki/) directory and published online on the **[GitHub Wiki](https://github.com/laszlofeher-v/fynescope/wiki)**:
+Comprehensive guides are published online on the **[GitHub Wiki](https://github.com/laszlofeher-v/fynescope/wiki)**:
 
-- **[Getting Started](github-wiki/Getting-Started.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)): Detailed setup for Linux, Windows, and Raspberry Pi, driver installation, build tags, and CLI flags.
-- **[Features and Controls](github-wiki/Features-and-Controls.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Features-and-Controls)): Visual indicators, mouse shortcuts, zooming, and media export controls.
-- **[Demo Mode](github-wiki/Demo-Mode.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Demo-Mode)): Exploring the application without hardware using the built-in signal simulator.
-- **[Generator Control](github-wiki/Generator-Control-(Demo).md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Generator-Control-(Demo))): Built-in AWG and simulated signal generator controls.
-- **[Virtual Channels](github-wiki/Virtual-Channels.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Virtual-Channels)): Custom math channels using arbitrary mathematical expressions.
-- **[Trigger Modes](github-wiki/Trigger-Modes.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Trigger-Modes)): Simple, Advanced, Window, Interval, Pulse Width, Runt, Dropout, and Complex triggers.
-- **[Protocol Decoding](github-wiki/Protocol-Decoding.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Protocol-Decoding)): UART and SPI serial bus decoding from analog waveforms.
-- **[Resolution Increase](github-wiki/Resolution-Increase.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Resolution-Increase)): Software resolution enhancement techniques.
-- **[Web Server & Voice Control](github-wiki/Web-Server-and-Voice-Control.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Web-Server-and-Voice-Control)): MJPEG browser streaming and hands-free voice control via Web Speech API.
-- **[Testing & Debugging](github-wiki/Testing-and-Debugging.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Testing-and-Debugging)): Automated UI fuzzing, logging, profiling, and unit tests.
-- **[Program Structure](github-wiki/Program-Structure.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Program-Structure)): Architecture breakdown of GUI, control, and driver abstraction layers.
-- **[Limitations](github-wiki/Limitations.md)** ([online](https://github.com/laszlofeher-v/fynescope/wiki/Limitations)): Comparison with official PicoScope 7 software.
+- **[Getting Started](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)**: Detailed setup for Linux, Windows, and Raspberry Pi, driver installation, build tags, and CLI flags.
+- **[Features and Controls](https://github.com/laszlofeher-v/fynescope/wiki/Features-and-Controls)**: Visual indicators, mouse shortcuts, zooming, and media export controls.
+- **[Demo Mode](https://github.com/laszlofeher-v/fynescope/wiki/Demo-Mode)**: Exploring the application without hardware using the built-in signal simulator.
+- **[Generator Control](https://github.com/laszlofeher-v/fynescope/wiki/Generator-Control-(Demo))**: Built-in AWG and simulated signal generator controls.
+- **[Virtual Channels](https://github.com/laszlofeher-v/fynescope/wiki/Virtual-Channels)**: Custom math channels using arbitrary mathematical expressions.
+- **[Trigger Modes](https://github.com/laszlofeher-v/fynescope/wiki/Trigger-Modes)**: Simple, Advanced, Window, Interval, Pulse Width, Runt, Dropout, and Complex triggers.
+- **[Protocol Decoding](https://github.com/laszlofeher-v/fynescope/wiki/Protocol-Decoding)**: UART and SPI serial bus decoding from analog waveforms.
+- **[Resolution Increase](https://github.com/laszlofeher-v/fynescope/wiki/Resolution-Increase)**: Software resolution enhancement techniques.
+- **[Web Server & Voice Control](https://github.com/laszlofeher-v/fynescope/wiki/Web-Server-and-Voice-Control)**: MJPEG browser streaming and hands-free voice control via Web Speech API.
+- **[Testing & Debugging](https://github.com/laszlofeher-v/fynescope/wiki/Testing-and-Debugging)**: Automated UI fuzzing, logging, profiling, and unit tests.
+- **[Program Structure](https://github.com/laszlofeher-v/fynescope/wiki/Program-Structure)**: Architecture breakdown of GUI, control, and driver abstraction layers.
+- **[Limitations](https://github.com/laszlofeher-v/fynescope/wiki/Limitations)**: Comparison with official PicoScope 7 software.
 
 ---
 
@@ -114,7 +114,7 @@ Comprehensive guides are available in the repository's [github-wiki/](github-wik
 
 `fynescope` is a focused, open source project with specific hardware scope. While it supports advanced triggering, digital MSO channels, virtual math channels, and serial protocol decoding, certain features from the official PicoScope 7 software are currently not implemented (such as deep statistical measurements, mask limit testing, or additional protocols).
 
-For a complete breakdown of supported functionality versus limitations, please see [github-wiki/Limitations.md](github-wiki/Limitations.md) (also on the [online Limitations page](https://github.com/laszlofeher-v/fynescope/wiki/Limitations)).
+For a complete breakdown of supported functionality versus limitations, please see the [online Limitations page](https://github.com/laszlofeher-v/fynescope/wiki/Limitations).
 
 ---
 
