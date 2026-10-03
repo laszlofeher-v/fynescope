@@ -514,20 +514,20 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				var leftPadding float64
 				var extra float64
 				if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-					totalSamples := len(displayBuffer)
+					totalSamples := float64(len(displayBuffer))
 					displaySamples := totalSamples / control.SincWMultiplier
-					leftPadding = float64(totalSamples-displaySamples) / 2.0
+					leftPadding = (totalSamples - displaySamples) / 2.0
 					extra = 0
 				} else {
 					leftPadding = float64(control.LeftOut)
 					extra = 1 // Compensation for different XRoundError definition in non-Sinc mode
 				}
 
-				// Validate triggerTimeOffset to avoid disappearing signals if hardware returns extreme values
+				// Validate triggerTimeOffset: hardware sub-sample trigger offset is within [-dt, dt].
+				// If an extreme/invalid value is received, fall back to 0.
 				triggerOffsetSeconds := float64(sv.scp.controlTriggerTimeOffset) / 1e15
-				expectedOffset := leftPadding * sv.scp.controlSamplingTimeInterval
-				if math.Abs(triggerOffsetSeconds-expectedOffset) > 10*sv.scp.controlSamplingTimeInterval {
-					triggerOffsetSeconds = expectedOffset
+				if sv.scp.controlSamplingTimeInterval > 0 && math.Abs(triggerOffsetSeconds) > 2*sv.scp.controlSamplingTimeInterval {
+					triggerOffsetSeconds = 0
 				}
 
 				// t0 is the pixel position of the first sample (index 0) relative to bounds.Min.X
@@ -695,8 +695,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 					var prevX, prevY float32
 					first := true
 					for x := bounds.Min.X; x < bounds.Max.X; x++ {
-						// Align at pixel center (+0.5) for precise sub-pixel matching
-						nf := (float64(x-bounds.Min.X) + 0.5 - t) / deltaT
+						nf := (float64(x-bounds.Min.X) - t) / deltaT
 						v := float64(0)
 						centerN := int(math.Round(nf))
 						window := 1000
@@ -849,9 +848,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 		var leftPadding float64
 		var extra float64
 		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-			totalSamples := len(displayBuffer)
+			totalSamples := float64(len(displayBuffer))
 			displaySamples := totalSamples / control.SincWMultiplier
-			leftPadding = float64(totalSamples-displaySamples) / 2.0
+			leftPadding = (totalSamples - displaySamples) / 2.0
 			extra = 0
 		} else {
 			leftPadding = float64(control.LeftOut)
@@ -968,9 +967,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 		var leftPadding float64
 		var extra float64
 		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-			totalSamples := len(displayBuffer)
+			totalSamples := float64(len(displayBuffer))
 			displaySamples := totalSamples / control.SincWMultiplier
-			leftPadding = float64(totalSamples-displaySamples) / 2.0
+			leftPadding = (totalSamples - displaySamples) / 2.0
 			extra = 0
 		} else {
 			leftPadding = float64(control.LeftOut)
@@ -1111,9 +1110,9 @@ func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.
 			} else {
 				var leftPadding float64
 				if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-					totalSamples := len(displayBuffer)
+					totalSamples := float64(len(displayBuffer))
 					displaySamples := totalSamples / control.SincWMultiplier
-					leftPadding = float64(totalSamples-displaySamples) / 2.0
+					leftPadding = (totalSamples - displaySamples) / 2.0
 				} else {
 					leftPadding = float64(control.LeftOut) + 1.5
 				}
@@ -1161,9 +1160,9 @@ func (sv *signalViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.
 		var v float32
 		var leftPadding float64
 		if sv.scp.Settings.Time.Interpolation == settings.Sinc {
-			totalSamples := len(displayBuffer)
+			totalSamples := float64(len(displayBuffer))
 			displaySamples := totalSamples / control.SincWMultiplier
-			leftPadding = float64(totalSamples-displaySamples) / 2.0
+			leftPadding = (totalSamples - displaySamples) / 2.0
 		} else {
 			leftPadding = float64(control.LeftOut) + 1.5
 		}

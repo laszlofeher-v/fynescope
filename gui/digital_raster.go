@@ -172,9 +172,8 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 	extra := 1.0
 
 	triggerOffsetSeconds := float64(dr.scp.controlTriggerTimeOffset) / 1e15
-	expectedOffset := leftPadding * dr.scp.controlSamplingTimeInterval
-	if dr.scp.controlSamplingTimeInterval > 0 && math.Abs(triggerOffsetSeconds-expectedOffset) > 10*dr.scp.controlSamplingTimeInterval {
-		triggerOffsetSeconds = expectedOffset
+	if dr.scp.controlSamplingTimeInterval > 0 && math.Abs(triggerOffsetSeconds) > 2*dr.scp.controlSamplingTimeInterval {
+		triggerOffsetSeconds = 0
 	}
 
 	t0 := (-leftPadding*dr.scp.controlSamplingTimeInterval+

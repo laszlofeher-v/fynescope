@@ -524,8 +524,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 					var leftPadding float64
 					var extra float64
 					if scp.Settings.Time.Interpolation == settings.Sinc {
-						displaySamples := n / control.SincWMultiplier
-						leftPadding = float64(n-displaySamples) / 2.0
+						totalSamples := float64(n)
+						displaySamples := totalSamples / control.SincWMultiplier
+						leftPadding = (totalSamples - displaySamples) / 2.0
 						extra = 0
 					} else {
 						leftPadding = float64(control.LeftOut)
@@ -533,9 +534,8 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 					}
 
 					triggerOffsetSeconds := float64(scp.controlTriggerTimeOffset) / 1e15
-					expectedOffset := leftPadding * scp.controlSamplingTimeInterval
-					if math.Abs(triggerOffsetSeconds-expectedOffset) > 10*scp.controlSamplingTimeInterval {
-						triggerOffsetSeconds = expectedOffset
+					if scp.controlSamplingTimeInterval > 0 && math.Abs(triggerOffsetSeconds) > 2*scp.controlSamplingTimeInterval {
+						triggerOffsetSeconds = 0
 					}
 
 					offsetTime := -leftPadding*scp.controlSamplingTimeInterval + scp.controlXRoundError + triggerOffsetSeconds - extra*scp.controlSamplingTimeInterval
