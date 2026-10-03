@@ -153,3 +153,57 @@ func TestSignalViewer_SincTriggerPointAlignment(t *testing.T) {
 	// Also verify that cursor / value calculation at trigger position evaluates to ~0 mV.
 	assert.InDelta(t, float32(0.0), instV[0], 50.0, "Calculated voltage at trigger point should be ~0 mV")
 }
+
+func TestSignalViewer_DrawED(t *testing.T) {
+	bounds := image.Rect(0, 0, 1000, 500)
+	targetImg := image.NewRGBA(bounds)
+	red := color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+
+	scp := &ScpDesc{
+		Settings: settings.NewDefaultSettings(),
+		maxScreenTime: 1.0,
+		controlSamplingTimeInterval: 1e-5,
+		displayBuffers: make([][]float32, 1),
+		displayBuffersMin: make([][]float32, 1),
+		ftScopeSignalScreen: targetImg,
+		channelViewers: make([]channelViewerDesc, 1),
+	}
+	scp.Settings.Channels = make([]settings.ChSettings, 1)
+	scp.Settings.Channels[0].Enabled = true
+	scp.Settings.Channels[0].Col[scp.Settings.ChannelColorIndex] = red
+	scp.Settings.Time.ResolutionMode = "ED"
+
+	// 1. Dense test: 100,000 samples across 1000 pixels (100 samples per pixel)
+	N := 100000
+	bufMax := make([]float32, N)
+	bufMin := make([]float32, N)
+	for i := 0; i < N; i++ {
+		bufMax[i] = 100.0
+		bufMin[i] = -100.0
+	}
+	scp.displayBuffers[0] = bufMax
+	scp.displayBuffersMin[0] = bufMin
+
+	sv := newSignalViewer(targetImg, bounds, scp, false)
+	deltaT := (1000.0 / scp.maxScreenTime) * scp.controlSamplingTimeInterval // 0.01 pixels/sample
+
+	// Must complete quickly without hanging
+	sv.drawNormal(1000.0, 500.0, bounds, 250, deltaT)
+
+	// 2. Sparse / Extreme deltaT test: deltaT = 50,000 pixels (sample gap spans way beyond screen)
+	scp.maxScreenTime = 1e-9
+	scp.controlSamplingTimeInterval = 5e-5
+	deltaT = (1000.0 / scp.maxScreenTime) * scp.controlSamplingTimeInterval // 50,000,000 pixels/sample
+
+	N2 := 10
+	scp.displayBuffers[0] = make([]float32, N2)
+	scp.displayBuffersMin[0] = make([]float32, N2)
+	for i := 0; i < N2; i++ {
+		scp.displayBuffers[0][i] = 50.0
+		scp.displayBuffersMin[0][i] = -50.0
+	}
+
+	// Must complete immediately due to screen-bounds clamping
+	sv.drawNormal(1000.0, 500.0, bounds, 250, deltaT)
+}
+
