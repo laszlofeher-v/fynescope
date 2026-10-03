@@ -50,6 +50,7 @@ import (
 	"gonum.org/v1/gonum/dsp/fourier"
 )
 
+// Sampling-rate limits (samples/sec), UI timing and status/label strings.
 const (
 	maxSampling100M  = 100000000
 	maxSampling200M  = 200000000
@@ -64,6 +65,8 @@ const (
 	ErrFrequencyCannotBeDetected = "Frequency cannot be detected"
 	ErrWrongFfTrigger            = "Error: f(f) requires Simple, Advanced, or Window trigger"
 )
+// Function (tab) indices. They identify the active scope function and are
+// stored in the settings, so the order must be kept stable.
 const (
 	ftTabIndex = iota
 	fvTabIndex
@@ -81,6 +84,8 @@ const (
 	multiTabIndex
 )
 
+// tabNames holds the tab titles, indexed by the *TabIndex constants.
+// dontCare marks a disabled trigger source; chA..chD are channel shortcuts.
 var (
 	tabNames = []string{"f(t)", "f(v)", "FFT", "f(f)", "RLC", "digital", "gen", "extgen", "digGen", "vch", "decode", "filter", "corr", "multiscope"}
 
@@ -92,17 +97,23 @@ var (
 )
 
 type (
+	// timeBaseDescs lists the supported timebases with their maximum sample
+	// count and the resulting sample interval.
 	timeBaseDescs []struct {
 		timeBase     uint32
 		maxSamples   int32
 		timeInterval int32
 	}
+	// triggerDesc describes a single channel trigger (threshold/hysteresis in
+	// ADC counts, mv is the threshold in millivolts).
 	triggerDesc struct {
 		enabled    bool
 		threshold  int16
 		hysteresis int32
 		mv         int32
 	}
+	// RemoteChannelDesc describes a channel received from a remote Multiscope
+	// client, including its display settings and sample buffer.
 	RemoteChannelDesc struct {
 		ClientID       string              `json:"client_id"`
 		RemoteChanIdx  int                 `json:"remote_chan_idx"`
@@ -118,6 +129,8 @@ type (
 		Buffer         []float32           `json:"-"`
 	}
 
+	// ScpDesc is the central scope GUI state: settings, hardware controller,
+	// rasters/drawers for each function tab, widgets, locks and sample buffers.
 	ScpDesc struct {
 		Measure                     MeasureDesc
 		runningMode                 genericps.RunningModeType
@@ -366,10 +379,12 @@ type (
 	}
 )
 
+// createFlag creates a buffered (size 1) channel used as a non-blocking signal.
 func createFlag() (ch chan struct{}) {
 	ch = make(chan struct{}, 1)
 	return
 }
+// setFlag raises the flag without blocking; repeated sets are coalesced.
 func setFlag(flag chan struct{}) {
 	if flag == nil {
 		return
@@ -380,6 +395,7 @@ func setFlag(flag chan struct{}) {
 	}
 }
 
+// getFlag reports whether the flag was raised, clearing it. Never blocks.
 func getFlag(flag chan struct{}) bool {
 	if flag == nil {
 		return false
@@ -392,6 +408,8 @@ func getFlag(flag chan struct{}) bool {
 	}
 }
 
+// SaveSettings asynchronously persists the settings to SettingFileName.
+// Writes are serialized by settingsLocker; it is a no-op without a file name.
 func (scp *ScpDesc) SaveSettings() {
 	if scp.SettingFileName == "" {
 		return
@@ -405,6 +423,8 @@ func (scp *ScpDesc) SaveSettings() {
 	}()
 }
 
+// UpdateMousePos stores the mouse position in window coordinates, converting
+// from coordinates local to the active raster container.
 func (scp *ScpDesc) UpdateMousePos(localX, localY float32) {
 	if scp.activeRasterContainer != nil {
 		scp.mouseX = localX + scp.activeRasterContainer.Position().X
@@ -412,11 +432,14 @@ func (scp *ScpDesc) UpdateMousePos(localX, localY float32) {
 	}
 }
 
+// ResetMousePos marks the mouse position as unknown (e.g. cursor left window).
 func (scp *ScpDesc) ResetMousePos() {
 	scp.mouseX = -1
 	scp.mouseY = -1
 }
 
+// getLastSaveDir returns the directory of the last save dialog, defaulting to
+// the current working directory.
 func (scp *ScpDesc) getLastSaveDir() fyne.ListableURI {
 	if scp.lastSaveDir == nil {
 		cwd, err := os.Getwd()
@@ -429,6 +452,7 @@ func (scp *ScpDesc) getLastSaveDir() fyne.ListableURI {
 	return scp.lastSaveDir
 }
 
+// updateLastSaveDir remembers the parent directory of the saved file.
 func (scp *ScpDesc) updateLastSaveDir(uri fyne.URI) {
 	if parent, err := storage.Parent(uri); err == nil {
 		if lister, err := storage.ListerForURI(parent); err == nil {
@@ -437,6 +461,8 @@ func (scp *ScpDesc) updateLastSaveDir(uri fyne.URI) {
 	}
 }
 
+// compositeOverBackground flattens img onto an opaque bg-colored image so
+// transparent areas are not lost when saved as PNG.
 func compositeOverBackground(img image.Image, bg color.Color) image.Image {
 	bounds := img.Bounds()
 	opaqueImg := image.NewRGBA(bounds)
@@ -445,6 +471,8 @@ func compositeOverBackground(img image.Image, bg color.Color) image.Image {
 	return opaqueImg
 }
 
+// drawFakeCursor paints an arrow cursor with its tip at (cx, cy), used in
+// window screenshots because the capture does not include the real cursor.
 func drawFakeCursor(img draw.Image, cx, cy int) {
 	if cx < 0 || cy < 0 {
 		return
@@ -489,6 +517,8 @@ func drawFakeCursor(img draw.Image, cx, cy int) {
 	}
 }
 
+// saveRasterToPng saves the raster of the active function to a PNG file chosen
+// via a save dialog. It does nothing under the fuzzer.
 func (scp *ScpDesc) saveRasterToPng() {
 	var img image.Image
 	switch scp.Settings.Window.Function {
@@ -530,11 +560,14 @@ func (scp *ScpDesc) saveRasterToPng() {
 	}
 }
 
+// cancelWriter wraps an io.Writer and fails writes once cancel is closed,
+// allowing a long GIF encode to be aborted.
 type cancelWriter struct {
 	writer io.Writer
 	cancel chan struct{}
 }
 
+// Write implements io.Writer, returning an error if cancelled.
 func (cw *cancelWriter) Write(p []byte) (int, error) {
 	select {
 	case <-cw.cancel:
@@ -544,6 +577,7 @@ func (cw *cancelWriter) Write(p []byte) (int, error) {
 	}
 }
 
+// toggleGifRecording starts or stops GIF recording and updates the button icon.
 func (scp *ScpDesc) toggleGifRecording() {
 	if scp.gifRecording {
 		scp.gifRecording = false
@@ -735,6 +769,8 @@ func (scp *ScpDesc) toggleGifRecording() {
 	}
 }
 
+// saveWindowToPng captures the whole window (with a synthetic mouse cursor)
+// and saves it as a PNG via a save dialog.
 func (scp *ScpDesc) saveWindowToPng() {
 	if IsFuzzer() {
 		return
@@ -775,6 +811,8 @@ func (scp *ScpDesc) saveWindowToPng() {
 	}
 }
 
+// refreshRasters redraws the raster(s) of the active display function (and the
+// digital raster when ports are enabled) on the Fyne UI thread.
 func (scp *ScpDesc) refreshRasters() {
 	if scp.Settings == nil {
 		return
@@ -812,6 +850,7 @@ func (scp *ScpDesc) refreshRasters() {
 	})
 }
 
+// adcToMv converts a raw ADC value to millivolts for the given input range.
 func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {
 	if scp.MaxValue == 0 {
 		return 0
@@ -820,6 +859,8 @@ func (scp *ScpDesc) adcToMv(raw float64, chRange genericps.RangeEnum) float64 {
 	return math.Round(float64(raw) * float64(rangeMv) / float64(scp.MaxValue))
 }
 
+// mvToAdc converts millivolts to a signed ADC value, clamped to
+// [MinValue, MaxValue].
 func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	rangeMv := genericps.InputRangeMv(chRange)
 	if rangeMv == 0 || scp.MaxValue == 0 {
@@ -834,6 +875,7 @@ func (scp *ScpDesc) mvToAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	return adc
 }
 
+// mvToUAdc is like mvToAdc but clamps only the upper bound.
 func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	rangeMv := genericps.InputRangeMv(chRange)
 	if rangeMv == 0 || scp.MaxValue == 0 {
@@ -846,6 +888,7 @@ func (scp *ScpDesc) mvToUAdc(mv int32, chRange genericps.RangeEnum) int32 {
 	return adc
 }
 
+// getScreenScale returns the UI scale factor for the configured screen size.
 func (scp *ScpDesc) getScreenScale() float32 {
 	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
 		return 1.0
@@ -864,6 +907,8 @@ func (scp *ScpDesc) getScreenScale() float32 {
 	}
 }
 
+// getScreenDimensions returns the maximum window size for the configured
+// screen size (1920x1080 maps to 1920x1000 to leave room for decorations).
 func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 	if scp.Settings == nil || scp.Settings.ScreenSize == "" {
 		return 1920, 1000
@@ -882,6 +927,8 @@ func (scp *ScpDesc) getScreenDimensions() (float32, float32) {
 	return 1920, 1000
 }
 
+// build2000Gui builds the main window content: tabs, rasters, toolbar and
+// controls shared by all supported scope variants.
 func (scp *ScpDesc) build2000Gui() {
 	scp.psControl.SetMaxSamplingRate(scp.maxSamplingRate)
 	initMaps()
@@ -1453,6 +1500,8 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.Window.SetContent(content)
 }
 
+// updateDigitalSplit shows the analog/digital vertical split on MSO units when
+// a digital port is enabled, otherwise the analog raster alone.
 func (scp *ScpDesc) updateDigitalSplit() {
 	if scp.mainSplit == nil {
 		return
@@ -1551,10 +1600,13 @@ func (scp *ScpDesc) StartRunning() {
 	}
 }
 
+// IsRunning reports whether acquisition is currently running.
 func (scp *ScpDesc) IsRunning() bool {
 	return scp.running
 }
 
+// StopRunning stops any f(f) sweep and the acquisition, then notifies
+// connected Multiscope clients.
 func (scp *ScpDesc) StopRunning() {
 	scp.stopFfSweep() // stop any running Bode sweep
 	err := scp.psControl.Stop()
@@ -1567,12 +1619,14 @@ func (scp *ScpDesc) StopRunning() {
 	}
 }
 
+// build2407Gui builds the GUI for units with an internal generator.
 func (scp *ScpDesc) build2407Gui() {
 	scp.build2000Gui()
 
 	scp.newGenPanel(scp.genLayout)
 }
 
+// build2000DemoGui builds the GUI for the demo (simulated) scope.
 func (scp *ScpDesc) build2000DemoGui() {
 
 	scp.build2000Gui()
@@ -1584,6 +1638,8 @@ func (scp *ScpDesc) build2000DemoGui() {
 
 }
 
+// SetVariant queries the unit variant, disables digital features on non-MSO
+// units, and configures channels, sampling rate and the matching GUI builder.
 func (scp *ScpDesc) SetVariant() (info string, err error) {
 	info, err = scp.psControl.UnitVariantInfo()
 	scp.psControl.SetInfo(info)
@@ -1735,6 +1791,7 @@ func (scp *ScpDesc) SetVariant() (info string, err error) {
 	return
 }
 
+// setRangeMargin computes the label width margin from a sample label string.
 func (scp *ScpDesc) setRangeMargin() {
 	left, _, right, _ := scp.boundString("-50.0")
 	scp.rangeMargin = right - left
@@ -1755,6 +1812,7 @@ func (scp *ScpDesc) MenuWithController(ctrl control.ScopeController, cfg *settin
 	return scp.menuInit()
 }
 
+// Menu initializes the GUI for a local hardware connection and shows the window.
 func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fileName string) (err error) {
 	scp.SettingFileName = fileName
 	scp.triggerSettingMsg.Done = make(chan struct{})
@@ -1767,6 +1825,8 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 	return scp.menuInit()
 }
 
+// menuInit creates the window, rasters and signal flags, detects the variant
+// (building the GUI), sizes the window and shows it.
 func (scp *ScpDesc) menuInit() (err error) {
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
@@ -1824,18 +1884,21 @@ type numericalEntry struct {
 	widget.Entry
 }
 
+// newNumericalEntry creates a numericalEntry.
 func newNumericalEntry() *numericalEntry {
 	e := &numericalEntry{}
 	e.ExtendBaseWidget(e)
 	return e
 }
 
+// TypedRune accepts only digits and characters valid in a decimal/exponent number.
 func (e *numericalEntry) TypedRune(r rune) {
 	if (r >= '0' && r <= '9') || r == '.' || r == '-' || r == 'e' || r == 'E' || r == '+' {
 		e.Entry.TypedRune(r)
 	}
 }
 
+// getFunctionIndex maps a tab item to its function index (default f(t)).
 func (scp *ScpDesc) getFunctionIndex(tab *container.TabItem) int {
 	if tab == nil {
 		return ftTabIndex
@@ -1874,6 +1937,7 @@ func (scp *ScpDesc) getFunctionIndex(tab *container.TabItem) int {
 	}
 }
 
+// getTabItem is the inverse of getFunctionIndex (default f(t) tab).
 func (scp *ScpDesc) getTabItem(funcIndex int) *container.TabItem {
 	switch funcIndex {
 	case ftTabIndex:
@@ -1909,6 +1973,7 @@ func (scp *ScpDesc) getTabItem(funcIndex int) *container.TabItem {
 	}
 }
 
+// getActiveFunctionIndex returns the function index of the selected tab.
 func (scp *ScpDesc) getActiveFunctionIndex() int {
 	if scp.controlTab == nil {
 		return ftTabIndex
