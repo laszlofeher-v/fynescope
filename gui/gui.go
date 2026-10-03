@@ -189,6 +189,8 @@ type (
 		ffFftBuf          []float64
 		ffFftResult       []complex128
 		ffFftSamples      int
+		filterPaddedBuf   []float32
+		refreshPending    int32
 		ffAutoRangedFreq  float64
 		ffOriginalRanges  map[genericps.ChannelId]genericps.RangeEnum
 		ffCurrentFreqDisp *disp7.DigitArray
@@ -811,43 +813,47 @@ func (scp *ScpDesc) saveWindowToPng() {
 	}
 }
 
-// refreshRasters redraws the raster(s) of the active display function (and the
-// digital raster when ports are enabled) on the Fyne UI thread.
-func (scp *ScpDesc) refreshRasters() {
+// refreshRastersDirect redraws the raster(s) of the active display function (and the
+// digital raster when ports are enabled) directly. It must be called on the Fyne UI thread.
+func (scp *ScpDesc) refreshRastersDirect() {
 	if scp.Settings == nil {
 		return
 	}
-	fyne.Do(func() {
-		targetFunction := scp.Settings.Window.Function
-		if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == vchTabIndex || targetFunction == digPortTabIndex || targetFunction == corrTabIndex || targetFunction == multiTabIndex {
-			targetFunction = scp.Settings.Window.LastDispFunction
-		}
+	targetFunction := scp.Settings.Window.Function
+	if targetFunction == genTabIndex || targetFunction == filterTabIndex || targetFunction == extgenTabIndex || targetFunction == vchTabIndex || targetFunction == digPortTabIndex || targetFunction == corrTabIndex || targetFunction == multiTabIndex {
+		targetFunction = scp.Settings.Window.LastDispFunction
+	}
 
-		switch targetFunction {
-		case dftTabIndex:
-			if scp.dftRaster != nil {
-				canvas.Refresh(scp.dftRaster)
-			}
-		case fvTabIndex:
-			if scp.fvRaster != nil {
-				canvas.Refresh(scp.fvRaster)
-			}
-		case ffTabIndex:
-			if scp.ffRaster != nil {
-				canvas.Refresh(scp.ffRaster)
-			}
-		default:
-			if scp.ftRaster != nil {
-				canvas.Refresh(scp.ftRaster)
-			}
-			if scp.timeZoomRaster != nil {
-				canvas.Refresh(scp.timeZoomRaster)
-			}
+	switch targetFunction {
+	case dftTabIndex:
+		if scp.dftRaster != nil {
+			canvas.Refresh(scp.dftRaster)
 		}
-		if scp.digitalRaster != nil && (scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled) {
-			scp.digitalRaster.refresh()
+	case fvTabIndex:
+		if scp.fvRaster != nil {
+			canvas.Refresh(scp.fvRaster)
 		}
-	})
+	case ffTabIndex:
+		if scp.ffRaster != nil {
+			canvas.Refresh(scp.ffRaster)
+		}
+	default:
+		if scp.ftRaster != nil {
+			canvas.Refresh(scp.ftRaster)
+		}
+		if scp.timeZoomRaster != nil {
+			canvas.Refresh(scp.timeZoomRaster)
+		}
+	}
+	if scp.digitalRaster != nil && (scp.Settings.Digital.Ports[0].Enabled || scp.Settings.Digital.Ports[1].Enabled) {
+		scp.digitalRaster.refresh()
+	}
+}
+
+// refreshRasters redraws the raster(s) of the active display function (and the
+// digital raster when ports are enabled) on the Fyne UI thread.
+func (scp *ScpDesc) refreshRasters() {
+	fyne.Do(scp.refreshRastersDirect)
 }
 
 // adcToMv converts a raw ADC value to millivolts for the given input range.
@@ -1471,19 +1477,23 @@ func (scp *ScpDesc) build2000Gui() {
 			}
 		}
 
-		fyne.Do(func() {
-			scp.DecodeState = newDecodeState
+		scp.screenLocker.Lock()
+		scp.DecodeState = newDecodeState
+		scp.UpdateMeasurements(buffers, buffersMin, samplingTimeInterval)
+		scp.sendClientWaveforms()
+		scp.screenLocker.Unlock()
 
-			scp.UpdateMeasurements(buffers, buffersMin, samplingTimeInterval)
-			// scp.updateBinWidth()
-			// scp.updateDftDataCollectionTime()
-			scp.refreshRasters() // it calls draw method in signalviewer
-			scp.sendClientWaveforms()
-			if scp.triggerSettingMsg.Mode == control.Single {
-				scp.runblockButton.SetIcon(theme.MediaPlayIcon())
-				scp.running = false
-			}
-		})
+		isSingle := scp.triggerSettingMsg.Mode == control.Single
+		if isSingle || atomic.CompareAndSwapInt32(&scp.refreshPending, 0, 1) {
+			fyne.Do(func() {
+				atomic.StoreInt32(&scp.refreshPending, 0)
+				scp.refreshRastersDirect()
+				if isSingle {
+					scp.runblockButton.SetIcon(theme.MediaPlayIcon())
+					scp.running = false
+				}
+			})
+		}
 	})
 
 	for i := range scp.channelViewers {

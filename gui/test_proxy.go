@@ -1347,6 +1347,16 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 						// Hang detected
 						log.Printf("level=ERROR Hang detected: no event for %v. Dumping 6s log...", time.Since(lastEvT).Round(time.Millisecond))
 						customWriter.dumpFifo()
+
+						// Save all goroutine stacks so the blocking call site can be identified.
+						stackBuf := make([]byte, 8<<20)
+						stackLen := runtime.Stack(stackBuf, true)
+						stackFile := fmt.Sprintf("fuzzer_hang_%s.txt", time.Now().Format("20060102_150405.000"))
+						if err := os.WriteFile(stackFile, stackBuf[:stackLen], 0o644); err != nil {
+							log.Printf("Failed to write hang stack dump: %v", err)
+						} else {
+							log.Printf("level=WARN Hang goroutine dump written to %s", stackFile)
+						}
 						
 						// Increase the minimum fuzzer sleep time, capping at 1000ms
 						minFuzzerSleepMu.Lock()
