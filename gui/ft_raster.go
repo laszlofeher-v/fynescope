@@ -490,11 +490,20 @@ func (sv *signalViewer) drawETS(w, h float64, bounds image.Rectangle, zeroOffset
 }
 
 func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOffset int, deltaT float64) {
+	if deltaT <= 0 || math.IsNaN(deltaT) || math.IsInf(deltaT, 0) || w <= 0 || h <= 0 {
+		return
+	}
 	maxScreenTime := sv.scp.maxScreenTime
 	if sv.isTimeZoom {
 		maxScreenTime = sv.scp.timeZoomMaxScreenTime
 	}
+	if maxScreenTime <= 0 || math.IsNaN(maxScreenTime) || math.IsInf(maxScreenTime, 0) {
+		return
+	}
 	unit := (w) / float64(maxScreenTime)
+	if math.IsNaN(unit) || math.IsInf(unit, 0) {
+		return
+	}
 
 	for channelIndex := range sv.scp.channelViewers {
 		channelViewer := &sv.scp.channelViewers[channelIndex]
@@ -540,6 +549,9 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				}
 
 				t0 -= extra * deltaT
+				if math.IsNaN(t0) || math.IsInf(t0, 0) {
+					t0 = 0
+				}
 
 				var targetImg draw.Image = sv.scp.ftScopeSignalScreen.(draw.Image)
 				if sv.isTimeZoom {
@@ -557,7 +569,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 				drawDot := func() {
 					startIndex := 0
 					if deltaT > 0 {
-						calcStart := int((-t0)/deltaT) - 1
+						cs := (-t0) / deltaT
+						if cs > float64(len(displayBuffer)) {
+							return
+						}
+						calcStart := int(cs) - 1
 						if calcStart > startIndex {
 							startIndex = calcStart
 						}
@@ -596,7 +612,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 					startIndex := 1
 					if deltaT > 0 {
-						calcStart := int((-t0)/deltaT) - 1
+						cs := (-t0) / deltaT
+						if cs > float64(len(displayBuffer)) {
+							return
+						}
+						calcStart := int(cs) - 1
 						if calcStart > startIndex {
 							startIndex = calcStart
 						}
@@ -645,7 +665,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 					startIndex := 1
 					if deltaT > 0 {
-						calcStart := int((-t0)/deltaT) - 1
+						cs := (-t0) / deltaT
+						if cs > float64(len(displayBuffer)) {
+							return
+						}
+						calcStart := int(cs) - 1
 						if calcStart > startIndex {
 							startIndex = calcStart
 						}
@@ -738,7 +762,11 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 					startIndex := 0
 					if deltaT > 0 {
-						calcStart := int((-t0)/deltaT) - 1
+						cs := (-t0) / deltaT
+						if cs > float64(len(displayBuffer)) {
+							return
+						}
+						calcStart := int(cs) - 1
 						if calcStart > startIndex {
 							startIndex = calcStart
 						}
@@ -747,7 +775,10 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						return
 					}
 
-					var prevX float64 = t0 + float64(startIndex)*deltaT + float64(bounds.Min.X) - deltaT
+					minScreenX := float64(bounds.Min.X)
+					maxScreenX := float64(bounds.Max.X)
+
+					var prevX float64 = t0 + float64(startIndex)*deltaT + minScreenX - deltaT
 					var prevYTop, prevYBot float64
 					if startIndex > 0 {
 						prevI := startIndex - 1
@@ -759,10 +790,24 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 						prevYTop = -yScale*float64(sMax) + offsetFloat
 						prevYBot = -yScale*float64(sMin) + offsetFloat
+						if prevYTop > prevYBot {
+							prevYTop, prevYBot = prevYBot, prevYTop
+						}
+					}
+
+					// For dense samples (multiple samples per pixel column), bucket them by pixel column
+					// to avoid drawing hundreds/thousands of redundant overlapping vertical lines per column.
+					curCol := -1
+					var colTop, colBot float64
+
+					flushCol := func() {
+						if curCol >= bounds.Min.X && curCol < bounds.Max.X {
+							drawLine(targetImg, float32(curCol), float32(colBot), float32(curCol), float32(colTop), col)
+						}
 					}
 
 					for i := startIndex; i < len(displayBuffer); i++ {
-						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
+						x := t0 + float64(i)*deltaT + minScreenX
 
 						sMax := displayBuffer[i]
 						sMin := displayBufferMin[i]
@@ -773,17 +818,30 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 
 						yTop := -yScale*float64(sMax) + offsetFloat
 						yBot := -yScale*float64(sMin) + offsetFloat
+						if yTop > yBot {
+							yTop, yBot = yBot, yTop
+						}
 
-						// Draw vertical column
-						drawLine(targetImg, float32(x), float32(yBot), float32(x), float32(yTop), col)
+						px := int(math.Floor(x))
 
-						if i > 0 && (x-prevX) > 1.0 {
+						if (i > startIndex || startIndex > 0) && (x-prevX) > 1.0 {
+							// Flush any pending column before drawing gap
+							flushCol()
+							curCol = -1
+
 							// Outline the envelope
 							drawLine(targetImg, float32(prevX), float32(prevYTop), float32(x), float32(yTop), col)
 							drawLine(targetImg, float32(prevX), float32(prevYBot), float32(x), float32(yBot), col)
 
 							ixStart := int(math.Ceil(prevX))
 							ixEnd := int(math.Floor(x))
+							// Clamp interpolation range strictly to visible screen bounds
+							if ixStart < bounds.Min.X {
+								ixStart = bounds.Min.X
+							}
+							if ixEnd >= bounds.Max.X {
+								ixEnd = bounds.Max.X - 1
+							}
 							for ix := ixStart; ix <= ixEnd; ix++ {
 								t := float64(ix) - prevX
 								frac := t / (x - prevX)
@@ -791,15 +849,31 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 								interpBot := prevYBot + frac*(yBot-prevYBot)
 								drawLine(targetImg, float32(ix), float32(interpBot), float32(ix), float32(interpTop), col)
 							}
+						} else {
+							// Dense or contiguous samples: bucket by pixel column
+							if px == curCol {
+								if yTop < colTop {
+									colTop = yTop
+								}
+								if yBot > colBot {
+									colBot = yBot
+								}
+							} else {
+								flushCol()
+								curCol = px
+								colTop = yTop
+								colBot = yBot
+							}
 						}
 
 						prevX = x
 						prevYTop = yTop
 						prevYBot = yBot
-						if deltaT > 0 && x >= float64(bounds.Max.X) {
+						if deltaT > 0 && x >= maxScreenX {
 							break
 						}
 					}
+					flushCol()
 				} //drawED
 
 				if sv.scp.Settings.Time.ResolutionMode == "ED" {
