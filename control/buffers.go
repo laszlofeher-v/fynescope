@@ -31,9 +31,29 @@ func (psControl *PscDesc) setEtsBuffer(sampleCount uint64, segmentIndex uint64) 
 }
 
 func (psControl *PscDesc) setBuffers(sampleCount uint64, segmentIndex uint64) (err error) {
-	if sampleCount > 100000000 {
-		slog.Error("setBuffers requested excessive sampleCount, capping", "sampleCount", sampleCount)
-		sampleCount = 100000000
+	// Derive the maximum allowed sample count from the device's sampling rate.
+	// Using a flat 100 M cap would be too restrictive for faster devices
+	// (e.g. 500 MS/s or 1 GS/s models). The same MaxSamplingRate field is
+	// already used in block_mode.go and ets.go for analogous device-dependent limits.
+	var maxSampleCount uint64
+	switch psControl.MaxSamplingRate {
+	case MaxSampling100M:
+		maxSampleCount = MaxSampling100M
+	case MaxSampling200M:
+		maxSampleCount = MaxSampling200M
+	case MaxSampling500M:
+		maxSampleCount = MaxSampling500M
+	default:
+		// 1 GS/s devices and any future higher-rate models.
+		maxSampleCount = MaxSampling1G
+	}
+	// Defensive backstop. 
+	if sampleCount > maxSampleCount {
+		slog.Error("setBuffers requested excessive sampleCount, capping",
+			"sampleCount", sampleCount,
+			"maxSampleCount", maxSampleCount,
+			"maxSamplingRate", psControl.MaxSamplingRate)
+		sampleCount = maxSampleCount
 	}
 	for chIndex := range psControl.receiveBuffer {
 		if len(psControl.receiveBuffer[chIndex]) < int(sampleCount) {
