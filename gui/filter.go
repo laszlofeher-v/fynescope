@@ -82,6 +82,11 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 	chSettings := &scp.Settings.Channels[chIdx]
 	filter := &chSettings.DigitalFilter
 
+	// Fast path: if no digital filter is enabled, return immediately without any allocations or processing.
+	if !filter.LowpassEnabled && !filter.HighpassEnabled && !filter.BandpassEnabled && !filter.BandstopEnabled {
+		return
+	}
+
 	fs := 1.0 / samplingTimeInterval
 	if fs <= 0 {
 		return
@@ -213,6 +218,12 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 		}
 	}
 
+	// Fast path: if ZeroPhase is disabled, apply the filter in-place directly on buf (causal forward filter)
+	if !filter.ZeroPhaseEnabled {
+		applyFilterFwd(buf)
+		return
+	}
+
 	n := len(buf)
 	// Padlen is typically 3 * max(order), but for low cutoffs we need more.
 	// We use an odd extension of length equal to the buffer size to give it ample time to settle.
@@ -220,7 +231,16 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 	if padlen > 1000 {
 		padlen = 1000
 	}
-	padded := make([]float32, n+2*padlen)
+	needed := n + 2*padlen
+	var padded []float32
+	if scp != nil {
+		if cap(scp.filterPaddedBuf) < needed {
+			scp.filterPaddedBuf = make([]float32, needed)
+		}
+		padded = scp.filterPaddedBuf[:needed]
+	} else {
+		padded = make([]float32, needed)
+	}
 
 	// Odd extension at the start: x[-i] = 2*x[0] - x[i]
 	firstVal := buf[0]
@@ -238,15 +258,13 @@ func (scp *ScpDesc) applyDigitalFilters(chIdx int, buf []float32, samplingTimeIn
 	// Apply filter forward
 	applyFilterFwd(padded)
 
-	// Apply filter backward if ZeroPhase
-	if filter.ZeroPhaseEnabled {
-		for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
-			padded[i], padded[j] = padded[j], padded[i]
-		}
-		applyFilterFwd(padded)
-		for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
-			padded[i], padded[j] = padded[j], padded[i]
-		}
+	// Apply filter backward for ZeroPhase filtfilt
+	for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
+		padded[i], padded[j] = padded[j], padded[i]
+	}
+	applyFilterFwd(padded)
+	for i, j := 0, len(padded)-1; i < j; i, j = i+1, j-1 {
+		padded[i], padded[j] = padded[j], padded[i]
 	}
 
 	// Copy back the middle valid section

@@ -121,3 +121,54 @@ func TestApplyDigitalFilters_IIR(t *testing.T) {
 		t.Errorf("Highpass did not attenuate DC: %v", buf2)
 	}
 }
+
+func TestApplyDigitalFilters_Bypass(t *testing.T) {
+	scp := &ScpDesc{}
+	scp.Settings = settings.NewDefaultSettings()
+	scp.Settings.Channels = make([]settings.ChSettings, 1)
+	ch := &scp.Settings.Channels[0]
+	ch.Enabled = true
+	ch.DigitalFilter.LowpassEnabled = false
+	ch.DigitalFilter.HighpassEnabled = false
+	ch.DigitalFilter.BandpassEnabled = false
+	ch.DigitalFilter.BandstopEnabled = false
+
+	original := []float32{1.0, 2.0, 3.0, 4.0, 5.0}
+	buf := make([]float32, len(original))
+	copy(buf, original)
+
+	scp.applyDigitalFilters(0, buf, 1e-5)
+
+	for i := range original {
+		if buf[i] != original[i] {
+			t.Errorf("expected buf[%d]=%v to remain unchanged, got %v", i, original[i], buf[i])
+		}
+	}
+	if len(scp.filterPaddedBuf) != 0 {
+		t.Errorf("expected filterPaddedBuf to not be allocated on bypass, got len %d", len(scp.filterPaddedBuf))
+	}
+}
+
+func TestApplyDigitalFilters_ZeroPhase(t *testing.T) {
+	scp := &ScpDesc{}
+	scp.Settings = settings.NewDefaultSettings()
+	scp.Settings.Channels = make([]settings.ChSettings, 1)
+	ch := &scp.Settings.Channels[0]
+	ch.Enabled = true
+	ch.DigitalFilter.LowpassEnabled = true
+	ch.DigitalFilter.LowpassFc = 1000.0
+	ch.DigitalFilter.ZeroPhaseEnabled = true
+
+	buf := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0}
+	scp.applyDigitalFilters(0, buf, 1e-5)
+
+	if len(scp.filterPaddedBuf) == 0 {
+		t.Errorf("expected filterPaddedBuf to be allocated for zero-phase filtering")
+	}
+	for i, v := range buf {
+		if math.IsNaN(float64(v)) {
+			t.Errorf("NaN at index %d", i)
+		}
+	}
+}
+
