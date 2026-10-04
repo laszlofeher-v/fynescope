@@ -290,9 +290,18 @@ func (fv *fvViewer) draw() {
 				continue
 			}
 
+			// Cap the number of plotted points: in XY mode consecutive samples
+			// can be far apart on screen, so drawing every sample of a large
+			// buffer can block the UI thread for seconds.
+			const fvMaxPlotPoints = 16384
+			stride := 1
+			if samples > fvMaxPlotPoints {
+				stride = (samples + fvMaxPlotPoints - 1) / fvMaxPlotPoints
+			}
+
 			prevX := xZero + float64(xBuffer[0])*xScale
 			prevY := yZero - float64(yBuffer[0])*yScale
-			for s := 1; s < samples; s++ {
+			for s := stride; s < samples; s += stride {
 				currX := xZero + float64(xBuffer[s])*xScale
 				currY := yZero - float64(yBuffer[s])*yScale
 				drawLine(fv.scp.fvScopeSignalScreen, float32(prevX), float32(prevY), float32(currX), float32(currY), col)
