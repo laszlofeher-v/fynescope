@@ -258,3 +258,163 @@ func TestTriggerDetector_FindTriggerPoint_FallTime(t *testing.T) {
 		t.Errorf("Expected trigger near t=119, got %v", triggerTime)
 	}
 }
+
+func setupWindowPwqDetector(dir ThresholdDirection, lower, upper uint32, pwType PulseWidthType) *TriggerDetector {
+	td := NewTriggerDetector(true, 80, 5, dir, ChA)
+	props := []TriggerChannelProperties{{
+		ThresholdUpper:           80,
+		ThresholdUpperHysteresis: 5,
+		ThresholdLower:           20,
+		ThresholdLowerHysteresis: 5,
+		Channel:                  ChA,
+		ThresholdMode:            Window,
+	}}
+	td.SetChannelProperties(props)
+	td.SetChannelConditions([]TriggerConditions{{ChannelA: CondTrue, PulseWidthQualifier: CondTrue}})
+	td.SetChannelDirections(dir, TriggerNone, TriggerNone, TriggerNone)
+
+	conds := []PwqConditions{{ChannelA: CondTrue, ChannelB: CondDontCare, ChannelC: CondDontCare, ChannelD: CondDontCare}}
+	td.SetPulseWidthQualifier(conds, dir, lower, upper, pwType)
+	return td
+}
+
+func makeWindowPulseSignal(pulseWidth float64) func(float64, ChannelId) float64 {
+	return func(time float64, ch ChannelId) float64 {
+		if ch != ChA {
+			return 0
+		}
+		// Baseline 0. Pulse at 50 (inside window [20, 80]) from t=100 to t=100+pulseWidth.
+		if time >= 100 && time <= 100+pulseWidth {
+			return 50.0
+		}
+		return 0.0
+	}
+}
+
+func TestTriggerDetector_WindowPulseWidth_LessThan(t *testing.T) {
+	// Threshold = 50 units.
+	td := setupWindowPwqDetector(TriggerOutside, 50, 0, PwTypeLessThan)
+
+	// Pulse width 200 > 50: must NOT fire Less Than.
+	found, _ := td.FindTriggerPoint(makeWindowPulseSignal(200), 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Window PW Less Than mistakenly fired for pulse width 200 > 50")
+	}
+
+	// Pulse width 30 < 50: MUST fire Less Than.
+	found, triggerTime := td.FindTriggerPoint(makeWindowPulseSignal(30), 1000, 1000, 1.0)
+	if !found {
+		t.Errorf("Window PW Less Than failed to fire for pulse width 30 < 50")
+	}
+	if math.Abs(triggerTime-130.0) > 2.0 {
+		t.Errorf("Expected trigger near t=130, got %v", triggerTime)
+	}
+}
+
+func TestTriggerDetector_WindowPulseWidth_GreaterThan(t *testing.T) {
+	// Threshold = 50 units.
+	td := setupWindowPwqDetector(TriggerOutside, 50, 0, PwTypeGreaterThan)
+
+	// Pulse width 200 > 50: MUST fire Greater Than.
+	found, triggerTime := td.FindTriggerPoint(makeWindowPulseSignal(200), 1000, 1000, 1.0)
+	if !found {
+		t.Errorf("Window PW Greater Than failed to fire for pulse width 200 > 50")
+	}
+	if triggerTime < 145 || triggerTime > 305 {
+		t.Errorf("Expected trigger between t=150 and t=300, got %v", triggerTime)
+	}
+
+	// Pulse width 30 < 50: must NOT fire Greater Than.
+	found, _ = td.FindTriggerPoint(makeWindowPulseSignal(30), 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Window PW Greater Than mistakenly fired for pulse width 30 < 50")
+	}
+}
+
+func TestTriggerDetector_WindowPulseWidth_InRange(t *testing.T) {
+	// Range = [80, 120] units.
+	td := setupWindowPwqDetector(TriggerOutside, 80, 120, PwTypeInRange)
+
+	// Pulse width 100 in [80, 120]: MUST fire In Range.
+	found, triggerTime := td.FindTriggerPoint(makeWindowPulseSignal(100), 1000, 1000, 1.0)
+	if !found {
+		t.Errorf("Window PW In Range failed to fire for pulse width 100 in [80, 120]")
+	}
+	if math.Abs(triggerTime-200.0) > 2.0 {
+		t.Errorf("Expected trigger near t=200, got %v", triggerTime)
+	}
+
+	// Pulse width 200 outside [80, 120]: must NOT fire In Range.
+	found, _ = td.FindTriggerPoint(makeWindowPulseSignal(200), 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Window PW In Range mistakenly fired for pulse width 200 outside [80, 120]")
+	}
+
+	// Pulse width 30 outside [80, 120]: must NOT fire In Range.
+	found, _ = td.FindTriggerPoint(makeWindowPulseSignal(30), 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Window PW In Range mistakenly fired for pulse width 30 outside [80, 120]")
+	}
+}
+
+func TestTriggerDetector_WindowPulseWidth_OutOfRange(t *testing.T) {
+	// Range = [80, 120] units.
+	td := setupWindowPwqDetector(TriggerOutside, 80, 120, PwTypeOutOfRange)
+
+	// Pulse width 100 in [80, 120]: must NOT fire Out Of Range.
+	found, _ := td.FindTriggerPoint(makeWindowPulseSignal(100), 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Window PW Out Of Range mistakenly fired for pulse width 100 in range [80, 120]")
+	}
+
+	// Pulse width 200 outside [80, 120]: MUST fire Out Of Range.
+	found, triggerTime := td.FindTriggerPoint(makeWindowPulseSignal(200), 1000, 1000, 1.0)
+	if !found {
+		t.Errorf("Window PW Out Of Range failed to fire for pulse width 200 outside [80, 120]")
+	}
+	if math.Abs(triggerTime-300.0) > 2.0 {
+		t.Errorf("Expected trigger near t=300, got %v", triggerTime)
+	}
+
+	// Pulse width 30 outside [80, 120]: MUST fire Out Of Range.
+	found, triggerTime = td.FindTriggerPoint(makeWindowPulseSignal(30), 1000, 1000, 1.0)
+	if !found {
+		t.Errorf("Window PW Out Of Range failed to fire for pulse width 30 outside [80, 120]")
+	}
+	if math.Abs(triggerTime-130.0) > 2.0 {
+		t.Errorf("Expected trigger near t=130, got %v", triggerTime)
+	}
+}
+
+func TestTriggerDetector_WindowPulseWidth_FullSwingIgnored(t *testing.T) {
+	// Full-swing signal: 0 to 100 with finite slew rate (rise takes 10 units, 6 inside window [20, 80]).
+	fullSwingSignal := func(time float64, ch ChannelId) float64 {
+		if ch != ChA {
+			return 0
+		}
+		cycle := math.Mod(time, 1000)
+		if cycle < 10 {
+			return cycle * 10.0
+		} else if cycle < 500 {
+			return 100.0
+		} else if cycle < 510 {
+			return 100.0 - (cycle-500.0)*10.0
+		}
+		return 0.0
+	}
+
+	// Less Than 50: must not fire on the 6-unit full-swing transition.
+	tdLess := setupWindowPwqDetector(TriggerOutside, 50, 0, PwTypeLessThan)
+	found, _ := tdLess.FindTriggerPoint(fullSwingSignal, 1000, 2000, 1.0)
+	if found {
+		t.Errorf("Window PW Less Than mistakenly fired on full-swing transition")
+	}
+
+	// Out Of Range [80, 120]: must not fire on the 6-unit full-swing transition.
+	tdOut := setupWindowPwqDetector(TriggerOutside, 80, 120, PwTypeOutOfRange)
+	found, _ = tdOut.FindTriggerPoint(fullSwingSignal, 1000, 2000, 1.0)
+	if found {
+		t.Errorf("Window PW Out Of Range mistakenly fired on full-swing transition")
+	}
+}
+
