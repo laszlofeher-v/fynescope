@@ -8,6 +8,7 @@ import (
 	"image/draw"
 	"math"
 	"math/cmplx"
+	"sort"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -22,6 +23,50 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 // Scalar correlation helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// computeSpearmanCorrelation returns the Spearman rank correlation coefficient between two
+// equal-length sample slices.
+func computeSpearmanCorrelation(a, b []float32) float64 {
+	n := len(a)
+	if n == 0 || n != len(b) {
+		return math.NaN()
+	}
+	ranksA := getRanks(a)
+	ranksB := getRanks(b)
+	return computeCorrelation(ranksA, ranksB)
+}
+
+type valIdx struct {
+	val float32
+	idx int
+}
+
+func getRanks(data []float32) []float32 {
+	n := len(data)
+	vi := make([]valIdx, n)
+	for i, v := range data {
+		vi[i] = valIdx{val: v, idx: i}
+	}
+	sort.Slice(vi, func(i, j int) bool {
+		return vi[i].val < vi[j].val
+	})
+
+	ranks := make([]float32, n)
+	for i := 0; i < n; {
+		j := i + 1
+		sumRank := float32(i + 1)
+		for j < n && vi[j].val == vi[i].val {
+			sumRank += float32(j + 1)
+			j++
+		}
+		avgRank := sumRank / float32(j-i)
+		for k := i; k < j; k++ {
+			ranks[vi[k].idx] = avgRank
+		}
+		i = j
+	}
+	return ranks
+}
 
 // computeCorrelation returns the Pearson correlation coefficient between two
 // equal-length sample slices. It returns NaN if either slice has zero variance
@@ -407,7 +452,7 @@ func (scp *ScpDesc) newCorrPanel(panel *fyne.Container, undockable bool) {
 	if scp.corrSelectedType == "" {
 		scp.corrSelectedType = "Pearson r"
 	}
-	scp.corrTypeSelect = selectscroll.NewSelectScroll([]string{"Pearson r", "Cross-Correlation"}, func(s string, _ selectscroll.Exception) {
+	scp.corrTypeSelect = selectscroll.NewSelectScroll([]string{"Pearson r", "Spearman ρ", "Cross-Correlation"}, func(s string, _ selectscroll.Exception) {
 		scp.corrSelectedType = s
 		applyMode(s)
 	}, "Cross-Correlation")
@@ -440,10 +485,22 @@ func (scp *ScpDesc) newCorrPanel(panel *fyne.Container, undockable bool) {
 			nameI := string(rune('A' + ci))
 			nameJ := string(rune('A' + cj))
 
-			col := scp.Settings.Channels[ci].Col[scp.Settings.ChannelColorIndex]
-			pairLabel := canvas.NewText(nameI+"↔"+nameJ, col)
-			pairLabel.TextStyle.Bold = true
-			pairLabel.TextSize = 13
+			colI := scp.Settings.Channels[ci].Col[scp.Settings.ChannelColorIndex]
+			colJ := scp.Settings.Channels[cj].Col[scp.Settings.ChannelColorIndex]
+
+			lblI := canvas.NewText(nameI, colI)
+			lblI.TextStyle.Bold = true
+			lblI.TextSize = 13
+
+			lblMid := canvas.NewText("↔", theme.ForegroundColor())
+			lblMid.TextStyle.Bold = true
+			lblMid.TextSize = 13
+
+			lblJ := canvas.NewText(nameJ, colJ)
+			lblJ.TextStyle.Bold = true
+			lblJ.TextSize = 13
+
+			pairLabel := container.NewHBox(lblI, lblMid, lblJ)
 
 			rLabel := widget.NewLabel("---")
 			rLabel.Alignment = fyne.TextAlignLeading
@@ -624,7 +681,13 @@ func (scp *ScpDesc) UpdateCorrelation() {
 				results = append(results, result{i, j, math.NaN()})
 				continue
 			}
-			r := computeCorrelation(scp.displayBuffers[i], scp.displayBuffers[j])
+
+			var r float64
+			if scp.corrSelectedType == "Spearman ρ" {
+				r = computeSpearmanCorrelation(scp.displayBuffers[i], scp.displayBuffers[j])
+			} else {
+				r = computeCorrelation(scp.displayBuffers[i], scp.displayBuffers[j])
+			}
 			results = append(results, result{i, j, r})
 		}
 	}
