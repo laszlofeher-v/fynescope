@@ -373,7 +373,7 @@ func (scp *ScpDesc) buildChannelRow(
 	dirOptions []string,
 	dirMap map[string]genericps.DigitalDirection,
 	dirReverseMap map[genericps.DigitalDirection]string,
-	trigSelects [16]*selectscroll.SelectScroll,
+	trigSelects []*selectscroll.SelectScroll,
 ) (fyne.CanvasObject, *selectscroll.SelectScroll) {
 	dn := fmt.Sprintf("D%d", chIdx)
 
@@ -625,7 +625,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	}
 
 	// Build channel rows; trigSelects is shared for edge-trigger mutual exclusivity.
-	var trigSelects [16]*selectscroll.SelectScroll
+	trigSelects := make([]*selectscroll.SelectScroll, 16)
 	var port0Rows, port1Rows []fyne.CanvasObject
 
 	for i := 0; i < 16; i++ {
