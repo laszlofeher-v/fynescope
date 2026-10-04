@@ -389,6 +389,11 @@ func wait() {
 func doEvent(fn func()) bool {
 	fuzzerEventMtx.RLock()
 	defer fuzzerEventMtx.RUnlock()
+	return doEventUnlocked(fn)
+}
+
+// doEventUnlocked is doEvent for callers that already hold fuzzerEventMtx.
+func doEventUnlocked(fn func()) bool {
 	done := make(chan struct{})
 	fyne.Do(func() {
 		defer close(done)
@@ -570,9 +575,19 @@ func internalTap(name string, isFuzzer bool) bool {
 		if isFuzzer {
 			slog.Debug("randTap", "name", name)
 		}
-		res := doEvent(func() {
+		tapFn := func() {
 			c.Tapped(&fyne.PointEvent{AbsolutePosition: fyne.Position{X: 0, Y: 0}, Position: fyne.Position{X: 0, Y: 0}})
-		})
+		}
+		var res bool
+		if isFuzzer && name == "timeZoomButton" {
+			// Opening a window must not overlap any other fuzzer event.
+			fuzzerEventMtx.Lock()
+			res = doEventUnlocked(tapFn)
+			time.Sleep(300 * time.Millisecond)
+			fuzzerEventMtx.Unlock()
+		} else {
+			res = doEvent(tapFn)
+		}
 		if isFuzzer && (name == fullScreenId || name == restoreScreenId) {
 			time.Sleep(300 * time.Millisecond)
 		}
