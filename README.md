@@ -109,53 +109,6 @@ You can run `fynescope` immediately in pure-Go demo mode without installing any 
 ```bash
 git clone https://github.com/laszlofeher-v/fynescope.git
 cd fynescope
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 go run -tags=demo . -demo
 ```
 
