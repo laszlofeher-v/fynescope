@@ -1156,7 +1156,8 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
     td:first-child{color:#888;}
     td:last-child{color:#fff;font-weight:bold;}
     #dot{display:inline-block;width:10px;height:10px;border-radius:50%;
-         background:#4f4;margin-right:6px;animation:blink 1s step-start infinite;}
+         background:#4f4;margin-right:6px;}
+    .blink{animation:blink 1s step-start infinite;}
     @keyframes blink{50%{opacity:0;}}
   </style>
 </head>
@@ -1188,6 +1189,19 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
         } else {
             le.style.color = '';
         }
+        
+        let dot = document.getElementById('dot');
+        if (parseInt(d.errors) > 0) {
+            dot.style.background = '#f44';
+        } else {
+            dot.style.background = '#4f4';
+        }
+        
+        if (d.remaining === '0s') {
+            dot.classList.remove('blink');
+        } else {
+            dot.classList.add('blink');
+        }
       } catch(e) {}
     }
     refresh();
@@ -1204,7 +1218,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		mux.HandleFunc("/fuzzer/status", func(w http.ResponseWriter, r *http.Request) {
 			uptime := time.Since(startTime)
 			remaining := duration - uptime
-			if remaining < 0 {
+			if completed || remaining < 0 {
 				remaining = 0
 			}
 			lastEvT := time.Unix(0, atomic.LoadInt64(&lastEventTimeUnix))
