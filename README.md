@@ -107,6 +107,55 @@ For complete, step-by-step setup guides (including Windows toolchain setup, Linu
 You can run `fynescope` immediately in pure-Go demo mode without installing any PicoScope drivers or C toolchains:
 
 ```bash
+git clone https://github.com/laszlofeher-v/fynescope.git
+cd fynescope
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 go run -tags=demo . -demo
 ```
 
