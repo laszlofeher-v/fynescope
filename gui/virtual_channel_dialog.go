@@ -43,9 +43,9 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 
 	list := widget.NewList(
 		func() int { return len(scp.Settings.VirtualChannels) },
-		func() fyne.CanvasObject { return NewFocusableLabel("Virtual Channel 123456") },
+		func() fyne.CanvasObject { return widget.NewLabel("Virtual Channel 123456") },
 		func(i widget.ListItemID, o fyne.CanvasObject) {
-			o.(*FocusableLabel).SetText(scp.Settings.VirtualChannels[i].Name)
+			o.(*widget.Label).SetText(scp.Settings.VirtualChannels[i].Name)
 		},
 	)
 
