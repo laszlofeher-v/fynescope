@@ -102,27 +102,6 @@ fynescope depends on Go, the Fyne toolkit and the PicoScope SDK. It should be po
 
 For complete, step-by-step setup guides (including Windows toolchain setup, Linux packages, Raspberry Pi, and driver downloads), please refer to the **[Getting Started Wiki](https://github.com/laszlofeher-v/fynescope/wiki/Getting-Started)**.
 
-### 1. Run in Demo Mode (No Hardware or PicoSDK Required)
-
-You can run `fynescope` immediately in pure-Go demo mode without installing any PicoScope drivers or C toolchains:
-
-```bash
-git clone https://github.com/laszlofeher-v/fynescope.git
-cd fynescope
-go run -tags=demo . -demo
-```
-
-### 2. Build with Real Hardware Support
-
-Requires Go 1.27, a C compiler, and the official PicoScope SDK (`libps2000a`). See the Wiki for installation instructions.
-
-```bash
-git clone https://github.com/laszlofeher-v/fynescope.git
-cd fynescope
-go build -o fynescope .
-./fynescope
-```
-
 
 ---
 
