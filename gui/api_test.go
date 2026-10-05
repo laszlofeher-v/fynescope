@@ -54,6 +54,15 @@ func newTestScpDesc() *ScpDesc {
 	cfg.Trigger.Mode = settings.TriggerModeAuto
 	cfg.Trigger.Type = settings.TriggerTypeSimple
 
+	cfg.VirtualChannels = []settings.VirtualChSettings{
+		{
+			Name:       "Test VCH",
+			Expression: "A + B",
+			Enabled:    true,
+			VRange:     genericps.Range_5v,
+		},
+	}
+
 	scp := &ScpDesc{
 		Settings:                    cfg,
 		channelCount:                2,
@@ -253,6 +262,20 @@ func TestAPI_Endpoints(t *testing.T) {
 	var chs []ChannelInfo
 	if err := json.Unmarshal(rec.Body.Bytes(), &chs); err != nil || len(chs) != 2 {
 		t.Errorf("failed to unmarshal channels: %v, len=%d", err, len(chs))
+	}
+
+	// /api/virtual_channels GET
+	req = httptest.NewRequest(http.MethodGet, "/api/virtual_channels", nil)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("/api/virtual_channels GET failed: code %d", rec.Code)
+	}
+	var vchs []VirtualChannelInfo
+	if err := json.Unmarshal(rec.Body.Bytes(), &vchs); err != nil || len(vchs) != 1 {
+		t.Errorf("failed to unmarshal virtual channels: %v, len=%d", err, len(vchs))
+	} else if vchs[0].Name != "Test VCH" {
+		t.Errorf("expected virtual channel name 'Test VCH', got %q", vchs[0].Name)
 	}
 
 	// /api/channels/A GET
