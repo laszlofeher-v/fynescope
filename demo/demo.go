@@ -321,26 +321,24 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	return levelFloat
 }
 
-func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
+func findTriggerPoint(reqNoOfSamples uint32) (found bool, triggerTime float64, dt float64, err error) {
+	if triggerDetector == nil {
+		return true, 0, 0, nil
+	}
 	var timeIntervalNanoseconds float64
-
-	// Calculate time interval based on ETS mode or normal timebase
 	nec := numberOfEnabledChannels()
+	if nec == 0 {
+		nec = 1
+	}
 	if etsEnbaled {
 		timeIntervalNanoseconds = timeIntervalPicoSeconds / 1e3
 	} else {
 		timeIntervalNanoseconds, err = simGetTimeInterval2(timeBaseSet, nec)
 		if err != nil {
-			return
+			return false, 0, 0, err
 		}
 	}
 
-	AdvancePRBS()
-
-	// Find trigger point using trigger detector
-
-	var triggerTime float64
 	freq := float64(0)
 	isPrbs := false
 	sourceCh := triggerDetector.GetSource()
@@ -385,7 +383,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	}
 	triggerDetector.SetMaxIterations(maxIter)
 
-	dt := timeIntervalNanoseconds / 1e9
+	dt = timeIntervalNanoseconds / 1e9
 
 	triggerFilters := make([]*RlcFilter, MaxChannels)
 	triggerAcFilters := make([]*RlcFilter, MaxChannels)
@@ -409,7 +407,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
 		}
 
-		// AC-coupling: analogue 1 Hz highpass filter (models the input capacitor)
 		if channels[ch].coupling == Ac {
 			triggerAcFilters[ch] = NewAcCouplingFilter(dt)
 		}
@@ -473,11 +470,25 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	}
 
 	maxTime := float64(maxIter) * dt
-	found := false
 	found, triggerTime = triggerDetector.FindTriggerPoint(signalFunc, reqNoOfSamples, maxTime, dt)
+	return found, triggerTime, dt, nil
+}
+
+func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
+	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
+	AdvancePRBS()
+
+	found, triggerTime, dt, err := findTriggerPoint(reqNoOfSamples)
+	if err != nil {
+		return 0, 0, err
+	}
 	if !found {
-		slog.Debug("simGetValues: trigger not found", "maxTime", maxTime, "maxIter", maxIter)
-		return
+		if autoTrigger > 0 {
+			triggerTime = rand.Float64() * float64(reqNoOfSamples) * dt
+		} else {
+			slog.Debug("simGetValues: trigger not found")
+			return 0, 0, nil
+		}
 	}
 
 	// Initialize and pre-roll filters for enabled channels
@@ -524,9 +535,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 				noOfSamples = uint32(len(buffers[ch]))
 			}
 			for t := range buffers[ch] {
-				// Calculate real time for this output sample block
-				dt := timeIntervalNanoseconds / 1e9
-
 				var aggSum float64
 				var aggMin float64 = math.MaxFloat64
 				var aggMax float64 = -math.MaxFloat64
@@ -620,8 +628,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 
 				// Store ETS time if enabled (fs)
 				if etsEnbaled && ch == int(ChA) && t < len(etsTimeBuffer) {
-					t0Fs := 1e15 * float64(nOfPreTrSamples) * timeIntervalNanoseconds / 1e9
-					rteFs := (float64(t) * timeIntervalNanoseconds * float64(downSampleRatio)) / 1e9 * 1e15
+					t0Fs := 1e15 * float64(nOfPreTrSamples) * dt
+					rteFs := (float64(t) * dt * float64(downSampleRatio)) * 1e15
 					etsTimeBuffer[t] = int64(rteFs - t0Fs)
 				}
 			}
@@ -643,7 +651,6 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			}
 
 			for t := uint32(0); t < noOfSamples; t++ {
-				dt := timeIntervalNanoseconds / 1e9
 				if downSampleRatio < 1 {
 					downSampleRatio = 1
 				}
@@ -670,7 +677,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	}
 
 	if etsEnbaled && running {
-		go delayedCall(handle, regLpBlockReadyGo)
+		seq := atomic.AddInt64(&blockRunSeq, 1)
+		go delayedCall(handle, regLpBlockReadyGo, seq)
 	}
 	return
 }
@@ -1168,13 +1176,46 @@ func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeU
 	return sampleInterval, nil
 }
 
-var regLpBlockReadyGo BlockReady // registered go callback function
+var (
+	regLpBlockReadyGo BlockReady // registered go callback function
+	blockRunSeq       int64
+)
 
 func lpBlockReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param any) {
 }
-func delayedCall(handle int16, lpBlockReadyGoPar BlockReady) {
+
+func delayedCall(handle int16, lpBlockReadyGoPar BlockReady, seq int64) {
 	time.Sleep(callDelayMs * time.Millisecond)
-	lpBlockReadyGoPar(handle, 0, nil)
+	if !running || atomic.LoadInt64(&blockRunSeq) != seq || lpBlockReadyGoPar == nil {
+		return
+	}
+
+	totalSamples := uint32(nOfPreTrSamples + nOfPostTrSamples)
+	if totalSamples == 0 {
+		totalSamples = 1000
+	}
+
+	start := time.Now()
+	for running && atomic.LoadInt64(&blockRunSeq) == seq {
+		found, _, _, _ := findTriggerPoint(totalSamples)
+		if found {
+			if running && atomic.LoadInt64(&blockRunSeq) == seq && lpBlockReadyGoPar != nil {
+				lpBlockReadyGoPar(handle, 0, nil)
+			}
+			return
+		}
+
+		if autoTrigger > 0 {
+			if time.Since(start) >= time.Duration(autoTrigger)*time.Millisecond {
+				if running && atomic.LoadInt64(&blockRunSeq) == seq && lpBlockReadyGoPar != nil {
+					lpBlockReadyGoPar(handle, 0, nil)
+				}
+				return
+			}
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
@@ -1204,7 +1245,8 @@ func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int
 	timeBaseSet = timeBase
 	nOfPreTrSamples = noOfPreTriggerSamples
 	nOfPostTrSamples = noOfPostTriggerSamples
-	go delayedCall(handle, lpBlockReadyGoPar)
+	seq := atomic.AddInt64(&blockRunSeq, 1)
+	go delayedCall(handle, lpBlockReadyGoPar, seq)
 	timeIndisposedMs = callDelayMs
 	return
 }
@@ -1333,6 +1375,7 @@ func simStop(handle int16) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
+	atomic.AddInt64(&blockRunSeq, 1)
 	running = false
 	streamingRunning = false
 	return

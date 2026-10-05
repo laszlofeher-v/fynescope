@@ -529,9 +529,6 @@ func (td *TriggerDetector) FindTriggerPoint(signalFunc func(t float64, ch Channe
 	}
 
 	triggerTime = rand.Float64() * float64(reqSamples) * dt
-	if !td.pwqConfig.Enabled {
-		found = true
-	}
 	return
 }
 

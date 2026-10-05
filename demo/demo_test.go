@@ -274,3 +274,124 @@ func TestSimGetValues(t *testing.T) {
 		t.Logf("Overflow: %d", overflow)
 	}
 }
+
+func TestSimRunBlock_SingleTrigger_DoesNotFireWhenNoTriggerEvent(t *testing.T) {
+	loadConstants()
+	behaviour = normal
+
+	h, err := openUnit("serial", 0)
+	if err != nil {
+		t.Fatalf("openUnit failed: %v", err)
+	}
+	defer simStop(h)
+
+	err = simSetChannel(h, ChA, true, Dc, Range_1v, 0)
+	if err != nil {
+		t.Fatalf("simSetChannel failed: %v", err)
+	}
+	buf := make([]int16, 1000)
+	buffers[ChA] = buf
+
+	// Sine wave pk-to-pk 1000mV (range +/-500mV)
+	channels[ChA].genOn = true
+	channels[ChA].genWaveFunction = NewWaveformGenerator(Sine)
+	channels[ChA].genPkToPk = 1000
+	channels[ChA].genOffsetVoltage = 0
+	channels[ChA].phase = 0
+	channels[ChA].sweepController = NewSweepController(1000, 1000, 0, SweepUp, 0)
+
+	// Threshold set to +5000 mV (ADC level far above signal), autoTriggerMs = 0 (Single/Repeat mode)
+	err = simSetSimpleTrigger(h, true, ChA, 25000, TriggerRising, 0, 0)
+	if err != nil {
+		t.Fatalf("simSetSimpleTrigger failed: %v", err)
+	}
+
+	fired := make(chan struct{}, 1)
+	readyCb := func(handle int16, status int, param any) {
+		fired <- struct{}{}
+	}
+
+	_, err = simRunBlock(h, 500, 500, 200, 0, 0, readyCb, nil)
+	if err != nil {
+		t.Fatalf("simRunBlock failed: %v", err)
+	}
+
+	// Wait 250ms (longer than callDelayMs 100ms)
+	select {
+	case <-fired:
+		t.Fatalf("Single trigger mistakenly fired when no trigger event happened!")
+	case <-time.After(250 * time.Millisecond):
+		// Success: scope is waiting for a trigger event
+	}
+
+	// Now change trigger threshold to 0 (within signal), simulating user adjustment or signal appearance
+	err = simSetSimpleTrigger(h, true, ChA, 0, TriggerRising, 0, 0)
+	if err != nil {
+		t.Fatalf("simSetSimpleTrigger failed: %v", err)
+	}
+
+	// Re-run block with reachable trigger
+	_, err = simRunBlock(h, 500, 500, 200, 0, 0, readyCb, nil)
+	if err != nil {
+		t.Fatalf("simRunBlock failed: %v", err)
+	}
+
+	select {
+	case <-fired:
+		// Success: fired once valid trigger event exists!
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("Trigger failed to fire after threshold became reachable")
+	}
+}
+
+func TestSimRunBlock_AutoTrigger_FiresAfterTimeout(t *testing.T) {
+	loadConstants()
+	behaviour = normal
+
+	h, err := openUnit("serial", 0)
+	if err != nil {
+		t.Fatalf("openUnit failed: %v", err)
+	}
+	defer simStop(h)
+
+	err = simSetChannel(h, ChA, true, Dc, Range_1v, 0)
+	if err != nil {
+		t.Fatalf("simSetChannel failed: %v", err)
+	}
+	buf := make([]int16, 1000)
+	buffers[ChA] = buf
+
+	channels[ChA].genOn = false // No signal
+
+	// Unreachable trigger, but autoTriggerMs = 200 ms (Auto mode)
+	err = simSetSimpleTrigger(h, true, ChA, 25000, TriggerRising, 0, 200)
+	if err != nil {
+		t.Fatalf("simSetSimpleTrigger failed: %v", err)
+	}
+
+	fired := make(chan struct{}, 1)
+	readyCb := func(handle int16, status int, param any) {
+		fired <- struct{}{}
+	}
+
+	_, err = simRunBlock(h, 500, 500, 200, 0, 0, readyCb, nil)
+	if err != nil {
+		t.Fatalf("simRunBlock failed: %v", err)
+	}
+
+	// Before 200ms (e.g. at 50ms) it should not have fired yet
+	select {
+	case <-fired:
+		t.Fatalf("Auto trigger fired too early")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// After 200ms timeout it should fire
+	select {
+	case <-fired:
+		// Success!
+	case <-time.After(400 * time.Millisecond):
+		t.Fatalf("Auto trigger timed out without firing")
+	}
+}
+

@@ -418,3 +418,33 @@ func TestTriggerDetector_WindowPulseWidth_FullSwingIgnored(t *testing.T) {
 	}
 }
 
+func TestTriggerDetector_SimpleTrigger_ThresholdNotMet(t *testing.T) {
+	td := NewTriggerDetector(true, 500, 10, TriggerRising, ChA)
+	// Flat 0 signal, never crosses 500
+	signalFunc := func(time float64, ch ChannelId) float64 {
+		return 0
+	}
+	found, _ := td.FindTriggerPoint(signalFunc, 1000, 1000, 1.0)
+	if found {
+		t.Errorf("Trigger should NOT be found when signal never crosses threshold")
+	}
+}
+
+func TestTriggerDetector_SimpleTrigger_ThresholdMet(t *testing.T) {
+	td := NewTriggerDetector(true, 500, 10, TriggerRising, ChA)
+	// Signal rises from 0 to 1000 at t=100
+	signalFunc := func(time float64, ch ChannelId) float64 {
+		if time >= 100 {
+			return 1000
+		}
+		return 0
+	}
+	found, triggerTime := td.FindTriggerPoint(signalFunc, 1000, 500, 1.0)
+	if !found {
+		t.Errorf("Trigger SHOULD be found when signal rises above threshold")
+	}
+	if math.Abs(triggerTime-100.0) > 2.0 {
+		t.Errorf("Expected trigger near t=100, got %v", triggerTime)
+	}
+}
+

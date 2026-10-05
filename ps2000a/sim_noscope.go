@@ -32,6 +32,7 @@ var (
 	nOfPreTrSamples  int32
 	nOfPostTrSamples int32
 	blockOverflow    int16
+	autoTrigger      int32
 
 	// Single channel generator
 	genOn            bool
@@ -81,6 +82,7 @@ func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (ma
 
 func simSetSimpleTrigger(handle int16, enable bool, source int, threshold int16, direction int, delay uint32, autoTriggerMs int16) {
 	triggerDetector = demo.NewTriggerDetector(enable, threshold, 0, demo.ThresholdDirection(direction), demo.ChannelId(source))
+	autoTrigger = int32(autoTriggerMs)
 }
 
 func simSetTriggerChannelProperties(handle int16, props []demo.TriggerChannelProperties, auxOutputEnable bool, autoTriggerMs int32) {
@@ -88,6 +90,7 @@ func simSetTriggerChannelProperties(handle int16, props []demo.TriggerChannelPro
 		triggerDetector = demo.NewTriggerDetector(true, 0, 0, demo.TriggerNone, demo.ChA)
 	}
 	triggerDetector.SetChannelProperties(props)
+	autoTrigger = autoTriggerMs
 }
 
 func simSetTriggerChannelConditions(handle int16, conds []demo.TriggerConditions) {
@@ -278,6 +281,10 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 		triggerDetector.SetMaxIterations(maxIter)
 		maxTime := float64(maxIter) * dt
 		found, triggerTime := triggerDetector.FindTriggerPoint(signalFunc, reqSamples, maxTime, dt)
+		if !found && autoTrigger > 0 {
+			triggerTime = rand.Float64() * float64(reqSamples) * dt
+			found = true
+		}
 		if found {
 			for ch := 0; ch < 4; ch++ {
 				buf := buffers[ch]
@@ -428,11 +435,11 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 			if sweepController != nil {
 				sweepController.Update()
 			}
-		}
-		time.Sleep(10 * time.Millisecond)
-		isReady = true
-		if readyCallback != nil {
-			readyCallback(handle, 0)
+			time.Sleep(10 * time.Millisecond)
+			isReady = true
+			if readyCallback != nil {
+				readyCallback(handle, 0)
+			}
 		}
 	}()
 }
