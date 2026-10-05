@@ -76,6 +76,17 @@ type ChannelInfo struct {
 	TriggerSource  bool   `json:"trigger_source"`
 }
 
+// VirtualChannelInfo describes the current runtime settings and properties of a virtual channel.
+type VirtualChannelInfo struct {
+	Index      int    `json:"index"`
+	Name       string `json:"name"`
+	Expression string `json:"expression"`
+	Enabled    bool   `json:"enabled"`
+	Invert     bool   `json:"invert"`
+	Range      string `json:"range"`
+	RangeMV    int32  `json:"range_mv"`
+}
+
 // TriggerInfo describes the current trigger configuration.
 type TriggerInfo struct {
 	Source      string  `json:"source"`
@@ -307,6 +318,38 @@ func (scp *ScpDesc) GetChannels() []ChannelInfo {
 			Invert:         invert,
 			DisplayVOffset: offset,
 			TriggerSource:  isTrig,
+		})
+	}
+	return channels
+}
+
+// GetVirtualChannels returns information on all configured virtual channels.
+func (scp *ScpDesc) GetVirtualChannels() []VirtualChannelInfo {
+	if scp.Settings == nil {
+		return []VirtualChannelInfo{}
+	}
+	
+	channels := make([]VirtualChannelInfo, 0, len(scp.Settings.VirtualChannels))
+	for i, vch := range scp.Settings.VirtualChannels {
+		var rangeStr string
+		var rangeMV int32
+		
+		if int(vch.VRange) >= 0 && int(vch.VRange) < len(genericps.InputRanges) {
+			rangeMV = genericps.InputRanges[vch.VRange]
+			rangeStr = fmt.Sprintf("%dmV", rangeMV)
+			if rangeMV >= 1000 && rangeMV%1000 == 0 {
+				rangeStr = fmt.Sprintf("%dV", rangeMV/1000)
+			}
+		}
+
+		channels = append(channels, VirtualChannelInfo{
+			Index:      i,
+			Name:       vch.Name,
+			Expression: vch.Expression,
+			Enabled:    vch.Enabled,
+			Invert:     vch.Inverted,
+			Range:      rangeStr,
+			RangeMV:    rangeMV,
 		})
 	}
 	return channels
@@ -654,6 +697,7 @@ func (scp *ScpDesc) NewAPIMux(authAdmin, authView string) *http.ServeMux {
 			"POST /api/channels/{id}":         "Updates channel settings (enabled, coupling, range, invert)",
 			"POST /api/channels/{id}/enable":  "Enables channel",
 			"POST /api/channels/{id}/disable": "Disables channel",
+			"GET /api/virtual_channels":       "Lists all virtual channels with their configurations",
 			"GET /api/timebase":               "Returns horizontal timebase and sampling interval",
 			"POST /api/timebase":              "Configures timebase (time_div, time_unit)",
 			"GET /api/trigger":                "Returns trigger settings",
@@ -939,6 +983,21 @@ func (scp *ScpDesc) NewAPIMux(authAdmin, authView string) *http.ServeMux {
 		}
 
 		writeErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+	})
+
+	// Virtual Channels: /api/virtual_channels
+	mux.HandleFunc("/api/virtual_channels", func(w http.ResponseWriter, r *http.Request) {
+		allowed, _ := checkAuth(r)
+		if !allowed {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Fynescope Remote API"`)
+			writeErr(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+		if r.Method != http.MethodGet {
+			writeErr(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		writeJSON(w, http.StatusOK, scp.GetVirtualChannels())
 	})
 
 	// Timebase: /api/timebase
