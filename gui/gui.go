@@ -65,6 +65,7 @@ const (
 	ErrFrequencyCannotBeDetected = "Frequency cannot be detected"
 	ErrWrongFfTrigger            = "Error: f(f) requires Simple, Advanced, or Window trigger"
 )
+
 // Function (tab) indices. They identify the active scope function and are
 // stored in the settings, so the order must be kept stable.
 const (
@@ -247,7 +248,7 @@ type (
 		corrXCFRaster                *corrXCFRaster
 		setTab                       *container.TabItem
 		DecodeState                  control.DecoderState
-		psControl control.ScopeController
+		psControl                    control.ScopeController
 		virtualChannelEngines        []*VirtualChannelEngine
 		vchMeasureIndex              int // index of selected virtual channel in the tab (-1 = none)
 		vchMinV                      *disp7.DigitArray
@@ -332,8 +333,8 @@ type (
 		ftDivsY                    [numberOfDivs + 1]float32
 		fvDivsX                    [numberOfDivs + 1]float32
 		fvDivsY                    [numberOfDivs + 1]float32
-		binWidthLabel              *FocusableLabel
-		dftDataCollectionTimeLabel *FocusableLabel
+		binWidthLabel              *widget.Label
+		dftDataCollectionTimeLabel *widget.Label
 		dftSampleRateSelect        *selectscroll.SelectScroll
 		dftSampleUnitSelect        *selectscroll.SelectScroll
 		dftMinFreqDisp             *disp7.DigitArray
@@ -386,6 +387,7 @@ func createFlag() (ch chan struct{}) {
 	ch = make(chan struct{}, 1)
 	return
 }
+
 // setFlag raises the flag without blocking; repeated sets are coalesced.
 func setFlag(flag chan struct{}) {
 	if flag == nil {
@@ -679,10 +681,10 @@ func (scp *ScpDesc) toggleGifRecording() {
 
 							totalFrames := capturedFrames.Load()
 
-							progressBar := NewFocusableProgressBar()
+							progressBar := widget.NewProgressBar()
 							progressBar.Min = 0
 							progressBar.Max = 1
-							statusLabel := NewFocusableLabel(fmt.Sprintf("Quantizing frames 0 / %d (0%%)", totalFrames))
+							statusLabel := widget.NewLabel(fmt.Sprintf("Quantizing frames 0 / %d (0%%)", totalFrames))
 							statusLabel.Alignment = fyne.TextAlignCenter
 							progressContent := container.NewVBox(progressBar, statusLabel)
 							progressDlg := dialog.NewCustom("Generating GIF", "Cancel", progressContent, scp.Window)
@@ -1803,8 +1805,8 @@ func (scp *ScpDesc) SetVariant() (info string, err error) {
 
 // setRangeMargin computes the label width margin from a sample label string.
 func (scp *ScpDesc) setRangeMargin() {
-	left, _, right, _ := scp.boundString("-50.0")
-	scp.rangeMargin = right - left
+	left, _, right, _ := scp.boundString("-500.0")
+	scp.rangeMargin = right - left + 10.0
 }
 
 // MenuWithController is like Menu but uses a pre-built ScopeController (e.g. a

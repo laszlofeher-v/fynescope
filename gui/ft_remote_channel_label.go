@@ -202,15 +202,22 @@ func (cl *ftRemoteChannelLabelViewer) draw() {
 	lastDrawnY := -100000.0
 	unitDrawn := false
 
-	unitY := float64(cl.scp.ftDivsY[0]) + yOffset - float64(fontSize)/2.0 - 2.0
-	if yOffset < 0 {
-		unitY = float64(cl.scp.ftDivsY[len(cl.scp.ftDivsY)-1]) + yOffset + float64(fontSize)*1.2
+	var unitY float64
+	if yOffset >= 0 {
+		unitY = float64(cl.scp.ftDivsY[0]) + yOffset + float64(dy+fontSize)/2.0
+	} else {
+		lastY := cl.scp.ftDivsY[0]
+		for _, yVal := range cl.scp.ftDivsY {
+			if yVal >= 0 {
+				lastY = yVal
+			}
+		}
+		unitY = float64(lastY) + yOffset - float64(dy-fontSize)/2.0
 	}
 	if unitY >= float64(yBounds.Min.Y) && unitY <= float64(yBounds.Max.Y) {
 		cl.scp.addLabel(cl.rasterPartition.img, int(math.Round(x+float64(xoffset))),
 			int(math.Round(unitY)),
 			unitName, rch.Color)
-		lastDrawnY = unitY
 		unitDrawn = true
 	}
 
@@ -221,7 +228,7 @@ func (cl *ftRemoteChannelLabelViewer) draw() {
 			continue
 		}
 		drawY := float64(y_px) + yOffset
-		if drawY > float64(yBounds.Max.Y) || drawY < float64(yBounds.Min.Y) {
+		if drawY > float64(yBounds.Max.Y)+float64(fontSize)/2.0 || drawY < float64(yBounds.Min.Y)-float64(fontSize)/2.0 {
 			v = v - dv
 			continue
 		}
@@ -237,6 +244,10 @@ func (cl *ftRemoteChannelLabelViewer) draw() {
 		left, top, right, bottom := cl.scp.boundString(vstr)
 		lblDrawY := drawY - float64(top-bottom)/2.0 - 1.0
 		if math.Abs(lblDrawY-lastDrawnY) < float64(fontSize)-1.0 {
+			v = v - dv
+			continue
+		}
+		if unitDrawn && math.Abs(lblDrawY-unitY) < float64(fontSize)-1.0 {
 			v = v - dv
 			continue
 		}

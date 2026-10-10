@@ -24,7 +24,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 	root := container.New(layout.NewVBoxLayout())
 
 	// Status label: reflects current connection state.
-	statusLabel := NewFocusableLabel("Not connected")
+	statusLabel := widget.NewLabel("Not connected")
 
 	updateStatus := func() {
 		if scp.extGen.Connected() {
@@ -204,7 +204,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}
 		}
 
-		waveRow := container.NewHBox(NewFocusableLabel("Waveform:"), waveTypeSelect)
+		waveRow := container.NewHBox(widget.NewLabel("Waveform:"), waveTypeSelect)
 
 		const maxV = 20000000 //20V
 		const size = 0.8
@@ -365,7 +365,7 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 		impedanceModeSelect.SilentSetSelected(scp.Settings.ExtGen[chIdx].ImpedanceMode)
 		setImpedanceOhmsVisible(scp.Settings.ExtGen[chIdx].ImpedanceMode)
 
-		impedanceRow := container.NewHBox(NewFocusableLabel("Impedance:"), impedanceModeSelect)
+		impedanceRow := container.NewHBox(widget.NewLabel("Impedance:"), impedanceModeSelect)
 
 		return container.NewVBox(
 			// chLabel,
@@ -395,12 +395,12 @@ func (scp *ScpDesc) newExtGenTab(undockable bool) *fyne.Container {
 			}(scpiTestEntry.Text)
 		}
 	})
-	scpiRow := container.NewBorder(nil, nil, NewFocusableLabel("Raw Cmd:"), scpiSendBtn, scpiTestEntry)
+	scpiRow := container.NewBorder(nil, nil, widget.NewLabel("Raw Cmd:"), scpiSendBtn, scpiTestEntry)
 
 	// Assemble layout
 	vidPidRow := container.NewHBox(
-		NewFocusableLabel("VID:"), extGenVid,
-		NewFocusableLabel("PID:"), extGenPid,
+		widget.NewLabel("VID:"), extGenVid,
+		widget.NewLabel("PID:"), extGenPid,
 	)
 	var btnRow *fyne.Container
 	if undockable {

@@ -70,7 +70,7 @@ func (scp *ScpDesc) newFvPanel(panel *fyne.Container) {
 		addToTest(x10Check, fvX10Id+chName, fvTabIndex)
 		// Arrange settings to minimize width (f(t) style)
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, xCheck)
-		row2 := container.New(layout.NewHBoxLayout(), NewFocusableLabel("Range:"), vRange, x10Check)
+		row2 := container.New(layout.NewHBoxLayout(), widget.NewLabel("Range:"), vRange, x10Check)
 
 		chBox := container.New(layout.NewVBoxLayout(), row1, row2)
 		if i > 0 {

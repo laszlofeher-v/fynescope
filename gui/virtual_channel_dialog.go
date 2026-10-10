@@ -57,7 +57,7 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	}
 	exprEntry := widget.NewMultiLineEntry()
 	exprEntry.SetMinRowsVisible(3)
-	errorLabel := NewFocusableLabel("")
+	errorLabel := widget.NewLabel("")
 	errorLabel.Hide()
 
 	addToTest(nameEntry, vchNameEntryId, vchTabIndex)
@@ -160,11 +160,11 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	}, defaultCol, minSz)
 	enableWidget.Val = true
 	extraFields := container.NewVBox(
-		NewFocusableLabel("V/div:"), vRangeSelect,
+		widget.NewLabel("V/div:"), vRangeSelect,
 		container.NewHBox(scp.vchMaxV, scp.vchFrq),
 		container.NewHBox(scp.vchMinV, scp.vchPeriod),
 		invertCheck,
-		container.NewHBox(NewFocusableLabel("Enable / Color:"), enableWidget),
+		container.NewHBox(widget.NewLabel("Enable / Color:"), enableWidget),
 	)
 	extraFields.Hide()
 
@@ -379,8 +379,8 @@ func (scp *ScpDesc) buildVirtualChannelContent(undockable bool) fyne.CanvasObjec
 	listBox := container.NewBorder(nil, nil, nil, nil, list)
 
 	formContent := container.NewVBox(
-		NewFocusableLabel("Name:"), nameEntry,
-		NewFocusableLabel("Expression (A,B,C,D = physical ch.):"), exprEntry,
+		widget.NewLabel("Name:"), nameEntry,
+		widget.NewLabel("Expression (A,B,C,D = physical ch.):"), exprEntry,
 		errorLabel,
 		extraFields,
 	)

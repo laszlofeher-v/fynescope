@@ -19,7 +19,7 @@ import (
 func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	// FFT specific controls
 	chControls := container.NewVBox()
-	chControls.Add(NewFocusableLabel("Channels:"))
+	chControls.Add(widget.NewLabel("Channels:"))
 
 	for i := 0; i < int(scp.channelCount); i++ {
 		chIdx := genericps.ChannelId(i)
@@ -239,10 +239,10 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	}, "1024")
 	binSelector.SilentSetSelected(strconv.Itoa(scp.Settings.Dft.Bins))
 	addToTest(binSelector, dftBinId, dftTabIndex)
-	scp.binWidthLabel = NewFocusableLabel("BW: -")
+	scp.binWidthLabel = widget.NewLabel("BW: -")
 	scp.updateBinWidth()
 
-	scp.dftDataCollectionTimeLabel = NewFocusableLabel("Coll: -")
+	scp.dftDataCollectionTimeLabel = widget.NewLabel("Coll: -")
 	scp.updateDftDataCollectionTime()
 
 	// Sample Rate Selector
@@ -308,10 +308,10 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	scp.dftSampleUnitSelect.SilentSetSelected(scp.Settings.Dft.SampleRateUnit)
 
 	windowCol := container.NewVBox()
-	windowCol.Add(NewFocusableLabel("Window:"))
+	windowCol.Add(widget.NewLabel("Window:"))
 
 	windowCol.Add(windowSelector)
-	windowCol.Add(NewFocusableLabel("Mode:"))
+	windowCol.Add(widget.NewLabel("Mode:"))
 	windowCol.Add(modeSelector)
 	windowCol.Add(arbDbRefContainer)
 	windowCol.Add(scp.dftMinFreqDisp)
@@ -325,9 +325,9 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	addToTest(logXCheck, dftModeId+"LogX", dftTabIndex)
 	windowCol.Add(scp.dftMaxFreqDisp)
 	windowCol.Add(logXCheck)
-	windowCol.Add(NewFocusableLabel("Sample Rate:"))
+	windowCol.Add(widget.NewLabel("Sample Rate:"))
 	windowCol.Add(container.NewHBox(scp.dftSampleRateSelect, scp.dftSampleUnitSelect))
-	windowCol.Add(NewFocusableLabel("Bins:"))
+	windowCol.Add(widget.NewLabel("Bins:"))
 	windowCol.Add(binSelector)
 	windowCol.Add(scp.binWidthLabel)
 	windowCol.Add(scp.dftDataCollectionTimeLabel)

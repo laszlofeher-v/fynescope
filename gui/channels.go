@@ -669,7 +669,7 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 		return
 	}
 
-	idLabel := NewFocusableLabel(chId)
+	idLabel := widget.NewLabel(chId)
 	channelViewer.filterWarning = canvas.NewText("⚠️", color.NRGBA{255, 0, 0, 255})
 	channelViewer.filterWarning.TextStyle.Bold = true
 	if scp.isDigitalFilterEnabled(chIndex) {

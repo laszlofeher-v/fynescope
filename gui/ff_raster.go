@@ -401,10 +401,9 @@ func (ff *ffViewer) draw() {
 				}
 				lastDrawnY := -100000.0
 				unitDrawn := false
-				unitY := yf_top - float64(fontSize)/2.0 - 2.0
+				unitY := yf_top + divH/2.0 + 10.0
 				if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
 					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
-					lastDrawnY = unitY
 					unitDrawn = true
 				}
 
@@ -461,10 +460,9 @@ func (ff *ffViewer) draw() {
 				}
 				lastDrawnY := -100000.0
 				unitDrawn := false
-				unitY := yf_top - float64(fontSize)/2.0 - 2.0
+				unitY := yf_top + divH/2.0 + 10.0
 				if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
 					ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
-					lastDrawnY = unitY
 					unitDrawn = true
 				}
 
@@ -532,10 +530,9 @@ func (ff *ffViewer) draw() {
 				stride = 2
 			}
 			lastDrawnY := -100000.0
-			unitY := float64(bounds.Min.Y) - float64(fontSize)/2.0 - 2.0
+			unitY := float64(bounds.Min.Y) + divHPhase/2.0 + 10.0
 			if unitY >= float64(bounds.Min.Y) && unitY <= float64(bounds.Max.Y) {
 				ff.scp.addLabel(ff.scp.ffScopeFullScreen, lx_unit, int(math.Round(unitY)), unitName, col)
-				lastDrawnY = unitY
 			}
 
 			for j := 0; j <= 8; j++ {

@@ -117,7 +117,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 
 		// Arrange settings to minimize width
 		row1 := container.New(layout.NewHBoxLayout(), label, enabledCheck, phaseCheck, refCheck)
-		row2 := container.New(layout.NewHBoxLayout(), NewFocusableLabel("Range:"), vRange, x10Check)
+		row2 := container.New(layout.NewHBoxLayout(), widget.NewLabel("Range:"), vRange, x10Check)
 
 		chBox := container.New(layout.NewVBoxLayout(), row1, row2)
 		if i > 0 {
@@ -325,7 +325,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	})
 	logXCheck.Checked = scp.Settings.Ff.XAxisLog
 	addToTest(logXCheck, ffFuncId+"LogX", ffTabIndex)
-	dispUnitControls := container.NewHBox(NewFocusableLabel(" Unit:"), dispUnitSelect, logXCheck)
+	dispUnitControls := container.NewHBox(widget.NewLabel(" Unit:"), dispUnitSelect, logXCheck)
 
 	targetCyclesDisp, _ := disp7.NewCustomDisp7Array(3, 0,
 		100,
@@ -348,7 +348,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	targetCyclesDisp.SetValue(int(scp.Settings.Ff.TargetCycles))
 
 	// Generator controls container
-	genHeader := NewFocusableLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	genHeader := widget.NewLabelWithStyle("Generator Settings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	// isSim := false
 	// if scp.psControl != nil && scp.psControl.GetCon() != nil && scp.psControl.GetCon().ID == genericps.DemoId {
@@ -393,7 +393,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		genVBox.Add(genPanel)
 	}
 
-	infoHead := NewFocusableLabelWithStyle("Status / Info", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	infoHead := widget.NewLabelWithStyle("Status / Info", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	genVBox.Add(layout.NewSpacer())
 	genVBox.Add(infoHead)
 	genVBox.Add(scp.ffCurrentFreqDisp)
@@ -508,7 +508,7 @@ func (scp *ScpDesc) newFfGenPanel() (box *fyne.Container, err error) {
 		}
 	}
 
-	top := container.NewHBox(check, NewFocusableLabel("Wave: Sine"), NewFocusableLabel("Sweep: Up"))
+	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Sweep: Up"))
 	box = container.NewVBox(top, scp.ffAmpDisp, scp.ffOffsetDisp)
 	return box, nil
 }
@@ -567,7 +567,7 @@ func (scp *ScpDesc) newFfDemoGenPanel() (box *fyne.Container, err error) {
 		}
 	}
 
-	top := container.NewHBox(check, NewFocusableLabel("Wave: Sine"), NewFocusableLabel("Channel: Ch A"))
+	top := container.NewHBox(check, widget.NewLabel("Wave: Sine"), widget.NewLabel("Channel: Ch A"))
 	box = container.NewVBox(
 		top,
 		scp.ffAmpDisp,

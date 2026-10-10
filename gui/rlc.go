@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"fyne.io/fyne/v2/widget"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -17,7 +19,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 	vbox := container.New(layout.NewVBoxLayout())
 
 	// Add title label for clarity
-	title := NewFocusableLabelWithStyle("Simulator RLC Filter", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title := widget.NewLabelWithStyle("Simulator RLC Filter", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	vbox.Add(title)
 
 	for i := 0; i < int(scp.channelCount); i++ {
@@ -82,7 +84,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 
 		// Helper to build entry + unit selector
 		buildInput := func(labelStr string, value *float64, unit *string, units []string, valId string, unitId string) *fyne.Container {
-			lbl := NewFocusableLabel(labelStr)
+			lbl := widget.NewLabel(labelStr)
 			entry := newNumericalEntry()
 
 			// Format correctly without trailing zeros
@@ -157,7 +159,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 
 		row1 := container.NewHBox(
 			channelLabel,
-			NewFocusableLabel("Source:"),
+			widget.NewLabel("Source:"),
 			genSourceSelect,
 		)
 

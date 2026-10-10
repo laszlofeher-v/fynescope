@@ -161,7 +161,7 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	portGroup := container.NewHBox(port0Check, port1Check)
 
 	// Frequency
-	freqLabel := NewFocusableLabel("Frequency:")
+	freqLabel := widget.NewLabel("Frequency:")
 	freqDisp, err := disp7.NewCustomDisp7Array(8, 0, 10000000, 1,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		color.White, disp7.ReadWrite, disp7.DefaultDigitWidth,
@@ -232,7 +232,7 @@ func (scp *ScpDesc) newDemoDigGenPanel(undockable bool) (box *fyne.Container, er
 	}
 
 	// Bit Delay
-	bitDelayLabel := NewFocusableLabel("Bit Delay:")
+	bitDelayLabel := widget.NewLabel("Bit Delay:")
 	bitDelayDisp, err := disp7.NewCustomDisp7Array(10, 9, 1000000000, 0,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		color.White, disp7.ReadWrite, disp7.DefaultDigitWidth,

@@ -6,6 +6,8 @@ import (
 	"fynescope/settings"
 	"testing"
 
+	"fyne.io/fyne/v2/widget"
+
 	"fyne.io/fyne/v2/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,7 +41,7 @@ func TestTimeDiv_CheckTimeZoomConstraint(t *testing.T) {
 	scp.timeZoomWindow = nil
 	assert.True(t, scp.checkTimeZoomConstraint(500, -9))
 
-	scp.timeZoomWindow = test.NewWindow(NewFocusableLabel(""))
+	scp.timeZoomWindow = test.NewWindow(widget.NewLabel(""))
 	scp.timeZoomMaxScreenTime = 1000 * 1e-9 * 10
 	// 5000ns < 10000ns original
 	assert.True(t, scp.checkTimeZoomConstraint(500, -9))
