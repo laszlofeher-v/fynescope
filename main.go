@@ -647,26 +647,29 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 
 	w.SetContent(content)
 	w.Show()
-	scp.App.Run() // Blocks until window is closed
-	panic("The End")
-	if scp.IsAPIServerRunning() {
-		_ = scp.StopAPIServer()
-	}
 
-	if scp.IsMultiServerRunning() {
-		scp.StopMultiServer()
-	}
-	if scp.IsMultiClientConnected() {
-		scp.DisconnectMultiClient()
-	}
-
-	// Cleanup: close connection and save settings if a device was connected
-	if con != nil {
-		con.CloseUnit()
-		if err := settings.Save(settingFileName, scp.Settings); err != nil {
-			slog.Error("failed to save settings", "err", err)
+	defer func() {
+		if scp.IsAPIServerRunning() {
+			_ = scp.StopAPIServer()
 		}
-	}
+
+		if scp.IsMultiServerRunning() {
+			scp.StopMultiServer()
+		}
+		if scp.IsMultiClientConnected() {
+			scp.DisconnectMultiClient()
+		}
+
+		// Cleanup: close connection and save settings if a device was connected
+		if con != nil {
+			con.CloseUnit()
+			if err := settings.Save(settingFileName, scp.Settings); err != nil {
+				slog.Error("failed to save settings", "err", err)
+			}
+		}
+	}()
+
+	scp.App.Run() // Blocks until window is closed
 	slog.Info("Unit closed")
 	return nil
 }
