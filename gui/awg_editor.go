@@ -885,9 +885,9 @@ func (scp *ScpDesc) showAwgEditor(applyCb func([]int16)) {
 	applyBtn.Importance = widget.HighImportance
 
 	toolbar := container.NewHBox(
-		NewFocusableLabel("Draw Mode:"),
+		widget.NewLabel("Draw Mode:"),
 		modeSelect,
-		NewFocusableLabel("Waveform:"),
+		widget.NewLabel("Waveform:"),
 		waveformSelect,
 		clearBtn,
 		importCsvBtn,
@@ -924,7 +924,7 @@ func (scp *ScpDesc) showUartPatternGenerator(editor *awgEditorWidget) {
 	highEntry.SetText("100")
 	lowEntry := widget.NewEntry()
 	lowEntry.SetText("0")
-	suggestedFreqLabel := NewFocusableLabel("N/A")
+	suggestedFreqLabel := widget.NewLabel("N/A")
 	var updateWaveform func()
 
 	baudrates := []string{"300", "600", "1200", "2400", "4800", "9600", "14400", "19200", "38400", "57600", "115200", "128000", "256000"}

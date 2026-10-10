@@ -593,8 +593,8 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 			i2cAddressDisp.Hide()
 		}
 
-		fLabel := NewFocusableLabel("Freq")
-		voltLabel := NewFocusableLabel("Amp")
+		fLabel := widget.NewLabel("Freq")
+		voltLabel := widget.NewLabel("Amp")
 		shortLineF := container.NewBorder(nil, nil, nil, fLabel, freqSetAnalog)
 		shortLineA := container.NewBorder(nil, nil, nil, voltLabel, ampSetAnalog)
 		analog = container.New(layout.NewVBoxLayout(), shortLineF, shortLineA)
@@ -622,7 +622,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 
 		addToTest(sweepMenu, genSweepId, genTabIndex)
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
-			NewFocusableLabel("Sweep "), sweepMenu)
+			widget.NewLabel("Sweep "), sweepMenu)
 
 		operationSelect := selectscroll.NewSelectScroll(operationOptions, operationChanged, operationNormal)
 		if genSettings.Operation == genericps.Prbs {
@@ -634,7 +634,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		}
 		addToTest(operationSelect, genOperationId, genTabIndex)
 		operationBox := container.New(layout.NewHBoxLayout(),
-			NewFocusableLabel("Operation:"), operationSelect)
+			widget.NewLabel("Operation:"), operationSelect)
 
 		scp.triggerCalculationModeSelect = selectscroll.NewSelectScroll(triggerCalculationOptions, onTriggerCalculationModeChange, triggerCalculationOptions[0])
 		addToTest(scp.triggerCalculationModeSelect, triggerCalculationModeSelectId, genTabIndex)
@@ -642,7 +642,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		// initialize simulator with saved setting
 		demo.SetTriggerCalculationMode(scp.Settings.Trigger.CalculationMode)
 
-		label := NewFocusableLabel("Trigger Calc:")
+		label := widget.NewLabel("Trigger Calc:")
 		calcBox := container.New(layout.NewHBoxLayout(), label, scp.triggerCalculationModeSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,

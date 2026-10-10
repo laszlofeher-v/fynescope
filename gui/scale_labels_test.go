@@ -1,6 +1,11 @@
 package gui
 
 import (
+	"fmt"
+	"fynescope/genericps"
+	"fynescope/settings"
+	"image"
+	"image/color"
 	"math"
 	"strconv"
 	"testing"
@@ -131,3 +136,160 @@ func TestFormatFloatNoMinusZero(t *testing.T) {
 	vstr := strconv.FormatFloat(float64(v), 'f', 1, 32)
 	assert.Equal(t, "0.0", vstr)
 }
+
+func TestFtScaleLabelsVisible(t *testing.T) {
+	testRanges := []genericps.RangeEnum{
+		genericps.Range_100mv,
+		genericps.Range_500mv,
+		genericps.Range_2v,
+	}
+
+	for _, vRange := range testRanges {
+		t.Run(strconv.Itoa(int(vRange)), func(t *testing.T) {
+			scp := &ScpDesc{
+				Settings: &settings.PsSettings{
+					Window: settings.WindowSettings{Width: 1366, Height: 1034},
+					Channels: []settings.ChSettings{
+						{Enabled: true, VRange: vRange, Col: [2]color.NRGBA{{100, 200, 255, 255}, {1, 5, 191, 255}}},
+					},
+				},
+				channelViewers: make([]channelViewerDesc, 1),
+				channelCount:   1,
+				theme:          Theme(settings.DarkTheme),
+				psControl:      &mockRemoteScopeController{},
+			}
+			scp.setRangeMargin()
+			assert.True(t, scp.rangeMargin >= 75.0, "rangeMargin (%f) must be >= 75 to fit 6-character labels", scp.rangeMargin)
+
+			w, h := float32(1366), float32(1034)
+			scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{int(w), int(h)})
+			scp.partitionFtScreen(w, h)
+			scp.setFtVDivsY()
+			scp.setFtHDivsX()
+
+			cl := &scp.channelViewers[0].label
+			cl.enableRefresh()
+			cl.draw()
+
+			img := scp.ftScopeFullScreen.(*image.RGBA)
+			type labelBlock struct {
+				startY, endY int
+				minX, maxX   int
+			}
+			var blocks []labelBlock
+			inBlock := false
+			currentBlock := labelBlock{minX: 10000}
+
+			for y := 0; y < int(h); y++ {
+				hasPixel := false
+				minXInRow, maxXInRow := 10000, -1
+				for x := 0; x < int(scp.rangeMargin); x++ {
+					c := img.RGBAAt(x, y)
+					if c.B > 200 { // Blue channel color drawn
+						hasPixel = true
+						if x < minXInRow {
+							minXInRow = x
+						}
+						if x > maxXInRow {
+							maxXInRow = x
+						}
+					}
+				}
+				if hasPixel {
+					if !inBlock {
+						inBlock = true
+						currentBlock = labelBlock{startY: y, minX: minXInRow, maxX: maxXInRow}
+					} else {
+						if minXInRow < currentBlock.minX {
+							currentBlock.minX = minXInRow
+						}
+						if maxXInRow > currentBlock.maxX {
+							currentBlock.maxX = maxXInRow
+						}
+					}
+				} else {
+					if inBlock {
+						inBlock = false
+						currentBlock.endY = y - 1
+						blocks = append(blocks, currentBlock)
+					}
+				}
+			}
+			if inBlock {
+				currentBlock.endY = int(h) - 1
+				blocks = append(blocks, currentBlock)
+			}
+
+			// Expect 12 blocks: 11 division labels + 1 unit label
+			assert.Equal(t, 12, len(blocks), "expected 12 label blocks (11 divisions + unit)")
+
+			// Uppermost label (block 0) must be drawn near the top division (y = 10)
+			assert.True(t, blocks[0].startY <= 10 && blocks[0].endY >= 10,
+				"uppermost label should span division 0 at y=10, got %d..%d", blocks[0].startY, blocks[0].endY)
+
+			// Unit label (block 1) should be drawn between division 0 (10) and division 1 (~107)
+			assert.True(t, blocks[1].startY > 20 && blocks[1].endY < 100,
+				"unit label should be between division 0 and division 1, got %d..%d", blocks[1].startY, blocks[1].endY)
+
+			// Lowest label (block 11) must be drawn near the bottom division (y = 983)
+			lastBlock := blocks[len(blocks)-1]
+			assert.True(t, lastBlock.startY <= 985 && lastBlock.endY >= 980,
+				"lowest label should span division 10 at y=983, got %d..%d", lastBlock.startY, lastBlock.endY)
+
+			// All label blocks must be strictly inside the canvas (minX >= 5, no left clipping)
+			for idx, b := range blocks {
+				assert.True(t, b.minX >= 5,
+					"block %d (y=%d..%d) minX=%d must be >= 5 (not clipped at left edge)", idx, b.startY, b.endY, b.minX)
+			}
+		})
+	}
+}
+
+func TestFtScaleLabelsWithOffset(t *testing.T) {
+	for _, offset := range []int{-5, 5} {
+		t.Run(fmt.Sprintf("offset_%d", offset), func(t *testing.T) {
+			scp := &ScpDesc{
+				Settings: &settings.PsSettings{
+					Window: settings.WindowSettings{Width: 1366, Height: 1034},
+					Channels: []settings.ChSettings{
+						{Enabled: true, VRange: genericps.Range_100mv, Col: [2]color.NRGBA{{100, 200, 255, 255}, {1, 5, 191, 255}}},
+					},
+				},
+				channelViewers: make([]channelViewerDesc, 1),
+				channelCount:   1,
+				theme:          Theme(settings.DarkTheme),
+				psControl:      &mockRemoteScopeController{},
+			}
+			scp.setRangeMargin()
+
+			w, h := float32(1366), float32(1034)
+			scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{int(w), int(h)})
+			scp.partitionFtScreen(w, h)
+			scp.setFtVDivsY()
+			scp.setFtHDivsX()
+
+			scp.channelViewers[0].displayOffsetInt = offset
+			cl := &scp.channelViewers[0].label
+			cl.enableRefresh()
+			cl.draw()
+
+			img := scp.ftScopeFullScreen.(*image.RGBA)
+			drawnPixels := 0
+			for y := 0; y < int(h); y++ {
+				for x := 0; x < int(scp.rangeMargin); x++ {
+					c := img.RGBAAt(x, y)
+					if c.B > 200 {
+						drawnPixels++
+						// Verify pixel is within bounds (not at x < 0, and has padding >= 5)
+						assert.True(t, x >= 5, "drawn pixel at x=%d should be >= 5", x)
+					}
+				}
+			}
+			assert.True(t, drawnPixels > 500, "expected labels to be drawn, got %d pixels", drawnPixels)
+		})
+	}
+}
+
+
+
+

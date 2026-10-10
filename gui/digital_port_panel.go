@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -34,23 +33,16 @@ type tappableDnLabel struct {
 	widget.Label
 	onTapped func()
 	negated  bool
-	focused  bool
-	scp      *ScpDesc
 }
 
 func newTappableDnLabel(scp *ScpDesc, text string, negated bool, tapped func()) *tappableDnLabel {
-	l := &tappableDnLabel{onTapped: tapped, negated: negated, scp: scp}
+	l := &tappableDnLabel{onTapped: tapped, negated: negated}
 	l.Text = text
 	l.ExtendBaseWidget(l)
 	return l
 }
 
 func (l *tappableDnLabel) Tapped(e *fyne.PointEvent) {
-	if l.scp != nil {
-		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
-			l.scp.Window.Canvas().Focus(l)
-		}
-	}
 	if l.onTapped != nil {
 		l.onTapped()
 	}
@@ -63,42 +55,6 @@ func (l *tappableDnLabel) setNegated(neg bool) {
 	l.Refresh()
 }
 
-func (l *tappableDnLabel) FocusGained() {
-	l.focused = true
-	l.Refresh()
-}
-
-func (l *tappableDnLabel) FocusLost() {
-	l.focused = false
-	l.Refresh()
-}
-
-func (l *tappableDnLabel) TypedRune(rune) {}
-
-func (l *tappableDnLabel) TypedKey(e *fyne.KeyEvent) {
-	if e.Name == fyne.KeySpace || e.Name == fyne.KeyReturn {
-		l.Tapped(nil)
-	}
-}
-
-func (l *tappableDnLabel) MouseIn(e *desktop.MouseEvent) {
-	if l.scp != nil {
-		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
-			l.scp.Window.Canvas().Focus(l)
-		}
-	}
-}
-
-func (l *tappableDnLabel) MouseMoved(e *desktop.MouseEvent) {
-	if l.scp != nil {
-		if l.scp.Window != nil && l.scp.Window.Canvas() != nil {
-			l.scp.Window.Canvas().Focus(l)
-		}
-	}
-}
-
-func (l *tappableDnLabel) MouseOut() {}
-
 func (l *tappableDnLabel) CreateRenderer() fyne.WidgetRenderer {
 	r := l.Label.CreateRenderer()
 	line := canvas.NewLine(theme.ForegroundColor())
@@ -106,23 +62,19 @@ func (l *tappableDnLabel) CreateRenderer() fyne.WidgetRenderer {
 	if !l.negated {
 		line.Hidden = true
 	}
-	focusBg := canvas.NewRectangle(theme.FocusColor())
-	focusBg.Hidden = true
-	return &tappableDnLabelRenderer{WidgetRenderer: r, label: l, line: line, focusBg: focusBg}
+	return &tappableDnLabelRenderer{WidgetRenderer: r, label: l, line: line}
 }
 
 type tappableDnLabelRenderer struct {
 	fyne.WidgetRenderer
-	label   *tappableDnLabel
-	line    *canvas.Line
-	focusBg *canvas.Rectangle
+	label *tappableDnLabel
+	line  *canvas.Line
 }
 
 func (r *tappableDnLabelRenderer) Layout(size fyne.Size) {
 	r.WidgetRenderer.Layout(size)
 	r.line.Position1 = fyne.NewPos(0, 2)
 	r.line.Position2 = fyne.NewPos(size.Width, 2)
-	r.focusBg.Resize(size)
 }
 
 func (r *tappableDnLabelRenderer) MinSize() fyne.Size {
@@ -132,17 +84,14 @@ func (r *tappableDnLabelRenderer) MinSize() fyne.Size {
 func (r *tappableDnLabelRenderer) Refresh() {
 	r.line.StrokeColor = theme.ForegroundColor()
 	r.line.Hidden = !r.label.negated
-	r.focusBg.Hidden = !r.label.focused
-	r.focusBg.FillColor = theme.FocusColor()
 	r.WidgetRenderer.Refresh()
 }
 
 func (r *tappableDnLabelRenderer) Objects() []fyne.CanvasObject {
 	baseObjs := r.WidgetRenderer.Objects()
-	objs := make([]fyne.CanvasObject, len(baseObjs)+2)
-	objs[0] = r.focusBg
-	copy(objs[1:], baseObjs)
-	objs[len(objs)-1] = r.line
+	objs := make([]fyne.CanvasObject, len(baseObjs)+1)
+	copy(objs, baseObjs)
+	objs[len(baseObjs)] = r.line
 	return objs
 }
 
@@ -468,7 +417,7 @@ func (scp *ScpDesc) buildChannelRow(
 		labelEntry,
 		negCheck,
 		container.NewCenter(ccp),
-		NewFocusableLabel("Trig:"),
+		widget.NewLabel("Trig:"),
 		trigSelect,
 	)
 	return row, trigSelect
@@ -543,7 +492,7 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 		})
 	}
 
-	title := NewFocusableLabelWithStyle("Digital Channels", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	title := widget.NewLabelWithStyle("Digital Channels", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	trigEnableCheck := widget.NewCheck("Enable Digital Trigger", func(v bool) {
 		if !scp.IsMSO {
@@ -590,9 +539,9 @@ func (scp *ScpDesc) buildDigitalPortContent(undockable bool) fyne.CanvasObject {
 	trigHeader := container.NewVBox(
 		trigEnableCheck,
 		layout.NewSpacer(),
-		NewFocusableLabel("Channels:"),
+		widget.NewLabel("Channels:"),
 		channelsLogicSelect,
-		NewFocusableLabel("Analog/Digital:"),
+		widget.NewLabel("Analog/Digital:"),
 		operandSelect,
 	)
 

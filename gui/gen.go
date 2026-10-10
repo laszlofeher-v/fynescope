@@ -445,8 +445,8 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		setOffsetMinMax()
 		offset.SilentSetValue(int(scp.Settings.GenPanel.OffsetVoltage))
 
-		fLabel := NewFocusableLabel("Freq")
-		voltLabel := NewFocusableLabel("Amp")
+		fLabel := widget.NewLabel("Freq")
+		voltLabel := widget.NewLabel("Amp")
 		shortLineF := container.NewBorder(nil, nil, nil, fLabel, freqSetAnalog)
 		shortLineA := container.NewBorder(nil, nil, nil, voltLabel, ampSetAnalog)
 		analog = container.New(layout.NewVBoxLayout(), shortLineF, shortLineA)
@@ -488,7 +488,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 
 		addToTest(sweepMenu, genSweepId, genTabIndex)
 		sweepMenuBox := container.New(layout.NewHBoxLayout(),
-			NewFocusableLabel("Sweep "), sweepMenu)
+			widget.NewLabel("Sweep "), sweepMenu)
 
 		operationSelect := selectscroll.NewSelectScroll(operationOptions, operationChanged, operationNormal)
 		if scp.Settings.GenPanel.Operation == genericps.Prbs {
@@ -499,7 +499,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 			operationSelect.SetSelected(operationNormal)
 		}
 		operationBox := container.New(layout.NewHBoxLayout(),
-			NewFocusableLabel("Operation:"), operationSelect)
+			widget.NewLabel("Operation:"), operationSelect)
 
 		digital = container.New(layout.NewVBoxLayout(), sweepMenuBox, frqBox,
 			sweepBox, amp, offset, operationBox, awgEditorBtn)

@@ -22,7 +22,7 @@ const (
 )
 
 type InitStatus struct {
-	label      *FocusableLabel
+	label      *widget.Label
 	code       StatusCode
 	statusChan chan statusMessage
 	statusQuit chan struct{}
@@ -39,7 +39,7 @@ type statusMessage struct {
 
 func (scp *ScpDesc) initStatus() {
 	scp.status = &InitStatus{
-		label:      NewFocusableLabel("                                                 "),
+		label:      widget.NewLabel("                                                 "),
 		statusChan: make(chan statusMessage, 1),
 		statusQuit: make(chan struct{}),
 	}
@@ -69,6 +69,7 @@ func (scp *ScpDesc) initStatus() {
 					scp.status.label.Text = msg.text
 					scp.status.code = msg.code
 					fyne.Do(scp.status.label.Refresh)
+					// scp.toolbar.Refresh()
 					scp.status.label.Importance = widget.DangerImportance
 				case <-time.After(afterTime):
 					if msg.text != "" {
@@ -77,6 +78,7 @@ func (scp *ScpDesc) initStatus() {
 						msg.text = " " + msg.text[:len(msg.text)-1]
 						scp.status.label.Text = msg.text
 						fyne.Do(scp.status.label.Refresh)
+						// scp.toolbar.Refresh()
 					}
 				}
 			}

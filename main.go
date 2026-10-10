@@ -36,7 +36,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-
 // settingFileName is the default name for the settings file.
 // It will be modified to include device serial number after connection.
 var (
@@ -639,7 +638,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 
 	// Layout: label at top, buttons at bottom, scrollable radio list in center
 	content := container.NewBorder(
-		gui.NewFocusableLabel("Please select a device"),
+		widget.NewLabel("Please select a device"),
 		container.NewHBox(cancelButton, selectButton),
 		nil,
 		nil,
@@ -649,7 +648,7 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 	w.SetContent(content)
 	w.Show()
 	scp.App.Run() // Blocks until window is closed
-
+	panic("The End")
 	if scp.IsAPIServerRunning() {
 		_ = scp.StopAPIServer()
 	}
@@ -671,6 +670,3 @@ func showDeviceSelectionDialog(scp *gui.ScpDesc, devices []genericps.DeviceInfo,
 	slog.Info("Unit closed")
 	return nil
 }
-
-
-

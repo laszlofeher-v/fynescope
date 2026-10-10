@@ -338,7 +338,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 			}
 		}
 		lpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), lpEntry)
-		lpControls = container.NewHBox(NewFocusableLabel("Cutoff Frequency:"), lpEntryContainer, lpUnitSelect)
+		lpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), lpEntryContainer, lpUnitSelect)
 		if chSettings.DigitalFilter.LowpassEnabled {
 			lpControls.Show()
 		} else {
@@ -382,7 +382,7 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 			}
 		}
 		hpEntryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), hpEntry)
-		hpControls = container.NewHBox(NewFocusableLabel("Cutoff Frequency:"), hpEntryContainer, hpUnitSelect)
+		hpControls = container.NewHBox(widget.NewLabel("Cutoff Frequency:"), hpEntryContainer, hpUnitSelect)
 		if chSettings.DigitalFilter.HighpassEnabled {
 			hpControls.Show()
 		} else {
@@ -449,8 +449,8 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		}
 		bpEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bpEntry2)
 		bpControls = container.NewVBox(
-			NewFocusableLabel("Lower Cutoff:"), bpEntryContainer1, bpUnitSelect1,
-			NewFocusableLabel("Upper Cutoff:"), bpEntryContainer2, bpUnitSelect2,
+			widget.NewLabel("Lower Cutoff:"), bpEntryContainer1, bpUnitSelect1,
+			widget.NewLabel("Upper Cutoff:"), bpEntryContainer2, bpUnitSelect2,
 		)
 		if chSettings.DigitalFilter.BandpassEnabled {
 			bpControls.Show()
@@ -518,8 +518,8 @@ func (scp *ScpDesc) newDigitalFilterPanel(panel *fyne.Container, undockable bool
 		}
 		bsEntryContainer2 := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), bsEntry2)
 		bsControls = container.NewVBox(
-			NewFocusableLabel("Lower Cutoff:"), bsEntryContainer1, bsUnitSelect1,
-			NewFocusableLabel("Upper Cutoff:"), bsEntryContainer2, bsUnitSelect2,
+			widget.NewLabel("Lower Cutoff:"), bsEntryContainer1, bsUnitSelect1,
+			widget.NewLabel("Upper Cutoff:"), bsEntryContainer2, bsUnitSelect2,
 		)
 		if chSettings.DigitalFilter.BandstopEnabled {
 			bsControls.Show()
