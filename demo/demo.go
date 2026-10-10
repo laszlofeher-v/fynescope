@@ -102,6 +102,7 @@ type (
 	}
 )
 
+// boolToint16 converts a boolean into an int16 (1 for true, 0 for false).
 func boolToint16(b bool) int16 {
 	if b {
 		return int16(1)
@@ -109,6 +110,7 @@ func boolToint16(b bool) int16 {
 	return int16(0)
 }
 
+// nextInt16 returns a stateful generator yielding sequentially increasing int16 handles.
 func nextInt16() func() int16 {
 	i := int16(0)
 	return func() int16 {
@@ -119,6 +121,7 @@ func nextInt16() func() int16 {
 
 var uniqueHandle = nextInt16()
 
+// EnumerateUnits searches for connected demo scopes and returns count and serial identifier.
 func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int16, err error) {
 	nf := func() {
 		count = 1
@@ -143,6 +146,8 @@ func EnumerateUnits(bufferLen int16) (count int16, serials string, serialLth int
 	}
 	return
 }
+
+// openUnit opens a simulated oscilloscope by allocating a handle and initializing trigger subsystems.
 func openUnit(serial string, resolution int) (handle int16, err error) {
 	slog.Debug("openUnit called")
 	nf := func() {
@@ -169,6 +174,8 @@ func openUnit(serial string, resolution int) (handle int16, err error) {
 	loadConstants()
 	return
 }
+
+// openUnitAsync initiates asynchronous opening of the simulated scope.
 func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	nf := func() {
 		status = 0
@@ -193,6 +200,8 @@ func openUnitAsync(serial string, resolution int) (status int16, err error) {
 	}
 	return
 }
+
+// openUnitProgress checks the progress of an asynchronous openUnit operation.
 func openUnitProgress() (handle int16, progressPercent, complete int16, err error) {
 	nf := func() {
 		handle = uniqueHandle()
@@ -220,6 +229,7 @@ func openUnitProgress() (handle int16, progressPercent, complete int16, err erro
 	return
 }
 
+// simCloseUnit closes the simulated scope device associated with the handle.
 func simCloseUnit(handle int16) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -227,6 +237,7 @@ func simCloseUnit(handle int16) (err error) {
 	return
 }
 
+// simGetUnitInfo queries version and identification strings for the simulated scope.
 func simGetUnitInfo(handle int16, info PicoInfo) (infoString string, err error) {
 	switch info {
 	case PicoVariantInfo:
@@ -239,6 +250,7 @@ func simGetUnitInfo(handle int16, info PicoInfo) (infoString string, err error) 
 	return
 }
 
+// simFlashLed simulates flashing the device's LED (not supported on demo device).
 func simFlashLed(handle int16, start int16) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -247,9 +259,11 @@ func simFlashLed(handle int16, start int16) (err error) {
 	return
 }
 
+// lpDataReadyGo is a stub callback handler for asynchronous data-ready events.
 func lpDataReadyGo(handle int16, status int, noOfSamples uint32, overflow int16, param any) {
 }
 
+// simGetValuesAsync starts asynchronous retrieval of captured samples.
 func simGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 	param any) (err error) {
@@ -321,6 +335,8 @@ func calculateSampleLevelAtTime(t float64, ch ChannelId) float64 {
 	return levelFloat
 }
 
+// findTriggerPoint analyzes the simulated waveform and determines the trigger instant (triggerTime in seconds)
+// and sample time interval (dt) based on the active trigger detector configuration (simple edge, complex, or digital).
 func findTriggerPoint(reqNoOfSamples uint32) (found bool, triggerTime float64, dt float64, err error) {
 	if triggerDetector == nil {
 		return true, 0, 0, nil
@@ -470,12 +486,14 @@ func findTriggerPoint(reqNoOfSamples uint32) (found bool, triggerTime float64, d
 	}
 
 	maxTime := float64(maxIter) * dt
-	found, triggerTime = triggerDetector.FindTriggerPoint(signalFunc, reqNoOfSamples, maxTime, dt)
+	found, triggerTime = triggerDetector.FindTriggerPoint(signalFunc,
+		reqNoOfSamples, maxTime, dt)
 	return found, triggerTime, dt, nil
 }
 
 func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32, overflow int16, err error) {
+	downSampleRatioMode RatioMode, segmentIndex uint32) (noOfSamples uint32,
+	overflow int16, err error) {
 	AdvancePRBS()
 
 	found, triggerTime, dt, err := findTriggerPoint(reqNoOfSamples)
@@ -544,7 +562,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					downSampleRatio = 1
 				}
 
-				if (downSampleRatioMode != RatioModeAverage && downSampleRatioMode != RatioModeAggregate) || downSampleRatio <= 1 {
+				if (downSampleRatioMode != RatioModeAverage &&
+					downSampleRatioMode != RatioModeAggregate) || downSampleRatio <= 1 {
 					rawSampleIndex := float64(t)*float64(downSampleRatio) - float64(nOfPreTrSamples)
 					rt := rawSampleIndex*dt + triggerTime
 
@@ -562,7 +581,8 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					aggMax = levelFloat
 				} else {
 					for r := uint32(0); r < downSampleRatio; r++ {
-						rawSampleIndex := float64(t)*float64(downSampleRatio) + float64(r) - float64(nOfPreTrSamples)
+						rawSampleIndex := float64(t)*float64(downSampleRatio) +
+							float64(r) - float64(nOfPreTrSamples)
 						rt := rawSampleIndex*dt + triggerTime
 
 						levelFloat := calculateSampleLevelAtTime(rt, ChannelId(ch))
@@ -683,8 +703,9 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 	return
 }
 
-func simGetValuesBulk(handle int16, reqNoOfSamples uint32, fromSegmentIndex, toSegmentIndex, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, overflow []int16) (noSamples uint32, err error) {
+func simGetValuesBulk(handle int16, reqNoOfSamples uint32, fromSegmentIndex,
+	toSegmentIndex, downSampleRatio uint32, downSampleRatioMode RatioMode,
+	overflow []int16) (noSamples uint32, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -702,7 +723,8 @@ func simGetValuesOverlapped(handle int16, startIndex, reqNoOfSamples, downSample
 }
 
 func simGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint32,
-	downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32, overflow []int16) (noSamples uint32, err error) {
+	downSampleRatioMode RatioMode, fromSegmentIndex, toSegmentIndex uint32,
+	overflow []int16) (noSamples uint32, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -710,7 +732,8 @@ func simGetValuesOverlappedBulk(handle int16, startIndex, reqNoOfSamples, downSa
 	return
 }
 
-func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage, minimumVoltage float32, err error) {
+func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (maximumVoltage,
+	minimumVoltage float32, err error) {
 	if handle <= 0 {
 		return 0, 0, fmt.Errorf(invalidHandle)
 	}
@@ -724,7 +747,8 @@ func simGetAnalogueOffset(handle int16, voltageRange int, coupling Coupling) (ma
 	return
 }
 
-func simGetChannelInformation(handle int16, info int16, probe int32, ranges []int32, channels ChannelId) (lengthOfRanges int32, err error) {
+func simGetChannelInformation(handle int16, info int16, probe int32, ranges []int32,
+	channels ChannelId) (lengthOfRanges int32, err error) {
 	if handle <= 0 {
 		return 0, fmt.Errorf(invalidHandle)
 	}
@@ -740,7 +764,8 @@ func simGetChannelInformation(handle int16, info int16, probe int32, ranges []in
 	return
 }
 
-func simGetMaxDownSampleRatio(handle int16, noOfUnaggregatedSamples uint32, downSampleRatioMode RatioMode, segmentIndex int32) (maxDownSampleRatio uint32, err error) {
+func simGetMaxDownSampleRatio(handle int16, noOfUnaggregatedSamples uint32,
+	downSampleRatioMode RatioMode, segmentIndex int32) (maxDownSampleRatio uint32, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -876,10 +901,13 @@ func simGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingRe
 		streamingLastReadTime = time.Now()
 	}
 
-	lpStreamingReadyGoPar(handle, writeCount, uint32(streamingWriteIndex-writeCount+activeBufLen)%uint32(activeBufLen), 0, 0, 0, 0, param)
+	lpStreamingReadyGoPar(handle, writeCount,
+		uint32(streamingWriteIndex-writeCount+activeBufLen)%uint32(activeBufLen),
+		0, 0, 0, 0, param)
 	return nil
 }
 
+// numberOfEnabledChannels counts active analog and digital channels.
 func numberOfEnabledChannels() int {
 	nec := 0
 	for _, c := range channels {
@@ -898,10 +926,13 @@ func numberOfEnabledChannels() int {
 	return nec
 }
 
+// simGetTimebaseError returns an invalid timebase error.
 func simGetTimebaseError() (err error) {
 	err = fmt.Errorf("Timebase error")
 	return
 }
+
+// simGetTimeInterval calculates time interval in integer nanoseconds given timebase index and channel count.
 func simGetTimeInterval(timeBase uint32, nec int) (timeIntervalNanoseconds int32, err error) {
 	switch {
 	case timeBase == 0:
@@ -926,7 +957,10 @@ func simGetTimeInterval(timeBase uint32, nec int) (timeIntervalNanoseconds int32
 	return
 }
 
-func simGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds, maxSamples int32, err error) {
+// simGetTimebase returns sampling interval in nanoseconds and maximum sample count for a given timebase.
+func simGetTimebase(handle int16, timeBase uint32, noOfSamples int32,
+	overSample int16, segmentIndex uint32) (timeIntervalNanoseconds,
+	maxSamples int32, err error) {
 	if handle <= 0 {
 		return 0, 0, fmt.Errorf(invalidHandle)
 	}
@@ -955,6 +989,7 @@ func simGetTimebase(handle int16, timeBase uint32, noOfSamples int32, overSample
 	return
 }
 
+// simGetTimeInterval2 calculates sampling interval in floating-point nanoseconds for sub-nanosecond accuracy.
 func simGetTimeInterval2(timeBase uint32, nec int) (timeIntervalNanoseconds float64, err error) {
 	switch {
 	case timeBase == 0:
@@ -979,7 +1014,10 @@ func simGetTimeInterval2(timeBase uint32, nec int) (timeIntervalNanoseconds floa
 	return
 }
 
-func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32, overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32, maxSamples int32, err error) {
+// simGetTimebase2 returns high-precision sampling interval and maximum buffer depth for a timebase.
+func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32,
+	overSample int16, segmentIndex uint32) (timeIntervalNanoseconds float32,
+	maxSamples int32, err error) {
 	if handle <= 0 {
 		return 0, 0, fmt.Errorf(invalidHandle)
 	}
@@ -1009,7 +1047,9 @@ func simGetTimebase2(handle int16, timeBase uint32, noOfSamples uint32, overSamp
 	return
 }
 
-func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling, voltageRange RangeEnum, analogOffset float32) (err error) {
+// simSetChannel configures enable state, coupling, voltage range, and analogue offset for a channel.
+func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType Coupling,
+	voltageRange RangeEnum, analogOffset float32) (err error) {
 	slog.Debug("sim SetChannel", "index", channel, "enabled", enabled,
 		"coupling", couplingType, "vrange", voltageRange, "analogOffset", analogOffset)
 	if handle <= 0 {
@@ -1034,6 +1074,7 @@ func simSetChannel(handle int16, channel ChannelId, enabled bool, couplingType C
 	return nil
 }
 
+// simMaximumValue returns the simulated scope's maximum positive ADC reading (32767).
 func simMaximumValue(handle int16) (value int32, err error) {
 	if handle <= 0 {
 		return 0, fmt.Errorf(invalidHandle)
@@ -1042,6 +1083,7 @@ func simMaximumValue(handle int16) (value int32, err error) {
 	return
 }
 
+// simMinimumValue returns the simulated scope's minimum negative ADC reading (-32767).
 func simMinimumValue(handle int16) (value int32, err error) {
 	if handle <= 0 {
 		return 0, fmt.Errorf(invalidHandle)
@@ -1050,6 +1092,7 @@ func simMinimumValue(handle int16) (value int32, err error) {
 	return
 }
 
+// simSetDataBuffer assigns a sample buffer for a specified channel or digital port.
 func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex uint32,
 	mode RatioMode) (err error) {
 	if handle <= 0 {
@@ -1073,7 +1116,9 @@ func simSetDataBuffer(handle int16, ch ChannelId, bufferIn []int16, segmentIndex
 	return nil
 }
 
-func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
+// simSetDataBuffers assigns paired min/max sample buffers for aggregate downsampling modes.
+func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16,
+	segmentIndex uint32, mode RatioMode) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
 	}
@@ -1096,7 +1141,9 @@ func simSetDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16,
 	return nil
 }
 
-func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
+// simSetUnscaledDataBuffers is a stub for setting unscaled raw ADC buffers.
+func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax,
+	bufferMin []int16, segmentIndex uint32, mode RatioMode) (err error) {
 	slog.Error(notImplemented)
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -1105,6 +1152,7 @@ func simSetUnscaledDataBuffers(handle int16, ch ChannelId, bufferMax, bufferMin 
 	return
 }
 
+// simSetEtsTimeBuffer registers a 64-bit timestamp buffer for Equivalent Time Sampling data.
 func simSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	//64 bit buffers
 	if handle <= 0 {
@@ -1117,6 +1165,7 @@ func simSetEtsTimeBuffer(handle int16, buffer []int64) (err error) {
 	return nil
 }
 
+// simSetEtsTimeBuffers registers upper and lower 32-bit timestamp buffers for ETS mode.
 func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err error) {
 	//32 bit buffers
 	if handle <= 0 {
@@ -1129,7 +1178,9 @@ func simSetEtsTimeBuffers(handle int16, timeUpper, timeLower []uint32) (err erro
 	return
 }
 
-func simSetEts(handle int16, mode EtsMode, etsCycles int16, etsInterLeave int16) (sampleTimePicoseconds int32, err error) {
+// simSetEts configures Equivalent Time Sampling (ETS) mode, interleave ratio, and cycle limits.
+func simSetEts(handle int16, mode EtsMode, etsCycles int16,
+	etsInterLeave int16) (sampleTimePicoseconds int32, err error) {
 	if handle <= 0 {
 		return 0, fmt.Errorf(invalidHandle)
 	}
@@ -1147,6 +1198,7 @@ func simSetEts(handle int16, mode EtsMode, etsCycles int16, etsInterLeave int16)
 	return
 }
 
+// simRunStreaming starts continuous streaming data acquisition in the simulation engine.
 func simRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalTimeUnits TimeUnits,
 	maxPreTriggerSamples, maxPostTriggerSamples uint32,
 	autoStop bool, downSampleRatio uint32, downSampleRatioMode RatioMode,
@@ -1218,13 +1270,16 @@ func delayedCall(handle int16, lpBlockReadyGoPar BlockReady, seq int64) {
 	}
 }
 
+// simRunBlock configures and executes block-mode waveform capture, invoking lpBlockReadyGoPar asynchronously
+// once the trigger condition (or auto-trigger timeout) is satisfied.
 func simRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param any) (timeIndisposedMs int32, err error) {
 	if handle <= 0 {
 		return 0, fmt.Errorf(invalidHandle)
 	}
-	if noOfPreTriggerSamples < 0 || noOfPostTriggerSamples < 0 || (noOfPreTriggerSamples == 0 && noOfPostTriggerSamples == 0) {
+	if noOfPreTriggerSamples < 0 || noOfPostTriggerSamples < 0 ||
+		(noOfPreTriggerSamples == 0 && noOfPostTriggerSamples == 0) {
 		return 0, fmt.Errorf("invalid sample count")
 	}
 	if int64(noOfPreTriggerSamples)+int64(noOfPostTriggerSamples) > int64(64*mega) {
@@ -1276,8 +1331,8 @@ func simSetSimpleTrigger(handle int16, enable bool, source ChannelId, threshold 
 }
 
 // simSetTriggerChannelProperties configures advanced trigger channel properties.
-func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerChannelProperties, auxOutputEnable bool,
-	autoTriggerMs int32) (err error) {
+func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerChannelProperties,
+	auxOutputEnable bool, autoTriggerMs int32) (err error) {
 	slog.Debug("sim trigg prop", "channelProperties", channelProperties)
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
@@ -1288,9 +1343,11 @@ func simSetTriggerChannelProperties(handle int16, channelProperties []TriggerCha
 		}
 		if prop.ThresholdMode == Window {
 			if prop.ThresholdLower > prop.ThresholdUpper {
-				return fmt.Errorf("invalid trigger property: lower (%d) > upper (%d)", prop.ThresholdLower, prop.ThresholdUpper)
+				return fmt.Errorf("invalid trigger property: lower (%d) > upper (%d)",
+					prop.ThresholdLower, prop.ThresholdUpper)
 			}
-			if int32(prop.ThresholdUpper)-int32(prop.ThresholdUpperHysteresis) < int32(prop.ThresholdLower)+int32(prop.ThresholdLowerHysteresis) {
+			if int32(prop.ThresholdUpper)-int32(prop.ThresholdUpperHysteresis) <
+				int32(prop.ThresholdLower)+int32(prop.ThresholdLowerHysteresis) {
 				return fmt.Errorf("invalid trigger property: upper (%d) - upperHyst (%d) < lower (%d) + lowerHyst (%d)",
 					prop.ThresholdUpper, prop.ThresholdUpperHysteresis, prop.ThresholdLower, prop.ThresholdLowerHysteresis)
 			}
@@ -1325,7 +1382,8 @@ func simSetTriggerChannelConditions(handle int16, triggerConditions []TriggerCon
 }
 
 // simSetTriggerChannelDirections configures trigger directions for each channel.
-func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, channelD, ext, aux ThresholdDirection) (err error) {
+func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC,
+	channelD, ext, aux ThresholdDirection) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
 	}
@@ -1339,6 +1397,7 @@ func simSetTriggerChannelDirections(handle int16, channelA, channelB, channelC, 
 	return nil
 }
 
+// simSetTriggerDelay sets the post-trigger sample delay count.
 func simSetTriggerDelay(handle int16, delay uint32) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -1347,7 +1406,9 @@ func simSetTriggerDelay(handle int16, delay uint32) (err error) {
 	return
 }
 
-func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, direction ThresholdDirection, lower, upper uint32,
+// simSetPulseWidthQualifier configures pulse-width qualifier conditions and sample range.
+func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions,
+	direction ThresholdDirection, lower, upper uint32,
 	pwType PulseWidthType) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
@@ -1360,6 +1421,8 @@ func simSetPulseWidthQualifier(handle int16, conditions []PwqConditions, directi
 	}
 	return nil
 }
+
+// simSetTriggerDigitalPortProperties configures trigger direction conditions on digital input ports.
 func simSetTriggerDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
 	if handle <= 0 {
 		return fmt.Errorf(invalidHandle)
@@ -1371,6 +1434,7 @@ func simSetTriggerDigitalPortProperties(handle int16, digitalDirections []Digita
 	return nil
 }
 
+// simStop halts active simulated acquisition runs (both block and streaming modes).
 func simStop(handle int16) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -1381,6 +1445,8 @@ func simStop(handle int16) (err error) {
 	return
 }
 
+// SetTriggerCalculationMode selects between legacy mathematical trigger search
+// or optimized search routines.
 func SetTriggerCalculationMode(mode int) {
 	TriggerCalculationMode = mode
 	if triggerDetector != nil {
@@ -1388,6 +1454,7 @@ func SetTriggerCalculationMode(mode int) {
 	}
 }
 
+// simSetSigGenBuiltIn configures simulated built-in signal generator waveforms.
 func simSetSigGenBuiltIn(handle int16, offsetVoltage int32, pkToPK uint32, waveType WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float32, sweepType SweepTypeEnum,
 	operation ExtraOperations, shots, sweeps uint32, triggerType SigGenTrigType,
@@ -1423,7 +1490,10 @@ func SetDigitalGenPortEnabled(port0, port1 bool) {
 	digitalGenPort1Enabled.Store(port1)
 }
 
-func (s *SimDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64, dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error {
+// SetDemoDigitalGen configures frequency, direction, Gray/Binary encoding, mode
+// and bit delay for digital pattern simulation.
+func (s *SimDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64,
+	dir genericps.DigitalDemoGenDirection, enc genericps.DigitalDemoGenEncoding, mode genericps.DigitalDemoGenMode, bitDelay float64) error {
 	digitalGenPort0Enabled.Store(port0Enabled)
 	digitalGenPort1Enabled.Store(port1Enabled)
 	digitalGenFrequency = freq
@@ -1434,6 +1504,8 @@ func (s *SimDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float6
 	return nil
 }
 
+// GetDemoDigitalGenValue synthesizes instantaneous 8-bit digital values
+// for Port 0 and Port 1 at relative time rt.
 func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enabled bool) {
 	var finalVal uint16
 	// Multiply frequency by 2: the binary counter LSB (D0) toggles at freq/2,
@@ -1486,13 +1558,17 @@ func GetDemoDigitalGenValue(rt float64) (port0, port1 int16, p0Enabled, p1Enable
 			finalVal = finalVal ^ (finalVal >> 1)
 		}
 	}
-	return int16(finalVal & 0xFF), int16((finalVal >> 8) & 0xFF), digitalGenPort0Enabled.Load(), digitalGenPort1Enabled.Load()
+	return int16(finalVal & 0xFF), int16((finalVal >> 8) & 0xFF),
+		digitalGenPort0Enabled.Load(), digitalGenPort1Enabled.Load()
 }
 
-func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32, pkToPK uint32, waveType genericps.WaveTypeEnum,
+// SetDemoGen configures waveform generation parameters for an individual channel in demo simulation mode.
+func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage int32,
+	pkToPK uint32, waveType genericps.WaveTypeEnum,
 	startFrequency, stopFrequency, increment, dwellTime float64, sweepType genericps.SweepTypeEnum,
 	operation genericps.ExtraOperations, shots, sweeps uint32, triggerType genericps.SigGenTrigType,
-	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64, arbitraryWaveform []int16, spiDataValue uint32, i2cAddressValue uint32) (err error) {
+	triggerSource genericps.SigGenTrigSource, extInThreshold int16, phase float64,
+	arbitraryWaveform []int16, spiDataValue uint32, i2cAddressValue uint32) (err error) {
 
 	ch := int(channel)
 	if ch < 0 || ch >= numberOfChannels {
@@ -1515,7 +1591,8 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 		} else if waveType == genericps.SpiClock {
 			channels[ch].genWaveFunction = NewSpiClockGenerator()
 		} else if waveType == genericps.I2cData {
-			slog.Debug("SetDemoGen I2cData", "spiDataValue", spiDataValue, "i2cAddressValue", i2cAddressValue)
+			slog.Debug("SetDemoGen I2cData", "spiDataValue", spiDataValue,
+				"i2cAddressValue", i2cAddressValue)
 			channels[ch].genWaveFunction = NewI2cDataGenerator(i2cAddressValue, spiDataValue)
 		} else if waveType == genericps.I2cClock {
 			channels[ch].genWaveFunction = NewI2cClockGenerator()
@@ -1524,7 +1601,8 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 		}
 	}
 	dwellDuration := time.Duration(dwellTime*1000000000) * time.Nanosecond
-	channels[ch].sweepController = NewSweepController(startFrequency, stopFrequency, increment, SweepTypeEnum(sweepType), dwellDuration)
+	channels[ch].sweepController = NewSweepController(startFrequency, stopFrequency,
+		increment, SweepTypeEnum(sweepType), dwellDuration)
 	channels[ch].genPkToPk = pkToPK
 	channels[ch].genOffsetVoltage = offsetVoltage
 	channels[ch].phase = phase
@@ -1532,7 +1610,10 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 	return nil
 }
 
-func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, c float64, cunit string) (err error) {
+// SetDemoRlcFilter configures an interactive virtual RLC filter stage for a channel.
+func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId,
+	enabled bool, filterType string, r float64, runit string, l float64, lunit string,
+	c float64, cunit string) (err error) {
 	ch := int(channel)
 	if ch < 0 || ch >= MaxChannels {
 		return fmt.Errorf("invalid channel")
@@ -1549,7 +1630,8 @@ func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource generi
 	return nil
 }
 
-func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode IndexMode, bufferLength uint32) (phase uint32, err error) {
+func simSigGenFrequencyToPhase(handle int16, frequency float64, indexMode IndexMode,
+	bufferLength uint32) (phase uint32, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1565,7 +1647,8 @@ func simSetNoCaptures(handle int16, nCaptures uint32) (err error) {
 	return
 }
 
-func simGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, timeLower uint32, timeUnits TimeUnits, err error) {
+func simGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper,
+	timeLower uint32, timeUnits TimeUnits, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1573,7 +1656,8 @@ func simGetTriggerTimeOffset(handle int16, segmentIndex uint32) (timeUpper, time
 	return
 }
 
-func simGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (t int64, timeUnits TimeUnits, err error) {
+func simGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (t int64,
+	timeUnits TimeUnits, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1582,7 +1666,8 @@ func simGetTriggerTimeOffset64(handle int16, segmentIndex uint32) (t int64, time
 	return
 }
 
-func simGetValuesTriggerTimeOffsetBulk(handle int16, timesUpper, timesLower []uint32, timeUnits []TimeUnits,
+func simGetValuesTriggerTimeOffsetBulk(handle int16, timesUpper,
+	timesLower []uint32, timeUnits []TimeUnits,
 	fromSegmentIndex, toSegmentIndex uint32) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
@@ -1616,7 +1701,8 @@ func simLsReady(handle int16) (ready int16, err error) {
 	return
 }
 
-func simTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled, pulseWidthQualifierEnabledint16 int16, err error) {
+func simTriggerOrPulseWidthQualifierEnabled(handle int16) (triggerEnabled,
+	pulseWidthQualifierEnabledint16 int16, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1702,7 +1788,8 @@ func simSetOutputEdgeDetect(handle int16, state int16) (err error) {
 	return
 }
 
-func simSetPulseWidthDigitalPortProperties(handle int16, digitalDirections []DigitalChannelDirections) (err error) {
+func simSetPulseWidthDigitalPortProperties(handle int16,
+	digitalDirections []DigitalChannelDirections) (err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1747,8 +1834,9 @@ func simSetSigGenPropertiesBuiltIn(handle int16, offsetVoltage int32,
 	return
 }
 
-func simSigGenArbitraryMinMaxValues(handle int16) (minArbitraryWaveformValue, maxArbitraryWaveformValue int16,
-	minArbitraryWaveformSize, maxArbitraryWaveformSize uint32, err error) {
+func simSigGenArbitraryMinMaxValues(handle int16) (minArbitraryWaveformValue,
+	maxArbitraryWaveformValue int16, minArbitraryWaveformSize,
+	maxArbitraryWaveformSize uint32, err error) {
 	if handle <= 0 {
 		err = fmt.Errorf(invalidHandle)
 	}
@@ -1764,6 +1852,7 @@ func simSigGenSoftwareControl(handle int16, state int16) (err error) {
 	return
 }
 
+// dispatch routes a genericps.Message command to its simulated hardware handler.
 func dispatch(msg genericps.Message) {
 	switch m := msg.(type) {
 	case *genericps.NullMsg:
@@ -1917,6 +2006,9 @@ func init() {
 	scopeHandler.Id = genericps.DemoId
 	genericps.Register(scopeHandler)
 }
+
+// SetChannelCount configures the number of simulated channels and updates
+// simulated serial and variant strings.
 func SetChannelCount(n int, explicit bool) error {
 	if !explicit {
 		return nil
@@ -1930,6 +2022,7 @@ func SetChannelCount(n int, explicit bool) error {
 	return nil
 }
 
+// DisablePhaseNoise atomically enables or disables simulated phase jitter on trigger sources.
 func DisablePhaseNoise(disable bool) {
 	triggerPhaseNoiseDisabled.Store(disable)
 }

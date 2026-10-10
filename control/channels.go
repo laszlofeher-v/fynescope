@@ -7,6 +7,12 @@ import (
 	"sync/atomic"
 )
 
+// channelStateMachine coordinates runtime configuration across all oscilloscope analog channels.
+// It runs as a state machine actor alternating between unchanged and changed states:
+// - Translates GUI channel settings into hardware driver commands (SetChannelMsg).
+// - Automatically adjusts voltage ranges and analog offsets when 10x probe attenuation is enabled.
+// - Atomically tracks which channels are currently enabled.
+// - Triggers scope acquisition restarts whenever channel configuration changes.
 func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 	type (
 		eventHandlerFunc func() (nextFunc eventHandlerFunc)
@@ -16,9 +22,13 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 		changedSet         []bool
 		oldChDesc          []genericps.SetChannelMsg
 	)
+
+	// storeSettings applies incoming channel parameters, adjusts for 10x probe attenuation,
+	// and sets dirty flags if any parameter changed.
 	storeSettings := func(setMsg *settings.ChSettings) (nextFunc eventHandlerFunc) {
 		targetRange := setMsg.VRange
 		targetOffset := setMsg.Offset
+		// For 10x probe attenuation, shift voltage range index by 3 and divide offset by 10
 		if setMsg.X10 {
 			targetRange = setMsg.VRange - 3
 			if targetRange < 0 {
@@ -62,6 +72,7 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 		return unchanged
 	}
 
+	// countEnabled calculates the count of currently enabled channels.
 	countEnabled := func() (n int) {
 		for i := range oldChDesc {
 			if oldChDesc[i].Enabled {
@@ -70,6 +81,8 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 		}
 		return
 	}
+
+	// unchanged state processes channel updates and serves channel queries when no pending changes exist.
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("channel unchanged started")
 		select {
@@ -85,6 +98,8 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 			return unchanged
 		}
 	}
+
+	// changed state delivers modified channel configurations one-by-one to getChannelCh.
 	changed = func() (nextFunc eventHandlerFunc) {
 		slog.Debug("channel changed started")
 		select {
@@ -110,6 +125,7 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 			return changed
 		}
 	}
+
 	eventHandler := unchanged
 	oldChDesc = make([]genericps.SetChannelMsg, numberOfChannels)
 	changedSet = make([]bool, numberOfChannels)
@@ -118,3 +134,4 @@ func (psControl *PscDesc) channelStateMachine(numberOfChannels int) {
 		eventHandler = eventHandler()
 	}
 }
+

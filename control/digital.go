@@ -6,10 +6,14 @@ import (
 	"log/slog"
 )
 
+// setDigitalPort iterates over pending digital port settings changes from the digitalPortMonitor
+// and applies them to the physical or simulated oscilloscope hardware via the Connection interface.
+// If the current scope is not a Mixed Signal Oscilloscope (MSO), digital ports are disabled.
 func (psControl *PscDesc) setDigitalPort() (err error) {
 	if psControl.getDigitalPortCh == nil {
 		return nil
 	}
+	// Digital ports are only supported on MSO models
 	if psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
 		for i := 0; i < 2; i++ {
 			psControl.digitalPortsEnabled[i].Store(false)
@@ -33,6 +37,9 @@ func (psControl *PscDesc) setDigitalPort() (err error) {
 	return
 }
 
+// digitalPortMonitor runs as a concurrent actor monitoring digital port configuration updates.
+// It uses a state-machine pattern (unchanged / changed states) to detect changes, request acquisition
+// restarts when settings modify, and serialize access between GUI commands and the acquisition engine.
 func (psControl *PscDesc) digitalPortMonitor() {
 	type (
 		eventHandlerFunc func() (nextFunc eventHandlerFunc)
@@ -41,6 +48,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 	var oldChDesc [2]settings.DigitalPortSettings
 	var changedSet [2]bool
 
+	// storeSettings validates the incoming port message and records changes if settings differ.
 	storeSettings := func(setMsg *DigitalPortMsg) (nextFunc eventHandlerFunc) {
 		portIdx := int(setMsg.Port - genericps.Port0)
 		if portIdx < 0 || portIdx > 1 {
@@ -60,6 +68,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 		return unchanged
 	}
 
+	// unchanged state waits for either shutdown, new configuration messages, or queries.
 	unchanged = func() (nextFunc eventHandlerFunc) {
 		select {
 		case <-psControl.shutdownCh:
@@ -72,6 +81,7 @@ func (psControl *PscDesc) digitalPortMonitor() {
 		}
 	}
 
+	// changed state serves pending modified port settings to callers until all dirty flags are cleared.
 	changed = func() (nextFunc eventHandlerFunc) {
 		select {
 		case <-psControl.shutdownCh:
@@ -102,3 +112,4 @@ func (psControl *PscDesc) digitalPortMonitor() {
 		nextFunc = nextFunc()
 	}
 }
+

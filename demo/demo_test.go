@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// TestBoolToint16 tests boolToint16 conversions of true and false into 1 and 0.
 func TestBoolToint16(t *testing.T) {
 	tests := []struct {
 		name string
@@ -24,6 +25,7 @@ func TestBoolToint16(t *testing.T) {
 	}
 }
 
+// TestNextInt16 tests sequential generation of unique scope handle IDs.
 func TestNextInt16(t *testing.T) {
 	next := nextInt16()
 	if next() != 1 {
@@ -34,6 +36,7 @@ func TestNextInt16(t *testing.T) {
 	}
 }
 
+// TestEnumerateUnits tests device enumeration across normal, faulty, and timeout behaviors.
 func TestEnumerateUnits(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -76,6 +79,7 @@ func TestEnumerateUnits(t *testing.T) {
 	}
 }
 
+// TestOpenUnit tests synchronous device opening under normal, faulty, and timeout behaviors.
 func TestOpenUnit(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -106,6 +110,8 @@ func TestOpenUnit(t *testing.T) {
 	}
 }
 
+// TestOpenUnitAsync tests asynchronous unit opening under various simulated
+// failure and timeout states.
 func TestOpenUnitAsync(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -140,6 +146,7 @@ func TestOpenUnitAsync(t *testing.T) {
 	}
 }
 
+// TestOpenUnitProgress tests progress polling for asynchronous scope connection.
 func TestOpenUnitProgress(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -166,12 +173,14 @@ func TestOpenUnitProgress(t *testing.T) {
 				return
 			}
 			if tt.wantHandle > 0 && gotHandle <= 0 {
-				t.Errorf("openUnitProgress() handle = %v, want handle to be grater than %v", gotHandle, tt.wantHandle)
+				t.Errorf("openUnitProgress() handle = %v, want handle to be grater than %v",
+					gotHandle, tt.wantHandle)
 				return
 			}
 
 			if gotProgressPercent != tt.wantProgressPercent {
-				t.Errorf("openUnitProgress() progressPercent = %v, want %v", gotProgressPercent, tt.wantProgressPercent)
+				t.Errorf("openUnitProgress() progressPercent = %v, want %v",
+					gotProgressPercent, tt.wantProgressPercent)
 			}
 			if gotComplete != tt.wantComplete {
 				t.Errorf("openUnitProgress() complete = %v, want %v", gotComplete, tt.wantComplete)
@@ -184,6 +193,7 @@ func TestOpenUnitProgress(t *testing.T) {
 	}
 }
 
+// TestSimCloseUnit verifies closing an active handle succeeds without error.
 func TestSimCloseUnit(t *testing.T) {
 	err := simCloseUnit(1)
 	if err != nil {
@@ -191,11 +201,13 @@ func TestSimCloseUnit(t *testing.T) {
 	}
 }
 
-// Add more tests when functions are more complex.
+// TestLoadConstants verifies constants table loads without panic.
 func TestLoadConstants(t *testing.T) {
 	loadConstants()
 	//just test if it runs, but it should run without panic
 }
+
+// TestDispatchNullMsg verifies NullMsg dispatch completes and responds on response channel.
 func TestDispatchNullMsg(t *testing.T) {
 	rspCh := make(chan struct{}, 1)
 	msg := &genericps.NullMsg{}
@@ -211,7 +223,10 @@ func TestDispatchNullMsg(t *testing.T) {
 	}
 }
 
+// TestSimGetValues verifies sample retrieval generates non-zero waveform points
+// for a configured sine wave.
 func TestSimGetValues(t *testing.T) {
+
 	// Initialize things
 	loadConstants()
 	behaviour = normal
@@ -394,4 +409,3 @@ func TestSimRunBlock_AutoTrigger_FiresAfterTimeout(t *testing.T) {
 		t.Fatalf("Auto trigger timed out without firing")
 	}
 }
-
