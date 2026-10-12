@@ -288,10 +288,11 @@ func (tp *complexTriggerPointViewer) setDispOffset(dx, x, y float32, chIdx int) 
 	tp.scp.buildComplexTriggerMessage()
 	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 
-	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
-	lw.enableRefresh()
+	if tp.scp.ftBottomLabelViewer != nil {
+		tp.scp.ftBottomLabelViewer.enableRefresh()
+	}
 	tp.enableRefresh()
 
 	if tp.scp.ftRaster != nil {
@@ -329,10 +330,11 @@ func (tp *complexTriggerPointViewer) setLowerDispOffset(dx, x, y float32, chIdx 
 	tp.scp.buildComplexTriggerMessage()
 	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
 
-	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
-	lw.enableRefresh()
+	if tp.scp.ftBottomLabelViewer != nil {
+		tp.scp.ftBottomLabelViewer.enableRefresh()
+	}
 	tp.enableRefresh()
 
 	if tp.raster() != nil {

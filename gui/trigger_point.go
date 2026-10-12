@@ -183,10 +183,11 @@ func (tp *triggerPointViewer) setDispOffset(dx, x, y float32) {
 	tp.scp.triggerSettingMsg.TriggerADC = int16(tp.scp.mvToAdc(channel.Trigger.Mv, channel.VRange))
 	tp.scp.triggerSettingMsg.Mv = channel.Trigger.Mv
 	tp.scp.sendTriggerUpdate(tp.scp.triggerSettingMsg)
-	lw := tp.scp.ftBottomLabelViewer.(*timeLabelViewer)
 	tp.scp.clearAllFtPersistentLayers()
 	tp.scp.clearAllDftPersistentLayers()
-	lw.enableRefresh()
+	if tp.scp.ftBottomLabelViewer != nil {
+		tp.scp.ftBottomLabelViewer.enableRefresh()
+	}
 	tp.enableRefresh()
 	slog.Debug("setDispOffset")
 	if tp.raster() != nil {

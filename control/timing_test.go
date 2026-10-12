@@ -1,7 +1,9 @@
 package control
 
 import (
+	"errors"
 	"testing"
+	"time"
 )
 
 func TestTimeBase500M(t *testing.T) {
@@ -151,3 +153,24 @@ func TestTimeInterval1G(t *testing.T) {
 		}
 	}
 }
+
+func TestGetTimeBaseZeroChannels(t *testing.T) {
+	psControl := &PscDesc{
+		getNumOfEnabledCh: make(chan *getNumOfEnabledChMsg, 1),
+	}
+	psControl.getNumOfEnabled.n = make(chan int, 1)
+	go psControl.channelStateMachine(4)
+
+	// With 0 enabled channels, getTimeBase must immediately return ErrNoChannelsEnabled
+	start := time.Now()
+	_, _, err := psControl.getTimeBase(1024)
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, ErrNoChannelsEnabled) {
+		t.Fatalf("expected ErrNoChannelsEnabled, got: %v", err)
+	}
+	if elapsed > 100*time.Millisecond {
+		t.Fatalf("getTimeBase took too long (%v), should return immediately", elapsed)
+	}
+}
+

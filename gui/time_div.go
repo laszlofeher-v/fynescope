@@ -599,7 +599,6 @@ func (scp *ScpDesc) onTimeUnitChange(option string, ex selectscroll.Exception) {
 }
 
 func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
-	tl := scp.ftBottomLabelViewer.(*timeLabelViewer)
 	prevTimeUnitStr := scp.Settings.Time.Unit
 	prevTimeDivStr := scp.Settings.Time.TimeDiv
 	prevOptions := scp.timeSelect.Options
@@ -634,7 +633,9 @@ func (scp *ScpDesc) onTimeDivChange(option string, ex selectscroll.Exception) {
 	prevTime := scp.timeDiv
 	scp.timeDiv = intTimeDiv
 	scp.Settings.Time.TimeDiv = scp.timeSelect.Selected
-	tl.enableRefresh()
+	if scp.ftBottomLabelViewer != nil {
+		scp.ftBottomLabelViewer.enableRefresh()
+	}
 	scp.setMaxScreenTime()
 	scp.syncDftToTimeDiv()
 	scp.clearAllFtPersistentLayers()
