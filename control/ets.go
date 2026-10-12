@@ -1,6 +1,7 @@
 package control
 
 import (
+	"errors"
 	"fmt"
 	"fynescope/genericps"
 	"log/slog"
@@ -97,7 +98,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 		// ETS relies on analog trigger inputs; at least one analog channel must be enabled.
 		if psControl.numberOfEnabledAnalogChannels() == 0 {
-			return fmt.Errorf("ETS mode requires at least one enabled analog channel")
+			return ErrNoChannelsEnabled
 		}
 
 		// Fetch the latest trigger settings from triggerMonitor so we have up-to-date EtsInterleave/EtsCycles
@@ -203,6 +204,9 @@ func etsBlockMode(psControl *PscDesc) state {
 		}
 		maxSampleCount, _, err := psControl.getTimeBase(psControl.SampleCountRequired)
 		if err != nil {
+			if errors.Is(err, ErrNoChannelsEnabled) {
+				return err
+			}
 			slog.Error("ETS prepare: getTimeBase failed", "error", err)
 			return err
 		}
@@ -325,6 +329,9 @@ func etsBlockMode(psControl *PscDesc) state {
 			}
 
 			if err := prepare(); err != nil {
+				if errors.Is(err, ErrNoChannelsEnabled) {
+					return start
+				}
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
@@ -333,6 +340,13 @@ func etsBlockMode(psControl *PscDesc) state {
 
 		// run initiates hardware capture and transitions to get.
 		run = func() eventHandlerFunc {
+			select {
+			case <-psControl.restartChannel:
+				return start
+			case <-psControl.stopChannel:
+				return nil
+			default:
+			}
 			// Drain any stale callback before starting a new acquisition.
 			select {
 			case <-callbackChannel:

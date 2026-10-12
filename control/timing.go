@@ -140,6 +140,9 @@ func timeInterval100M(timeBase uint32) (timeIntervalNanoseconds uint32) {
 }
 
 func (psControl *PscDesc) getTimeBase(sampleCount uint64) (maxSamples uint64, timeIntervalNanoseconds float64, err error) {
+	if psControl.numberOfEnabledChannels() == 0 {
+		return 0, 0, ErrNoChannelsEnabled
+	}
 	initialTimeBase := psControl.timeBase
 	for psControl.timeBase < maxTimeBase {
 		timeIntervalNanoseconds, maxSamples, err = psControl.Con.GetTimebase2(psControl.timeBase, sampleCount, psControl.overSample, 0)

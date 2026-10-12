@@ -1,6 +1,7 @@
 package control
 
 import (
+	"errors"
 	"fynescope/genericps"
 	"fynescope/settings"
 	"log/slog"
@@ -45,6 +46,9 @@ func blockMode(psControl *PscDesc) state {
 		if err != nil {
 			return
 		}
+		if psControl.numberOfEnabledChannels() == 0 {
+			return ErrNoChannelsEnabled
+		}
 		psControl.refreshTime = time.Now()
 		psControl.SampleCountRequired = uint64(math.Round(psControl.scopeScreenWidth))
 		if psControl.ipmode == settings.Sinc {
@@ -88,6 +92,9 @@ func blockMode(psControl *PscDesc) state {
 		rawSampleCount := psControl.SampleCountRequired * psControl.downSampleRatio
 		maxSampleCount, timeIntervalNanoseconds, err := psControl.getTimeBase(rawSampleCount)
 		if err != nil {
+			if errors.Is(err, ErrNoChannelsEnabled) {
+				return err
+			}
 			slog.Error("runblock getTimeBase", "err", err)
 			psControl.DisplayStatus(err.Error(), Fatal)
 			return err
@@ -233,7 +240,7 @@ func blockMode(psControl *PscDesc) state {
 		// initialize block mode
 		start = func() eventHandlerFunc {
 			// if no channel is enabled then just wait
-			for n := psControl.numberOfEnabledChannels(); n == 0; {
+			for psControl.numberOfEnabledChannels() == 0 {
 				select {
 				case <-psControl.restartChannel:
 					return start
@@ -244,6 +251,9 @@ func blockMode(psControl *PscDesc) state {
 			}
 			err := prepare()
 			if err != nil {
+				if errors.Is(err, ErrNoChannelsEnabled) {
+					return start
+				}
 				slog.Error("blockMode prepare failed", "err", err)
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
@@ -257,6 +267,14 @@ func blockMode(psControl *PscDesc) state {
 
 		//		run block mode
 		run = func() eventHandlerFunc {
+			select {
+			case <-psControl.restartChannel:
+				return start
+			case <-psControl.stopChannel:
+				slog.Info("runblock run stop received ")
+				return nil
+			default:
+			}
 			err := runBlock() //
 			if err != nil {
 				psControl.DisplayStatus(err.Error(), Fatal)

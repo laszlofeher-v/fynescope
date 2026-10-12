@@ -263,3 +263,121 @@ func TestBlockModeMaxScreenTimeSampleLimit(t *testing.T) {
 	assert.LessOrEqual(t, psControl.SampleCountRequired, uint64(67108864))
 	assert.Greater(t, psControl.SampleCountRequired, uint64(0))
 }
+
+func TestBlockModeZeroChannelsWaitAndResume(t *testing.T) {
+	con := genericps.NewConnection()
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	con.Handle = handle
+	if err != nil {
+		t.Fatalf("Failed to open simulator: %v", err)
+	}
+	defer con.CloseUnit()
+
+	var fatalReported []string
+	psControl := &PscDesc{
+		Con:                    con,
+		stateChannel:           make(chan state, 1),
+		restartChannel:         make(chan struct{}, 1),
+		stopChannel:            make(chan struct{}, 1),
+		SetChannelCh:           make(chan *settings.ChSettings, 1),
+		getChannelCh:           make(chan *getChannelMsg, 1),
+		getNumOfEnabledCh:      make(chan *getNumOfEnabledChMsg, 1),
+		SetScopeScreenWidthCh:  make(chan int32, 1),
+		getScopeScreenWidthCh:  make(chan *getScopeScreenWidthMsg, 1),
+		SetInterpolationModeCh: make(chan settings.InterpolationType, 1),
+		getInterpolationModeCh: make(chan *getInterpolationModeMsg, 1),
+		SetGeneratorCh:         make(chan *GeneratorDescMsg, 1),
+		getGeneratorCh:         make(chan *getGeneratorMsg, 1),
+		SetTriggerCh:           make(chan *TriggerDescMsg, 1),
+		getTriggerCh:           make(chan *getTriggerMsg, 1),
+		RefreshCallback: func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
+			xRoundError, samplingTimeInterval float64) {
+		},
+		BufferCallback: func(size int) {},
+		DisplayStatus: func(status string, level ScopeError) {
+			if level == Fatal {
+				fatalReported = append(fatalReported, status)
+			}
+		},
+	}
+	psControl.StreamEnabled.Store(true)
+	psControl.getChannel.newSettings = make(chan bool, 1)
+	psControl.getNumOfEnabled.n = make(chan int, 1)
+	psControl.getScopeScreenWidth.newSetting = make(chan bool, 1)
+	psControl.getInterpolationMode.newSetting = make(chan bool, 1)
+	psControl.getGenerator.newSetting = make(chan bool, 1)
+	psControl.getTrigger.newSettings = make(chan bool, 1)
+
+	go psControl.channelStateMachine(4)
+	go psControl.generatorMonitor()
+	go psControl.demoGeneratorMonitor()
+	go psControl.interpolationMonitor()
+	go psControl.triggerMonitor()
+
+	// Initially all channels are disabled
+	for i := 0; i < 4; i++ {
+		ch := settings.ChSettings{
+			ID:      genericps.ChannelId(i),
+			Enabled: false,
+		}
+		psControl.SetChannelCh <- &ch
+	}
+	time.Sleep(20 * time.Millisecond)
+
+	psControl.SetMaxScreenTime(1.0)
+	time.Sleep(10 * time.Millisecond)
+
+	done := make(chan struct{})
+	go func() {
+		blockMode(psControl)
+		close(done)
+	}()
+
+	// Since 0 channels are enabled, blockMode must wait in start() and NOT exit or report fatal error
+	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-done:
+		t.Fatal("blockMode should not have exited with 0 channels enabled")
+	default:
+	}
+	assert.Empty(t, fatalReported)
+
+	// Now enable channel A
+	chA := settings.ChSettings{
+		ID:      genericps.ChannelId(0),
+		Enabled: true,
+	}
+	psControl.SetChannelCh <- &chA
+
+	// Give it time to prepare and run
+	time.Sleep(100 * time.Millisecond)
+	assert.Empty(t, fatalReported)
+
+	// Now disable channel A while running
+	chADisable := settings.ChSettings{
+		ID:      genericps.ChannelId(0),
+		Enabled: false,
+	}
+	psControl.SetChannelCh <- &chADisable
+	time.Sleep(100 * time.Millisecond)
+	assert.Empty(t, fatalReported)
+
+	// Re-enable channel A
+	chAEnable := settings.ChSettings{
+		ID:      genericps.ChannelId(0),
+		Enabled: true,
+	}
+	psControl.SetChannelCh <- &chAEnable
+	time.Sleep(100 * time.Millisecond)
+	assert.Empty(t, fatalReported)
+
+	// Stop cleanly
+	psControl.stopChannel <- struct{}{}
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("blockMode did not stop in time")
+	}
+	assert.Empty(t, fatalReported)
+}
+

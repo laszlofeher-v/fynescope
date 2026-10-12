@@ -1,6 +1,7 @@
 package control
 
 import (
+	"errors"
 	"fynescope/genericps"
 	"log/slog"
 	"math"
@@ -75,6 +76,9 @@ func streamMode(psControl *PscDesc) state {
 		err = psControl.setEverything()
 		if err != nil {
 			return
+		}
+		if psControl.numberOfEnabledChannels() == 0 {
+			return ErrNoChannelsEnabled
 		}
 
 		psControl.refreshTime = time.Now()
@@ -183,7 +187,7 @@ func streamMode(psControl *PscDesc) state {
 		)
 
 		start = func() eventHandlerFunc {
-			for n := psControl.numberOfEnabledChannels(); n == 0; {
+			for psControl.numberOfEnabledChannels() == 0 {
 				select {
 				case <-psControl.restartChannel:
 					psControl.quit()
@@ -195,6 +199,9 @@ func streamMode(psControl *PscDesc) state {
 			}
 			err := prepare()
 			if err != nil {
+				if errors.Is(err, ErrNoChannelsEnabled) {
+					return start
+				}
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
@@ -208,6 +215,17 @@ func streamMode(psControl *PscDesc) state {
 		}
 
 		run = func() eventHandlerFunc {
+			select {
+			case <-psControl.restartChannel:
+				slog.Debug("stream run restart received")
+				psControl.quit()
+				return start
+			case <-psControl.stopChannel:
+				slog.Debug("stream run stop received")
+				psControl.quit()
+				return nil
+			default:
+			}
 			err := runStreaming()
 			if err != nil {
 				psControl.DisplayStatus(err.Error(), Fatal)

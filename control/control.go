@@ -39,6 +39,10 @@ const (
 	Info                      // continue
 )
 
+// ErrNoChannelsEnabled is returned when an acquisition attempt is made but no
+// channels (analog or digital) are enabled on the scope.
+var ErrNoChannelsEnabled = errors.New("no channels enabled")
+
 const (
 	// SincWMultiplier * sampleCount -> sampleCount
 	// It must be odd.
@@ -497,7 +501,8 @@ func (psControl *PscDesc) SuggestSampleCount(sc uint64) {
 func (psControl *PscDesc) numberOfEnabledChannels() (n int) {
 	psControl.getNumOfEnabledCh <- &psControl.getNumOfEnabled
 	n = <-psControl.getNumOfEnabled.n
-	if psControl.digitalPortsEnabled[0].Load() || psControl.digitalPortsEnabled[1].Load() {
+	if (psControl.ScopeModel == ScopeUnknown || psControl.ScopeModel.IsMSO()) &&
+		(psControl.digitalPortsEnabled[0].Load() || psControl.digitalPortsEnabled[1].Load()) {
 		n++
 	}
 	return
@@ -514,9 +519,18 @@ func (psControl *PscDesc) NumberOfEnabledAnalogChannels() int {
 	return psControl.numberOfEnabledAnalogChannels()
 }
 
+// NumberOfEnabledChannels is the exported form of numberOfEnabledChannels.
+func (psControl *PscDesc) NumberOfEnabledChannels() int {
+	return psControl.numberOfEnabledChannels()
+}
+
 // SetDigitalPortEnabled marks digital port 0 or 1 as enabled/disabled.
 func (psControl *PscDesc) SetDigitalPortEnabled(port int, enabled bool) {
 	if port >= 0 && port < 2 {
+		if enabled && psControl.ScopeModel != ScopeUnknown && !psControl.ScopeModel.IsMSO() {
+			psControl.digitalPortsEnabled[port].Store(false)
+			return
+		}
 		psControl.digitalPortsEnabled[port].Store(enabled)
 	}
 }
