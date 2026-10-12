@@ -45,6 +45,7 @@ const (
 	filterFuncId                   = "filterFunc"
 	ffFuncId                       = "ffFunc"
 	runblockButtonId               = "runblockButton"
+	triggerStatusLabelId           = "triggerStatusLabel"
 	themeChangeActionId            = "themeChangeAction"
 	genAmpdSetId                   = "genAmpSet"
 	genFreqSetId                   = "genFreqSet"

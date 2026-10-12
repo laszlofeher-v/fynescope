@@ -198,6 +198,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 		if psControl.numOfSamplesAcquired <= uint64(len(etsBuf)) {
 			etsBuf = etsBuf[:psControl.numOfSamplesAcquired]
 		}
+		psControl.notifyTriggerState(true)
 		psControl.RefreshEtsCallback(psControl.receiveBuffer, etsBuf, psControl.XRoundError, psControl.SamplingTimeInterval)
 	} else {
 		triggerTimeOffset, timeUnits, err := psControl.Con.GetTriggerTimeOffset64(segmentIndex)
@@ -210,6 +211,7 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 			psControl.triggerTimeOffset = int64(float64(triggerTimeOffset) *
 				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
+		psControl.reportBlockTriggerState()
 		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, psControl.digitalReceiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return

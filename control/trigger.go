@@ -197,7 +197,7 @@ func (psControl *PscDesc) sendDigitalTrigger() (err error) {
 	channelProperties := []genericps.TriggerChannelProperties{{
 		Channel: genericps.ChA,
 	}}
-	_ = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	_ = psControl.setTriggerChannelProperties(channelProperties, false, at)
 
 	err = psControl.Con.SetTriggerChannelConditions(triggerConditions)
 	if err != nil {
@@ -231,7 +231,7 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 			dir != genericps.TriggerBelow) {
 		dir = genericps.TriggerRising
 	}
-	err = psControl.Con.SetSimpleTrigger(psControl.triggerSetting.Enabled,
+	err = psControl.setSimpleTrigger(psControl.triggerSetting.Enabled,
 		psControl.triggerSetting.Source, psControl.triggerSetting.TriggerADC,
 		dir, 0, at)
 	if err != nil {
@@ -367,7 +367,7 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondDontCare)
 
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -399,7 +399,7 @@ func (psControl *PscDesc) sendWindowTrigger() (err error) {
 	channelProperties := psControl.getValidTriggerProperties()
 
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -431,7 +431,7 @@ func (psControl *PscDesc) sendRuntTrigger() (err error) {
 	channelProperties := psControl.getValidTriggerProperties()
 
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -466,7 +466,7 @@ func (psControl *PscDesc) sendIntervalTrigger() (err error) {
 		channelProperties[i].ThresholdLowerHysteresis = 0
 	}
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -522,7 +522,7 @@ func (psControl *PscDesc) sendPulseWidthTrigger() (err error) {
 		channelProperties[i].ThresholdLowerHysteresis = 0
 	}
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -581,7 +581,7 @@ func (psControl *PscDesc) sendWindowPulseWidthTrigger() (err error) {
 		}
 	}
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -633,7 +633,7 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 		channelProperties[i].ThresholdLower = channelProperties[i].ThresholdUpper
 	}
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -683,7 +683,7 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	}
 
 	sanitizedProps := sanitizeTriggerChannelProperties(psControl.triggerSetting.ComplexProperties)
-	err = psControl.Con.SetTriggerChannelProperties(sanitizedProps, false, at)
+	err = psControl.setTriggerChannelProperties(sanitizedProps, false, at)
 	if err != nil {
 		slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", sanitizedProps)
 		return
@@ -741,7 +741,7 @@ func (psControl *PscDesc) sendWindowDropoutTrigger() (err error) {
 	// 	}
 	// }
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -795,7 +795,7 @@ func (psControl *PscDesc) sendRiseFallTrigger() (err error) {
 	channelProperties := psControl.getValidTriggerProperties()
 	channelProperties[0].ThresholdMode = 0
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.Con.SetTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
 	if err != nil {
 		slog.Error("sendRiseFallTrigger SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return

@@ -88,6 +88,7 @@ func RegisterGobTypes() {
 		gob.Register(&BufferResizeMessage{})
 		gob.Register(&EtsBufferResizeMessage{})
 		gob.Register(&StatusMessage{})
+		gob.Register(&TriggerStateMessage{})
 
 		// Nested / Domain Types
 		gob.Register(control.TriggerDesc{})

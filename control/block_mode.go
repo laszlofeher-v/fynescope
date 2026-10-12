@@ -207,6 +207,7 @@ func blockMode(psControl *PscDesc) state {
 	} //end prepare
 
 	runBlock := func() (err error) {
+		psControl.blockRunStart = time.Now()
 		_, err = psControl.Con.RunBlock(psControl.NPre, psControl.NPro,
 			psControl.timeBase, psControl.overSample, 0, callbackBlock, nil)
 		if err != nil {
@@ -261,14 +262,20 @@ func blockMode(psControl *PscDesc) state {
 				psControl.DisplayStatus(err.Error(), Fatal)
 				return nil
 			}
-			select {
-			case <-psControl.restartChannel:
-				return start
-			case <-psControl.stopChannel:
-				slog.Info("runblock run stop received ")
-				return nil
-			case <-callbackChannel: // 				scope finished
-				return get //						continue with get data
+			waitTimer := time.NewTimer(triggerWaitIndicatorDelay)
+			defer waitTimer.Stop()
+			for {
+				select {
+				case <-psControl.restartChannel:
+					return start
+				case <-psControl.stopChannel:
+					slog.Info("runblock run stop received ")
+					return nil
+				case <-callbackChannel: // 				scope finished
+					return get //						continue with get data
+				case <-waitTimer.C: // still armed, no trigger event yet
+					psControl.notifyTriggerState(false)
+				}
 			}
 		}
 

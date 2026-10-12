@@ -22,8 +22,9 @@ type mockScopeController struct {
 	refreshCallback    func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64, xRoundError float64, samplingTimeInterval float64)
 	refreshEtsCallback func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)
 	bufferCallback     func(size int)
-	etsBufferCallback  func(size int)
-	displayStatus      func(s string, errorType control.ScopeError)
+	etsBufferCallback     func(size int)
+	triggerStateCallback  func(triggered bool)
+	displayStatus         func(s string, errorType control.ScopeError)
 
 	// Recorded commands
 	lastTriggerDesc     control.TriggerDesc
@@ -292,6 +293,12 @@ func (m *mockScopeController) SetBufferCallback(cb func(size int)) {
 func (m *mockScopeController) SetEtsBufferCallback(cb func(size int)) {
 	m.mu.Lock()
 	m.etsBufferCallback = cb
+	m.mu.Unlock()
+}
+
+func (m *mockScopeController) SetTriggerStateCallback(cb func(triggered bool)) {
+	m.mu.Lock()
+	m.triggerStateCallback = cb
 	m.mu.Unlock()
 }
 
@@ -697,6 +704,27 @@ func TestServer_TelemetryBroadcast(t *testing.T) {
 		stMsg := sMsg.Payload.(*StatusMessage)
 		if stMsg.Text != "Sampling completed" || stMsg.ErrorType != control.Info {
 			t.Fatalf("client %d status mismatch: %+v", idx+1, stMsg)
+		}
+	}
+
+	// 4. Test Trigger State
+	mock.mu.Lock()
+	trigCb := mock.triggerStateCallback
+	mock.mu.Unlock()
+	if trigCb != nil {
+		trigCb(true)
+		for idx, dec := range []*gob.Decoder{dec1, dec2} {
+			var sMsg ServerMessage
+			if err := dec.Decode(&sMsg); err != nil {
+				t.Fatalf("client %d decode error: %v", idx+1, err)
+			}
+			if sMsg.Type != TypeTriggerState {
+				t.Fatalf("client %d expected TypeTriggerState, got %s", idx+1, sMsg.Type)
+			}
+			trigMsg := sMsg.Payload.(*TriggerStateMessage)
+			if !trigMsg.Triggered {
+				t.Fatalf("client %d expected Triggered=true, got false", idx+1)
+			}
 		}
 	}
 }

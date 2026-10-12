@@ -153,6 +153,11 @@ func TestPscDesc_GetData(t *testing.T) {
 	err := psControl.setBuffers(100, 0)
 	require.NoError(t, err)
 
+	var triggerState bool
+	psControl.SetTriggerStateCallback(func(triggered bool) {
+		triggerState = triggered
+	})
+
 	// 1. Standard getData (ets = false)
 	err = psControl.getData(100, 0, false)
 	require.NoError(t, err)
@@ -162,4 +167,5 @@ func TestPscDesc_GetData(t *testing.T) {
 	err = psControl.getData(100, 0, true)
 	require.NoError(t, err)
 	assert.True(t, refreshedEts)
+	assert.True(t, triggerState)
 }

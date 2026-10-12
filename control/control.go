@@ -250,6 +250,9 @@ type (
 		RefreshEtsCallback          func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)
 		BufferCallback              func(size int)
 		EtsBufferCallback           func(size int)
+		triggerStateCb              atomic.Pointer[func(triggered bool)] // optional, see TriggerStateReporter
+		blockRunStart               time.Time                            // when the current block capture was armed
+		activeAutoTriggerMs         atomic.Int32                         // auto-trigger timeout last sent to the hardware, 0 = none
 		DisplayStatus               func(s string, errorType ScopeError)
 		refreshTime                 time.Time
 		Info                        string
