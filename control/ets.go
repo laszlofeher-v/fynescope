@@ -183,7 +183,7 @@ func etsBlockMode(psControl *PscDesc) state {
 		slog.Debug("ETS", "TimeInterval", psControl.SamplingTimeInterval, "psControl.maxScreenTime", psControl.maxScreenTime)
 
 		samplingIntervalChanged := psControl.SamplingTimeInterval != psControl.lastTriggerSamplingInterval
-		timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout || psControl.triggerSetting.Type == WindowPulseWidth || psControl.triggerSetting.Type == RiseFall
+		// timeDependentTrigger := psControl.triggerSetting.Type == Interval || psControl.triggerSetting.Type == PulseWidth || psControl.triggerSetting.Type == Dropout || psControl.triggerSetting.Type == WindowDropout || psControl.triggerSetting.Type == WindowPulseWidth || psControl.triggerSetting.Type == RiseFall
 
 		// In ETS mode, triggering MUST be enabled. If the user hasn't explicitly
 		// enabled a trigger, force a simple rising-edge trigger on the selected source.
@@ -197,7 +197,7 @@ func etsBlockMode(psControl *PscDesc) state {
 				return err
 			}
 			psControl.initialTriggerSet = true
-		} else if newSettings || (samplingIntervalChanged && timeDependentTrigger) || !psControl.initialTriggerSet {
+		} else if newSettings || (samplingIntervalChanged /* && timeDependentTrigger*/) || !psControl.initialTriggerSet {
 			err = psControl.sendTrigger()
 			if err != nil {
 				slog.Error("ETS prepare sendTrigger failed", "error", err)
@@ -257,6 +257,7 @@ func etsBlockMode(psControl *PscDesc) state {
 	runBlock := func() error {
 		slog.Debug("run", "psControl.NPre", psControl.NPre, "psControl.NPro", psControl.NPro,
 			"psControl.timeBase", psControl.timeBase, "psControl.overSample", psControl.overSample)
+		psControl.blockRunStart = time.Now()
 		_, err := psControl.Con.RunBlock(psControl.NPre, psControl.NPro, psControl.timeBase, psControl.overSample, 0, callbackBlock, nil)
 		if err != nil {
 			slog.Error("ETS runBlock failed", "error", err)
@@ -306,6 +307,8 @@ func etsBlockMode(psControl *PscDesc) state {
 			ticker := time.NewTicker(20 * time.Millisecond)
 			defer ticker.Stop()
 			timeout := time.After(1500 * time.Millisecond)
+			waitTimer := time.NewTimer(triggerWaitIndicatorDelay)
+			defer waitTimer.Stop()
 
 			for {
 				select {
@@ -315,11 +318,14 @@ func etsBlockMode(psControl *PscDesc) state {
 					if ready, err := psControl.Con.LsReady(); err == nil && ready != 0 {
 						goto ready
 					}
+				case <-waitTimer.C:
+					psControl.notifyTriggerState(false)
 				case <-timeout:
 					// In ETS mode, auto-trigger is not supported by hardware.
 					// If no trigger event occurred within 1.5s, stop acquisition
 					// and restart so the UI remains responsive.
 					_ = psControl.Con.Stop()
+					psControl.notifyTriggerState(false)
 					return run
 				case <-psControl.restartChannel:
 					// Stop the hardware to cancel any in-progress acquisition.

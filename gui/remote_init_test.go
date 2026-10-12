@@ -16,7 +16,11 @@ type mockRemoteScopeController struct {
 	max  int32
 }
 
-func (m *mockRemoteScopeController) SetTrigger(msg *control.TriggerDescMsg)                       {}
+func (m *mockRemoteScopeController) SetTrigger(msg *control.TriggerDescMsg) {
+	if msg != nil && msg.Done != nil {
+		close(msg.Done)
+	}
+}
 func (m *mockRemoteScopeController) SetChannel(msg *settings.ChSettings)                         {}
 func (m *mockRemoteScopeController) SetDigitalPort(msg *control.DigitalPortMsg)                  {}
 func (m *mockRemoteScopeController) SetGenerator(msg *control.GeneratorDescMsg)                 {}
@@ -55,6 +59,7 @@ func (m *mockRemoteScopeController) SetRefreshCallback(cb func(buffers [][]int16
 func (m *mockRemoteScopeController) SetRefreshEtsCallback(cb func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64)) {}
 func (m *mockRemoteScopeController) SetBufferCallback(cb func(size int)) {}
 func (m *mockRemoteScopeController) SetEtsBufferCallback(cb func(size int)) {}
+func (m *mockRemoteScopeController) SetTriggerStateCallback(cb func(triggered bool)) {}
 func (m *mockRemoteScopeController) SetDisplayStatus(cb func(s string, errorType control.ScopeError)) {}
 func (m *mockRemoteScopeController) ShowDisplayStatus(s string, errorType control.ScopeError) {}
 func (m *mockRemoteScopeController) NewChannels(numberOfChannels int) {}

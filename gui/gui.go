@@ -301,6 +301,7 @@ type (
 		triggerTypeSelect            *selectscroll.SelectScroll
 		Settings                     *settings.PsSettings
 		runblockButton               *widget.Button
+		triggerStatusLabel           *widget.Label
 		toolbar                      *fyne.Container
 		streamEnableButton           *widget.Button
 		etsInterleaveDisp            *disp7.DigitArray
@@ -1209,6 +1210,10 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 	})
 	addToTest(scp.runblockButton, runblockButtonId, -1)
+	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+	scp.triggerStatusLabel.Importance = widget.DangerImportance
+	addToTest(scp.triggerStatusLabel, triggerStatusLabelId, -1)
 	setfullscreen := func() {
 		if IsFuzzer() {
 			return
@@ -1254,6 +1259,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.Settings.Window.LeftControl = true
 			scp.toolbar.RemoveAll()
 			scp.toolbar.Add(scp.runblockButton)
+			scp.toolbar.Add(scp.triggerStatusLabel)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
 			if scp.GifEnabled {
@@ -1277,6 +1283,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(scp.status.label)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.runblockButton)
+			scp.toolbar.Add(scp.triggerStatusLabel)
 			scp.toolbar.Add(scp.streamEnableButton)
 			scp.toolbar.Add(scp.timeZoomButton)
 			if scp.GifEnabled {
@@ -1338,7 +1345,7 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	addToTest(logout, "logout", -1)
 	if scp.Settings.Window.LeftControl {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.triggerStatusLabel, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
@@ -1354,7 +1361,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(scp.status.label)
 		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
 	} else {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(), scp.runblockButton, scp.streamEnableButton, scp.timeZoomButton)
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(), scp.runblockButton, scp.triggerStatusLabel, scp.streamEnableButton, scp.timeZoomButton)
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
@@ -1416,6 +1423,12 @@ func (scp *ScpDesc) build2000Gui() {
 		copy(scp.etsBuffer, etsInBuffer)
 		scp.psControl.CallRefreshCallback(buffers, nil, nil, 0, xRoundError, samplingTimeInterval)
 	})
+
+	if scp.psControl != nil {
+		scp.psControl.SetTriggerStateCallback(func(triggered bool) {
+			scp.updateTriggerState(triggered)
+		})
+	}
 
 	scp.psControl.SetRefreshCallback(func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, triggerTimeOffset int64,
 		xRoundError, samplingTimeInterval float64) {
@@ -1493,6 +1506,7 @@ func (scp *ScpDesc) build2000Gui() {
 				if isSingle {
 					scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 					scp.running = false
+					scp.updateTriggerStateStopped()
 				}
 			})
 		}
@@ -1590,6 +1604,7 @@ func (scp *ScpDesc) StartRunning() {
 	var err error
 	scp.running = true
 	scp.runblockButton.SetIcon(theme.MediaPauseIcon())
+	scp.updateTriggerStateRunning()
 
 	// Force re-apply trigger settings so the device is synchronized on run.
 	triggerCopy := scp.triggerSettingMsg
@@ -1608,6 +1623,7 @@ func (scp *ScpDesc) StartRunning() {
 	} else {
 		scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 		scp.running = false
+		scp.updateTriggerStateStopped()
 		slog.Error("", "run error:", err)
 	}
 }
@@ -1625,10 +1641,66 @@ func (scp *ScpDesc) StopRunning() {
 	if err == nil {
 		scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 		scp.running = false
+		scp.updateTriggerStateStopped()
 		scp.broadcastMultiStop()
 	} else {
 		slog.Error("", "Stop returned", err)
 	}
+}
+
+func (scp *ScpDesc) updateTriggerState(triggered bool) {
+	if scp.triggerStatusLabel == nil {
+		return
+	}
+	fyne.Do(func() {
+		if !scp.running {
+			scp.triggerStatusLabel.Text = "Stop"
+			scp.triggerStatusLabel.Importance = widget.DangerImportance
+			scp.triggerStatusLabel.Refresh()
+			return
+		}
+		if triggered {
+			scp.triggerStatusLabel.Text = "Trig'd"
+			scp.triggerStatusLabel.Importance = widget.SuccessImportance
+		} else {
+			if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+				scp.triggerStatusLabel.Text = "Auto"
+			} else {
+				scp.triggerStatusLabel.Text = "Wait"
+			}
+			scp.triggerStatusLabel.Importance = widget.WarningImportance
+		}
+		scp.triggerStatusLabel.Refresh()
+	})
+}
+
+func (scp *ScpDesc) updateTriggerStateStopped() {
+	if scp.triggerStatusLabel == nil {
+		return
+	}
+	fyne.Do(func() {
+		scp.triggerStatusLabel.Text = "Stop"
+		scp.triggerStatusLabel.Importance = widget.DangerImportance
+		scp.triggerStatusLabel.Refresh()
+	})
+}
+
+func (scp *ScpDesc) updateTriggerStateRunning() {
+	if scp.triggerStatusLabel == nil {
+		return
+	}
+	fyne.Do(func() {
+		if !scp.running {
+			return
+		}
+		if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+			scp.triggerStatusLabel.Text = "Auto"
+		} else {
+			scp.triggerStatusLabel.Text = "Wait"
+		}
+		scp.triggerStatusLabel.Importance = widget.WarningImportance
+		scp.triggerStatusLabel.Refresh()
+	})
 }
 
 // build2407Gui builds the GUI for units with an internal generator.

@@ -119,6 +119,7 @@ func (scp *ScpDesc) initStatus() {
 				fyne.Do(func() {
 					scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 				})
+				scp.updateTriggerStateStopped()
 			}
 		}
 

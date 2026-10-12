@@ -54,6 +54,7 @@ const (
 	TypeBufferResize    = "BufferResize"
 	TypeEtsBufferResize = "EtsBufferResize"
 	TypeStatus          = "Status"
+	TypeTriggerState    = "TriggerState"
 	TypeResponse        = "Response"
 )
 
@@ -308,4 +309,10 @@ type EtsBufferResizeMessage struct {
 type StatusMessage struct {
 	Text      string
 	ErrorType control.ScopeError
+}
+
+// TriggerStateMessage tells the client whether the latest acquisition was released
+// by a real trigger event (control.TriggerStateReporter callback).
+type TriggerStateMessage struct {
+	Triggered bool
 }

@@ -703,21 +703,29 @@ func (scp *ScpDesc) onSampleUnitChange(_ string, _ selectscroll.Exception) {
 }
 
 func (scp *ScpDesc) setETSTimeDiv() {
-	scp.ipmSelect.SetOptions(interpolationModeOptions[:3])
-	if scp.ipmSelect.Selected == sinc {
-		scp.ipmSelect.SetSelected(linear)
+	if scp.ipmSelect != nil {
+		scp.ipmSelect.SetOptions(interpolationModeOptions[:3])
+		if scp.ipmSelect.Selected == sinc {
+			scp.ipmSelect.SetSelected(linear)
+		}
 	}
-	scp.timeUnitSelect.SetOptions(etsUnits)
-	if scp.timeUnitSelect.Selected != nanoSec+div &&
-		scp.timeUnitSelect.Selected != picoSec+div {
-		scp.timeUnitSelect.SetSelected(nanoSec + div)
+	if scp.timeUnitSelect != nil {
+		scp.timeUnitSelect.SetOptions(etsUnits)
+		if scp.timeUnitSelect.Selected != nanoSec+div &&
+			scp.timeUnitSelect.Selected != picoSec+div {
+			scp.timeUnitSelect.SetSelected(nanoSec + div)
+		}
+		scp.timeUnitSelect.Refresh()
 	}
-	scp.timeUnitSelect.Refresh()
 }
 
 func (scp *ScpDesc) setNotETSTimeDiv() {
-	scp.ipmSelect.SetOptions(interpolationModeOptions)
-	scp.timeUnitSelect.SetOptions(units)
+	if scp.ipmSelect != nil {
+		scp.ipmSelect.SetOptions(interpolationModeOptions)
+	}
+	if scp.timeUnitSelect != nil {
+		scp.timeUnitSelect.SetOptions(units)
+	}
 }
 
 func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception) {
@@ -730,6 +738,9 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 
 	if newMode == control.ETS {
 		if prev != control.ETS {
+			if wasRunning {
+				scp.updateTriggerStateRunning()
+			}
 			scp.setETSTimeDiv()
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Show()
@@ -744,8 +755,10 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				scp.etsSamplingRateDisp.Show()
 			}
 			for i := range scp.channelViewers { // Uncheck and disable all channels
-				scp.channelViewers[i].triggerCheckbox.SetChecked(false)
-				scp.channelViewers[i].triggerCheckbox.Disable()
+				if scp.channelViewers[i].triggerCheckbox != nil {
+					scp.channelViewers[i].triggerCheckbox.SetChecked(false)
+					scp.channelViewers[i].triggerCheckbox.Disable()
+				}
 			}
 			if scp.triggerTypeSelect != nil {
 				scp.triggerTypeSelect.SetOptions([]string{settings.TriggerTypeSimple,
@@ -757,17 +770,26 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				scp.triggerTypeSelect.Refresh()
 			}
 			scp.triggerSource = genericps.ChA // only channel A is allowed
-			channelViewer := &scp.channelViewers[genericps.ChA]
-			channel := &scp.Settings.Channels[genericps.ChA]
-			channelViewer.enableCheckbox.Set()
-			channelViewer.triggerCheckbox.Enable()
-			channelViewer.triggerCheckbox.SetChecked(true)
-			scp.setTrigger(true, genericps.ChA, channel.Trigger.Mv,
-				channel.Trigger.TriggerDirection, autoTriggerMs,
-				float64(scp.Settings.Time.TriggerTimeOffset))
+			if int(genericps.ChA) < len(scp.channelViewers) {
+				channelViewer := &scp.channelViewers[genericps.ChA]
+				channel := &scp.Settings.Channels[genericps.ChA]
+				if channelViewer.enableCheckbox != nil {
+					channelViewer.enableCheckbox.Set()
+				}
+				if channelViewer.triggerCheckbox != nil {
+					channelViewer.triggerCheckbox.Enable()
+					channelViewer.triggerCheckbox.SetChecked(true)
+				}
+				scp.setTrigger(true, genericps.ChA, channel.Trigger.Mv,
+					channel.Trigger.TriggerDirection, autoTriggerMs,
+					float64(scp.Settings.Time.TriggerTimeOffset))
+			}
 		}
 	} else {
 		if prev == control.ETS {
+			if wasRunning {
+				scp.updateTriggerStateRunning()
+			}
 			scp.setNotETSTimeDiv()
 			if scp.boxEtsSettings != nil {
 				scp.boxEtsSettings.Hide()
@@ -791,14 +813,29 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 				scp.triggerTypeSelect.Refresh()
 			}
 			for i := range scp.channelViewers {
-				scp.channelViewers[i].triggerCheckbox.Enable()
+				if scp.channelViewers[i].triggerCheckbox != nil {
+					scp.channelViewers[i].triggerCheckbox.Enable()
+				}
 			}
 		}
 		if newMode == control.Single {
 			if scp.running {
 				scp.runblockButton.SetIcon(theme.MediaPlayIcon())
 				scp.running = false
+				scp.updateTriggerStateStopped()
 			}
+		} else if scp.running {
+			fyne.Do(func() {
+				if scp.triggerStatusLabel != nil && scp.triggerStatusLabel.Text != "Trig'd" {
+					if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+						scp.triggerStatusLabel.Text = "Auto"
+					} else {
+						scp.triggerStatusLabel.Text = "Wait"
+					}
+					scp.triggerStatusLabel.Importance = widget.WarningImportance
+					scp.triggerStatusLabel.Refresh()
+				}
+			})
 		}
 	}
 

@@ -132,6 +132,15 @@ func (s *Server) RegisterCallbacks() {
 			},
 		})
 	})
+
+	if reporter, ok := s.ctrl.(control.TriggerStateReporter); ok {
+		reporter.SetTriggerStateCallback(func(triggered bool) {
+			s.broadcast(&ServerMessage{
+				Type:    TypeTriggerState,
+				Payload: &TriggerStateMessage{Triggered: triggered},
+			})
+		})
+	}
 }
 
 // Start listens on the given TCP address and accepts incoming client connections in a background goroutine.

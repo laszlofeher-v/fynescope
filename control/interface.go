@@ -45,6 +45,7 @@ type ScopeController interface {
 	SetRefreshEtsCallback(cb func(buffers [][]int16, etsOutBuffer []int64, xRoundError float64, samplingTimeInterval float64))
 	SetBufferCallback(cb func(size int))
 	SetEtsBufferCallback(cb func(size int))
+	SetTriggerStateCallback(cb func(triggered bool))
 	SetDisplayStatus(cb func(s string, errorType ScopeError))
 	ShowDisplayStatus(s string, errorType ScopeError)
 	NewChannels(numberOfChannels int)

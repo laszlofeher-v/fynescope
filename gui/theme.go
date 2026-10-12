@@ -66,6 +66,8 @@ func (t ScpDarkTheme) Color(c fyne.ThemeColorName, variant fyne.ThemeVariant) co
 		return color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0x42}
 	case theme.ColorNameError:
 		return color.NRGBA{R: 0xf4, G: 0x43, B: 0x36, A: 0xff}
+	case theme.ColorNameWarning:
+		return color.NRGBA{R: 0xff, G: 0xa5, B: 0x00, A: 0xff}
 	case theme.ColorNameFocus:
 		return color.NRGBA{R: 0x21, G: 0x96, B: 0xf3, A: 0x7f}
 	case theme.ColorNameHover:
@@ -148,6 +150,8 @@ func (t ScpLightTheme) Color(c fyne.ThemeColorName, variant fyne.ThemeVariant) c
 		return color.Black
 	case theme.ColorNameSuccess:
 		return color.NRGBA{R: 0x0, G: 0xff, B: 0x0, A: 0xff}
+	case theme.ColorNameWarning:
+		return color.NRGBA{R: 0xd9, G: 0x77, B: 0x06, A: 0xff}
 	case theme.ColorNameForegroundOnPrimary:
 		return color.NRGBA{R: 0xff, G: 0xff, B: 0xff, A: 0xf0}
 	default:

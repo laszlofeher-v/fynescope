@@ -38,6 +38,7 @@ type Client struct {
 	bufferCallback     func(size int)
 	etsBufferCallback  func(size int)
 	displayStatus      func(s string, errorType control.ScopeError)
+	triggerStateCb     func(triggered bool)
 
 	closed    chan struct{}
 	closeOnce sync.Once
@@ -182,6 +183,18 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		c.cbMu.RUnlock()
 		if cb != nil {
 			cb(data.Text, data.ErrorType)
+		}
+
+	case TypeTriggerState:
+		data, ok := msg.Payload.(*TriggerStateMessage)
+		if !ok {
+			return
+		}
+		c.cbMu.RLock()
+		cb := c.triggerStateCb
+		c.cbMu.RUnlock()
+		if cb != nil {
+			cb(data.Triggered)
 		}
 
 	default:
@@ -656,6 +669,17 @@ func (c *Client) SetDisplayStatus(cb func(s string, errorType control.ScopeError
 	c.displayStatus = cb
 	c.cbMu.Unlock()
 }
+
+// SetTriggerStateCallback registers the callback invoked when the server reports
+// whether the latest acquisition was released by a real trigger event.
+// It makes Client a control.TriggerStateReporter.
+func (c *Client) SetTriggerStateCallback(cb func(triggered bool)) {
+	c.cbMu.Lock()
+	c.triggerStateCb = cb
+	c.cbMu.Unlock()
+}
+
+var _ control.TriggerStateReporter = (*Client)(nil)
 
 // --- ScopeController: Connection bypass ---
 
