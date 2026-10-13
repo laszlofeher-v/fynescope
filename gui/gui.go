@@ -1637,6 +1637,24 @@ func (scp *ScpDesc) StopRunning() {
 	}
 }
 
+func (scp *ScpDesc) isAutoTriggerSupported() bool {
+	if scp.Settings == nil || scp.Settings.Trigger.Mode != settings.TriggerModeAuto {
+		return false
+	}
+	switch scp.Settings.Trigger.Type {
+	case settings.TriggerTypeWindowPulseWidth,
+		settings.TriggerTypeWindowDropout,
+		settings.TriggerTypeInterval,
+		settings.TriggerTypePulseWidth,
+		settings.TriggerTypeDropout,
+		settings.TriggerTypeRunt,
+		settings.TriggerTypeRiseFall:
+		return false
+	default:
+		return true
+	}
+}
+
 func (scp *ScpDesc) updateTriggerState(triggered bool) {
 	if scp.triggerStatusLabel == nil {
 		return
@@ -1652,7 +1670,7 @@ func (scp *ScpDesc) updateTriggerState(triggered bool) {
 			scp.triggerStatusLabel.Text = triggeredStat
 			scp.triggerStatusLabel.Importance = widget.SuccessImportance
 		} else {
-			if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+			if scp.isAutoTriggerSupported() {
 				scp.triggerStatusLabel.Text = triggerAutoStat
 			} else {
 				scp.triggerStatusLabel.Text = triggerWaitStat
@@ -1682,7 +1700,7 @@ func (scp *ScpDesc) updateTriggerStateRunning() {
 		if !scp.running {
 			return
 		}
-		if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+		if scp.isAutoTriggerSupported() {
 			scp.triggerStatusLabel.Text = triggerAutoStat
 		} else {
 			scp.triggerStatusLabel.Text = triggerWaitStat
