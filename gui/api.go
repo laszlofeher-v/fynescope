@@ -249,7 +249,7 @@ func (scp *ScpDesc) RunScope() error {
 
 // StopScope stops the oscilloscope capture.
 func (scp *ScpDesc) StopScope() error {
-	scp.ExecuteVoiceCommand("stop")
+	scp.ExecuteVoiceCommand(triggerStopStat)
 	return nil
 }
 
