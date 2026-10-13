@@ -1,19 +1,5 @@
 package gui
 
-/*
-VNA
-Inputs:
-  generator:
-  fmin,fmax,multiplier,step,steptime,outputlevel
-
-  channels (A,B):
-  AC/DC, signal level, sample time interval
-
-  display
-
-
-SCOPE
-*/
 import (
 	"fmt"
 	"fynescope/control"
@@ -60,7 +46,10 @@ const (
 
 	streamEnabledLabel  = "Stream: Enabled"
 	streamDisabledLabel = "Stream: Disabled"
-
+	triggeredStat       = "Trig'd"
+	triggerStopStat     = "Stop  "
+	triggerWaitStat     = "Wait  "
+	triggerAutoStat     = "Auto  "
 	// ErrFrequencyCannotBeDetected is returned when f(f) cannot lock onto the signal.
 	ErrFrequencyCannotBeDetected = "Frequency cannot be detected"
 	ErrWrongFfTrigger            = "Error: f(f) requires Simple, Advanced, or Window trigger"
@@ -1210,7 +1199,7 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 	})
 	addToTest(scp.runblockButton, runblockButtonId, -1)
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 	addToTest(scp.triggerStatusLabel, triggerStatusLabelId, -1)
@@ -1654,19 +1643,19 @@ func (scp *ScpDesc) updateTriggerState(triggered bool) {
 	}
 	fyne.Do(func() {
 		if !scp.running {
-			scp.triggerStatusLabel.Text = "Stop"
+			scp.triggerStatusLabel.Text = triggerStopStat
 			scp.triggerStatusLabel.Importance = widget.DangerImportance
 			scp.triggerStatusLabel.Refresh()
 			return
 		}
 		if triggered {
-			scp.triggerStatusLabel.Text = "Trig'd"
+			scp.triggerStatusLabel.Text = triggeredStat
 			scp.triggerStatusLabel.Importance = widget.SuccessImportance
 		} else {
 			if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
-				scp.triggerStatusLabel.Text = "Auto"
+				scp.triggerStatusLabel.Text = triggerAutoStat
 			} else {
-				scp.triggerStatusLabel.Text = "Wait"
+				scp.triggerStatusLabel.Text = triggerWaitStat
 			}
 			scp.triggerStatusLabel.Importance = widget.WarningImportance
 		}
@@ -1679,7 +1668,7 @@ func (scp *ScpDesc) updateTriggerStateStopped() {
 		return
 	}
 	fyne.Do(func() {
-		scp.triggerStatusLabel.Text = "Stop"
+		scp.triggerStatusLabel.Text = triggerStopStat
 		scp.triggerStatusLabel.Importance = widget.DangerImportance
 		scp.triggerStatusLabel.Refresh()
 	})
@@ -1694,9 +1683,9 @@ func (scp *ScpDesc) updateTriggerStateRunning() {
 			return
 		}
 		if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
-			scp.triggerStatusLabel.Text = "Auto"
+			scp.triggerStatusLabel.Text = triggerAutoStat
 		} else {
-			scp.triggerStatusLabel.Text = "Wait"
+			scp.triggerStatusLabel.Text = triggerWaitStat
 		}
 		scp.triggerStatusLabel.Importance = widget.WarningImportance
 		scp.triggerStatusLabel.Refresh()

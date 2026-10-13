@@ -827,11 +827,11 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 			}
 		} else if scp.running {
 			fyne.Do(func() {
-				if scp.triggerStatusLabel != nil && scp.triggerStatusLabel.Text != "Trig'd" {
+				if scp.triggerStatusLabel != nil && scp.triggerStatusLabel.Text != triggeredStat {
 					if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
-						scp.triggerStatusLabel.Text = "Auto"
+						scp.triggerStatusLabel.Text = triggerAutoStat
 					} else {
-						scp.triggerStatusLabel.Text = "Wait"
+						scp.triggerStatusLabel.Text = triggerWaitStat
 					}
 					scp.triggerStatusLabel.Importance = widget.WarningImportance
 					scp.triggerStatusLabel.Refresh()

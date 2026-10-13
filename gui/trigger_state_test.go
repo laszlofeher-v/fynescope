@@ -4,13 +4,14 @@ import (
 	"image/color"
 	"testing"
 
+	"fynescope/control"
+	"fynescope/selectscroll"
+	"fynescope/settings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"fynescope/control"
-	"fynescope/selectscroll"
-	"fynescope/settings"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,26 +25,26 @@ func TestTriggerStatusLabel_InitialAndStoppedState(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 
 	// Verify initial state
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 
 	// When stopped, trigger state notifications should remain "Stop"
 	scp.updateTriggerState(true)
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 
 	scp.updateTriggerState(false)
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 
 	// Calling updateTriggerStateRunning while stopped should not change label
 	scp.updateTriggerStateRunning()
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -57,29 +58,29 @@ func TestTriggerStatusLabel_RunningRepeatMode(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 
 	// Started running: waiting for trigger
 	scp.updateTriggerStateRunning()
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Fired trigger: Trig'd
 	scp.updateTriggerState(true)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger released / waiting again: Wait
 	scp.updateTriggerState(false)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Stopped: Stop
 	scp.running = false
 	scp.updateTriggerStateStopped()
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -93,35 +94,35 @@ func TestTriggerStatusLabel_RunningAutoMode(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 
 	// Started running: waiting in Auto mode displays "Auto"
 	scp.updateTriggerStateRunning()
-	assert.Equal(t, "Auto", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerAutoStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Fired trigger: Trig'd
 	scp.updateTriggerState(true)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger released / auto timeout: Auto
 	scp.updateTriggerState(false)
-	assert.Equal(t, "Auto", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerAutoStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Stopped: Stop
 	scp.running = false
 	scp.updateTriggerStateStopped()
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
 type triggerTestScopeController struct {
 	mockRemoteScopeController
-	triggerStateCb func(triggered bool)
+	triggerStateCb  func(triggered bool)
 	displayStatusCb func(s string, errorType control.ScopeError)
 }
 
@@ -151,7 +152,7 @@ func TestTriggerStatusLabel_CallbackIntegration(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 
@@ -164,12 +165,12 @@ func TestTriggerStatusLabel_CallbackIntegration(t *testing.T) {
 
 	// Trigger fired
 	mockCtrl.triggerStateCb(true)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger waiting
 	mockCtrl.triggerStateCb(false)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -186,7 +187,7 @@ func TestTriggerStatusLabel_FatalError(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Wait")
+	scp.triggerStatusLabel = widget.NewLabel(triggerWaitStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.WarningImportance
 
@@ -196,7 +197,7 @@ func TestTriggerStatusLabel_FatalError(t *testing.T) {
 	mockCtrl.ShowDisplayStatus("Fatal error occurred", control.Fatal)
 
 	assert.False(t, scp.running)
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -214,31 +215,31 @@ func TestTriggerStatusLabel_ModeChangeTransitions(t *testing.T) {
 		},
 		repartition: make(chan struct{}, 1),
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Auto")
+	scp.triggerStatusLabel = widget.NewLabel(triggerAutoStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.WarningImportance
 
 	// Switch from Auto to Repeat while running and not triggered
 	scp.onTriggerModeChange(settings.TriggerModeRepeat, selectscroll.None)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Switch from Repeat to Auto while running and not triggered
 	scp.onTriggerModeChange(settings.TriggerModeAuto, selectscroll.None)
-	assert.Equal(t, "Auto", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerAutoStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// If currently Trig'd, mode change should preserve Trig'd
-	scp.triggerStatusLabel.Text = "Trig'd"
+	scp.triggerStatusLabel.Text = triggeredStat
 	scp.triggerStatusLabel.Importance = widget.SuccessImportance
 	scp.onTriggerModeChange(settings.TriggerModeRepeat, selectscroll.None)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Switch to Single while running: should stop acquisition and show Stop
 	scp.onTriggerModeChange(settings.TriggerModeSingle, selectscroll.None)
 	assert.False(t, scp.running)
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -252,29 +253,29 @@ func TestTriggerStatusLabel_RunningETSMode(t *testing.T) {
 			},
 		},
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Stop")
+	scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.DangerImportance
 
 	// Started running in ETS mode: waiting for trigger
 	scp.updateTriggerStateRunning()
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Fired trigger: Trig'd
 	scp.updateTriggerState(true)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger released / waiting again (e.g. trigger point out of signal range): Wait
 	scp.updateTriggerState(false)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Stopped: Stop
 	scp.running = false
 	scp.updateTriggerStateStopped()
-	assert.Equal(t, "Stop", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerStopStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.DangerImportance, scp.triggerStatusLabel.Importance)
 }
 
@@ -298,29 +299,29 @@ func TestTriggerStatusLabel_ModeChangeTransitionsETS(t *testing.T) {
 		},
 		repartition: make(chan struct{}, 1),
 	}
-	scp.triggerStatusLabel = widget.NewLabel("Trig'd")
+	scp.triggerStatusLabel = widget.NewLabel(triggeredStat)
 	scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
 	scp.triggerStatusLabel.Importance = widget.SuccessImportance
 
 	// Switch from Auto to ETS while running and currently Trig'd
 	// Status must immediately transition to "Wait" (not remaining Trig'd)
 	scp.onTriggerModeChange(settings.TriggerModeETS, selectscroll.None)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger fires in ETS mode -> Trig'd
 	scp.updateTriggerState(true)
-	assert.Equal(t, "Trig'd", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
 
 	// Trigger point out of signal range in ETS mode -> Wait
 	scp.updateTriggerState(false)
-	assert.Equal(t, "Wait", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 
 	// Switch back to Auto while running -> transitions to "Auto"
 	scp.onTriggerModeChange(settings.TriggerModeAuto, selectscroll.None)
-	assert.Equal(t, "Auto", scp.triggerStatusLabel.Text)
+	assert.Equal(t, triggerAutoStat, scp.triggerStatusLabel.Text)
 	assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
 }
 
