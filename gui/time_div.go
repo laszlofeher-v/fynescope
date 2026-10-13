@@ -828,7 +828,7 @@ func (scp *ScpDesc) onTriggerModeChange(option string, ex selectscroll.Exception
 		} else if scp.running {
 			fyne.Do(func() {
 				if scp.triggerStatusLabel != nil && scp.triggerStatusLabel.Text != triggeredStat {
-					if scp.Settings != nil && scp.Settings.Trigger.Mode == settings.TriggerModeAuto {
+					if scp.isAutoTriggerSupported() {
 						scp.triggerStatusLabel.Text = triggerAutoStat
 					} else {
 						scp.triggerStatusLabel.Text = triggerWaitStat
@@ -1326,6 +1326,20 @@ func (scp *ScpDesc) onTriggerTypeChange(option string, ex selectscroll.Exception
 	}(triggerCopy)
 
 	scp.updateTriggerUIForType()
+
+	if scp.running {
+		fyne.Do(func() {
+			if scp.triggerStatusLabel != nil && scp.triggerStatusLabel.Text != triggeredStat {
+				if scp.isAutoTriggerSupported() {
+					scp.triggerStatusLabel.Text = triggerAutoStat
+				} else {
+					scp.triggerStatusLabel.Text = triggerWaitStat
+				}
+				scp.triggerStatusLabel.Importance = widget.WarningImportance
+				scp.triggerStatusLabel.Refresh()
+			}
+		})
+	}
 
 	setFlag(scp.repartition)
 	scp.refreshRasters()

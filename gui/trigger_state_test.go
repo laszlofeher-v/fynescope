@@ -332,3 +332,63 @@ func TestTriggerStatusLabel_ThemeColors(t *testing.T) {
 	lightWarning := ScpLightTheme{}.Color(theme.ColorNameWarning, theme.VariantLight)
 	assert.Equal(t, color.NRGBA{R: 217, G: 119, B: 6, A: 255}, lightWarning)
 }
+
+func TestTriggerStatusLabel_AutoModeUnsupportedTriggerTypes(t *testing.T) {
+	test.NewApp()
+	mockCtrl := &triggerTestScopeController{}
+
+	unsupportedTypes := []string{
+		settings.TriggerTypeWindowPulseWidth,
+		settings.TriggerTypeWindowDropout,
+		settings.TriggerTypeInterval,
+		settings.TriggerTypePulseWidth,
+		settings.TriggerTypeDropout,
+		settings.TriggerTypeRunt,
+		settings.TriggerTypeRiseFall,
+	}
+
+	for _, tType := range unsupportedTypes {
+		t.Run(tType, func(t *testing.T) {
+			scp := &ScpDesc{
+				running:   true,
+				psControl: mockCtrl,
+				Settings: &settings.PsSettings{
+					Trigger: settings.TriggerSettings{
+						Mode: settings.TriggerModeAuto,
+						Type: tType,
+					},
+					Channels: make([]settings.ChSettings, 4),
+				},
+				channelViewers: make([]channelViewerDesc, 4),
+				repartition:    make(chan struct{}, 1),
+			}
+			scp.triggerStatusLabel = widget.NewLabel(triggerStopStat)
+			scp.triggerStatusLabel.TextStyle = fyne.TextStyle{Bold: true, Monospace: true}
+			scp.triggerStatusLabel.Importance = widget.DangerImportance
+
+			// When running in Auto mode but with an unsupported auto-trigger type:
+			// Waiting should display "Wait" instead of "Auto"
+			scp.updateTriggerStateRunning()
+			assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
+			assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
+
+			// When triggered: should still display "Trig'd"
+			scp.updateTriggerState(true)
+			assert.Equal(t, triggeredStat, scp.triggerStatusLabel.Text)
+			assert.Equal(t, widget.SuccessImportance, scp.triggerStatusLabel.Importance)
+
+			// When untriggered: should display "Wait" instead of "Auto"
+			scp.updateTriggerState(false)
+			assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
+			assert.Equal(t, widget.WarningImportance, scp.triggerStatusLabel.Importance)
+
+			// Switching trigger type from Simple to this unsupported type while running
+			scp.Settings.Trigger.Type = settings.TriggerTypeSimple
+			scp.updateTriggerState(false)
+			assert.Equal(t, triggerAutoStat, scp.triggerStatusLabel.Text)
+
+			scp.onTriggerTypeChange(tType, selectscroll.None)
+			assert.Equal(t, triggerWaitStat, scp.triggerStatusLabel.Text)
+		})
+	}
+}
