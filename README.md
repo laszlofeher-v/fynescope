@@ -113,6 +113,9 @@ For complete, step-by-step setup guides (including Windows toolchain setup, Linu
 <p align="center">
   <img src="pictures/pulsewidth.png" width="100%" alt="Pulse Width Triggering and Interface">
 </p>
+<p align="center">
+  <img src="mos.png" width="100%" alt="MOS display">
+</p>
 
 ---
 
