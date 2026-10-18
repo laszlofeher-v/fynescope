@@ -5,6 +5,10 @@ import (
 	"fynescope/control/scpi"
 )
 
+const (
+	notConnected = "external generator is not connected"
+)
+
 type ExtGenConfig struct {
 	Port   string
 	UsbVid string
@@ -65,7 +69,7 @@ func (e *ExtGenDesc) GetVidPid() (string, string) {
 // SetFrequency sets the output frequency on the given channel.
 func (e *ExtGenDesc) SetFrequency(ch scpi.ChType, freq float64) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetFrequency(ch, freq)
 }
@@ -73,7 +77,7 @@ func (e *ExtGenDesc) SetFrequency(ch scpi.ChType, freq float64) error {
 // SetAmplitude sets the peak-to-peak output amplitude (in volts).
 func (e *ExtGenDesc) SetAmplitude(ch scpi.ChType, amp float64) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetAmplitude(ch, amp)
 }
@@ -81,14 +85,14 @@ func (e *ExtGenDesc) SetAmplitude(ch scpi.ChType, amp float64) error {
 // SetOffset sets the DC offset voltage (in volts).
 func (e *ExtGenDesc) SetOffset(ch scpi.ChType, offset float64) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetOffset(ch, offset)
 }
 
 func (e *ExtGenDesc) SetPhase(ch scpi.ChType, phase float64) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetPhase(ch, phase)
 }
@@ -96,7 +100,7 @@ func (e *ExtGenDesc) SetPhase(ch scpi.ChType, phase float64) error {
 // SetOutput enables or disables the signal output on the given channel.
 func (e *ExtGenDesc) SetOutput(ch scpi.ChType, on bool) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetOutput(ch, on)
 }
@@ -104,7 +108,7 @@ func (e *ExtGenDesc) SetOutput(ch scpi.ChType, on bool) error {
 // SetWaveform sets the waveform type for simple shapes (e.g. "SINusoid", "SQUare").
 func (e *ExtGenDesc) SetWaveform(ch scpi.ChType, wave string) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetWaveform(ch, wave)
 }
@@ -112,7 +116,7 @@ func (e *ExtGenDesc) SetWaveform(ch scpi.ChType, wave string) error {
 // SetRampSymmetry sets the symmetry
 func (e *ExtGenDesc) SetRampSymmetry(ch scpi.ChType, wave string) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetRampSymmetry(ch, wave)
 }
@@ -121,7 +125,7 @@ func (e *ExtGenDesc) SetRampSymmetry(ch scpi.ChType, wave string) error {
 // val should be a numeric string (e.g. "50"), "INFinity", "MINimum", or "MAXimum".
 func (e *ExtGenDesc) SetImpedance(ch scpi.ChType, val string) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.SetImpedance(ch, val)
 }
@@ -129,7 +133,7 @@ func (e *ExtGenDesc) SetImpedance(ch scpi.ChType, val string) error {
 // SendRaw sends a raw SCPI command string to the external generator.
 func (e *ExtGenDesc) SendRaw(cmd string) error {
 	if e.gen == nil {
-		return fmt.Errorf("external generator is not connected")
+		return fmt.Errorf(notConnected)
 	}
 	return e.gen.Send(cmd)
 }
