@@ -1080,26 +1080,25 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			var dAmpStr, dAmpCurStr, dPhaseStr, dPhaseCurStr string
 
 			if enabled {
-				dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
+				// inspectorDispAmp / refInstAmp hold linear amplitudes in mV (bodePoint.amp).
+				// inspectorDispAmpCur / refInstAmpCur hold the crosshair Y level, already in the
+				// display unit (mV in voltage mode, dB in any dB mode).
 				dvAmpCur := ff.inspectorDispAmpCur[chIdx] - refInstAmpCur[chIdx]
 
 				if ff.scp.Settings.Dft.DisplayUnit == settings.UnitVoltage {
-					mv := dvAmp * float64(genericps.RangeValuesMv[vRange])
-					mvCur := dvAmpCur * float64(genericps.RangeValuesMv[vRange])
-					dAmpStr = formatVoltageFloat64(mv, vRange)
-					dAmpCurStr = formatVoltageFloat64(mvCur, vRange)
+					dvAmp := ff.inspectorDispAmp[chIdx] - refInstAmp[chIdx]
+					dAmpStr = formatVoltageFloat64(dvAmp, vRange)
+					dAmpCurStr = formatVoltageFloat64(dvAmpCur, vRange)
 				} else {
-					unitStr := ff.scp.Settings.Dft.DisplayUnit
-					if unitStr == settings.UnitArbitraryDB {
-						unitStr = "dB"
-					}
-					dAmpStr = fmt.Sprintf("%.1f%s", dvAmp, unitStr)
-					dAmpCurStr = fmt.Sprintf("%.1f%s", dvAmpCur, unitStr)
+					// The difference of two absolute dB levels (dBFS, dBV, ...) is a plain dB ratio.
+					dDb := ff.ampToDb(ff.inspectorDispAmp[chIdx], vRange) - ff.ampToDb(refInstAmp[chIdx], vRange)
+					dAmpStr = fmt.Sprintf("%+.1fdB", dDb)
+					dAmpCurStr = fmt.Sprintf("%+.1fdB", dvAmpCur)
 				}
 			}
 			if phaseEnabled {
-				dPhaseStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhase[chIdx]-refInstPhase[chIdx])
-				dPhaseCurStr = fmt.Sprintf("%.1f°", ff.inspectorDispPhaseCur[chIdx]-refInstPhaseCur[chIdx])
+				dPhaseStr = fmt.Sprintf("%+.1f°", wrapPhaseDeg(ff.inspectorDispPhase[chIdx]-refInstPhase[chIdx]))
+				dPhaseCurStr = fmt.Sprintf("%+.1f°", wrapPhaseDeg(ff.inspectorDispPhaseCur[chIdx]-refInstPhaseCur[chIdx]))
 			}
 
 			if enabled && phaseEnabled {
@@ -1158,6 +1157,33 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	for i, item := range info {
 		ff.scp.addLabel(ff.scp.ffScopeFullScreen, xBox+8, yBox+10+i*lineHeight+15, item.text, item.col)
 	}
+}
+
+// ampToDb converts a linear bodePoint amplitude (mV) into the current dB display unit,
+// clamped to the same [-80, 0] window used for drawing the curves.
+func (ff *ffViewer) ampToDb(mv float64, vRange genericps.RangeEnum) float64 {
+	const dbFloor = -80.0
+	val := mv / float64(genericps.RangeValuesMv[vRange])
+	if val < 1e-10 {
+		return dbFloor
+	}
+	db := calcFfDb(val, ff.scp.Settings.Dft.DisplayUnit, vRange, ff.scp.Settings.Dft.ArbitraryDbRefV)
+	if db < dbFloor {
+		return dbFloor
+	}
+	if db > 0 {
+		return 0
+	}
+	return db
+}
+
+// wrapPhaseDeg wraps a phase difference in degrees into the range (-180, 180].
+func wrapPhaseDeg(d float64) float64 {
+	d = math.Mod(d+180.0, 360.0)
+	if d <= 0 {
+		d += 360.0
+	}
+	return d - 180.0
 }
 
 // fyneToImg converts Fyne logical UI coordinates to actual raster image pixel coordinates.
