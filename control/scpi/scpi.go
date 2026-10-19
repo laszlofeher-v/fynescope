@@ -220,7 +220,7 @@ func (g *Generator) SetOffset(ch ChType, offset float64) error {
 }
 
 func (g *Generator) SetPhase(ch ChType, phase float64) error {
-	return g.send(fmt.Sprintf("SOUR%d:PHAS %f", ch, phase))
+	return g.send(fmt.Sprintf("SOUR%d:PHAS %fDEG", ch, phase))
 }
 
 func (g *Generator) SetOutput(ch ChType, on bool) error {
