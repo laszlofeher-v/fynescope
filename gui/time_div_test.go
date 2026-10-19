@@ -120,3 +120,37 @@ func TestTimeDiv_UpdateTriggerModeOptions_2206BMSO(t *testing.T) {
 	opts = scp.triggerModeSelect.Options
 	assert.Contains(t, opts, settings.TriggerModeETS)
 }
+
+func TestTimeDiv_SincOnlyInNormalSamplingMode(t *testing.T) {
+	test.NewApp()
+	initTimeMaps()
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Time:    settings.TimeSettings{ResolutionMode: "Normal"},
+			Trigger: settings.TriggerSettings{Mode: settings.TriggerModeRepeat},
+		},
+	}
+	scp.ipmSelect = selectscroll.NewSelectScroll(scp.availableInterpolationOptions(),
+		func(s string, e selectscroll.Exception) {}, linear)
+	scp.ipmSelect.SetSelected(sinc)
+
+	scp.updateInterpolationOptions()
+	assert.Contains(t, scp.ipmSelect.Options, sinc)
+	assert.Equal(t, sinc, scp.ipmSelect.Selected)
+
+	for _, mode := range []string{"High-Res", "ED", "Decimate"} {
+		scp.Settings.Time.ResolutionMode = mode
+		scp.updateInterpolationOptions()
+		assert.NotContains(t, scp.ipmSelect.Options, sinc, mode)
+		assert.Equal(t, linear, scp.ipmSelect.Selected, mode)
+	}
+
+	scp.Settings.Time.ResolutionMode = "Normal"
+	scp.updateInterpolationOptions()
+	assert.Contains(t, scp.ipmSelect.Options, sinc)
+
+	// ETS never allows Sinc, even in Normal sampling mode
+	scp.Settings.Trigger.Mode = settings.TriggerModeETS
+	scp.updateInterpolationOptions()
+	assert.NotContains(t, scp.ipmSelect.Options, sinc)
+}

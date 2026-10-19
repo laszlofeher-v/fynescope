@@ -664,10 +664,44 @@ func (scp *ScpDesc) onInterpolationModeChange(option string, e selectscroll.Exce
 	scp.SaveSettings()
 }
 
+// isSincAllowed reports whether Sinc interpolation may be offered. Sinc is only
+// meaningful on raw (non-downsampled) data, so it is restricted to the Normal
+// sampling mode, and it is never available in ETS trigger mode.
+func (scp *ScpDesc) isSincAllowed() bool {
+	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
+		return false
+	}
+	mode, ok := resolutionModes[scp.Settings.Time.ResolutionMode]
+	return !ok || mode == genericps.RatioModeNone
+}
+
+// availableInterpolationOptions returns the interpolation options valid for the
+// current trigger and sampling mode.
+func (scp *ScpDesc) availableInterpolationOptions() []string {
+	if scp.isSincAllowed() {
+		return interpolationModeOptions
+	}
+	return interpolationModeOptions[:3]
+}
+
+// updateInterpolationOptions refreshes the interpolation selector options and
+// falls back from Sinc to Linear when Sinc is no longer allowed.
+func (scp *ScpDesc) updateInterpolationOptions() {
+	if scp.ipmSelect == nil {
+		return
+	}
+	scp.ipmSelect.SetOptions(scp.availableInterpolationOptions())
+	if !scp.isSincAllowed() && scp.ipmSelect.Selected == sinc {
+		scp.ipmSelect.SetSelected(linear)
+	}
+	scp.ipmSelect.Refresh()
+}
+
 func (scp *ScpDesc) onResolutionModeChange(option string, e selectscroll.Exception) {
 	scp.Settings.Time.ResolutionMode = option
 	mode := resolutionModes[option]
 	scp.psControl.SetResolutionMode(mode)
+	scp.updateInterpolationOptions()
 	scp.SaveSettings()
 	if scp.running {
 		scp.psControl.RequestRestart()
@@ -704,12 +738,7 @@ func (scp *ScpDesc) onSampleUnitChange(_ string, _ selectscroll.Exception) {
 }
 
 func (scp *ScpDesc) setETSTimeDiv() {
-	if scp.ipmSelect != nil {
-		scp.ipmSelect.SetOptions(interpolationModeOptions[:3])
-		if scp.ipmSelect.Selected == sinc {
-			scp.ipmSelect.SetSelected(linear)
-		}
-	}
+	scp.updateInterpolationOptions()
 	if scp.timeUnitSelect != nil {
 		scp.timeUnitSelect.SetOptions(etsUnits)
 		if scp.timeUnitSelect.Selected != nanoSec+div &&
@@ -721,9 +750,7 @@ func (scp *ScpDesc) setETSTimeDiv() {
 }
 
 func (scp *ScpDesc) setNotETSTimeDiv() {
-	if scp.ipmSelect != nil {
-		scp.ipmSelect.SetOptions(interpolationModeOptions)
-	}
+	scp.updateInterpolationOptions()
 	if scp.timeUnitSelect != nil {
 		scp.timeUnitSelect.SetOptions(units)
 	}
@@ -1814,15 +1841,13 @@ func (scp *ScpDesc) newTimeSelectionUI() *fyne.Container {
 	scp.timeSelect.SilentSetSelected(scp.Settings.Time.TimeDiv)
 	intTimeDiv, _ := strconv.Atoi(scp.timeSelect.Selected)
 	scp.timeDiv = intTimeDiv
-	options := interpolationModeOptions
-	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS {
-		options = interpolationModeOptions[:3]
-	}
-	scp.ipmSelect = selectscroll.NewSelectScroll(options, scp.onInterpolationModeChange, linear)
+	scp.ipmSelect = selectscroll.NewSelectScroll(scp.availableInterpolationOptions(),
+		scp.onInterpolationModeChange, linear)
 
 	selected := interpolationModeOptions[scp.Settings.Time.Interpolation]
-	if triggerModes[scp.Settings.Trigger.Mode] == control.ETS && selected == sinc {
+	if selected == sinc && !scp.isSincAllowed() {
 		selected = linear
+		scp.Settings.Time.Interpolation = settings.Linear
 	}
 	scp.ipmSelect.SetSelected(selected)
 	addToTest(scp.ipmSelect, ipmId, ftTabIndex)
