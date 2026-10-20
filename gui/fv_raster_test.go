@@ -78,3 +78,84 @@ func TestFvViewer_TypedKey(t *testing.T) {
 
 	assert.True(t, true)
 }
+
+func TestFvViewer_CalcValuesAt(t *testing.T) {
+	st := settings.NewDefaultSettings()
+	st.Channels[0].Enabled = true
+	st.Channels[0].FvMode = settings.FvArgument
+	st.Channels[0].VRange = 0 // 10mV or RangeValuesMv[0]
+	st.Channels[0].DisplayVOffset = 0
+
+	st.Channels[1].Enabled = true
+	st.Channels[1].FvMode = settings.FvValue
+	st.Channels[1].VRange = 0
+	st.Channels[1].DisplayVOffset = 0
+
+	scp := &ScpDesc{
+		Settings:     st,
+		channelCount: 2,
+	}
+
+	rect := image.Rect(0, 0, 200, 200)
+	img := image.NewRGBA(rect)
+	fv := newFvViewer(img, rect, scp)
+
+	bounds := image.Rect(0, 0, 200, 200)
+	w := float64(bounds.Dx() - 1)
+	h := float64(bounds.Dy())
+
+	// Test center: should be 0 for both X and Y
+	curV := fv.calcValuesAt(float32(bounds.Min.X)+float32(w/2.0), float32(bounds.Min.Y)+float32(h/2.0), w, h, bounds, 0)
+	assert.InDelta(t, float32(0.0), curV[0], 0.01)
+	assert.InDelta(t, float32(0.0), curV[1], 0.01)
+
+	// Even if displayBuffers are completely empty or have different data,
+	// calcValuesAt depends ONLY on cursor position values and not on signal buffer values
+	scp.displayBuffers = make([][]float32, 2)
+	scp.displayBuffers[0] = []float32{999.0, -999.0}
+	scp.displayBuffers[1] = []float32{-555.0, 555.0}
+
+	curVWithBuffers := fv.calcValuesAt(float32(bounds.Min.X)+float32(w/2.0), float32(bounds.Min.Y)+float32(h/2.0), w, h, bounds, 0)
+	assert.Equal(t, curV[0], curVWithBuffers[0])
+	assert.Equal(t, curV[1], curVWithBuffers[1])
+}
+
+func TestFvViewer_DrawInspector(t *testing.T) {
+	st := settings.NewDefaultSettings()
+	st.Channels[0].Enabled = true
+	st.Channels[0].FvMode = settings.FvArgument
+	st.Channels[1].Enabled = true
+	st.Channels[1].FvMode = settings.FvValue
+
+	rect := image.Rect(0, 0, 400, 400)
+	img := image.NewRGBA(rect)
+	scp := &ScpDesc{
+		Settings:            st,
+		channelCount:        2,
+		fvScopeFullScreen:   img,
+		fvScopeSignalScreen: img,
+	}
+
+	fv := newFvViewer(img, rect, scp)
+	fv.showInspector = true
+	fv.mouseX = 200
+	fv.mouseY = 200
+
+	bounds := rect
+	w := float64(bounds.Dx() - 1)
+	h := float64(bounds.Dy())
+
+	// Should not panic and should draw without signal values
+	assert.NotPanics(t, func() {
+		fv.drawInspector(w, h, bounds)
+	})
+
+	// With reference active
+	fv.refActive = true
+	fv.refX = 150
+	fv.refY = 150
+	assert.NotPanics(t, func() {
+		fv.drawInspector(w, h, bounds)
+	})
+}
+
