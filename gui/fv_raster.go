@@ -7,7 +7,6 @@ import (
 	"image/draw"
 	"log/slog"
 	"math"
-	"time"
 
 	"fynescope/genericps"
 	"fynescope/settings"
@@ -20,19 +19,11 @@ import (
 type (
 	fvViewer struct {
 		rasterPartition
-		scp                 *ScpDesc
-		labelBounds         map[int]image.Rectangle
-		selectedChannel     int
-		showInspector       bool
-		mouseX, mouseY      float32
-		inspectorLastX      float32
-		inspectorLastY      float32
-		inspectorSumV       []float32
-		inspectorSumVCur    []float32
-		inspectorDispV      []float32
-		inspectorDispVCur   []float32
-		inspectorSamples    int
-		inspectorLastUpdate time.Time
+		scp             *ScpDesc
+		labelBounds     map[int]image.Rectangle
+		selectedChannel int
+		showInspector   bool
+		mouseX, mouseY  float32
 
 		// Reference point state for interval measurement
 		refActive   bool
@@ -315,13 +306,12 @@ func (fv *fvViewer) draw() {
 	}
 }
 
-func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle, xCh int) (instV, instVCur []float32) {
+func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rectangle, xCh int) []float32 {
 	totalChannels := int(fv.scp.channelCount) + len(fv.scp.Settings.VirtualChannels)
-	instV = make([]float32, totalChannels)
-	instVCur = make([]float32, totalChannels)
+	curV := make([]float32, totalChannels)
 
 	if xCh == -1 {
-		return instV, instVCur
+		return curV
 	}
 
 	xRange := genericps.RangeValuesMv[fv.scp.Settings.Channels[xCh].VRange]
@@ -329,26 +319,7 @@ func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rect
 	xOffset := fv.offsetNToFv(fv.scp.Settings.Channels[xCh].DisplayVOffset)
 	xZero := float64(bounds.Min.X) + w/2.0 + xOffset
 
-	v_cursor_x := float32((float64(mx) - xZero) / xScale)
-
-	xBuffer := fv.scp.displayBuffers[xCh]
-	if len(xBuffer) == 0 {
-		return instV, instVCur
-	}
-
-	bestIdx := 0
-	minDiffX := math.MaxFloat64
-	for s := 0; s < len(xBuffer); s++ {
-		cx := xZero + float64(xBuffer[s])*xScale
-		diff := math.Abs(cx - float64(mx))
-		if diff < minDiffX {
-			minDiffX = diff
-			bestIdx = s
-		}
-	}
-
-	instV[xCh] = xBuffer[bestIdx]
-	instVCur[xCh] = v_cursor_x
+	curV[xCh] = float32((float64(mx) - xZero) / xScale)
 
 	for channelIndex := 0; channelIndex < totalChannels; channelIndex++ {
 		if channelIndex == xCh {
@@ -372,25 +343,17 @@ func (fv *fvViewer) calcValuesAt(mx, my float32, w, h float64, bounds image.Rect
 			displayVOffset = vch.DisplayVOffset
 		}
 
-		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex {
-			displayBuffer := fv.scp.displayBuffers[channelIndex]
-			if len(displayBuffer) == 0 || bestIdx >= len(displayBuffer) {
-				continue
-			}
-
+		if fvMode == settings.FvValue && enabled {
 			yRange := genericps.RangeValuesMv[vRange]
 			yScale := h / (2.0 * float64(yRange))
 			yOffset := fv.offsetNToFv(displayVOffset)
 			yZero := float64(bounds.Min.Y) + h/2.0 + yOffset
 
-			v_cursor := float32((yZero - float64(my)) / yScale)
-
-			instV[channelIndex] = displayBuffer[bestIdx]
-			instVCur[channelIndex] = v_cursor
+			curV[channelIndex] = float32((yZero - float64(my)) / yScale)
 		}
 	}
 
-	return instV, instVCur
+	return curV
 }
 
 func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
@@ -436,11 +399,11 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		return
 	}
 
-	instVLocal, instVCurLocal := fv.calcValuesAt(fv.mouseX, fv.mouseY, w, h, bounds, xCh)
+	curV := fv.calcValuesAt(fv.mouseX, fv.mouseY, w, h, bounds, xCh)
 
-	var refInstV, refInstVCur []float32
+	var refCurV []float32
 	if fv.refActive {
-		refInstV, refInstVCur = fv.calcValuesAt(fv.refX, fv.refY, w, h, bounds, xCh)
+		refCurV = fv.calcValuesAt(fv.refX, fv.refY, w, h, bounds, xCh)
 	}
 
 	var info []struct {
@@ -448,61 +411,13 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 		col  color.Color
 	}
 
-	moved := false
-	if fv.mouseX != fv.inspectorLastX || fv.mouseY != fv.inspectorLastY {
-		moved = true
-		fv.inspectorLastX = fv.mouseX
-		fv.inspectorLastY = fv.mouseY
-	}
-
 	totalChannels := int(fv.scp.channelCount) + len(fv.scp.Settings.VirtualChannels)
 
-	if fv.inspectorSumV == nil || len(fv.inspectorSumV) != totalChannels {
-		fv.inspectorSumV = make([]float32, totalChannels)
-		fv.inspectorSumVCur = make([]float32, totalChannels)
-		fv.inspectorDispV = make([]float32, totalChannels)
-		fv.inspectorDispVCur = make([]float32, totalChannels)
-	}
-
-	if moved {
-		for i := range fv.inspectorSumV {
-			fv.inspectorSumV[i] = 0
-			fv.inspectorSumVCur[i] = 0
-		}
-		fv.inspectorSamples = 0
-	}
-
-	for i := 0; i < totalChannels; i++ {
-		fv.inspectorSumV[i] += instVLocal[i]
-		fv.inspectorSumVCur[i] += instVCurLocal[i]
-	}
-	fv.inspectorSamples++
-
-	now := time.Now()
-	updateDisplay := false
-	if moved || now.Sub(fv.inspectorLastUpdate) >= 500*time.Millisecond {
-		updateDisplay = true
-		fv.inspectorLastUpdate = now
-	}
-
-	if updateDisplay {
-		for i := 0; i < totalChannels; i++ {
-			if fv.inspectorSamples > 0 {
-				fv.inspectorDispV[i] = fv.inspectorSumV[i] / float32(fv.inspectorSamples)
-				fv.inspectorDispVCur[i] = fv.inspectorSumVCur[i] / float32(fv.inspectorSamples)
-			}
-			fv.inspectorSumV[i] = 0
-			fv.inspectorSumVCur[i] = 0
-		}
-		fv.inspectorSamples = 0
-	}
-
 	xCol := fv.scp.Settings.Channels[xCh].Col[fv.scp.Settings.ChannelColorIndex]
-	xText := fmt.Sprintf("Ch%c(X): %s (Cur: %s)", 'A'+xCh, fv.formatVoltage(fv.inspectorDispV[xCh], fv.scp.Settings.Channels[xCh].VRange), fv.formatVoltage(fv.inspectorDispVCur[xCh], fv.scp.Settings.Channels[xCh].VRange))
+	xText := fmt.Sprintf("Ch%c(X): %s", 'A'+xCh, fv.formatVoltage(curV[xCh], fv.scp.Settings.Channels[xCh].VRange))
 	if fv.refActive {
-		dvX := fv.inspectorDispV[xCh] - refInstV[xCh]
-		dvXCur := fv.inspectorDispVCur[xCh] - refInstVCur[xCh]
-		xText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvX, fv.scp.Settings.Channels[xCh].VRange), fv.formatVoltage(dvXCur, fv.scp.Settings.Channels[xCh].VRange))
+		dvX := curV[xCh] - refCurV[xCh]
+		xText += fmt.Sprintf(" ΔV: %s", fv.formatVoltage(dvX, fv.scp.Settings.Channels[xCh].VRange))
 	}
 	info = append(info, struct {
 		text string
@@ -534,15 +449,12 @@ func (fv *fvViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 			chName = fmt.Sprintf("%s(Y)", vch.Name)
 		}
 
-		if fvMode == settings.FvValue && enabled && len(fv.scp.displayBuffers) > channelIndex && len(fv.scp.displayBuffers[channelIndex]) > 0 {
-			v := fv.inspectorDispV[channelIndex]
-			v_cursor := fv.inspectorDispVCur[channelIndex]
-
-			yText := fmt.Sprintf("%s: %s (Cur: %s)", chName, fv.formatVoltage(v, vRange), fv.formatVoltage(v_cursor, vRange))
+		if fvMode == settings.FvValue && enabled {
+			v := curV[channelIndex]
+			yText := fmt.Sprintf("%s: %s", chName, fv.formatVoltage(v, vRange))
 			if fv.refActive {
-				dvY := v - refInstV[channelIndex]
-				dvYCur := v_cursor - refInstVCur[channelIndex]
-				yText += fmt.Sprintf(" ΔV: %s (ΔCur: %s)", fv.formatVoltage(dvY, vRange), fv.formatVoltage(dvYCur, vRange))
+				dvY := v - refCurV[channelIndex]
+				yText += fmt.Sprintf(" ΔV: %s", fv.formatVoltage(dvY, vRange))
 			}
 			info = append(info, struct {
 				text string
