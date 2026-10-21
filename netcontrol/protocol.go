@@ -177,6 +177,7 @@ type SetDemoRlcFilterCmd struct {
 	LUnit      string
 	C          float64
 	CUnit      string
+	Q          float64
 }
 
 // --- Query Payloads (Client -> Server, expecting a ResponseMessage) ---

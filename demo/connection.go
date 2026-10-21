@@ -879,7 +879,7 @@ func setDemoRlcFilter(m *genericps.SetDemoRlcFilterMsg) {
 		return
 	}
 	s := SimDesc{handle: m.Handle()}
-	err := s.SetDemoRlcFilter(m.Channel, m.GenSource, m.Enabled, m.FilterType, m.R, m.RUnit, m.L, m.LUnit, m.C, m.CUnit)
+	err := s.SetDemoRlcFilter(m.Channel, m.GenSource, m.Enabled, m.FilterType, m.R, m.RUnit, m.L, m.LUnit, m.C, m.CUnit, m.Q)
 	response.SetStatus(err)
 	m.RspCh() <- struct{}{}
 }

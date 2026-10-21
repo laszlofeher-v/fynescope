@@ -500,7 +500,7 @@ func (s *Server) handleCommand(session *clientSession, cmd *CommandMessage) {
 
 	case TypeSetDemoRlcFilter:
 		if p, ok := unwrapPayload[*SetDemoRlcFilterCmd, SetDemoRlcFilterCmd](cmd.Payload); ok {
-			err = s.ctrl.SetDemoRlcFilter(p.Channel, p.GenSource, p.Enabled, p.FilterType, p.R, p.RUnit, p.L, p.LUnit, p.C, p.CUnit)
+			err = s.ctrl.SetDemoRlcFilter(p.Channel, p.GenSource, p.Enabled, p.FilterType, p.R, p.RUnit, p.L, p.LUnit, p.C, p.CUnit, p.Q)
 		} else {
 			err = fmt.Errorf("invalid payload for %s: %T", cmd.Type, cmd.Payload)
 		}

@@ -33,7 +33,7 @@ func unitMultiplier(unit string) float64 {
 	}
 }
 
-func NewRlcFilter(filterType string, r float64, runit string, l float64, lunit string, c float64, cunit string, dt float64) *RlcFilter {
+func NewRlcFilter(filterType string, r float64, runit string, l float64, lunit string, c float64, cunit string, q float64, dt float64) *RlcFilter {
 	rVal := r * unitMultiplier(runit)
 	lVal := l * unitMultiplier(lunit)
 	cVal := c * unitMultiplier(cunit)
@@ -71,7 +71,10 @@ func NewRlcFilter(filterType string, r float64, runit string, l float64, lunit s
 		f.a1 = (1.0 - 2.0*tau/dt) / a0
 
 	case strings.Contains(filterType, "Lowpass LC"):
-		zeta := 0.2 // slight damping to prevent infinite resonance
+		if q <= 0 {
+			q = 2.5
+		}
+		zeta := 1.0 / (2.0 * q)
 		w0 := 1.0 / math.Sqrt(lVal*cVal)
 		if math.IsNaN(w0) || math.IsInf(w0, 0) {
 			f.b0 = 1.0 // pass through
@@ -86,7 +89,10 @@ func NewRlcFilter(filterType string, r float64, runit string, l float64, lunit s
 		f.a2 = (1.0 - 2.0*zeta*K + K*K) / norm
 
 	case strings.Contains(filterType, "Highpass LC"):
-		zeta := 0.2
+		if q <= 0 {
+			q = 2.5
+		}
+		zeta := 1.0 / (2.0 * q)
 		w0 := 1.0 / math.Sqrt(lVal*cVal)
 		if math.IsNaN(w0) || math.IsInf(w0, 0) {
 			f.b0 = 1.0 // pass through

@@ -657,7 +657,7 @@ func TestClient_SetDemoRlcFilter(t *testing.T) {
 	c := dialTestClientTyped(t, srv)
 
 	err := c.SetDemoRlcFilter(genericps.ChA, genericps.ChA, true, "LowPass",
-		100.0, "Ω", 1e-3, "H", 1e-6, "F")
+		100.0, "Ω", 1e-3, "H", 1e-6, "F", 2.5)
 	if err != nil {
 		t.Fatalf("SetDemoRlcFilter error: %v", err)
 	}

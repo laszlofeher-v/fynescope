@@ -35,12 +35,17 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 		channelLabel.TextStyle.Bold = true
 		scp.channelViewers[chIdx].rlcNameLabel = channelLabel
 
+		if chSettings.RlcFilter.Q <= 0 {
+			chSettings.RlcFilter.Q = 2.5
+		}
+
 		notifySim := func() {
 			if scp.psControl != nil && scp.psControl.IsDemo() {
 				_ = scp.psControl.SetDemoRlcFilter(genericps.ChannelId(chIdx), chSettings.RlcFilter.GeneratorSource, chSettings.RlcFilter.Enabled,
 					chSettings.RlcFilter.Type, chSettings.RlcFilter.R, chSettings.RlcFilter.RUnit,
 					chSettings.RlcFilter.L, chSettings.RlcFilter.LUnit,
-					chSettings.RlcFilter.C, chSettings.RlcFilter.CUnit)
+					chSettings.RlcFilter.C, chSettings.RlcFilter.CUnit,
+					chSettings.RlcFilter.Q)
 			}
 		}
 
@@ -123,9 +128,35 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			return container.NewHBox(lbl, entryContainer, unitSelect)
 		}
 
+		buildQInput := func(labelStr string, value *float64, valId string) *fyne.Container {
+			lbl := widget.NewLabel(labelStr)
+			entry := newNumericalEntry()
+
+			if *value <= 0 {
+				*value = 2.5
+			}
+			entry.SetText(strconv.FormatFloat(*value, 'f', -1, 64))
+
+			entry.OnChanged = func(s string) {
+				v, err := strconv.ParseFloat(s, 64)
+				if err == nil && v > 0 {
+					*value = v
+					go scp.SaveSettings()
+					notifySim()
+				}
+			}
+
+			// Keep entry width manageable
+			entryContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(80, 35)), entry)
+
+			addToTest(entry, valId, rlcTabIndex)
+			return container.NewHBox(lbl, entryContainer)
+		}
+
 		rBox := buildInput("R:", &chSettings.RlcFilter.R, &chSettings.RlcFilter.RUnit, rUnits, rlcRId+chStr, rlcRUnitId+chStr)
 		lBox := buildInput("L:", &chSettings.RlcFilter.L, &chSettings.RlcFilter.LUnit, lUnits, rlcLId+chStr, rlcLUnitId+chStr)
 		cBox := buildInput("C:", &chSettings.RlcFilter.C, &chSettings.RlcFilter.CUnit, cUnits, rlcCId+chStr, rlcCUnitId+chStr)
+		qBox := buildQInput("Q:", &chSettings.RlcFilter.Q, rlcQId+chStr)
 
 		// Hide irrelevant inputs based on filter type
 		updateVisibility := func() {
@@ -134,18 +165,22 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 				rBox.Hide()
 				lBox.Hide()
 				cBox.Hide()
+				qBox.Hide()
 			} else if strings.Contains(t, "RC") {
 				rBox.Show()
 				cBox.Show()
 				lBox.Hide()
+				qBox.Hide()
 			} else if strings.Contains(t, "RL") {
 				rBox.Show()
 				lBox.Show()
 				cBox.Hide()
+				qBox.Hide()
 			} else if strings.Contains(t, "LC") {
 				lBox.Show()
 				cBox.Show()
 				rBox.Hide()
+				qBox.Show()
 			}
 		}
 
@@ -169,6 +204,7 @@ func (scp *ScpDesc) newRlcPanel(panel *fyne.Container) {
 			rBox,
 			lBox,
 			cBox,
+			qBox,
 		)
 
 		addToTest(typeSelect, rlcTypeId+chStr, rlcTabIndex)

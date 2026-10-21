@@ -17,6 +17,7 @@ func TestNewDefaultSettings(t *testing.T) {
 	assert.Equal(t, float64(1000), s.GenPanel.Frequency)
 	assert.NotNil(t, s.StreamEnabled)
 	assert.True(t, *s.StreamEnabled)
+	assert.Equal(t, 2.5, s.Channels[0].RlcFilter.Q)
 }
 
 func TestSaveAndLoadSettings(t *testing.T) {

@@ -43,6 +43,7 @@ type (
 		rlcLUnit   string
 		rlcC       float64
 		rlcCUnit   string
+		rlcQ       float64
 	}
 )
 
@@ -420,7 +421,7 @@ func findTriggerPoint(reqNoOfSamples uint32) (found bool, triggerTime float64, d
 
 		if channels[ch].rlcEnabled {
 			triggerFilters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit,
-				channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
+				channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, channels[ch].rlcQ, dt)
 		}
 
 		if channels[ch].coupling == Ac {
@@ -521,7 +522,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 			if channels[ch].rlcEnabled {
 				// Initialize RLC filter with current dt and pre-roll
 				filters[ch] = NewRlcFilter(channels[ch].rlcType, channels[ch].rlcR, channels[ch].rlcRUnit,
-					channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, dt)
+					channels[ch].rlcL, channels[ch].rlcLUnit, channels[ch].rlcC, channels[ch].rlcCUnit, channels[ch].rlcQ, dt)
 			}
 
 			// AC-coupling: analogue 1 Hz highpass filter (models the input capacitor)
@@ -1613,7 +1614,7 @@ func (s *SimDesc) SetDemoGen(channel genericps.ChannelId, on bool, offsetVoltage
 // SetDemoRlcFilter configures an interactive virtual RLC filter stage for a channel.
 func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId,
 	enabled bool, filterType string, r float64, runit string, l float64, lunit string,
-	c float64, cunit string) (err error) {
+	c float64, cunit string, q float64) (err error) {
 	ch := int(channel)
 	if ch < 0 || ch >= MaxChannels {
 		return fmt.Errorf("invalid channel")
@@ -1627,6 +1628,7 @@ func (s *SimDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource generi
 	channels[ch].rlcLUnit = lunit
 	channels[ch].rlcC = c
 	channels[ch].rlcCUnit = cunit
+	channels[ch].rlcQ = q
 	return nil
 }
 
