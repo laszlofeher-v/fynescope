@@ -582,6 +582,34 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						return
 					}
 
+					drawSampleDot := func(x, y float64) {
+						const r = 5.0
+						drawCircle(targetImg, float32(x), float32(y), r, col)
+						drawCircle(targetImg, float32(x), float32(y), r-1, col)
+						drawCircle(targetImg, float32(x), float32(y), r-2, col)
+					}
+
+					curCol := -1
+					var curColX float64
+					var minY, maxY, firstY, lastY float64
+
+					flushCol := func() {
+						if curCol >= bounds.Min.X-10 && curCol <= bounds.Max.X+10 {
+							drawSampleDot(curColX, minY)
+							if maxY != minY && math.Abs(maxY-minY) >= 2.0 {
+								drawSampleDot(curColX, maxY)
+							}
+							if firstY != minY && firstY != maxY &&
+								math.Abs(firstY-minY) >= 2.0 && math.Abs(firstY-maxY) >= 2.0 {
+								drawSampleDot(curColX, firstY)
+							}
+							if lastY != minY && lastY != maxY && lastY != firstY &&
+								math.Abs(lastY-minY) >= 2.0 && math.Abs(lastY-maxY) >= 2.0 && math.Abs(lastY-firstY) >= 2.0 {
+								drawSampleDot(curColX, lastY)
+							}
+						}
+					}
+
 					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						if deltaT > 0 && x > float64(bounds.Max.X+10) {
@@ -595,11 +623,27 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 							s = -s
 						}
 						y := -yScale*float64(s) + offsetFloat
-						const r = 5.0
-						drawCircle(targetImg, float32(x), float32(y), r, col)
-						drawCircle(targetImg, float32(x), float32(y), r-1, col)
-						drawCircle(targetImg, float32(x), float32(y), r-2, col)
+
+						px := int(math.Floor(x))
+						if px == curCol {
+							if y < minY {
+								minY = y
+							}
+							if y > maxY {
+								maxY = y
+							}
+							lastY = y
+						} else {
+							flushCol()
+							curCol = px
+							curColX = x
+							minY = y
+							maxY = y
+							firstY = y
+							lastY = y
+						}
 					}
+					flushCol()
 				} //drawPoint
 
 				drawRaw := func() {
@@ -634,6 +678,25 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						prevY = -yScale*float64(sPrev) + offsetFloat
 					}
 
+					curCol := -1
+					var curColX float64
+					var colMinY, colMaxY, firstY, lastY float64
+
+					flushCol := func() {
+						if curCol >= bounds.Min.X && curCol < bounds.Max.X {
+							// Horizontal segment to this column
+							drawLine(targetImg, float32(prevX), float32(prevY), float32(curColX), float32(prevY), col)
+							// Vertical segment to first sample
+							drawLine(targetImg, float32(curColX), float32(prevY), float32(curColX), float32(firstY), col)
+							// Vertical extent of this column
+							if colMinY != colMaxY {
+								drawLine(targetImg, float32(curColX), float32(colMinY), float32(curColX), float32(colMaxY), col)
+							}
+							prevX = curColX
+							prevY = lastY
+						}
+					}
+
 					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						s := displayBuffer[i]
@@ -642,16 +705,30 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 						y := -yScale*float64(s) + offsetFloat
 
-						// Horizontal segment (from prev sample to current sample x)
-						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(prevY), col)
-						// Vertical segment
-						drawLine(targetImg, float32(x), float32(prevY), float32(x), float32(y), col)
+						px := int(math.Floor(x))
+						if px == curCol {
+							if y < colMinY {
+								colMinY = y
+							}
+							if y > colMaxY {
+								colMaxY = y
+							}
+							lastY = y
+						} else {
+							flushCol()
+							curCol = px
+							curColX = x
+							colMinY = y
+							colMaxY = y
+							firstY = y
+							lastY = y
+						}
 
-						prevX, prevY = x, y
 						if deltaT > 0 && x >= float64(bounds.Max.X) {
 							break
 						}
 					}
+					flushCol()
 				} //drawRaw
 
 				// Linear interpolation
@@ -687,6 +764,23 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						prevY = -yScale*float64(sPrev) + offsetFloat
 					}
 
+					curCol := -1
+					var curColX float64
+					var colMinY, colMaxY, firstY, lastY float64
+
+					flushCol := func() {
+						if curCol >= bounds.Min.X && curCol < bounds.Max.X {
+							// Connect previous column's exit to this column's entry
+							drawLine(targetImg, float32(prevX), float32(prevY), float32(curColX), float32(firstY), col)
+							// Draw the vertical extent of this column
+							if colMinY != colMaxY {
+								drawLine(targetImg, float32(curColX), float32(colMinY), float32(curColX), float32(colMaxY), col)
+							}
+							prevX = curColX
+							prevY = lastY
+						}
+					}
+
 					for i := startIndex; i < len(displayBuffer); i++ {
 						x := t0 + float64(i)*deltaT + float64(bounds.Min.X)
 						s := displayBuffer[i]
@@ -695,12 +789,30 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 						y := -yScale*float64(s) + offsetFloat
 
-						drawLine(targetImg, float32(prevX), float32(prevY), float32(x), float32(y), col)
-						prevX, prevY = x, y
+						px := int(math.Floor(x))
+						if px == curCol {
+							if y < colMinY {
+								colMinY = y
+							}
+							if y > colMaxY {
+								colMaxY = y
+							}
+							lastY = y
+						} else {
+							flushCol()
+							curCol = px
+							curColX = x
+							colMinY = y
+							colMaxY = y
+							firstY = y
+							lastY = y
+						}
+
 						if deltaT > 0 && x >= float64(bounds.Max.X) {
 							break
 						}
 					}
+					flushCol()
 				} //drawLinear
 
 				// sinc interpolation

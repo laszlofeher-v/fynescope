@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"math"
 	"testing"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -205,5 +206,42 @@ func TestSignalViewer_DrawED(t *testing.T) {
 
 	// Must complete immediately due to screen-bounds clamping
 	sv.drawNormal(1000.0, 500.0, bounds, 250, deltaT)
+}
+
+func TestSignalViewer_DrawDot_Dense(t *testing.T) {
+	bounds := image.Rect(0, 0, 800, 600)
+	targetImg := image.NewRGBA(bounds)
+	red := color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+
+	scp := &ScpDesc{
+		Settings: settings.NewDefaultSettings(),
+		maxScreenTime: 1.0,
+		controlSamplingTimeInterval: 1e-6,
+		displayBuffers: make([][]float32, 1),
+		ftScopeSignalScreen: targetImg,
+		channelViewers: make([]channelViewerDesc, 1),
+	}
+	scp.Settings.Channels = make([]settings.ChSettings, 1)
+	scp.Settings.Channels[0].Enabled = true
+	scp.Settings.Channels[0].Col[scp.Settings.ChannelColorIndex] = red
+	scp.Settings.Time.ResolutionMode = "Normal"
+
+	N := 1000000
+	buf := make([]float32, N)
+	for i := 0; i < N; i++ {
+		buf[i] = float32(i % 100)
+	}
+	scp.displayBuffers[0] = buf
+
+	sv := newSignalViewer(targetImg, bounds, scp, false)
+	deltaT := 0.00080901568
+
+	for _, mode := range []settings.InterpolationType{settings.Dot, settings.Raw, settings.Linear} {
+		scp.Settings.Time.Interpolation = mode
+		start := time.Now()
+		sv.drawNormal(800.0, 600.0, bounds, 300, deltaT)
+		dur := time.Since(start)
+		t.Logf("mode %v with 1M samples took: %v", mode, dur)
+	}
 }
 
