@@ -304,6 +304,7 @@ func TestCommandMessage_Roundtrip(t *testing.T) {
 				LUnit:      "H",
 				C:          1e-6,
 				CUnit:      "uF",
+				Q:          2.5,
 			},
 		},
 		{

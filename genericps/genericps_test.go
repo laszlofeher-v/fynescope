@@ -528,7 +528,7 @@ func TestConnectionWrappers(t *testing.T) {
 	_ = con.SetSigGenBuiltInV2(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 	_ = con.SetDemoGen(0, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, nil, 0, 0)
 	_ = con.SetDemoDigitalGen(false, false, 1000, 0, 0, 0, 0)
-	_ = con.SetDemoRlcFilter(0, 0, false, "", 0, "", 0, "", 0, "")
+	_ = con.SetDemoRlcFilter(0, 0, false, "", 0, "", 0, "", 0, "", 0)
 	_ = con.SetSigGenPropertiesArbitrary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 	_ = con.SetSigGenPropertiesBuiltIn(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 	_ = con.SetSimpleTrigger(false, 0, 0, 0, 0, 0)

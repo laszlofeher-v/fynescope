@@ -167,9 +167,9 @@ func (ps *PscDesc) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float
 }
 
 // SetDemoRlcFilter passes RLC filter simulation parameters directly to the demo backend connection.
-func (ps *PscDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) error {
+func (ps *PscDesc) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string, q float64) error {
 	if ps.Con != nil {
-		return ps.Con.SetDemoRlcFilter(channel, genSource, enabled, filterType, r, runit, l, lunit, cval, cunit)
+		return ps.Con.SetDemoRlcFilter(channel, genSource, enabled, filterType, r, runit, l, lunit, cval, cunit, q)
 	}
 	return nil
 }

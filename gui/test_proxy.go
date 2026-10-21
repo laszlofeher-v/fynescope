@@ -149,6 +149,7 @@ const (
 	rlcLUnitId     = "rlcLUnit"
 	rlcCId         = "rlcC"
 	rlcCUnitId     = "rlcCUnit"
+	rlcQId         = "rlcQ"
 	vchNameEntryId = "vchNameEntry"
 	vchExprEntryId = "vchExprEntry"
 	vchAcceptBtnId = "vchAcceptBtn"

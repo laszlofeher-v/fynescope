@@ -395,7 +395,7 @@ func (m *mockScopeController) SetDemoDigitalGen(port0Enabled, port1Enabled bool,
 	return m.errDemoDig
 }
 
-func (m *mockScopeController) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) error {
+func (m *mockScopeController) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string, q float64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.errDemoFilter

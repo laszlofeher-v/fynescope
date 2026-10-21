@@ -56,7 +56,7 @@ func TestNewRlcFilter_LowpassRC(t *testing.T) {
 	// Cutoff freq = 1 / (2*pi*R*C)
 	// R = 1 kOhm, C = 1 uF -> fc ~ 159 Hz
 	dt := 1e-5 // 100 kHz sample rate
-	filter := NewRlcFilter("Lowpass RC", 1, "kΩ", 0, "H", 1, "µF", dt)
+	filter := NewRlcFilter("Lowpass RC", 1, "kΩ", 0, "H", 1, "µF", 0, dt)
 
 	// Feed DC (0 Hz) -> should pass completely
 	output := 0.0
@@ -71,7 +71,7 @@ func TestNewRlcFilter_LowpassRC(t *testing.T) {
 func TestNewRlcFilter_HighpassRC(t *testing.T) {
 	// Highpass RC filter
 	dt := 1e-5
-	filter := NewRlcFilter("Highpass RC", 1, "kΩ", 0, "H", 1, "µF", dt)
+	filter := NewRlcFilter("Highpass RC", 1, "kΩ", 0, "H", 1, "µF", 0, dt)
 
 	// Feed DC (0 Hz) -> should block completely
 	output := 1.0
@@ -82,3 +82,64 @@ func TestNewRlcFilter_HighpassRC(t *testing.T) {
 		t.Errorf("Highpass RC failed to block DC; output is %v", output)
 	}
 }
+
+func TestNewRlcFilter_LowpassLC(t *testing.T) {
+	dt := 1e-6 // 1 MHz sample rate
+	// L = 1 mH, C = 1 µF -> f0 ~ 5 kHz
+
+	// Test 1: Low Q (Q=0.5, critically damped) -> should pass DC with no significant overshoot
+	filterCrit := NewRlcFilter("Lowpass LC", 0, "Ω", 1, "mH", 1, "µF", 0.5, dt)
+	maxCrit := 0.0
+	outputCrit := 0.0
+	for i := 0; i < 10000; i++ {
+		outputCrit = filterCrit.Step(1.0)
+		if outputCrit > maxCrit {
+			maxCrit = outputCrit
+		}
+	}
+	if math.Abs(outputCrit-1.0) > 1e-2 {
+		t.Errorf("Lowpass LC critically damped attenuated DC signal; output is %v", outputCrit)
+	}
+	if maxCrit > 1.05 {
+		t.Errorf("Lowpass LC critically damped overshot significantly: max = %v", maxCrit)
+	}
+
+	// Test 2: Resonant Q (Q=5.0) -> step response has significant resonance/overshoot
+	filterRes := NewRlcFilter("Lowpass LC", 0, "Ω", 1, "mH", 1, "µF", 5.0, dt)
+	maxRes := 0.0
+	for i := 0; i < 10000; i++ {
+		out := filterRes.Step(1.0)
+		if out > maxRes {
+			maxRes = out
+		}
+	}
+	if maxRes < 1.5 {
+		t.Errorf("Lowpass LC with Q=5.0 expected overshoot > 1.5, got %v", maxRes)
+	}
+
+	// Test 3: Default Q when Q <= 0 (should default to 2.5)
+	filterDef := NewRlcFilter("Lowpass LC", 0, "Ω", 1, "mH", 1, "µF", 0, dt)
+	filter25 := NewRlcFilter("Lowpass LC", 0, "Ω", 1, "mH", 1, "µF", 2.5, dt)
+	for i := 0; i < 50; i++ {
+		outDef := filterDef.Step(1.0)
+		out25 := filter25.Step(1.0)
+		if math.Abs(outDef-out25) > 1e-9 {
+			t.Errorf("Step %d: Q=0 (%v) did not match Q=2.5 (%v)", i, outDef, out25)
+		}
+	}
+}
+
+func TestNewRlcFilter_HighpassLC(t *testing.T) {
+	dt := 1e-6
+	filter := NewRlcFilter("Highpass LC", 0, "Ω", 1, "mH", 1, "µF", 2.5, dt)
+
+	// Feed DC (1.0) -> Highpass should block DC completely
+	output := 1.0
+	for i := 0; i < 10000; i++ {
+		output = filter.Step(1.0)
+	}
+	if math.Abs(output) > 1e-2 {
+		t.Errorf("Highpass LC failed to block DC; output is %v", output)
+	}
+}
+

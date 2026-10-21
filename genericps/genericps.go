@@ -625,6 +625,7 @@ type (
 		LUnit      string
 		C          float64
 		CUnit      string
+		Q          float64
 	}
 	SetDemoRlcFilterRsp struct {
 		RespBase
@@ -1742,8 +1743,8 @@ func (c Connection) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq floa
 	return rsp.Status()
 }
 
-func (c Connection) SetDemoRlcFilter(channel ChannelId, genSource ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) (err error) {
-	msg := &SetDemoRlcFilterMsg{Channel: channel, GenSource: genSource, Enabled: enabled, FilterType: filterType, R: r, RUnit: runit, L: l, LUnit: lunit, C: cval, CUnit: cunit}
+func (c Connection) SetDemoRlcFilter(channel ChannelId, genSource ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string, q float64) (err error) {
+	msg := &SetDemoRlcFilterMsg{Channel: channel, GenSource: genSource, Enabled: enabled, FilterType: filterType, R: r, RUnit: runit, L: l, LUnit: lunit, C: cval, CUnit: cunit, Q: q}
 	msg.rsp = &SetDemoRlcFilterRsp{}
 	c.Send(msg)
 	rsp := msg.Rsp().(*SetDemoRlcFilterRsp)

@@ -452,7 +452,7 @@ func (c *Client) SetDemoDigitalGen(port0Enabled, port1Enabled bool, freq float64
 	return err
 }
 
-func (c *Client) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string) error {
+func (c *Client) SetDemoRlcFilter(channel genericps.ChannelId, genSource genericps.ChannelId, enabled bool, filterType string, r float64, runit string, l float64, lunit string, cval float64, cunit string, q float64) error {
 	_, err := c.rpc(TypeSetDemoRlcFilter, &SetDemoRlcFilterCmd{
 		Channel:    channel,
 		GenSource:  genSource,
@@ -464,6 +464,7 @@ func (c *Client) SetDemoRlcFilter(channel genericps.ChannelId, genSource generic
 		LUnit:      lunit,
 		C:          cval,
 		CUnit:      cunit,
+		Q:          q,
 	}, defaultRPCTimeout)
 	return err
 }
