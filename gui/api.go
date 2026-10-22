@@ -186,6 +186,108 @@ func timeUnitToString(u int) string {
 	}
 }
 
+// timeUnitToUIString converts numeric timeUnit to the GUI select option string (e.g. "µs/div").
+func timeUnitToUIString(u int) string {
+	switch u {
+	case -12:
+		return picoSec + div
+	case -9:
+		return nanoSec + div
+	case -6:
+		return microSec + div
+	case -3:
+		return milliSec + div
+	case 0:
+		return sec + div
+	default:
+		return ""
+	}
+}
+
+// parseTimeUnit converts numeric or string time units (e.g. "us", "µs", "ms", -6, -3) to exponent int.
+func parseTimeUnit(v any) (int, error) {
+	switch val := v.(type) {
+	case int:
+		return val, nil
+	case int8:
+		return int(val), nil
+	case int16:
+		return int(val), nil
+	case int32:
+		return int(val), nil
+	case int64:
+		return int(val), nil
+	case float32:
+		return int(val), nil
+	case float64:
+		return int(val), nil
+	case json.Number:
+		n, err := val.Int64()
+		if err != nil {
+			return 0, fmt.Errorf("invalid numeric time_unit: %w", err)
+		}
+		return int(n), nil
+	case string:
+		clean := strings.ToLower(strings.TrimSpace(val))
+		clean = strings.TrimSuffix(clean, "/div")
+		clean = strings.TrimSpace(clean)
+		switch clean {
+		case "ps", "picos", "picosecond", "picoseconds":
+			return -12, nil
+		case "ns", "nanos", "nanosecond", "nanoseconds":
+			return -9, nil
+		case "us", "µs", "micros", "microsecond", "microseconds", "usec", "µsec":
+			return -6, nil
+		case "ms", "millis", "millisecond", "milliseconds", "msec":
+			return -3, nil
+		case "s", "sec", "secs", "second", "seconds":
+			return 0, nil
+		default:
+			if n, err := strconv.Atoi(clean); err == nil {
+				return n, nil
+			}
+			return 0, fmt.Errorf("unknown time_unit %q (expected 's', 'ms', 'us'/'µs', 'ns', 'ps' or exponent 0, -3, -6, -9, -12)", val)
+		}
+	default:
+		return 0, fmt.Errorf("invalid time_unit type %T", v)
+	}
+}
+
+// parseTimeDiv converts numeric or string time_div values (e.g. 200, "200") to int.
+func parseTimeDiv(v any) (int, error) {
+	switch val := v.(type) {
+	case int:
+		return val, nil
+	case int8:
+		return int(val), nil
+	case int16:
+		return int(val), nil
+	case int32:
+		return int(val), nil
+	case int64:
+		return int(val), nil
+	case float32:
+		return int(val), nil
+	case float64:
+		return int(val), nil
+	case json.Number:
+		n, err := val.Int64()
+		if err != nil {
+			return 0, fmt.Errorf("invalid numeric time_div: %w", err)
+		}
+		return int(n), nil
+	case string:
+		clean := strings.TrimSpace(val)
+		n, err := strconv.Atoi(clean)
+		if err != nil {
+			return 0, fmt.Errorf("invalid time_div %q: must be an integer", val)
+		}
+		return n, nil
+	default:
+		return 0, fmt.Errorf("invalid time_div type %T", v)
+	}
+}
+
 // parseChannelIdentifier parses channel strings like "A", "B", "0", "1", "ChA" to a channel index.
 func parseChannelIdentifier(s string) (int, error) {
 	clean := strings.ToUpper(strings.ReplaceAll(s, " ", ""))
@@ -515,6 +617,19 @@ func (scp *ScpDesc) SetTimebase(timeDiv int, timeUnit int) error {
 		scp.Settings.Time.TimeDiv = fmt.Sprintf("%d", timeDiv)
 		scp.Settings.Time.Unit = timeUnitToString(timeUnit)
 		scp.SaveSettings()
+	}
+
+	uiUnit := timeUnitToUIString(timeUnit)
+	divStr := fmt.Sprintf("%d", timeDiv)
+	if scp.timeUnitSelect != nil || scp.timeSelect != nil {
+		fyne.Do(func() {
+			if scp.timeUnitSelect != nil && uiUnit != "" {
+				scp.timeUnitSelect.SetSelected(uiUnit)
+			}
+			if scp.timeSelect != nil {
+				scp.timeSelect.SetSelected(divStr)
+			}
+		})
 	}
 	return nil
 }
@@ -1017,15 +1132,40 @@ func (scp *ScpDesc) NewAPIMux(authAdmin, authView string) *http.ServeMux {
 				writeErr(w, http.StatusForbidden, "Admin access required")
 				return
 			}
-			var payload struct {
-				TimeDiv  int `json:"time_div"`
-				TimeUnit int `json:"time_unit"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				writeErr(w, http.StatusBadRequest, "Invalid JSON body")
+			var raw map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+				writeErr(w, http.StatusBadRequest, "Invalid JSON body: "+err.Error())
 				return
 			}
-			_ = scp.SetTimebase(payload.TimeDiv, payload.TimeUnit)
+			timeDiv := scp.timeDiv
+			timeUnit := scp.timeUnit
+
+			if divVal, ok := raw["time_div"]; ok && divVal != nil {
+				parsedDiv, err := parseTimeDiv(divVal)
+				if err != nil {
+					writeErr(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				timeDiv = parsedDiv
+			}
+
+			if unitVal, ok := raw["time_unit"]; ok && unitVal != nil {
+				parsedUnit, err := parseTimeUnit(unitVal)
+				if err != nil {
+					writeErr(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				timeUnit = parsedUnit
+			} else if unitStrVal, ok := raw["time_unit_str"]; ok && unitStrVal != nil {
+				parsedUnit, err := parseTimeUnit(unitStrVal)
+				if err != nil {
+					writeErr(w, http.StatusBadRequest, err.Error())
+					return
+				}
+				timeUnit = parsedUnit
+			}
+
+			_ = scp.SetTimebase(timeDiv, timeUnit)
 			writeJSON(w, http.StatusOK, scp.GetTimebase())
 			return
 		}
