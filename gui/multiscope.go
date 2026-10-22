@@ -15,7 +15,6 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -100,7 +99,7 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	}
 
 	scp.multiClientsLabel = widget.NewLabel("Connected Clients:\nNone")
-	
+
 	statusColor := color.NRGBA{R: 200, G: 0, B: 0, A: 255}
 	if scp.IsMultiServerRunning() {
 		statusColor = color.NRGBA{R: 0, G: 200, B: 0, A: 255}
@@ -115,8 +114,7 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	stopServerBtn := tastybutton.NewTastyButton("Stop Server", tastybutton.Red, func() {
 		scp.stopMultiServer()
 	})
-	
-	
+
 	syncSettingsBtn := tastybutton.NewTastyButton("Sync Settings", tastybutton.Green, func() {
 		err := scp.publishMultiSync()
 		if err != nil {
@@ -125,7 +123,7 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	})
 
 	scp.multiServerStatusLabel = widget.NewLabel("")
-	
+
 	remoteChannelsBtn := tastybutton.NewTastyButton("Remote Channels...", tastybutton.Orange, func() {
 		scp.openRemoteChannelsWindow()
 	})
@@ -199,7 +197,7 @@ func (scp *ScpDesc) newMultiscopePanel(undockable bool) *fyne.Container {
 	clientBtn = tastybutton.NewTastyButton("Client", tastybutton.Orange, func() { selectMode("Client") })
 
 	modeSelection := container.NewHBox(serverBtn, clientBtn)
-	
+
 	if scp.Settings.Multiscope.Mode == "" {
 		scp.Settings.Multiscope.Mode = "Server"
 	}
