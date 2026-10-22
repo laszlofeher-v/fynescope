@@ -339,6 +339,30 @@ func TestAPI_Endpoints(t *testing.T) {
 		t.Errorf("timebase update mismatch: %d, %d", scp.timeDiv, scp.timeUnit)
 	}
 
+	// String time unit e.g. "us"
+	tbBodyStr := `{"time_div":200,"time_unit":"us"}`
+	req = httptest.NewRequest(http.MethodPost, "/api/timebase", bytes.NewBufferString(tbBodyStr))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("/api/timebase POST string unit failed: code %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if scp.timeDiv != 200 || scp.timeUnit != -6 {
+		t.Errorf("timebase update mismatch for 'us': %d, %d", scp.timeDiv, scp.timeUnit)
+	}
+
+	// time_unit_str and string time_div
+	tbBodyStr2 := `{"time_div":"100","time_unit_str":"ns"}`
+	req = httptest.NewRequest(http.MethodPost, "/api/timebase", bytes.NewBufferString(tbBodyStr2))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("/api/timebase POST time_unit_str failed: code %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if scp.timeDiv != 100 || scp.timeUnit != -9 {
+		t.Errorf("timebase update mismatch for 'ns': %d, %d", scp.timeDiv, scp.timeUnit)
+	}
+
 	// /api/trigger GET and POST
 	req = httptest.NewRequest(http.MethodGet, "/api/trigger", nil)
 	rec = httptest.NewRecorder()
