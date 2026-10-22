@@ -53,6 +53,7 @@ type ScopeInfo struct {
 	Status        string `json:"status"`
 	Running       bool   `json:"running"`
 	ChannelCount  int    `json:"channel_count"`
+	Channels      int    `json:"channels"`
 	IsMSO         bool   `json:"is_mso"`
 	MaxValue      int32  `json:"max_value"`
 	MinValue      int32  `json:"min_value"`
@@ -316,6 +317,7 @@ func (scp *ScpDesc) GetInfo() ScopeInfo {
 		Status:        scp.GetStatus(),
 		Running:       scp.running,
 		ChannelCount:  int(scp.channelCount),
+		Channels:      int(scp.channelCount),
 		IsMSO:         scp.IsMSO,
 		MaxValue:      scp.MaxValue,
 		MinValue:      scp.MinValue,
@@ -837,11 +839,7 @@ func (scp *ScpDesc) NewAPIMux(authAdmin, authView string) *http.ServeMux {
 			writeErr(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"status":   scp.GetStatus(),
-			"running":  scp.running,
-			"channels": scp.channelCount,
-		})
+		writeJSON(w, http.StatusOK, scp.GetInfo())
 	})
 
 	// GET /api/info

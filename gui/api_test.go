@@ -202,7 +202,8 @@ func TestAPI_Endpoints(t *testing.T) {
 	req = httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Running") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Running") ||
+		!strings.Contains(rec.Body.String(), "time_div") || !strings.Contains(rec.Body.String(), "time_unit_str") {
 		t.Errorf("/api/status failed: %s", rec.Body.String())
 	}
 
