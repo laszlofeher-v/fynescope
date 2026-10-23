@@ -80,11 +80,12 @@ flowchart LR
 
 ### Tested platforms
 
-| Platform | Architecture | Status |
-|---|---|---|
-| Ubuntu 24.04 (desktop) | x86-64 | Tested |
-| Raspberry Pi OS (Raspberry Pi 4 and newer) | ARM64 | Tested |
-| Windows 11 | x86-64 | Tested |
+| Platform | Architecture | Status | Scope |
+|---|---|---|---|
+| Ubuntu 24.04 (desktop) | x86-64 | Tested | Full GUI & `fynescope-server` |
+| Raspberry Pi OS (Raspberry Pi 4 and newer) | ARM64 | Tested | Full GUI & `fynescope-server` |
+| Raspberry Pi OS (Raspberry Pi Zero 2 W) | ARM64 | Tested | `fynescope-server` (headless 64-bit) |
+| Windows 11 | x86-64 | Tested | Full GUI & `fynescope-server` |
 
 ### Other possible platforms
 
