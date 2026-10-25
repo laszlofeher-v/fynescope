@@ -95,11 +95,7 @@ func (slScr *SliderScroll) Scrolled(event *fyne.ScrollEvent) {
 	if slScr.mul == 0 {
 		slScr.mul = defaultMul
 	}
-	// if event.Scrolled.DY > 0 {
 	slScr.SetValue(slScr.Value + slScr.mul*float64(event.Scrolled.DY))
-	// } else {
-	// slScr.SetValue(slScr.Value - slScr.mul)
-	// }
 }
 
 func (slScr *SliderScroll) MouseIn(e *desktop.MouseEvent) {

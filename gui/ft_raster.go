@@ -36,7 +36,6 @@ type (
 		inspectorDispV                 []float32
 		inspectorDispVCur              []float32
 		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
-		// cached scratch slices reused every drawInspector call to avoid per-frame allocs
 		instV             []float32
 		instVCur          []float32
 		isTimeZoom        bool
