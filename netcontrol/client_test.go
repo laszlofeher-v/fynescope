@@ -494,12 +494,26 @@ func TestClient_GetStreamEnabled(t *testing.T) {
 }
 
 func TestClient_GetSamplingTimeInterval(t *testing.T) {
-	srv, _ := startTestServer(t)
+	srv, mock := startTestServer(t)
 	c := dialTestClientTyped(t, srv)
 
 	interval := c.GetSamplingTimeInterval()
 	if interval != 1e-9 {
 		t.Fatalf("unexpected interval: %v", interval)
+	}
+
+	// Now simulate telemetry arrival with a different interval.
+	done := make(chan struct{})
+	c.SetRefreshCallback(func(buffers [][]int16, buffersMin [][]int16, digitalBuffers [][]int16, startTimeOffset int64, xRoundError float64, samplingTimeInterval float64) {
+		close(done)
+	})
+	mock.CallRefreshCallback([][]int16{{1, 2, 3}}, nil, nil, 0, 0, 8e-9)
+	<-done
+
+	// Verify cached value is returned without RPC
+	newInterval := c.GetSamplingTimeInterval()
+	if newInterval != 8e-9 {
+		t.Fatalf("expected cached interval 8e-9, got: %v", newInterval)
 	}
 }
 

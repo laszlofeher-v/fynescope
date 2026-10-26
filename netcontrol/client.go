@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -27,6 +28,9 @@ type Client struct {
 	// nextID is used to generate unique command IDs for synchronous RPCs.
 	nextID atomic.Uint64
 
+	// cachedInterval stores the most recently received sampling interval in float64 bits.
+	cachedInterval atomic.Uint64
+
 	// mu guards the encoder (writes) and the pending map.
 	mu      sync.Mutex
 	pending map[uint64]chan *ResponseMessage
@@ -40,8 +44,9 @@ type Client struct {
 	displayStatus      func(s string, errorType control.ScopeError)
 	triggerStateCb     func(triggered bool)
 
-	closed    chan struct{}
-	closeOnce sync.Once
+	telemetryCh chan func()
+	closed      chan struct{}
+	closeOnce   sync.Once
 }
 
 // Dial connects to a netcontrol.Server at addr and returns a ready-to-use Client.
@@ -57,16 +62,41 @@ func Dial(addr string) (*Client, error) {
 // NewClient wraps an already-established net.Conn and starts the receive loop.
 func NewClient(conn net.Conn) *Client {
 	c := &Client{
-		conn:    conn,
-		enc:     gob.NewEncoder(conn),
-		dec:     gob.NewDecoder(conn),
-		pending: make(map[uint64]chan *ResponseMessage),
-		closed:  make(chan struct{}),
+		conn:        conn,
+		enc:         gob.NewEncoder(conn),
+		dec:         gob.NewDecoder(conn),
+		pending:     make(map[uint64]chan *ResponseMessage),
+		telemetryCh: make(chan func(), 128),
+		closed:      make(chan struct{}),
 	}
 	// Seed the ID counter so 0 is never used (0 means fire-and-forget).
 	c.nextID.Store(1)
+	go c.telemetryWorker()
 	go c.recvLoop()
 	return c
+}
+
+func (c *Client) telemetryWorker() {
+	for {
+		select {
+		case <-c.closed:
+			return
+		case fn, ok := <-c.telemetryCh:
+			if !ok {
+				return
+			}
+			fn()
+		}
+	}
+}
+
+func (c *Client) enqueueTelemetry(fn func()) {
+	select {
+	case <-c.closed:
+	case c.telemetryCh <- fn:
+	default:
+		go fn()
+	}
 }
 
 // Close closes the underlying TCP connection and stops the receive loop.
@@ -130,11 +160,16 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		if !ok {
 			return
 		}
+		if data.SamplingTimeInterval > 0 {
+			c.cachedInterval.Store(math.Float64bits(data.SamplingTimeInterval))
+		}
 		c.cbMu.RLock()
 		cb := c.refreshCallback
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Buffers, data.BuffersMin, data.DigitalBuffers, data.StartTimeOffset, data.XRoundError, data.SamplingTimeInterval)
+			c.enqueueTelemetry(func() {
+				cb(data.Buffers, data.BuffersMin, data.DigitalBuffers, data.StartTimeOffset, data.XRoundError, data.SamplingTimeInterval)
+			})
 		}
 
 	case TypeRefreshEts:
@@ -142,11 +177,16 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		if !ok {
 			return
 		}
+		if data.SamplingTimeInterval > 0 {
+			c.cachedInterval.Store(math.Float64bits(data.SamplingTimeInterval))
+		}
 		c.cbMu.RLock()
 		cb := c.refreshEtsCallback
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Buffers, data.EtsOutBuffer, data.XRoundError, data.SamplingTimeInterval)
+			c.enqueueTelemetry(func() {
+				cb(data.Buffers, data.EtsOutBuffer, data.XRoundError, data.SamplingTimeInterval)
+			})
 		}
 
 	case TypeBufferResize:
@@ -158,7 +198,9 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		cb := c.bufferCallback
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Size)
+			c.enqueueTelemetry(func() {
+				cb(data.Size)
+			})
 		}
 
 	case TypeEtsBufferResize:
@@ -170,7 +212,9 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		cb := c.etsBufferCallback
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Size)
+			c.enqueueTelemetry(func() {
+				cb(data.Size)
+			})
 		}
 
 	case TypeStatus:
@@ -182,7 +226,9 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		cb := c.displayStatus
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Text, data.ErrorType)
+			c.enqueueTelemetry(func() {
+				cb(data.Text, data.ErrorType)
+			})
 		}
 
 	case TypeTriggerState:
@@ -194,7 +240,9 @@ func (c *Client) dispatch(msg *ServerMessage) {
 		cb := c.triggerStateCb
 		c.cbMu.RUnlock()
 		if cb != nil {
-			cb(data.Triggered)
+			c.enqueueTelemetry(func() {
+				cb(data.Triggered)
+			})
 		}
 
 	default:
@@ -520,12 +568,16 @@ func (c *Client) GetStreamEnabled() bool {
 }
 
 func (c *Client) GetSamplingTimeInterval() float64 {
+	if bits := c.cachedInterval.Load(); bits != 0 {
+		return math.Float64frombits(bits)
+	}
 	rsp, err := c.rpc(TypeGetSamplingTimeInterval, &GetSamplingTimeIntervalReq{}, defaultRPCTimeout)
 	if err != nil {
 		slog.Error("netcontrol client: GetSamplingTimeInterval error", "err", err)
 		return 0
 	}
 	if r, ok := rsp.Result.(*GetSamplingTimeIntervalRsp); ok {
+		c.cachedInterval.Store(math.Float64bits(r.Interval))
 		return r.Interval
 	}
 	return 0

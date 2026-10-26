@@ -474,7 +474,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 		channelViewer := &scp.channelViewers[channelIndex]
 		receiveBuffer := buffers[channelIndex]
 		if channelIndex < len(scp.displayBuffers) {
-			if len(scp.displayBuffers[channelIndex]) < len(receiveBuffer) {
+			if len(scp.displayBuffers[channelIndex]) != len(receiveBuffer) {
 				if cap(scp.displayBuffers[channelIndex]) >= len(receiveBuffer) {
 					scp.displayBuffers[channelIndex] = scp.displayBuffers[channelIndex][:len(receiveBuffer)]
 				} else {
@@ -505,7 +505,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 			if buffersMin != nil && len(buffersMin) > channelIndex && buffersMin[channelIndex] != nil {
 				receiveBufferMin := buffersMin[channelIndex]
 				if len(scp.displayBuffersMin) > channelIndex {
-					if len(scp.displayBuffersMin[channelIndex]) < len(receiveBufferMin) {
+					if len(scp.displayBuffersMin[channelIndex]) != len(receiveBufferMin) {
 						if cap(scp.displayBuffersMin[channelIndex]) >= len(receiveBufferMin) {
 							scp.displayBuffersMin[channelIndex] = scp.displayBuffersMin[channelIndex][:len(receiveBufferMin)]
 						} else {
