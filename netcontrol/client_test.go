@@ -471,6 +471,11 @@ func TestClient_GetScopeModel(t *testing.T) {
 	if model != control.Scope2206B {
 		t.Fatalf("unexpected model: %v", model)
 	}
+
+	c.SetScopeModel(control.Scope2206B_MSO)
+	if m := c.GetScopeModel(); m != control.Scope2206B_MSO {
+		t.Fatalf("expected Scope2206B_MSO from cache, got: %v", m)
+	}
 }
 
 func TestClient_GetMaxSamplingRate(t *testing.T) {

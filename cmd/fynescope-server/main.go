@@ -194,6 +194,10 @@ func main() {
 
 	// --- Create controller & start netcontrol server ------------------------
 	ctrl := control.NewControl(con)
+	if info != "" {
+		ctrl.SetInfo(info)
+		ctrl.SetScopeModel(control.StringToScopeType(info))
+	}
 
 	listenAddr := fmt.Sprintf(":%d", *port)
 	srv := netcontrol.NewServer(ctrl)

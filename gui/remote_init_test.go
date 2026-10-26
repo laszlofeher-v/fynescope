@@ -100,4 +100,6 @@ func TestMenuWithController_2206BMSO(t *testing.T) {
 	assert.Equal(t, int32(-32768), scp.MinValue)
 	assert.True(t, scp.IsMSO)
 	assert.NotNil(t, scp.Window)
+	assert.NotNil(t, scp.triggerModeSelect)
+	assert.Contains(t, scp.triggerModeSelect.Options, settings.TriggerModeETS)
 }

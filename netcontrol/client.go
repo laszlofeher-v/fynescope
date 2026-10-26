@@ -31,6 +31,13 @@ type Client struct {
 	// cachedInterval stores the most recently received sampling interval in float64 bits.
 	cachedInterval atomic.Uint64
 
+	// scopeModel caches the active hardware model family.
+	scopeModel atomic.Uint32
+
+	// info caches the device variant / identification string.
+	infoMu sync.RWMutex
+	info   string
+
 	// mu guards the encoder (writes) and the pending map.
 	mu      sync.Mutex
 	pending map[uint64]chan *ResponseMessage
@@ -449,12 +456,16 @@ func (c *Client) NewChannels(numberOfChannels int) {
 }
 
 func (c *Client) SetInfo(info string) {
+	c.infoMu.Lock()
+	c.info = info
+	c.infoMu.Unlock()
 	if err := c.send(&CommandMessage{ID: 0, Type: TypeSetInfo, Payload: &SetInfoCmd{Info: info}}); err != nil {
 		slog.Error("netcontrol client: SetInfo send error", "err", err)
 	}
 }
 
 func (c *Client) SetScopeModel(model control.ScopeType) {
+	c.scopeModel.Store(uint32(model))
 	if err := c.send(&CommandMessage{ID: 0, Type: TypeSetScopeModel, Payload: &SetScopeModelCmd{Model: model}}); err != nil {
 		slog.Error("netcontrol client: SetScopeModel send error", "err", err)
 	}
@@ -520,24 +531,37 @@ func (c *Client) SetDemoRlcFilter(channel genericps.ChannelId, genSource generic
 // --- ScopeController: Synchronous query methods ---
 
 func (c *Client) GetInfo() string {
+	c.infoMu.RLock()
+	val := c.info
+	c.infoMu.RUnlock()
+	if val != "" {
+		return val
+	}
 	rsp, err := c.rpc(TypeGetInfo, &GetInfoReq{}, defaultRPCTimeout)
 	if err != nil {
 		slog.Error("netcontrol client: GetInfo error", "err", err)
 		return ""
 	}
 	if r, ok := rsp.Result.(*GetInfoRsp); ok {
+		c.infoMu.Lock()
+		c.info = r.Info
+		c.infoMu.Unlock()
 		return r.Info
 	}
 	return ""
 }
 
 func (c *Client) GetScopeModel() control.ScopeType {
+	if m := control.ScopeType(c.scopeModel.Load()); m != control.ScopeUnknown {
+		return m
+	}
 	rsp, err := c.rpc(TypeGetScopeModel, &GetScopeModelReq{}, defaultRPCTimeout)
 	if err != nil {
 		slog.Error("netcontrol client: GetScopeModel error", "err", err)
 		return 0
 	}
 	if r, ok := rsp.Result.(*GetScopeModelRsp); ok {
+		c.scopeModel.Store(uint32(r.Model))
 		return r.Model
 	}
 	return 0
@@ -639,6 +663,12 @@ func (c *Client) UnitVariantInfo() (info string, err error) {
 	r, ok := rsp.Result.(*UnitVariantInfoRsp)
 	if !ok {
 		return "", fmt.Errorf("netcontrol: unexpected UnitVariantInfo response type %T", rsp.Result)
+	}
+	c.infoMu.Lock()
+	c.info = r.Info
+	c.infoMu.Unlock()
+	if model := control.StringToScopeType(r.Info); model != control.ScopeUnknown {
+		c.scopeModel.Store(uint32(model))
 	}
 	return r.Info, nil
 }

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"fyne.io/fyne/v2/app"
 	"fynescope/genericps"
@@ -58,16 +59,23 @@ func main() {
 	scp := &gui.ScpDesc{}
 	scp.App = app.New()
 
-	// Load settings (device-independent, no serial-based filename).
-	cfg, err := settings.Load(settingFileName)
+	// Load settings (use device serial if available, matching local behavior).
+	activeSettingFileName := settingFileName
+	if serial, err := client.UnitBatchAndSerialInfo(); err == nil && serial != "" {
+		serialClean := strings.ReplaceAll(serial, "/", "_")
+		activeSettingFileName = "scopesettings_" + serialClean + ".yaml"
+		slog.Info("using device settings file", "file", activeSettingFileName)
+	}
+
+	cfg, err := settings.Load(activeSettingFileName)
 	if err != nil {
-		slog.Warn("failed to load settings, using defaults", "err", err)
+		slog.Warn("failed to load settings, using defaults", "file", activeSettingFileName, "err", err)
 		cfg = settings.NewDefaultSettings()
 	}
 	cfg.ScreenSize = *screenSize
 
 	// Launch the main GUI using the remote TCP controller.
-	if err := scp.MenuWithController(client, cfg, settingFileName); err != nil {
+	if err := scp.MenuWithController(client, cfg, activeSettingFileName); err != nil {
 		slog.Error("remote GUI init failed", "err", err)
 		os.Exit(1)
 	}
@@ -75,7 +83,7 @@ func main() {
 	scp.App.Run()
 
 	// Save settings on exit.
-	if err := settings.Save(settingFileName, scp.Settings); err != nil {
-		slog.Error("failed to save settings", "err", err)
+	if err := settings.Save(activeSettingFileName, scp.Settings); err != nil {
+		slog.Error("failed to save settings", "file", activeSettingFileName, "err", err)
 	}
 }
