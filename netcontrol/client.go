@@ -206,7 +206,7 @@ func (c *Client) dispatch(msg *ServerMessage) {
 func (c *Client) send(cmd *CommandMessage) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = c.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 	err := c.enc.Encode(cmd)
 	_ = c.conn.SetWriteDeadline(time.Time{})
 	return err
@@ -219,7 +219,7 @@ func (c *Client) rpc(cmdType string, payload any, timeout time.Duration) (*Respo
 
 	c.mu.Lock()
 	c.pending[id] = ch
-	_ = c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = c.conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
 	err := c.enc.Encode(&CommandMessage{ID: id, Type: cmdType, Payload: payload})
 	_ = c.conn.SetWriteDeadline(time.Time{})
 	if err != nil {
@@ -245,7 +245,7 @@ func (c *Client) rpc(cmdType string, payload any, timeout time.Duration) (*Respo
 	}
 }
 
-const defaultRPCTimeout = 10 * time.Second
+const defaultRPCTimeout = 60 * time.Second
 
 // --- ScopeController: Fire-and-forget commands ---
 

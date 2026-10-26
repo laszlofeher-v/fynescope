@@ -473,6 +473,15 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 		channel := &scp.Settings.Channels[channelIndex]
 		channelViewer := &scp.channelViewers[channelIndex]
 		receiveBuffer := buffers[channelIndex]
+		if channelIndex < len(scp.displayBuffers) {
+			if len(scp.displayBuffers[channelIndex]) < len(receiveBuffer) {
+				if cap(scp.displayBuffers[channelIndex]) >= len(receiveBuffer) {
+					scp.displayBuffers[channelIndex] = scp.displayBuffers[channelIndex][:len(receiveBuffer)]
+				} else {
+					scp.displayBuffers[channelIndex] = make([]float32, len(receiveBuffer))
+				}
+			}
+		}
 		displayBuffer := scp.displayBuffers[channelIndex]
 
 		if channel.Enabled {
@@ -495,14 +504,23 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 
 			if buffersMin != nil && len(buffersMin) > channelIndex && buffersMin[channelIndex] != nil {
 				receiveBufferMin := buffersMin[channelIndex]
-				displayBufferMin := scp.displayBuffersMin[channelIndex]
-				if len(displayBufferMin) > 0 {
-					nMin := len(receiveBufferMin)
-					if nMin > len(displayBufferMin) {
-						nMin = len(displayBufferMin)
+				if len(scp.displayBuffersMin) > channelIndex {
+					if len(scp.displayBuffersMin[channelIndex]) < len(receiveBufferMin) {
+						if cap(scp.displayBuffersMin[channelIndex]) >= len(receiveBufferMin) {
+							scp.displayBuffersMin[channelIndex] = scp.displayBuffersMin[channelIndex][:len(receiveBufferMin)]
+						} else {
+							scp.displayBuffersMin[channelIndex] = make([]float32, len(receiveBufferMin))
+						}
 					}
-					for i := 0; i < nMin; i++ {
-						displayBufferMin[i] = float32(receiveBufferMin[i]) * scale
+					displayBufferMin := scp.displayBuffersMin[channelIndex]
+					if len(displayBufferMin) > 0 {
+						nMin := len(receiveBufferMin)
+						if nMin > len(displayBufferMin) {
+							nMin = len(displayBufferMin)
+						}
+						for i := 0; i < nMin; i++ {
+							displayBufferMin[i] = float32(receiveBufferMin[i]) * scale
+						}
 					}
 				}
 			}

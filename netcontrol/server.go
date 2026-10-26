@@ -37,6 +37,67 @@ type clientSession struct {
 	closed bool
 }
 
+func computeWriteTimeout(msg *ServerMessage) time.Duration {
+	baseTimeout := 30 * time.Second
+	if msg == nil {
+		return baseTimeout
+	}
+	switch msg.Type {
+	case TypeRefresh:
+		var totalSamples int
+		if dm, ok := msg.Payload.(*DataMessage); ok && dm != nil {
+			for _, b := range dm.Buffers {
+				totalSamples += len(b)
+			}
+			for _, b := range dm.BuffersMin {
+				totalSamples += len(b)
+			}
+			for _, b := range dm.DigitalBuffers {
+				totalSamples += len(b)
+			}
+		} else if dm, ok := msg.Payload.(DataMessage); ok {
+			for _, b := range dm.Buffers {
+				totalSamples += len(b)
+			}
+			for _, b := range dm.BuffersMin {
+				totalSamples += len(b)
+			}
+			for _, b := range dm.DigitalBuffers {
+				totalSamples += len(b)
+			}
+		}
+		// Estimated wire size with gob overhead (~2.5-3 bytes per sample).
+		// Assume a conservative minimum transfer speed of 100 KB/s (~800 kbps) to tolerate slow Wi-Fi.
+		estSeconds := (totalSamples * 3) / 100_000
+		if estSeconds > 60 {
+			return time.Duration(estSeconds) * time.Second
+		}
+		return 60 * time.Second
+
+	case TypeRefreshEts:
+		var totalSamples int
+		if edm, ok := msg.Payload.(*EtsDataMessage); ok && edm != nil {
+			for _, b := range edm.Buffers {
+				totalSamples += len(b)
+			}
+			totalSamples += len(edm.EtsOutBuffer)
+		} else if edm, ok := msg.Payload.(EtsDataMessage); ok {
+			for _, b := range edm.Buffers {
+				totalSamples += len(b)
+			}
+			totalSamples += len(edm.EtsOutBuffer)
+		}
+		estSeconds := (totalSamples * 4) / 100_000
+		if estSeconds > 60 {
+			return time.Duration(estSeconds) * time.Second
+		}
+		return 60 * time.Second
+
+	default:
+		return baseTimeout
+	}
+}
+
 func (cs *clientSession) send(msg *ServerMessage) error {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -45,7 +106,8 @@ func (cs *clientSession) send(msg *ServerMessage) error {
 		return net.ErrClosed
 	}
 
-	_ = cs.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	timeout := computeWriteTimeout(msg)
+	_ = cs.conn.SetWriteDeadline(time.Now().Add(timeout))
 	err := cs.enc.Encode(msg)
 	_ = cs.conn.SetWriteDeadline(time.Time{})
 	return err

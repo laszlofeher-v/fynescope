@@ -785,3 +785,100 @@ func TestServer_ErrorHandling(t *testing.T) {
 		t.Fatalf("unexpected error message: %s", rsp2.Error)
 	}
 }
+
+func TestServer_ComputeWriteTimeout(t *testing.T) {
+	// 1. Nil message
+	if d := computeWriteTimeout(nil); d != 30*time.Second {
+		t.Fatalf("expected 30s, got %v", d)
+	}
+
+	// 2. Small message
+	smallMsg := &ServerMessage{
+		Type: TypeStatus,
+		Payload: &StatusMessage{
+			Text: "ok",
+		},
+	}
+	if d := computeWriteTimeout(smallMsg); d != 30*time.Second {
+		t.Fatalf("expected 30s, got %v", d)
+	}
+
+	// 3. Medium waveform (e.g. 100,000 samples)
+	medBuf := make([]int16, 100000)
+	medMsg := &ServerMessage{
+		Type: TypeRefresh,
+		Payload: &DataMessage{
+			Buffers: [][]int16{medBuf},
+		},
+	}
+	if d := computeWriteTimeout(medMsg); d != 60*time.Second {
+		t.Fatalf("expected minimum 60s, got %v", d)
+	}
+
+	// 4. Large waveform (e.g. 1,747,630 samples * 2 channels = 3,495,260 samples)
+	ch0 := make([]int16, 1747630)
+	ch1 := make([]int16, 1747630)
+	largeMsg := &ServerMessage{
+		Type: TypeRefresh,
+		Payload: &DataMessage{
+			Buffers: [][]int16{ch0, ch1},
+		},
+	}
+	d := computeWriteTimeout(largeMsg)
+	expectedSeconds := time.Duration((3495260 * 3) / 100_000) * time.Second
+	if d != expectedSeconds {
+		t.Fatalf("expected %v, got %v", expectedSeconds, d)
+	}
+	if d < 100*time.Second {
+		t.Fatalf("expected >= 100s, got %v", d)
+	}
+}
+
+func TestServer_LargeWaveformBroadcast(t *testing.T) {
+	mock := newMockScopeController()
+	srv := NewServer(mock)
+
+	if err := srv.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	defer srv.Close()
+
+	conn, _, dec := dialTestClient(t, srv)
+	defer conn.Close()
+
+	time.Sleep(30 * time.Millisecond)
+	if srv.ClientCount() != 1 {
+		t.Fatalf("expected 1 client, got %d", srv.ClientCount())
+	}
+
+	// Simulate large FFT waveform capture (e.g., 500,000 samples per channel, 2 channels)
+	const sampleCount = 500000
+	buf0 := make([]int16, sampleCount)
+	buf1 := make([]int16, sampleCount)
+	for i := 0; i < sampleCount; i++ {
+		buf0[i] = int16(i % 32767)
+		buf1[i] = int16(-i % 32767)
+	}
+
+	go mock.CallRefreshCallback([][]int16{buf0, buf1}, nil, nil, 500, 0.01, 2.4e-8)
+
+	var sMsg ServerMessage
+	if err := dec.Decode(&sMsg); err != nil {
+		t.Fatalf("large waveform decode error: %v", err)
+	}
+	if sMsg.Type != TypeRefresh {
+		t.Fatalf("expected TypeRefresh, got %s", sMsg.Type)
+	}
+	data, ok := sMsg.Payload.(*DataMessage)
+	if !ok {
+		t.Fatalf("expected *DataMessage, got %T", sMsg.Payload)
+	}
+	if len(data.Buffers) != 2 || len(data.Buffers[0]) != sampleCount || len(data.Buffers[1]) != sampleCount {
+		t.Fatalf("unexpected buffer size: len=%d, len[0]=%d, len[1]=%d",
+			len(data.Buffers), len(data.Buffers[0]), len(data.Buffers[1]))
+	}
+	if data.Buffers[0][100] != buf0[100] || data.Buffers[1][100] != buf1[100] {
+		t.Fatalf("data content mismatch")
+	}
+}
+
