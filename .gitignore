@@ -10,6 +10,7 @@ scopesetting*.yaml
 output_verify.txt
 fynescope
 *.test
+*_test
 *.log
 *.txt
 *.nogo
