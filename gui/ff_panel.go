@@ -215,7 +215,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		refCol,
 		disp7.ReadWrite, size*disp7.DefaultDigitWidth,
 		disp7.DeafultDigitHeight, 1,
-		disp7.DefaultVCursorSpace, "Pts/dec:", "")
+		disp7.DefaultVCursorSpace, "Pts/screen:", "")
 
 	scp.ffStepFreqDisp.OnChanged = func(v float64) {
 		scp.Settings.Ff.PtsDec = v

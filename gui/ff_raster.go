@@ -737,6 +737,9 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 					_ = drawLine(ff.scp.ffScopeSignalScreen, prevX, prevY, x, y, col)
 				} else {
 					first = false
+					if len(pts) == 1 {
+						_ = drawLine(ff.scp.ffScopeSignalScreen, x, y, x, y, col)
+					}
 				}
 				prevX = x
 				prevY = y
@@ -782,6 +785,9 @@ func (ff *ffViewer) drawChannels(minFreq, freqRange, w, h float64) {
 					}
 				} else {
 					first = false
+					if len(pts) == 1 {
+						drawDashedLine(ff.scp.ffScopeSignalScreen, x, y, x, y, dimmedCol)
+					}
 				}
 				prevX = x
 				prevY = y
@@ -1667,7 +1673,7 @@ func (scp *ScpDesc) ResetFfSweep() {
 
 // generateLogFrequencies generates logarithmically spaced frequency points
 // between minFreq and maxFreq. The DeltaFreq setting controls the number of
-// points per decade (e.g. DeltaFreq=50 means 50 points per decade).
+// points per screen (e.g. PtsDec=100 means 100 points across the whole plot).
 func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64 {
 	if minFreq <= 0 {
 		minFreq = 1.0
@@ -1685,7 +1691,8 @@ func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64
 	logMin := math.Log10(minFreq)
 	logMax := math.Log10(maxFreq)
 	decades := logMax - logMin
-	totalPoints := int(math.Ceil(decades * pointsPerDecade))
+	_ = decades
+	totalPoints := int(math.Ceil(pointsPerDecade))
 	if totalPoints < 2 {
 		totalPoints = 2
 	}
@@ -1715,7 +1722,8 @@ func generateLinearFrequencies(minFreq, maxFreq, pointsPerDecade float64) []floa
 	logMin := math.Log10(minFreq)
 	logMax := math.Log10(maxFreq)
 	decades := logMax - logMin
-	totalPoints := int(math.Ceil(decades * pointsPerDecade))
+	_ = decades
+	totalPoints := int(math.Ceil(pointsPerDecade))
 	if totalPoints < 2 {
 		totalPoints = 2
 	}
@@ -2137,7 +2145,11 @@ func (scp *ScpDesc) processFfData() {
 		fftResult = fft.Coefficients(fftResult, fftBuf)
 
 		// Expected bin
-		expectedBin := int(math.Round(measuredFreq * float64(samplesLen) * samplingInterval))
+		binFreq := targetFreq
+		if binFreq <= 0 {
+			binFreq = measuredFreq
+		}
+		expectedBin := int(math.Round(binFreq * float64(samplesLen) * samplingInterval))
 		if expectedBin >= len(fftResult) {
 			expectedBin = len(fftResult) - 1
 		}
@@ -2221,17 +2233,24 @@ func (scp *ScpDesc) processFfData() {
 		// Convert to degrees
 		relPhaseDeg := relPhaseRad * 180.0 / math.Pi
 
-		// Find if we already have a bodePoint for this targetFreq (close match).
-		// 5% tolerance absorbs the jitter from measurePeriod so repeated measurements
-		// at the same generator frequency always land in the same bucket.
-		const relThreshold = 0.05 // 5% frequency matching tolerance
+		// Find if we already have a bodePoint for this targetFreq.
+		// When the sweep is controlling generator frequency, match the exact target
+		// frequency (or identical within floating precision) so that fine sweeps
+		// (e.g. 13 MHz - 14 MHz across 100 points, 0.07% step) do not collapse into each other.
 		found := false
-		for idx, pt := range scp.bodeBuffers[i] {
-			relDiff := math.Abs(pt.targetFreq - targetFreq)
-			if pt.targetFreq > 0 {
-				relDiff /= pt.targetFreq
+		for idx := len(scp.bodeBuffers[i]) - 1; idx >= 0; idx-- {
+			pt := scp.bodeBuffers[i][idx]
+			matched := false
+			if scp.currentFfFreq > 0 {
+				matched = (pt.targetFreq == targetFreq) || (math.Abs(pt.targetFreq-targetFreq) <= 1e-9*targetFreq)
+			} else {
+				relDiff := math.Abs(pt.targetFreq - targetFreq)
+				if pt.targetFreq > 0 {
+					relDiff /= pt.targetFreq
+				}
+				matched = relDiff < 0.001
 			}
-			if relDiff < relThreshold {
+			if matched {
 				// Accumulate amplitude as a running average (same as phase) to
 				// smooth out measurement noise and eliminate zig-zag spikes.
 				scp.bodeBuffers[i][idx].ampSum += mag
