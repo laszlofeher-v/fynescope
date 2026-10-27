@@ -1673,26 +1673,24 @@ func (scp *ScpDesc) ResetFfSweep() {
 
 // generateLogFrequencies generates logarithmically spaced frequency points
 // between minFreq and maxFreq. The DeltaFreq setting controls the number of
-// points per screen (e.g. PtsDec=100 means 100 points across the whole plot).
-func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64 {
+// points per screen (e.g. PtsScreen=100 means 100 points across the whole plot).
+func generateLogFrequencies(minFreq, maxFreq, pointsPerScreen float64) []float64 {
 	if minFreq <= 0 {
 		minFreq = 1.0
 	}
 	if maxFreq <= minFreq {
 		return []float64{minFreq}
 	}
-	if pointsPerDecade < 5 {
-		pointsPerDecade = 5
+	if pointsPerScreen < 5 {
+		pointsPerScreen = 5
 	}
-	if pointsPerDecade > 500 {
-		pointsPerDecade = 500
+	if pointsPerScreen > 2000 {
+		pointsPerScreen = 2000
 	}
 
 	logMin := math.Log10(minFreq)
 	logMax := math.Log10(maxFreq)
-	decades := logMax - logMin
-	_ = decades
-	totalPoints := int(math.Ceil(pointsPerDecade))
+	totalPoints := int(math.Ceil(pointsPerScreen))
 	if totalPoints < 2 {
 		totalPoints = 2
 	}
@@ -1705,25 +1703,21 @@ func generateLogFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64
 	return freqs
 }
 
-func generateLinearFrequencies(minFreq, maxFreq, pointsPerDecade float64) []float64 {
+func generateLinearFrequencies(minFreq, maxFreq, pointsPerScreen float64) []float64 {
 	if minFreq <= 0 {
 		minFreq = 1.0
 	}
 	if maxFreq <= minFreq {
 		return []float64{minFreq}
 	}
-	if pointsPerDecade < 5 {
-		pointsPerDecade = 5
+	if pointsPerScreen < 5 {
+		pointsPerScreen = 5
 	}
-	if pointsPerDecade > 500 {
-		pointsPerDecade = 500
+	if pointsPerScreen > 2000 {
+		pointsPerScreen = 2000
 	}
 
-	logMin := math.Log10(minFreq)
-	logMax := math.Log10(maxFreq)
-	decades := logMax - logMin
-	_ = decades
-	totalPoints := int(math.Ceil(pointsPerDecade))
+	totalPoints := int(math.Ceil(pointsPerScreen))
 	if totalPoints < 2 {
 		totalPoints = 2
 	}
@@ -1748,9 +1742,9 @@ func (scp *ScpDesc) startFfSweep() {
 	scp.ffSweepDataReady = make(chan struct{}, 1)
 	quit := scp.ffSweepQuit
 
-	pointsPerDecade := scp.Settings.Ff.PtsDec
-	if pointsPerDecade <= 0 {
-		pointsPerDecade = 50
+	pointsPerScreen := scp.Settings.Ff.PtsScreen
+	if pointsPerScreen <= 0 {
+		pointsPerScreen = 50
 	}
 
 	var freqs []float64
@@ -1758,13 +1752,13 @@ func (scp *ScpDesc) startFfSweep() {
 		freqs = generateLogFrequencies(
 			scp.Settings.Ff.MinFreq,
 			scp.Settings.Ff.MaxFreq,
-			pointsPerDecade,
+			pointsPerScreen,
 		)
 	} else {
 		freqs = generateLinearFrequencies(
 			scp.Settings.Ff.MinFreq,
 			scp.Settings.Ff.MaxFreq,
-			pointsPerDecade,
+			pointsPerScreen,
 		)
 	}
 
@@ -1802,7 +1796,7 @@ func (scp *ScpDesc) startFfSweep() {
 				})
 			}
 		}()
-		slog.Debug("startFfSweep", "points", len(freqs), "ppd", pointsPerDecade,
+		slog.Debug("startFfSweep", "points", len(freqs), "pps", pointsPerScreen,
 			"min", scp.Settings.Ff.MinFreq, "max", scp.Settings.Ff.MaxFreq,
 			"dwell", dwellTime)
 

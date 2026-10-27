@@ -206,7 +206,7 @@ type (
 		MinFreq           float64 `yaml:"minfreq"`
 		MaxFreq           float64 `yaml:"maxfreq"`
 		DisplayMode       string  `yaml:"displaymode"`
-		PtsDec            float64 `yaml:"deltafreq"`
+		PtsScreen         float64 `yaml:"deltafreq"`
 		TargetCycles      float64 `yaml:"targetcycles"`
 		UseExternalGen    bool    `yaml:"useexternalgen"`
 		ExternalGenPort   string  `yaml:"externalgenport"`
@@ -383,7 +383,7 @@ func NewDefaultSettings() *PsSettings {
 			Hysteresis:   100,
 		},
 		Dft: DftSettings{MaxFreq: 1000000.0, MinFreq: 0, Window: WindowRectangular, DisplayUnit: UnitDBFS, Bins: 1024, SampleRate: "100", SampleRateUnit: "MS/s", ArbitraryDbRefV: 1.0, XAxisLog: false},
-		Ff:  FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: UnitDBFS, PtsDec: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
+		Ff:  FfSettings{ReferenceChannel: 0, MinFreq: 1000, MaxFreq: 10000, DisplayMode: UnitDBFS, PtsScreen: 100, TargetCycles: 20.0, DeltaT: 0.1, Amplitude: defaultAmplitude, ArbitraryDbRefV: 1.0, XAxisLog: true},
 		Digital: DigitalSettings{
 			Ports: [2]DigitalPortSettings{
 				{Enabled: false, Threshold: 1500},

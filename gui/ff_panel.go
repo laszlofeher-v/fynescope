@@ -208,8 +208,8 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		disp7.DefaultVCursorSpace, "Freq :", " Hz")
 	scp.updateFfCurrentFreq()
 
-	scp.ffStepFreqDisp, _ = disp7.NewCustomDisp7Array(3, 0,
-		500,
+	scp.ffStepFreqDisp, _ = disp7.NewCustomDisp7Array(4, 0,
+		2000,
 		5,
 		disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 		refCol,
@@ -218,13 +218,16 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 		disp7.DefaultVCursorSpace, "Pts/screen:", "")
 
 	scp.ffStepFreqDisp.OnChanged = func(v float64) {
-		scp.Settings.Ff.PtsDec = v
+		scp.Settings.Ff.PtsScreen = v
 		go scp.SaveSettings()
 	}
-	if scp.Settings.Ff.PtsDec < 5 {
-		scp.Settings.Ff.PtsDec = 5
+	if scp.Settings.Ff.PtsScreen < 5 {
+		scp.Settings.Ff.PtsScreen = 5
 	}
-	scp.ffStepFreqDisp.SetValue(int(scp.Settings.Ff.PtsDec))
+	if scp.Settings.Ff.PtsScreen > 2000 {
+		scp.Settings.Ff.PtsScreen = 2000
+	}
+	scp.ffStepFreqDisp.SetValue(int(scp.Settings.Ff.PtsScreen))
 
 	scp.ffDeltaTDisp, _ = disp7.NewCustomDisp7Array(5, 3,
 		10000, 0,
@@ -407,7 +410,7 @@ func (scp *ScpDesc) newFfPanel(panel *fyne.Container) {
 	addToTest(scp.ffMaxFreqDisp, ffMaxFreqId, ffTabIndex)
 	addToTest(scp.ffDeltaTDisp, ffDeltaTId, ffTabIndex)
 	addToTest(targetCyclesDisp, ffCyclesId, ffTabIndex)
-	addToTest(scp.ffStepFreqDisp, ffPtsDecId, ffTabIndex)
+	addToTest(scp.ffStepFreqDisp, ffPtsScreenId, ffTabIndex)
 	if scp.ffAmpDisp != nil {
 		addToTest(scp.ffAmpDisp, ffAmpId, ffTabIndex)
 	}

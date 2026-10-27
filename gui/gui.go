@@ -1555,8 +1555,8 @@ func (scp *ScpDesc) StartRunning() {
 		if scp.Settings.Trigger.Type == settings.TriggerTypeInterval || scp.Settings.Trigger.Type == settings.TriggerTypePulseWidth || scp.Settings.Trigger.Type == settings.TriggerTypeDropout || scp.Settings.Trigger.Type == settings.TriggerTypeWindowDropout {
 			scp.psControl.ShowDisplayStatus(ErrWrongFfTrigger, control.Warning)
 		}
-		if scp.Settings.Ff.PtsDec <= 0 {
-			scp.psControl.ShowDisplayStatus("Error: Points per decade cannot be 0", control.Warning)
+		if scp.Settings.Ff.PtsScreen <= 0 {
+			scp.psControl.ShowDisplayStatus("Error: Points per screen cannot be 0", control.Warning)
 			return
 		}
 		// Set up the generator in non-sweep mode; the app controls stepping.

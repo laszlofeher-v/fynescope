@@ -34,7 +34,7 @@ func TestNewFfPanel(t *testing.T) {
 				DeltaT:           1.0,
 				Amplitude:        2000000,
 				ReferenceChannel: 0,
-				PtsDec:           5,
+				PtsScreen:        5,
 			},
 			FfGen: settings.GeneratorSettings{
 				On:            false,

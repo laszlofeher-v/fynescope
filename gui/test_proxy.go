@@ -123,39 +123,39 @@ const (
 	ffMaxFreqId                    = "ffMaxFreq"
 	ffDeltaTId                     = "ffDeltaT"
 	ffCyclesId                     = "ffCycles"
-	ffPtsDecId                     = "ffPtsDec"
+	ffPtsScreenId                  = "ffPtsScreen"
 	ffAmpId                        = "ffAmp"
 	ffOffsetId                     = "ffOffset"
 	ffExtGenSelectId               = "ffExtGenSelect"
 	ffDispUnitSelectId             = "ffDispModeSelect"
-	ffPhaseCheckId = "ffPhaseCheck"
-	ffRefCheckId   = "ffRefCheck"
-	ffEnableId     = "ffEnable"
-	ffX10Id        = "ffX10"
-	ffVRangeId     = "ffVRange"
-	rlcFuncId      = "rlcFunc"
-	extgenFuncId   = "extgenFunc"
-	digPortFuncId  = "digPortFunc"
-	digGenFuncId   = "digGenFunc"
-	vchFuncId      = "vchFunc"
-	decodeFuncId   = "decodeFunc"
-	corrFuncId     = "corrFunc"
-	corrUndockBtn  = "corrUndockBtn"
-	multiUndockBtn = "multiUndockBtn"
-	rlcTypeId      = "rlcType"
-	rlcRId         = "rlcR"
-	rlcRUnitId     = "rlcRUnit"
-	rlcLId         = "rlcL"
-	rlcLUnitId     = "rlcLUnit"
-	rlcCId         = "rlcC"
-	rlcCUnitId     = "rlcCUnit"
-	rlcQId         = "rlcQ"
-	vchNameEntryId = "vchNameEntry"
-	vchExprEntryId = "vchExprEntry"
-	vchAcceptBtnId = "vchAcceptBtn"
-	vchDeleteBtnId = "vchDeleteBtn"
-	vchNewBtnId    = "vchNewBtn"
-	timeout        = time.Duration(30) * time.Second
+	ffPhaseCheckId                 = "ffPhaseCheck"
+	ffRefCheckId                   = "ffRefCheck"
+	ffEnableId                     = "ffEnable"
+	ffX10Id                        = "ffX10"
+	ffVRangeId                     = "ffVRange"
+	rlcFuncId                      = "rlcFunc"
+	extgenFuncId                   = "extgenFunc"
+	digPortFuncId                  = "digPortFunc"
+	digGenFuncId                   = "digGenFunc"
+	vchFuncId                      = "vchFunc"
+	decodeFuncId                   = "decodeFunc"
+	corrFuncId                     = "corrFunc"
+	corrUndockBtn                  = "corrUndockBtn"
+	multiUndockBtn                 = "multiUndockBtn"
+	rlcTypeId                      = "rlcType"
+	rlcRId                         = "rlcR"
+	rlcRUnitId                     = "rlcRUnit"
+	rlcLId                         = "rlcL"
+	rlcLUnitId                     = "rlcLUnit"
+	rlcCId                         = "rlcC"
+	rlcCUnitId                     = "rlcCUnit"
+	rlcQId                         = "rlcQ"
+	vchNameEntryId                 = "vchNameEntry"
+	vchExprEntryId                 = "vchExprEntry"
+	vchAcceptBtnId                 = "vchAcceptBtn"
+	vchDeleteBtnId                 = "vchDeleteBtn"
+	vchNewBtnId                    = "vchNewBtn"
+	timeout                        = time.Duration(30) * time.Second
 )
 
 type (
@@ -182,11 +182,12 @@ var (
 	// fuzzerEventMtx guards fyne.Do event dispatches against concurrent window
 	// destruction. All rand* event helpers hold a read lock; randCloseWindow
 	// holds a write lock so no new events reach GLFW while a window is torn down.
-	fuzzerEventMtx sync.RWMutex
-	FuzzerCommitID string
+	fuzzerEventMtx     sync.RWMutex
+	FuzzerCommitID     string
 	minFuzzerSleepTime = 150 * time.Millisecond
 	minFuzzerSleepMu   sync.RWMutex
 )
+
 // GetSleepTime returns the current dynamically calculated sleep duration,
 // adjusting for full-screen mode if currently active.
 func GetSleepTime() time.Duration {
@@ -233,7 +234,6 @@ func SetSleepTime(d time.Duration) {
 	defer sleepTimeMu.Unlock()
 	sleepTime = d
 }
-
 
 // CalibrateSleepTime calculates the optimal sleepTime based on CPU and Video speed.
 // It benchmarks CPU computation latency and UI thread event dispatch latency,
@@ -961,7 +961,7 @@ func (w *errorCountingWriter) Write(p []byte) (n int, err error) {
 	}
 
 	w.logFifo = append(w.logFifo, logEntry{ts: now, msg: str})
-	
+
 	// Prune logs older than 6 seconds
 	cutoff := now.Add(-6 * time.Second)
 	var pruneIdx int
@@ -990,7 +990,7 @@ func (w *errorCountingWriter) dumpFifo() {
 		}
 		sb.WriteString("=== END HANG LOG DUMP ===\n")
 		w.logFifo = nil // Clear after dump to prevent repeated dumps for the same hang
-		
+
 		fmt.Fprint(w.target, sb.String())
 	}
 }
@@ -1388,16 +1388,16 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 						} else {
 							log.Printf("level=WARN Hang goroutine dump written to %s", stackFile)
 						}
-						
+
 						// Increase the minimum fuzzer sleep time, capping at 1000ms
 						minFuzzerSleepMu.Lock()
 						minFuzzerSleepTime += 50 * time.Millisecond
-						if minFuzzerSleepTime > 1000 * time.Millisecond {
+						if minFuzzerSleepTime > 1000*time.Millisecond {
 							minFuzzerSleepTime = 1000 * time.Millisecond
 						}
 						newSleep := minFuzzerSleepTime
 						minFuzzerSleepMu.Unlock()
-						
+
 						SetSleepTime(newSleep)
 						log.Printf("level=WARN Increased fuzzer sleepTime to %v to prevent further hangs", newSleep)
 					}
