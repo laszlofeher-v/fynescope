@@ -60,3 +60,81 @@ func TestSmoothPhase(t *testing.T) {
 		}
 	})
 }
+
+func TestFormatFreqHighRes(t *testing.T) {
+	tests := []struct {
+		input    float64
+		expected string
+	}{
+		{0, "0 Hz"},
+		{100, "100.0 Hz"},
+		{123.45, "123.45 Hz"},
+		{-123.45, "-123.45 Hz"},
+		{1000, "1.00 kHz"},
+		{1500, "1.50 kHz"},
+		{1525.5, "1.5255 kHz"},
+		{-15400, "-15.40 kHz"},
+		{13000000, "13.000 MHz"},
+		{13456780, "13.45678 MHz"},
+		{13456789, "13.45679 MHz"},
+		{-13500000, "-13.500 MHz"},
+	}
+
+	for _, tc := range tests {
+		actual := formatFreqHighRes(tc.input)
+		if actual != tc.expected {
+			t.Errorf("formatFreqHighRes(%g): expected %q, got %q", tc.input, tc.expected, actual)
+		}
+	}
+}
+
+func TestDecimalsForStep(t *testing.T) {
+	tests := []struct {
+		step     float64
+		expected int
+	}{
+		{10.0, 0},
+		{5.0, 0},
+		{1.0, 0},
+		{0.5, 1},
+		{0.2, 1},
+		{0.1, 1},
+		{0.05, 2},
+		{0.02, 2},
+		{0.01, 2},
+		{0.005, 3},
+		{0.001, 3},
+		{0.0001, 4},
+	}
+
+	for _, tc := range tests {
+		actual := decimalsForStep(tc.step)
+		if actual != tc.expected {
+			t.Errorf("decimalsForStep(%g): expected %d, got %d", tc.step, tc.expected, actual)
+		}
+	}
+}
+
+func TestFormatDecadeFreq(t *testing.T) {
+	tests := []struct {
+		input    float64
+		expected string
+	}{
+		{100, "100Hz"},
+		{1000, "1kHz"},
+		{2000, "2kHz"},
+		{1500, "1.5kHz"},
+		{1000000, "1MHz"},
+		{2000000, "2MHz"},
+		{1500000, "1.5MHz"},
+		{10000000, "10MHz"},
+	}
+
+	for _, tc := range tests {
+		actual := formatDecadeFreq(tc.input)
+		if actual != tc.expected {
+			t.Errorf("formatDecadeFreq(%g): expected %q, got %q", tc.input, tc.expected, actual)
+		}
+	}
+}
+

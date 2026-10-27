@@ -12,6 +12,7 @@ import (
 	"math/cmplx"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -235,49 +236,67 @@ func (ff *ffViewer) draw() {
 				multipliers = []int{1}
 			}
 
-			lastLabelRight := -100000.0
-
+			decadePointsCount := 0
 			for dec := startDecade; dec <= endDecade; dec++ {
 				base := math.Pow(10, float64(dec))
-				for j := 1; j < 10; j++ {
+				for _, j := range multipliers {
 					f := base * float64(j)
-					xf := getX(f)
-					if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
-						col := gridCol
-						if channelIndex >= 0 {
-							col = color.NRGBA{50, 50, 50, 255}
-						}
+					if f >= minFreq && f <= maxFreq {
+						decadePointsCount++
+					}
+				}
+			}
 
-						shouldLabel := false
-						for _, m := range multipliers {
-							if j == m {
-								shouldLabel = true
-								break
-							}
-						}
+			if decadePointsCount < 4 {
+				// Narrow frequency interval on log scale (e.g. 13 MHz to 14 MHz):
+				// Standard decade multipliers (1..9) don't subdivide this span sufficiently.
+				// Generate nice frequency steps mapped to logarithmic X coordinates.
+				col := gridCol
+				if channelIndex >= 0 {
+					col = color.NRGBA{50, 50, 50, 255}
+				}
+				ff.drawLinearOrSmallSpanFreqGrid(bounds, w, minFreq, maxFreq, getX, false, col, drawVDiv)
+			} else {
+				// Standard multi-decade logarithmic grid
+				lastLabelRight := -100000.0
 
-						if j == 1 {
-							ixf := int(math.Round(xf))
-							for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-								ff.scp.ffScopeFullScreen.Set(ixf, y, col)
+				for dec := startDecade; dec <= endDecade; dec++ {
+					base := math.Pow(10, float64(dec))
+					for j := 1; j < 10; j++ {
+						f := base * float64(j)
+						xf := getX(f)
+						if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
+							col := gridCol
+							if channelIndex >= 0 {
+								col = color.NRGBA{50, 50, 50, 255}
 							}
-						} else {
-							drawVDiv(xf, col)
-						}
 
-						if shouldLabel {
-							vstr := fmt.Sprintf("%gHz", f)
-							if f >= 1000000 {
-								vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
-							} else if f >= 1000 {
-								vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
+							shouldLabel := false
+							for _, m := range multipliers {
+								if j == m {
+									shouldLabel = true
+									break
+								}
 							}
-							left, _, right, _ := ff.scp.boundString(vstr)
-							lblW := float64(right - left)
-							drawX := xf - lblW/2.0
-							if drawX >= lastLabelRight+8.0 {
-								ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
-								lastLabelRight = drawX + lblW
+
+							if j == 1 {
+								ixf := int(math.Round(xf))
+								for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+									ff.scp.ffScopeFullScreen.Set(ixf, y, col)
+								}
+							} else {
+								drawVDiv(xf, col)
+							}
+
+							if shouldLabel {
+								vstr := formatDecadeFreq(f)
+								left, _, right, _ := ff.scp.boundString(vstr)
+								lblW := float64(right - left)
+								drawX := xf - lblW/2.0
+								if drawX >= lastLabelRight+8.0 {
+									ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
+									lastLabelRight = drawX + lblW
+								}
 							}
 						}
 					}
@@ -289,45 +308,14 @@ func (ff *ffViewer) draw() {
 			if span <= 0 {
 				span = 1e6
 			}
-			step := niceStep(span / 10.0)
-			firstFreq := math.Floor(minFreq/step) * step
-
-			lastLabelRight := -100000.0
-
-			for i := 0; i < 20; i++ {
-				f := firstFreq + float64(i)*step
-				if f < minFreq-step || f > maxFreq+step {
-					continue
-				}
-				fraction := (f - minFreq) / span
-				xf := float64(bounds.Min.X) + fraction*w
-
-				if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
-					col := gridCol
-					if channelIndex >= 0 {
-						col = color.NRGBA{50, 50, 50, 255}
-					}
-
-					ixf := int(math.Round(xf))
-					for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-						ff.scp.ffScopeFullScreen.Set(ixf, y, col)
-					}
-
-					vstr := fmt.Sprintf("%gHz", f)
-					if f >= 1000000 {
-						vstr = fmt.Sprintf("%.1fMHz", f/1000000.0)
-					} else if f >= 1000 {
-						vstr = fmt.Sprintf("%.1fkHz", f/1000.0)
-					}
-					left, _, right, _ := ff.scp.boundString(vstr)
-					lblW := float64(right - left)
-					drawX := xf - lblW/2.0
-					if drawX >= lastLabelRight+8.0 {
-						ff.scp.addLabel(ff.scp.ffScopeFullScreen, int(math.Round(drawX)), bounds.Max.Y+20, vstr, color.NRGBA{200, 200, 200, 255})
-						lastLabelRight = drawX + lblW
-					}
-				}
+			linearGetX := func(f float64) float64 {
+				return float64(bounds.Min.X) + ((f-minFreq)/span)*w
 			}
+			col := gridCol
+			if channelIndex >= 0 {
+				col = color.NRGBA{50, 50, 50, 255}
+			}
+			ff.drawLinearOrSmallSpanFreqGrid(bounds, w, minFreq, maxFreq, linearGetX, true, col, drawVDiv)
 		}
 	}
 
@@ -941,14 +929,18 @@ func (ff *ffViewer) drawInspector(w, h float64, bounds image.Rectangle) {
 	info = append(info, struct {
 		text string
 		col  color.Color
-	}{"F: " + formatFreq(freqAtCursor) + "Hz", color.White})
+	}{"F: " + formatFreqHighRes(freqAtCursor), color.White})
 
 	if ff.refActive {
 		df := freqAtCursor - refFreq
+		prefix := ""
+		if df > 0 {
+			prefix = "+"
+		}
 		info = append(info, struct {
 			text string
 			col  color.Color
-		}{"ΔF: " + formatFreq(df) + "Hz", color.White})
+		}{"ΔF: " + prefix + formatFreqHighRes(df), color.White})
 	}
 
 	moved := false
@@ -2391,3 +2383,176 @@ func smoothPhaseInto(pts []bodePoint, windowSize int, out []float64) []float64 {
 	}
 	return out
 }
+
+// decimalsForStep returns the number of decimal digits required to represent
+// steps of size s without rounding collisions.
+func decimalsForStep(s float64) int {
+	if s <= 0 {
+		return 0
+	}
+	d := -math.Floor(math.Log10(s) + 1e-9)
+	if d < 0 {
+		return 0
+	}
+	if d > 6 {
+		return 6
+	}
+	return int(d)
+}
+
+// formatDecadeFreq formats standard decade frequencies concisely (e.g. 1kHz, 10MHz).
+func formatDecadeFreq(f float64) string {
+	if f >= 1e6 {
+		val := f / 1e6
+		if val == math.Floor(val) {
+			return fmt.Sprintf("%.0fMHz", val)
+		}
+		return fmt.Sprintf("%.1fMHz", val)
+	}
+	if f >= 1e3 {
+		val := f / 1e3
+		if val == math.Floor(val) {
+			return fmt.Sprintf("%.0fkHz", val)
+		}
+		return fmt.Sprintf("%.1fkHz", val)
+	}
+	if f == math.Floor(f) {
+		return fmt.Sprintf("%.0fHz", f)
+	}
+	return fmt.Sprintf("%gHz", f)
+}
+
+// formatFreqHighRes formats frequency with high resolution for inspector and measurement displays,
+// maintaining up to 5 decimals in MHz (10 Hz resolution) and 4 in kHz (0.1 Hz resolution).
+func formatFreqHighRes(f float64) string {
+	absF := math.Abs(f)
+	if absF < 1e-9 {
+		return "0 Hz"
+	}
+	sign := ""
+	if f < 0 {
+		sign = "-"
+	}
+
+	formatWithDecimals := func(val float64, maxDec, minDec int) string {
+		str := fmt.Sprintf("%.*f", maxDec, val)
+		if idx := strings.Index(str, "."); idx != -1 {
+			intPart := str[:idx]
+			fracPart := str[idx+1:]
+			for len(fracPart) > minDec && fracPart[len(fracPart)-1] == '0' {
+				fracPart = fracPart[:len(fracPart)-1]
+			}
+			if len(fracPart) > 0 {
+				return intPart + "." + fracPart
+			}
+			return intPart
+		}
+		return str
+	}
+
+	if absF >= 1e6 {
+		return sign + formatWithDecimals(absF/1e6, 5, 3) + " MHz"
+	}
+	if absF >= 1e3 {
+		return sign + formatWithDecimals(absF/1e3, 4, 2) + " kHz"
+	}
+	return sign + formatWithDecimals(absF, 2, 1) + " Hz"
+}
+
+// drawLinearOrSmallSpanFreqGrid renders frequency grid divisions and labels for linear sweeps
+// as well as narrow-span logarithmic sweeps where standard decade multipliers are insufficient.
+func (ff *ffViewer) drawLinearOrSmallSpanFreqGrid(
+	bounds image.Rectangle,
+	w float64,
+	minFreq, maxFreq float64,
+	getX func(f float64) float64,
+	solidGrid bool,
+	gridCol color.Color,
+	drawVDiv func(xf float64, col color.Color),
+) {
+	span := maxFreq - minFreq
+	if span <= 0 {
+		span = 1e6
+	}
+	divCount := 10.0
+	if !solidGrid {
+		divCount = 8.0
+	}
+	step := niceStep(span / divCount)
+	firstFreq := math.Floor(minFreq/step) * step
+
+	var unitName string
+	var scale float64
+	if maxFreq >= 1e6 {
+		unitName = "MHz"
+		scale = 1e6
+	} else if maxFreq >= 1e3 {
+		unitName = "kHz"
+		scale = 1e3
+	} else {
+		unitName = "Hz"
+		scale = 1.0
+	}
+
+	dec := decimalsForStep(step / scale)
+
+	type tickCandidate struct {
+		xf float64
+		f  float64
+	}
+	var candidates []tickCandidate
+
+	for f := firstFreq; f <= maxFreq+step*0.01 && len(candidates) < 50; f += step {
+		if f < minFreq-step*0.01 {
+			continue
+		}
+		xf := getX(f)
+		if xf >= float64(bounds.Min.X) && xf <= float64(bounds.Max.X) {
+			if solidGrid {
+				ixf := int(math.Round(xf))
+				for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+					ff.scp.ffScopeFullScreen.Set(ixf, y, gridCol)
+				}
+			} else {
+				drawVDiv(xf, gridCol)
+			}
+			candidates = append(candidates, tickCandidate{xf: xf, f: f})
+		}
+	}
+
+	type drawnLabel struct {
+		drawX int
+		text  string
+	}
+	var drawn []drawnLabel
+	lastLabelRight := -100000.0
+
+	for idx, c := range candidates {
+		isLast := idx == len(candidates)-1
+		var text string
+		if isLast {
+			text = fmt.Sprintf("%.*f %s", dec, c.f/scale, unitName)
+		} else {
+			text = fmt.Sprintf("%.*f", dec, c.f/scale)
+		}
+		left, _, right, _ := ff.scp.boundString(text)
+		lblW := float64(right - left)
+		drawX := c.xf - lblW/2.0
+		if drawX >= lastLabelRight+8.0 {
+			drawn = append(drawn, drawnLabel{drawX: int(math.Round(drawX)), text: text})
+			lastLabelRight = drawX + lblW
+		}
+	}
+
+	if len(drawn) > 0 {
+		lastDrawn := &drawn[len(drawn)-1]
+		if !strings.HasSuffix(lastDrawn.text, unitName) {
+			lastDrawn.text += " " + unitName
+		}
+	}
+
+	for _, dl := range drawn {
+		ff.scp.addLabel(ff.scp.ffScopeFullScreen, dl.drawX, bounds.Max.Y+20, dl.text, color.NRGBA{200, 200, 200, 255})
+	}
+}
+
