@@ -212,7 +212,11 @@ func (psControl *PscDesc) getData(sampleCount uint64, segmentIndex uint64, ets b
 				(genericps.TimeUnitToVal(timeUnits) / genericps.TimeUnitToVal(genericps.TuFs)))
 		}
 		psControl.reportBlockTriggerState()
-		psControl.RefreshCallback(psControl.receiveBuffer, psControl.receiveBufferMin, psControl.digitalReceiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
+		var minBuf [][]int16
+		if psControl.downSampleRatioMode == genericps.RatioModeAggregate {
+			minBuf = psControl.receiveBufferMin
+		}
+		psControl.RefreshCallback(psControl.receiveBuffer, minBuf, psControl.digitalReceiveBuffer, psControl.triggerTimeOffset, psControl.XRoundError, psControl.SamplingTimeInterval)
 	}
 	return
 }

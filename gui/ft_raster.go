@@ -866,15 +866,20 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						return
 					}
 					displayBufferMin := sv.scp.displayBuffersMin[channelIndex]
-					if len(displayBufferMin) == 0 {
+					if len(displayBufferMin) == 0 || len(displayBufferMin) != len(displayBuffer) {
 						drawLinear()
 						return
+					}
+
+					edLen := len(displayBuffer)
+					if len(displayBufferMin) < edLen {
+						edLen = len(displayBufferMin)
 					}
 
 					startIndex := 0
 					if deltaT > 0 {
 						cs := (-t0) / deltaT
-						if cs > float64(len(displayBuffer)) {
+						if cs > float64(edLen) {
 							return
 						}
 						calcStart := int(cs) - 1
@@ -882,7 +887,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 							startIndex = calcStart
 						}
 					}
-					if startIndex >= len(displayBuffer) {
+					if startIndex >= edLen {
 						return
 					}
 
@@ -917,7 +922,7 @@ func (sv *signalViewer) drawNormal(w, h float64, bounds image.Rectangle, zeroOff
 						}
 					}
 
-					for i := startIndex; i < len(displayBuffer); i++ {
+					for i := startIndex; i < edLen; i++ {
 						x := t0 + float64(i)*deltaT + minScreenX
 
 						sMax := displayBuffer[i]

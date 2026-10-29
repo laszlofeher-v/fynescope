@@ -502,7 +502,7 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 				displayBuffer[i] = float32(receiveBuffer[i]) * scale
 			}
 
-			if buffersMin != nil && len(buffersMin) > channelIndex && buffersMin[channelIndex] != nil {
+			if buffersMin != nil && len(buffersMin) > channelIndex && len(buffersMin[channelIndex]) > 0 {
 				receiveBufferMin := buffersMin[channelIndex]
 				if len(scp.displayBuffersMin) > channelIndex {
 					if len(scp.displayBuffersMin[channelIndex]) != len(receiveBufferMin) {
@@ -522,6 +522,10 @@ func (scp *ScpDesc) UpdateMeasurements(buffers [][]int16, buffersMin [][]int16, 
 							displayBufferMin[i] = float32(receiveBufferMin[i]) * scale
 						}
 					}
+				}
+			} else {
+				if len(scp.displayBuffersMin) > channelIndex {
+					scp.displayBuffersMin[channelIndex] = scp.displayBuffersMin[channelIndex][:0]
 				}
 			}
 

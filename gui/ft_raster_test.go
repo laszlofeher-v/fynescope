@@ -206,6 +206,15 @@ func TestSignalViewer_DrawED(t *testing.T) {
 
 	// Must complete immediately due to screen-bounds clamping
 	sv.drawNormal(1000.0, 500.0, bounds, 250, deltaT)
+
+	// 3. Mismatched buffer lengths test: max buffer has 1000004 samples, min has 2054
+	scp.maxScreenTime = 1.0
+	scp.controlSamplingTimeInterval = 1e-6
+	deltaT = (1000.0 / scp.maxScreenTime) * scp.controlSamplingTimeInterval
+	scp.displayBuffers[0] = make([]float32, 1000004)
+	scp.displayBuffersMin[0] = make([]float32, 2054)
+	// Must not panic on out-of-range index; gracefully falls back to drawLinear
+	sv.drawNormal(1000.0, 500.0, bounds, 250, deltaT)
 }
 
 func TestSignalViewer_DrawDot_Dense(t *testing.T) {
