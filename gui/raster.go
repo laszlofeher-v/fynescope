@@ -77,6 +77,7 @@ type (
 	}
 	screenRaster struct {
 		mouseIn        bool
+		dragging       bool
 		mouseX, mouseY float32
 		disableInput   bool
 		widget.BaseWidget
@@ -250,6 +251,7 @@ func (raster *screenRaster) MouseDown(event *desktop.MouseEvent) {
 	if raster.disableInput {
 		return
 	}
+	raster.dragging = true
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	canvas.Refresh(raster)
@@ -272,6 +274,7 @@ func (raster *screenRaster) MouseUp(event *desktop.MouseEvent) {
 	if raster.disableInput {
 		return
 	}
+	raster.dragging = false
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	raster.scp.displayMovedDivs = 0
@@ -299,6 +302,7 @@ func (raster *screenRaster) DragEnd() {
 	if raster.disableInput {
 		return
 	}
+	raster.dragging = false
 	raster.scp.displayMovedDivs = 0
 	drawers := raster.Drawers()
 	for i := range drawers {
@@ -425,6 +429,20 @@ func (raster *screenRaster) Dragged(event *fyne.DragEvent) {
 	if raster.disableInput {
 		return
 	}
+	if !raster.dragging {
+		raster.dragging = true
+		startPos := fyne.NewPos(event.Position.X-event.Dragged.DX, event.Position.Y-event.Dragged.DY)
+		me := &desktop.MouseEvent{
+			PointEvent: fyne.PointEvent{Position: startPos},
+			Button:     desktop.LeftMouseButton,
+		}
+		raster.LeftMouseDown(me)
+		for i := range raster.Drawers() {
+			if m, ok := raster.Drawers()[i].(mouser); ok {
+				m.mouseDown(desktop.LeftMouseButton, 0, startPos.X, startPos.Y)
+			}
+		}
+	}
 	raster.mouseX = event.Position.X
 	raster.mouseY = event.Position.Y
 	x := event.Position.X
@@ -474,7 +492,11 @@ type (
 )
 
 func (r *screenRaster) CreateRenderer() fyne.WidgetRenderer {
-	r.min = fyne.Size{Width: 400, Height: 200}
+	if r.scp != nil && r.scp.isMobileLayout() {
+		r.min = fyne.Size{Width: 200, Height: 120}
+	} else {
+		r.min = fyne.Size{Width: 400, Height: 200}
+	}
 	return &screenRasterRenderer{bg: canvas.NewRaster(r.raster.Generator)}
 }
 

@@ -38,6 +38,14 @@ func init() {
 		n *= 10
 	}
 }
+
+func maxDwellTimeTicks() int {
+	maxTicks := uint64(genericps.MaxDwellTime) * 1000
+	if maxTicks > uint64(math.MaxInt) {
+		return math.MaxInt
+	}
+	return int(maxTicks)
+}
 func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 	msg := &control.GeneratorDescMsg{}
 	if on {
@@ -366,7 +374,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 		frequency.SilentSetValue(int(scp.Settings.GenPanel.Frequency) * pow10tab[fractionWidth])
 		addToTest(frequency, genFreqId, genTabIndex)
 		dwellTime, err = disp7.NewCustomDisp7Array(dwellTimeDigits, dwellTimeFraction,
-			int(genericps.MaxDwellTime)*1000, minDwellTimeNs,
+			maxDwellTimeTicks(), minDwellTimeNs,
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			scp.theme.Color(ColorNameGeneratorDisp, 0),
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,
@@ -513,7 +521,7 @@ func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {
 
 	sortWaveTypes()
 	var genPanel *fyne.Container
-	genPanel, err = newGenSettings(true)
+	genPanel, err = newGenSettings(!scp.isMobileLayout())
 	if err != nil {
 		return
 	}

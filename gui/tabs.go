@@ -29,7 +29,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 		if scp.genLayout != nil {
 			scp.genLayout.RemoveAll()
 			if scp.psControl != nil && scp.psControl.IsDemo() {
-				scp.newDemoGenPanel(scp.genLayout, true)
+				scp.newDemoGenPanel(scp.genLayout, !scp.isMobileLayout())
 			} else {
 				scp.newGenPanel(scp.genLayout)
 			}
@@ -37,7 +37,7 @@ func (scp *ScpDesc) handleTabTransition(prevTab, newTab int) {
 
 		if scp.extgenLayout != nil && scp.ExtGenEnabled {
 			scp.extgenLayout.RemoveAll()
-			scp.extgenLayout.Add(scp.newExtGenTab(true))
+			scp.extgenLayout.Add(scp.newExtGenTab(!scp.isMobileLayout()))
 		}
 
 		if scp.ffAmpDisp != nil {

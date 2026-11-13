@@ -301,7 +301,7 @@ func (scp *ScpDesc) buildDecodeContent(undockable bool) fyne.CanvasObject {
 
 func (scp *ScpDesc) refreshDecodeTab() {
 	if scp.decodeLayout != nil {
-		scp.decodeLayout.Objects = []fyne.CanvasObject{scp.buildDecodeContent(scp.decodeWindow == nil)}
+		scp.decodeLayout.Objects = []fyne.CanvasObject{scp.buildDecodeContent(scp.decodeWindow == nil && !scp.isMobileLayout())}
 		scp.decodeLayout.Refresh()
 	}
 

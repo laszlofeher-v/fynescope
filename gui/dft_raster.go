@@ -1074,14 +1074,11 @@ func (scp *ScpDesc) updateDftDataCollectionTime() {
 }
 
 func (scp *ScpDesc) checkDftSampleRateLimit(rateStr, unitStr string) bool {
-	rate, err := strconv.Atoi(rateStr)
+	rateU64, err := strconv.ParseUint(rateStr, 10, 32)
 	if err != nil {
 		return false
 	}
-	if rate < 0 || rate > math.MaxUint32 {
-		return false
-	}
-	rateU32 := uint32(rate)
+	rateU32 := uint32(rateU64)
 	multiplier := uint32(1)
 	switch unitStr {
 	case selectscroll.UnitKSps:

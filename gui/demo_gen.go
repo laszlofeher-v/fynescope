@@ -481,7 +481,7 @@ func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err 
 		frequency.SilentSetValue(int(genSettings.Frequency) * pow10tab[fractionWidth])
 		addToTest(frequency, genFreqId, genTabIndex)
 		dwellTime, err = disp7.NewCustomDisp7Array(11, 7,
-			int(genericps.MaxDwellTime)*1000, int(500),
+			maxDwellTimeTicks(), int(500),
 			disp7.UnSigned, disp7.NoTrailingZeroes, scp.Window,
 			chCol,
 			disp7.ReadWrite, size*disp7.DefaultDigitWidth,

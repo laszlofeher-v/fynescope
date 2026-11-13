@@ -1,3 +1,5 @@
+//go:build !android && !ios && !mobile
+
 package gui
 
 import (

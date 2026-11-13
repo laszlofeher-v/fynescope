@@ -369,8 +369,37 @@ type (
 		tabFocusRect              *canvas.Rectangle
 		currentFocused            fyne.Focusable
 		focusedSince              time.Time
+		MobileMode                bool
+		OnDisconnect              func()
 	}
 )
+
+// isMobileLayout reports whether the compact mobile UI layout with vertically
+// scrollable control tabs is active.
+func (scp *ScpDesc) isMobileLayout() bool {
+	return scp != nil && (scp.MobileMode || fyne.CurrentDevice().IsMobile())
+}
+
+// wrapTabContent wraps a tab's root container in a vertical scroll container
+// when mobile layout is active so all control tabs can be scrolled vertically
+// on small landscape screens.
+func (scp *ScpDesc) wrapTabContent(content fyne.CanvasObject) fyne.CanvasObject {
+	if !scp.isMobileLayout() || content == nil {
+		return content
+	}
+	if _, ok := content.(*container.Scroll); ok {
+		return content
+	}
+	return container.NewVScroll(content)
+}
+
+// ControlTabs returns the active control tab items when the control tab container is initialized.
+func (scp *ScpDesc) ControlTabs() []*container.TabItem {
+	if scp == nil || scp.controlTab == nil {
+		return nil
+	}
+	return scp.controlTab.Items
+}
 
 // createFlag creates a buffered (size 1) channel used as a non-blocking signal.
 func createFlag() (ch chan struct{}) {
@@ -940,37 +969,38 @@ func (scp *ScpDesc) build2000Gui() {
 		content           *fyne.Container
 	)
 
+	undockable := !scp.isMobileLayout()
 	ftLayout := container.New(layout.NewVBoxLayout())
 	scp.genLayout = container.New(layout.NewVBoxLayout())
-	scp.ftTab = container.NewTabItem(tabNames[ftTabIndex], ftLayout)
+	scp.ftTab = container.NewTabItem(tabNames[ftTabIndex], scp.wrapTabContent(ftLayout))
 	fvControls := container.New(layout.NewVBoxLayout())
-	scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.genLayout)
-	scp.fvTab = container.NewTabItem(tabNames[fvTabIndex], fvControls)
+	scp.genTab = container.NewTabItem(tabNames[genTabIndex], scp.wrapTabContent(scp.genLayout))
+	scp.fvTab = container.NewTabItem(tabNames[fvTabIndex], scp.wrapTabContent(fvControls))
 	dftLayout := container.New(layout.NewVBoxLayout())
-	scp.dftTab = container.NewTabItem(tabNames[dftTabIndex], dftLayout)
+	scp.dftTab = container.NewTabItem(tabNames[dftTabIndex], scp.wrapTabContent(dftLayout))
 	ffLayout := container.New(layout.NewVBoxLayout())
-	scp.ffTab = container.NewTabItem(tabNames[ffTabIndex], ffLayout)
+	scp.ffTab = container.NewTabItem(tabNames[ffTabIndex], scp.wrapTabContent(ffLayout))
 	scp.rlcLayout = container.New(layout.NewVBoxLayout())
-	scp.rlcTab = container.NewTabItem(tabNames[rlcTabIndex], scp.rlcLayout)
+	scp.rlcTab = container.NewTabItem(tabNames[rlcTabIndex], scp.wrapTabContent(scp.rlcLayout))
 	scp.filterLayout = container.NewMax()
 	scp.filterTab = container.NewTabItem(tabNames[filterTabIndex], scp.filterLayout)
 	scp.extgenLayout = container.New(layout.NewVBoxLayout())
-	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.extgenLayout)
+	scp.extgenTab = container.NewTabItem(tabNames[extgenTabIndex], scp.wrapTabContent(scp.extgenLayout))
 	scp.vchMeasureIndex = -1
-	scp.vchTab = container.NewTabItem(tabNames[vchTabIndex], scp.buildVirtualChannelContent(true))
+	scp.vchTab = container.NewTabItem(tabNames[vchTabIndex], scp.buildVirtualChannelContent(undockable))
 	scp.decodeLayout = container.NewMax()
 	scp.refreshDecodeTab()
 	scp.digGenLayout = container.NewVBox()
-	digGenPanel, _ := scp.newDemoDigGenPanel(true)
+	digGenPanel, _ := scp.newDemoDigGenPanel(undockable)
 	scp.digGenLayout.Add(digGenPanel)
-	scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.digGenLayout)
+	scp.digGenTab = container.NewTabItem(tabNames[digGenTabIndex], scp.wrapTabContent(scp.digGenLayout))
 	scp.decodeTab = container.NewTabItem(tabNames[decodeTabIndex], scp.decodeLayout)
-	scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(true))
-	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.digPortLayout)
+	scp.digPortLayout = container.NewVBox(scp.buildDigitalPortContent(undockable))
+	scp.digPortTab = container.NewTabItem(tabNames[digPortTabIndex], scp.wrapTabContent(scp.digPortLayout))
 	scp.corrLayout = container.NewMax()
 	scp.corrTab = container.NewTabItem(tabNames[corrTabIndex], scp.corrLayout)
-	scp.multiLayout = scp.newMultiscopePanel(true)
-	scp.multiTab = container.NewTabItem(tabNames[multiTabIndex], scp.multiLayout)
+	scp.multiLayout = scp.newMultiscopePanel(undockable)
+	scp.multiTab = container.NewTabItem(tabNames[multiTabIndex], scp.wrapTabContent(scp.multiLayout))
 	scp.controlTab = container.NewAppTabs(
 		scp.ftTab, scp.fvTab, scp.dftTab, scp.ffTab, scp.rlcTab, scp.digPortTab, scp.genTab, scp.extgenTab, scp.digGenTab, scp.vchTab, scp.decodeTab, scp.filterTab, scp.corrTab, scp.multiTab)
 	if !scp.IsMSO {
@@ -1137,10 +1167,10 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.newDftPanel(dftLayout)
 	scp.newFfPanel(ffLayout)
 	scp.newRlcPanel(scp.rlcLayout)
-	scp.newDigitalFilterPanel(scp.filterLayout, true)
-	scp.newCorrPanel(scp.corrLayout, true)
+	scp.newDigitalFilterPanel(scp.filterLayout, undockable)
+	scp.newCorrPanel(scp.corrLayout, undockable)
 	if scp.ExtGenEnabled {
-		scp.extgenLayout.Add(scp.newExtGenTab(true))
+		scp.extgenLayout.Add(scp.newExtGenTab(undockable))
 	}
 	left := container.New(layout.NewVBoxLayout())
 	themeChangeAction = widget.NewButtonWithIcon("", theme.CheckButtonIcon(), func() {
@@ -1233,7 +1263,26 @@ func (scp *ScpDesc) build2000Gui() {
 	scp.psControl.SetResolutionMode(mode)
 
 	scp.initStatus()
-	var saveRasterButton, saveWindowButton *widget.Button
+	var saveRasterButton, saveWindowButton, disconnectButton *widget.Button
+	if scp.OnDisconnect != nil {
+		disconnectButton = widget.NewButtonWithIcon("Server", theme.HomeIcon(), func() {
+			if scp.running {
+				scp.StopRunning()
+			}
+			if scp.status != nil && scp.status.statusQuit != nil {
+				close(scp.status.statusQuit)
+				scp.status.statusQuit = nil
+			}
+			scp.OnDisconnect()
+		})
+		addToTest(disconnectButton, "disconnectButton", -1)
+	}
+	wrapTopBar := func(tb *fyne.Container) fyne.CanvasObject {
+		if scp.isMobileLayout() {
+			return container.NewHScroll(tb)
+		}
+		return tb
+	}
 	slog.Debug("build2000Gui", "scp.psControl.GetInfo()", scp.psControl.GetInfo())
 	if scp.runningMode != genericps.ScopeMode && scp.IsMSO {
 		if scp.psControl != nil {
@@ -1247,6 +1296,9 @@ func (scp *ScpDesc) build2000Gui() {
 		if changeSide.Icon == theme.NavigateBackIcon() {
 			scp.Settings.Window.LeftControl = true
 			scp.toolbar.RemoveAll()
+			if disconnectButton != nil {
+				scp.toolbar.Add(disconnectButton)
+			}
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.triggerStatusLabel)
 			scp.toolbar.Add(scp.streamEnableButton)
@@ -1264,13 +1316,16 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(logout)
 			scp.toolbar.Add(layout.NewSpacer())
 			scp.toolbar.Add(scp.status.label)
-			content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
+			content = container.NewBorder(wrapTopBar(scp.toolbar), nil, scp.controlTab, left, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateNextIcon())
 		} else {
 			scp.Settings.Window.LeftControl = false
 			scp.toolbar.RemoveAll()
 			scp.toolbar.Add(scp.status.label)
 			scp.toolbar.Add(layout.NewSpacer())
+			if disconnectButton != nil {
+				scp.toolbar.Add(disconnectButton)
+			}
 			scp.toolbar.Add(scp.runblockButton)
 			scp.toolbar.Add(scp.triggerStatusLabel)
 			scp.toolbar.Add(scp.streamEnableButton)
@@ -1286,7 +1341,7 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.toolbar.Add(changeSide)
 			scp.toolbar.Add(themeChangeAction)
 			scp.toolbar.Add(logout)
-			content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
+			content = container.NewBorder(wrapTopBar(scp.toolbar), nil, left, scp.controlTab, scp.mainSplit)
 			changeSide.SetIcon(theme.NavigateBackIcon())
 		}
 		scp.toolbar.Refresh()
@@ -1304,6 +1359,10 @@ func (scp *ScpDesc) build2000Gui() {
 
 	fullScreen = widget.NewButtonWithIcon("", theme.ViewFullScreenIcon(), setfullscreen)
 	restoreScreen = widget.NewButtonWithIcon("", theme.ViewRestoreIcon(), setnofullscreen)
+	if scp.isMobileLayout() {
+		fullScreen.Hide()
+		restoreScreen.Hide()
+	}
 	changeSide = widget.NewButtonWithIcon("", theme.NavigateBackIcon(), changeSideFunc)
 	if scp.Settings.Window.LeftControl {
 		changeSide.SetIcon(theme.NavigateNextIcon())
@@ -1334,7 +1393,14 @@ func (scp *ScpDesc) build2000Gui() {
 	})
 	addToTest(logout, "logout", -1)
 	if scp.Settings.Window.LeftControl {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.runblockButton, scp.triggerStatusLabel, scp.streamEnableButton, scp.timeZoomButton)
+		scp.toolbar = container.New(layout.NewHBoxLayout())
+		if disconnectButton != nil {
+			scp.toolbar.Add(disconnectButton)
+		}
+		scp.toolbar.Add(scp.runblockButton)
+		scp.toolbar.Add(scp.triggerStatusLabel)
+		scp.toolbar.Add(scp.streamEnableButton)
+		scp.toolbar.Add(scp.timeZoomButton)
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
@@ -1348,9 +1414,16 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(logout)
 		scp.toolbar.Add(layout.NewSpacer())
 		scp.toolbar.Add(scp.status.label)
-		content = container.NewBorder(scp.toolbar, nil, scp.controlTab, left, scp.mainSplit)
+		content = container.NewBorder(wrapTopBar(scp.toolbar), nil, scp.controlTab, left, scp.mainSplit)
 	} else {
-		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer(), scp.runblockButton, scp.triggerStatusLabel, scp.streamEnableButton, scp.timeZoomButton)
+		scp.toolbar = container.New(layout.NewHBoxLayout(), scp.status.label, layout.NewSpacer())
+		if disconnectButton != nil {
+			scp.toolbar.Add(disconnectButton)
+		}
+		scp.toolbar.Add(scp.runblockButton)
+		scp.toolbar.Add(scp.triggerStatusLabel)
+		scp.toolbar.Add(scp.streamEnableButton)
+		scp.toolbar.Add(scp.timeZoomButton)
 		if scp.GifEnabled {
 			scp.toolbar.Add(scp.recordGifButton)
 		}
@@ -1362,7 +1435,7 @@ func (scp *ScpDesc) build2000Gui() {
 		scp.toolbar.Add(changeSide)
 		scp.toolbar.Add(themeChangeAction)
 		scp.toolbar.Add(logout)
-		content = container.NewBorder(scp.toolbar, nil, left, scp.controlTab, scp.mainSplit)
+		content = container.NewBorder(wrapTopBar(scp.toolbar), nil, left, scp.controlTab, scp.mainSplit)
 	}
 
 	scp.updateStreamButtonVisibility()
@@ -1721,7 +1794,7 @@ func (scp *ScpDesc) build2407Gui() {
 func (scp *ScpDesc) build2000DemoGui() {
 
 	scp.build2000Gui()
-	scp.newDemoGenPanel(scp.genLayout, true)
+	scp.newDemoGenPanel(scp.genLayout, !scp.isMobileLayout())
 	// Re-apply saved DigGen settings so the demo backend starts up with the
 	// correct frequency / port-enable state without requiring the user to
 	// touch a control first.
@@ -1921,8 +1994,10 @@ func (scp *ScpDesc) Menu(con *genericps.Connection, cfg *settings.PsSettings, fi
 func (scp *ScpDesc) menuInit() (err error) {
 	scp.theme = Theme(scp.Settings.Theme)
 	fyne.CurrentApp().Settings().SetTheme(scp.theme)
-	scp.Window = scp.App.NewWindow("")
-	scp.Window.SetMaster()
+	if scp.Window == nil {
+		scp.Window = scp.App.NewWindow("")
+		scp.Window.SetMaster()
+	}
 	scp.ftScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})
 	scp.dftScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})
 	scp.fvScopeFullScreen = scp.newScopeScreen(image.Point{1024, 768})

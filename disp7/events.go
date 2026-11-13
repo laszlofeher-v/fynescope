@@ -35,6 +35,29 @@ func (d7 *DigitArray) Tapped(event *fyne.PointEvent) {
 	if readonly {
 		return
 	}
+	if fyne.CurrentDevice().IsMobile() {
+		d7.lock.Lock()
+		d7.mousePos = event.Position
+		focus := d7.setDigitCursor(event.Position.X)
+		cursor := d7.digitCursor
+		value := d7.Value
+		h := d7.Size().Height
+		d7.lock.Unlock()
+
+		if cursor >= 0 && cursor < len(d7.digits) {
+			step := int(math.Round(math.Pow(10, float64(cursor))))
+			if h > 0 && event.Position.Y < h/2 {
+				d7.SetValue(value + step)
+			} else {
+				d7.down(cursor)
+			}
+		}
+		if focus && d7.Window != nil && d7.Window.Canvas() != nil {
+			d7.Window.Canvas().Focus(d7)
+		}
+		d7.Refresh()
+		return
+	}
 	d7.clearDigitAt(event.Position.X)
 
 	d7.lock.Lock()
@@ -155,6 +178,22 @@ func (d7 *DigitArray) TypedKey(k *fyne.KeyEvent) {
 	d7.Refresh()
 }
 func (d7 *DigitArray) TypedRune(r rune) {
+	if !fyne.CurrentDevice().IsMobile() {
+		return
+	}
+	d7.lock.Lock()
+	readonly := d7.Readonly
+	d7.lock.Unlock()
+	if readonly {
+		return
+	}
+	if r >= '0' && r <= '9' {
+		d7.setDigitAtDigitCursor(int(r - '0'))
+		d7.lock.Lock()
+		d7.cursorRight()
+		d7.lock.Unlock()
+		d7.Refresh()
+	}
 }
 func (d7 *DigitArray) FocusGained() {
 	d7.lock.Lock()
