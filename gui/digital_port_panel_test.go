@@ -170,17 +170,28 @@ func TestDigitalPortPanel_DnLabelsAddToTest(t *testing.T) {
 		assert.NotNil(t, ctrl.Obj, "Expected %s object to be non-nil", labelId)
 		assert.Equal(t, digPortTabIndex, ctrl.Tab)
 
-		// Test tapping toggles negation
+		// Test tapping toggles negation (upper line on channel ID and label) without inverting channel
 		dnLabel, isDnLabel := ctrl.Obj.(*tappableDnLabel)
 		assert.True(t, isDnLabel, "Expected %s to be *tappableDnLabel", labelId)
+		labelEntryId := fmt.Sprintf("digPortLabelEntry_%d", i)
+		controlsMtx.RLock()
+		labelCtrl, labelOk := controls[labelEntryId]
+		controlsMtx.RUnlock()
+		assert.True(t, labelOk, "Expected %s to be registered in controls", labelEntryId)
+		entry, isEntry := labelCtrl.Obj.(*framelessEntry)
+		assert.True(t, isEntry, "Expected %s to be *framelessEntry", labelEntryId)
+
 		initialNeg := scp.Settings.Digital.ChannelNegated[i]
+		initialInv := scp.Settings.Digital.ChannelInverted[i]
 		dnLabel.Tapped(nil)
 		assert.Equal(t, !initialNeg, scp.Settings.Digital.ChannelNegated[i])
 		assert.Equal(t, !initialNeg, dnLabel.negated)
+		assert.Equal(t, !initialNeg, entry.negated, "label entry must share negation state with Dn label")
+		assert.Equal(t, initialInv, scp.Settings.Digital.ChannelInverted[i], "tapping Dn label must not invert channel")
 	}
 }
 
-func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
+func TestDigitalPortPanel_InvCheckAndLabelAddToTest(t *testing.T) {
 	scp := &ScpDesc{
 		Settings: &settings.PsSettings{
 			Digital: settings.DigitalSettings{
@@ -195,20 +206,33 @@ func TestDigitalPortPanel_NegCheckAndLabelAddToTest(t *testing.T) {
 	scp.buildDigitalPortContent(false)
 
 	for i := 0; i < 16; i++ {
+		invCheckId := fmt.Sprintf("digPortInvCheck_%d", i)
 		negCheckId := fmt.Sprintf("digPortNegCheck_%d", i)
 		labelEntryId := fmt.Sprintf("digPortLabelEntry_%d", i)
 
 		controlsMtx.RLock()
+		invCtrl, invOk := controls[invCheckId]
 		negCtrl, negOk := controls[negCheckId]
 		labelCtrl, labelOk := controls[labelEntryId]
 		controlsMtx.RUnlock()
 
-		assert.True(t, negOk, "Expected %s to be registered in controls", negCheckId)
-		assert.NotNil(t, negCtrl.Obj, "Expected %s object to be non-nil", negCheckId)
-		assert.Equal(t, digPortTabIndex, negCtrl.Tab)
+		assert.True(t, invOk, "Expected %s to be registered in controls", invCheckId)
+		assert.NotNil(t, invCtrl.Obj, "Expected %s object to be non-nil", invCheckId)
+		assert.Equal(t, digPortTabIndex, invCtrl.Tab)
 
-		_, isFC := negCtrl.Obj.(*widget.Check)
-		assert.True(t, isFC, "Expected %s to be *widget.Check", negCheckId)
+		assert.True(t, negOk, "Expected %s (legacy alias) to be registered in controls", negCheckId)
+		assert.Equal(t, invCtrl.Obj, negCtrl.Obj)
+
+		invCheck, isCheck := invCtrl.Obj.(*widget.Check)
+		assert.True(t, isCheck, "Expected %s to be *widget.Check", invCheckId)
+		assert.Equal(t, "Inv", invCheck.Text, "Check label must be 'Inv'")
+
+		// Toggling Inv check must invert the corresponding digital channel without touching ChannelNegated
+		initialInv := scp.Settings.Digital.ChannelInverted[i]
+		initialNeg := scp.Settings.Digital.ChannelNegated[i]
+		invCheck.SetChecked(!initialInv)
+		assert.Equal(t, !initialInv, scp.Settings.Digital.ChannelInverted[i])
+		assert.Equal(t, initialNeg, scp.Settings.Digital.ChannelNegated[i], "Inv check must not change ChannelNegated")
 
 		assert.True(t, labelOk, "Expected %s to be registered in controls", labelEntryId)
 		assert.NotNil(t, labelCtrl.Obj, "Expected %s object to be non-nil", labelEntryId)

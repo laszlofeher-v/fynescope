@@ -233,7 +233,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					_, _, dnRight, _ := dr.scp.boundString(dnStr, labelFontSize)
 					drawHorizontalLine(img, float32(labelStartX), float32(labelStartX)+dnRight, float32(yLbl)+lblTop-3, lineCol)
 				}
-				if dr.scp.Settings.Digital.LabelNegated[port*8+c] && hasLabel {
+				if (dr.scp.Settings.Digital.ChannelNegated[port*8+c] || dr.scp.Settings.Digital.LabelNegated[port*8+c]) && hasLabel {
 					_, _, dnRight, _ := dr.scp.boundString(dnStr+"W", labelFontSize)
 					drawHorizontalLine(img, float32(labelStartX)+dnRight, float32(labelStartX)+lblRight, float32(yLbl)+lblTop-3, lineCol)
 				}
@@ -248,7 +248,7 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					if sampleIdx >= 0 && sampleIdx < samples {
 						val := buf[sampleIdx]
 						isHigh = (val & (1 << c)) != 0
-						if dr.scp.Settings.Digital.ChannelNegated[port*8+c] {
+						if dr.scp.Settings.Digital.ChannelInverted[port*8+c] {
 							isHigh = !isHigh
 						}
 						if isHigh {
@@ -334,7 +334,14 @@ func (dr *digitalRaster) generate(w, h int) image.Image {
 					chIdx := port*8 + c
 					if dr.scp.Settings.Digital.ChannelsEnabled[chIdx] {
 						bitValLSB := (portVal >> c) & 1
+						if dr.scp.Settings.Digital.ChannelInverted[chIdx] {
+							bitValLSB ^= 1
+						}
 						bitValMSB := (portVal >> (7 - c)) & 1
+						msbChIdx := port*8 + (7 - c)
+						if dr.scp.Settings.Digital.ChannelInverted[msbChIdx] {
+							bitValMSB ^= 1
+						}
 						hexValLSBD0 |= (uint16(bitValLSB) << bits)
 						hexValMSBD0 |= (uint16(bitValMSB) << bits)
 						bits++

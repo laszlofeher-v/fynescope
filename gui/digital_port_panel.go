@@ -21,12 +21,18 @@ import (
 
 type framelessEntry struct {
 	widget.Entry
+	negated bool
 }
 
-func newFramelessEntry() *framelessEntry {
-	e := &framelessEntry{}
+func newFramelessEntry(negated bool) *framelessEntry {
+	e := &framelessEntry{negated: negated}
 	e.ExtendBaseWidget(e)
 	return e
+}
+
+func (e *framelessEntry) setNegated(neg bool) {
+	e.negated = neg
+	e.Refresh()
 }
 
 type tappableDnLabel struct {
@@ -107,13 +113,30 @@ func (e *framelessEntry) MinSize() fyne.Size {
 
 func (e *framelessEntry) CreateRenderer() fyne.WidgetRenderer {
 	r := e.Entry.CreateRenderer()
-	fr := &framelessEntryRenderer{WidgetRenderer: r}
+	line := canvas.NewLine(theme.ForegroundColor())
+	line.StrokeWidth = 1
+	if !e.negated || e.Text == "" {
+		line.Hidden = true
+	}
+	fr := &framelessEntryRenderer{WidgetRenderer: r, entry: e, line: line}
 	fr.Refresh()
 	return fr
 }
 
 type framelessEntryRenderer struct {
 	fyne.WidgetRenderer
+	entry *framelessEntry
+	line  *canvas.Line
+}
+
+func (fr *framelessEntryRenderer) Layout(size fyne.Size) {
+	fr.WidgetRenderer.Layout(size)
+	fr.line.Position1 = fyne.NewPos(0, 2)
+	textW := float32(0)
+	if fr.entry.Text != "" {
+		textW = fyne.MeasureText(fr.entry.Text, theme.TextSize(), fyne.TextStyle{}).Width
+	}
+	fr.line.Position2 = fyne.NewPos(textW, 2)
 }
 
 func (fr *framelessEntryRenderer) Refresh() {
@@ -124,11 +147,27 @@ func (fr *framelessEntryRenderer) Refresh() {
 			rect.StrokeColor = color.Transparent
 			rect.StrokeWidth = 0
 		}
-		if line, ok := obj.(*canvas.Line); ok {
+		if line, ok := obj.(*canvas.Line); ok && line != fr.line {
 			line.StrokeColor = color.Transparent
 			line.StrokeWidth = 0
 		}
 	}
+	fr.line.StrokeColor = theme.ForegroundColor()
+	textW := float32(0)
+	if fr.entry.Text != "" {
+		textW = fyne.MeasureText(fr.entry.Text, theme.TextSize(), fyne.TextStyle{}).Width
+	}
+	fr.line.Position1 = fyne.NewPos(0, 2)
+	fr.line.Position2 = fyne.NewPos(textW, 2)
+	fr.line.Hidden = !fr.entry.negated || fr.entry.Text == ""
+}
+
+func (fr *framelessEntryRenderer) Objects() []fyne.CanvasObject {
+	baseObjs := fr.WidgetRenderer.Objects()
+	objs := make([]fyne.CanvasObject, len(baseObjs)+1)
+	copy(objs, baseObjs)
+	objs[len(baseObjs)] = fr.line
+	return objs
 }
 
 const (
@@ -326,10 +365,17 @@ func (scp *ScpDesc) buildChannelRow(
 ) (fyne.CanvasObject, *selectscroll.SelectScroll) {
 	dn := fmt.Sprintf("D%d", chIdx)
 
-	var dnLabel *tappableDnLabel
+	var (
+		dnLabel    *tappableDnLabel
+		labelEntry *framelessEntry
+	)
 	dnLabel = newTappableDnLabel(scp, dn, scp.Settings.Digital.ChannelNegated[chIdx], func() {
 		scp.Settings.Digital.ChannelNegated[chIdx] = !scp.Settings.Digital.ChannelNegated[chIdx]
+		scp.Settings.Digital.LabelNegated[chIdx] = scp.Settings.Digital.ChannelNegated[chIdx]
 		dnLabel.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
+		if labelEntry != nil {
+			labelEntry.setNegated(scp.Settings.Digital.ChannelNegated[chIdx])
+		}
 		scp.SaveSettings()
 		if scp.digitalRaster != nil {
 			scp.digitalRaster.refresh()
@@ -338,7 +384,7 @@ func (scp *ScpDesc) buildChannelRow(
 	addToTest(dnLabel, fmt.Sprintf("digPortDnLabel_%d", chIdx), digPortTabIndex)
 
 	// Editable label (max 6 chars, frameless)
-	labelEntry := newFramelessEntry()
+	labelEntry = newFramelessEntry(scp.Settings.Digital.ChannelNegated[chIdx])
 	labelEntry.SetPlaceHolder("Lbl")
 	labelEntry.SetText(scp.Settings.Digital.ChannelLabels[chIdx])
 	labelEntry.OnChanged = func(s string) {
@@ -348,6 +394,7 @@ func (scp *ScpDesc) buildChannelRow(
 			labelEntry.SetText(s)
 		}
 		scp.Settings.Digital.ChannelLabels[chIdx] = s
+		labelEntry.Refresh()
 		scp.SaveSettings()
 		if scp.digitalRaster != nil {
 			scp.digitalRaster.refresh()
@@ -402,20 +449,21 @@ func (scp *ScpDesc) buildChannelRow(
 	trigSelect.SetSelected(initialDirStr)
 	addToTest(trigSelect, fmt.Sprintf("digPortTrigSelect_%d", chIdx), digPortTabIndex)
 
-	negCheck := widget.NewCheck("Neg", func(v bool) {
-		scp.Settings.Digital.LabelNegated[chIdx] = v
+	invCheck := widget.NewCheck("Inv", func(v bool) {
+		scp.Settings.Digital.ChannelInverted[chIdx] = v
 		if scp.digitalRaster != nil {
 			scp.digitalRaster.refresh()
 		}
 		scp.SaveSettings()
 	})
-	negCheck.SetChecked(scp.Settings.Digital.LabelNegated[chIdx])
-	addToTest(negCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
+	invCheck.SetChecked(scp.Settings.Digital.ChannelInverted[chIdx])
+	addToTest(invCheck, fmt.Sprintf("digPortInvCheck_%d", chIdx), digPortTabIndex)
+	addToTest(invCheck, fmt.Sprintf("digPortNegCheck_%d", chIdx), digPortTabIndex)
 
 	row := container.NewHBox(
 		dnLabel,
 		labelEntry,
-		negCheck,
+		invCheck,
 		container.NewCenter(ccp),
 		widget.NewLabel("Trig:"),
 		trigSelect,

@@ -3,6 +3,7 @@ package gui
 import (
 	"image"
 	"image/color"
+	"math"
 	"testing"
 
 	"fynescope/settings"
@@ -129,4 +130,90 @@ func TestDigitalRaster_NoEmptyRowsForDisabledChannels(t *testing.T) {
 	// Check that at x=400, y=120 is Blue (D2 high line)
 	bluePixel := img.RGBAAt(400, 120)
 	assert.Equal(t, uint8(255), bluePixel.B, "D2 high signal should be at y=120 (row height 100)")
+}
+
+func TestDigitalRaster_InversionVsNegation(t *testing.T) {
+	app := test.NewApp()
+	defer app.Quit()
+	win := app.NewWindow("Test")
+
+	scp := &ScpDesc{
+		Settings: &settings.PsSettings{
+			Digital: settings.DigitalSettings{
+				Ports: [2]settings.DigitalPortSettings{
+					{Enabled: true, Threshold: 0},
+					{Enabled: false, Threshold: 0},
+				},
+				ChannelColors: [16]color.NRGBA{
+					{R: 255, G: 0, B: 0, A: 255}, // D0 - Red
+				},
+			},
+			Time: settings.TimeSettings{
+				TriggerTimeOffset: 0.0,
+			},
+		},
+		maxScreenTime:               1.0,
+		controlSamplingTimeInterval: 0.001,
+		theme:                       theme.DefaultTheme(),
+	}
+	scp.Settings.Digital.ChannelsEnabled[0] = true
+
+	scp.ftScopeFullScreen = image.NewRGBA(image.Rect(0, 0, 800, 200))
+	scp.ftScopeSignalScreen = scp.ftScopeFullScreen.(*image.RGBA).SubImage(image.Rect(50, 0, 750, 200)).(rasterImage)
+	scp.setFtHDivsX()
+
+	_, dr := scp.newDigitalRaster(win)
+
+	scp.digitalDisplayBuffer = [][]uint8{
+		make([]uint8, 1000),
+		make([]uint8, 0),
+	}
+	// Buffer has bit 0 = 0 (low).
+	// activeChannels = 1, channelHeight = 200: yHigh = 40, yLow = 160.
+
+	// 1. Normal (uninverted, unnegated): D0=0 should be at yLow=160
+	img1 := dr.generate(800, 200).(*image.RGBA)
+	assert.Equal(t, uint8(255), img1.RGBAAt(400, 160).R, "Normal low bit should render at yLow=160")
+	assert.NotEqual(t, uint8(255), img1.RGBAAt(400, 40).R, "Normal low bit should not be at yHigh=40")
+
+	// 2. ChannelNegated = true (click on channel ID):
+	// Must put negate sign on channel ID, but NOT invert the signal
+	scp.Settings.Digital.ChannelNegated[0] = true
+	scp.Settings.Digital.ChannelInverted[0] = false
+	img2 := dr.generate(800, 200).(*image.RGBA)
+	assert.Equal(t, uint8(255), img2.RGBAAt(400, 160).R, "ChannelNegated must NOT invert channel: low bit remains at yLow=160")
+	assert.NotEqual(t, uint8(255), img2.RGBAAt(400, 40).R, "ChannelNegated must NOT move low bit to yHigh=40")
+
+	// 3. ChannelInverted = true (Inv checkbox):
+	// Must invert the signal: low bit becomes high at yHigh=40
+	scp.Settings.Digital.ChannelNegated[0] = false
+	scp.Settings.Digital.ChannelInverted[0] = true
+	img3 := dr.generate(800, 200).(*image.RGBA)
+	assert.Equal(t, uint8(255), img3.RGBAAt(400, 40).R, "ChannelInverted must invert channel: low bit becomes high at yHigh=40")
+	assert.NotEqual(t, uint8(255), img3.RGBAAt(400, 160).R, "Inverted bit should not be at yLow=160")
+
+	// 4. ChannelNegated = true with custom ChannelLabel ("RST"):
+	// Upper line must be drawn over both channel ID ("D0") and channel label ("RST")
+	scp.Settings.Digital.ChannelNegated[0] = true
+	scp.Settings.Digital.ChannelInverted[0] = false
+	scp.Settings.Digital.ChannelLabels[0] = "RST"
+	img4 := dr.generate(800, 200).(*image.RGBA)
+
+	// In digital_raster: yLbl = channelHeight*0.5 - (lblTop+lblBottom)/2 = 100 - (lblTop+lblBottom)/2
+	// Upper line is at yLine = yLbl + lblTop - 3
+	labelFontSize := float64(fontSize)
+	_, lblTop, lblRight, lblBottom := scp.boundString("D0 RST", labelFontSize)
+	yLbl := int(math.Round(100.0 - (float64(lblTop+lblBottom) / 2)))
+	yLine := int(math.Round(float64(float32(yLbl) + lblTop - 3)))
+
+	_, _, dnRight, _ := scp.boundString("D0", labelFontSize)
+	_, _, lblStartOffset, _ := scp.boundString("D0W", labelFontSize)
+
+	// Check line over D0 (between labelStartX=2 and labelStartX+dnRight)
+	xOverD0 := int(2 + dnRight/2)
+	assert.Equal(t, uint8(255), img4.RGBAAt(xOverD0, yLine).R, "Upper line should be drawn over channel ID D0")
+
+	// Check line over label RST (between labelStartX+lblStartOffset and labelStartX+lblRight)
+	xOverLabel := int(2 + (lblStartOffset+lblRight)/2)
+	assert.Equal(t, uint8(255), img4.RGBAAt(xOverLabel, yLine).R, "Upper line should be drawn over channel label RST")
 }

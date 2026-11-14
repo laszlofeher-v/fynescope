@@ -185,7 +185,8 @@ type (
 		ChannelsEnabled [16]bool               `yaml:"channelsenabled"`
 		ChannelLabels   [16]string             `yaml:"channellabels"`
 		ChannelNegated  [16]bool               `yaml:"channelnegated"`
-		LabelNegated    [16]bool               `yaml:"labelnegated"`
+		ChannelInverted [16]bool               `yaml:"channelinverted"`
+		LabelNegated    [16]bool               `yaml:"labelnegated,omitempty"`
 		Trigger         DigitalTriggerSettings `yaml:"trigger"`
 		HexView         bool                   `yaml:"hexview"`
 		D0AtBottom      bool                   `yaml:"d0atbottom"`
