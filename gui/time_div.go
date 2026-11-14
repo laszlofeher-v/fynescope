@@ -957,16 +957,12 @@ func (scp *ScpDesc) updateTriggerSourceState(option string) {
 			activeOpts = triggerDirectionOptions
 		}
 		scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SetOptions(activeOpts)
-		// Also reset the selection if it's invalid for the new options
-		currSel := scp.channelViewers[scp.triggerSource].triggerDirectionSelect.Selected
-		valid := false
-		for _, opt := range activeOpts {
-			if opt == currSel {
-				valid = true
-				break
-			}
-		}
-		if !valid && len(activeOpts) > 0 {
+		// Keep the stored direction if it maps to one of the new options (by value,
+		// since drivers may alias e.g. Falling and Exit); otherwise reset it.
+		if name, ok := triggerDirectionOption(
+			scp.Settings.Channels[scp.triggerSource].Trigger.TriggerDirection, activeOpts); ok {
+			scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SilentSetSelected(name)
+		} else if len(activeOpts) > 0 {
 			scp.channelViewers[scp.triggerSource].triggerDirectionSelect.SilentSetSelected(activeOpts[0])
 			scp.Settings.Channels[scp.triggerSource].Trigger.TriggerDirection = triggerDirections[activeOpts[0]]
 			scp.triggerSettingMsg.ThresholdDirection = triggerDirections[activeOpts[0]]

@@ -132,6 +132,20 @@ func initMaps() {
 	triggerDirections["Positive Runt"] = genericps.TriggerPositiveRunt
 	triggerDirections["Negative Runt"] = genericps.TriggerNegativeRunt
 }
+// triggerDirectionOption returns the option from opts whose direction value
+// equals dir. The lookup is done by value against the given option list
+// because some drivers alias direction constants (e.g. PS2000A_ENTER ==
+// PS2000A_RISING and PS2000A_EXIT == PS2000A_FALLING), which makes a plain
+// value -> name map ambiguous.
+func triggerDirectionOption(dir genericps.ThresholdDirection, opts []string) (string, bool) {
+	for _, opt := range opts {
+		if d, ok := triggerDirections[opt]; ok && d == dir {
+			return opt, true
+		}
+	}
+	return "", false
+}
+
 func sortInputRanges() {
 	vRanges = map[string]genericps.RangeEnum{
 		"±10mV":  (genericps.Range_10mv),
@@ -757,14 +771,8 @@ func (scp *ScpDesc) newChannel(chIndex genericps.ChannelId) *fyne.Container {
 	channelViewer.triggerDirectionSelect = triggerDirection
 	addToTest(triggerDirection, triggerDirectionId, ftTabIndex)
 	// Validate that the saved setting is valid for the current options
-	savedName := triggerDirectionNames[scp.Settings.Channels[chIndex].Trigger.TriggerDirection]
-	valid := false
-	for _, opt := range activeTriggerDirectionOptions {
-		if opt == savedName {
-			valid = true
-			break
-		}
-	}
+	savedName, valid := triggerDirectionOption(
+		scp.Settings.Channels[chIndex].Trigger.TriggerDirection, activeTriggerDirectionOptions)
 	if valid {
 		triggerDirection.SetSelected(savedName)
 	} else if len(activeTriggerDirectionOptions) > 0 {
