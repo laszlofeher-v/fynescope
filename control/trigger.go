@@ -13,6 +13,9 @@ type (
 
 const (
 	autoTriggerMs = 1000
+	// defaultSimpleTriggerHysteresisADC matches the ~1% full-scale hysteresis
+	// applied internally by PicoScope drivers for ps*SetSimpleTrigger.
+	defaultSimpleTriggerHysteresisADC uint16 = 329
 )
 const (
 	Auto TriggerModes = iota
@@ -217,7 +220,6 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 	if psControl.hasActiveDigitalTrigger() {
 		return psControl.sendAdvancedTrigger()
 	}
-	_ = psControl.applyDigitalTrigger() // Ensure digital trigger is cleared on the device
 	at := int16(0)
 	if psControl.triggerSetting.Mode == Auto {
 		at = autoTriggerMs
@@ -231,6 +233,27 @@ func (psControl *PscDesc) sendSimpleTrigger() (err error) {
 			dir != genericps.TriggerBelow) {
 		dir = genericps.TriggerRising
 	}
+	// libps2000a's ps2000aSetSimpleTrigger leaves ThresholdLower at 0, which causes
+	// ETS Falling-edge alignment to snap to 0V whenever ThresholdUpper is within the
+	// coarse sample window of 0V. Configure Level properties explicitly with
+	// ThresholdLower == ThresholdUpper when ETS triggering is enabled.
+	if psControl.triggerSetting.Mode == ETS && psControl.triggerSetting.Enabled &&
+		psControl.triggerSetting.Source >= genericps.ChA && psControl.triggerSetting.Source <= genericps.ChD {
+		hyst := defaultSimpleTriggerHysteresisADC
+		if psControl.IsDemo() {
+			hyst = 0
+		}
+		channelProperties := sanitizeTriggerChannelProperties([]genericps.TriggerChannelProperties{{
+			ThresholdUpper:           psControl.triggerSetting.TriggerADC,
+			ThresholdUpperHysteresis: hyst,
+			ThresholdLower:           psControl.triggerSetting.TriggerADC,
+			ThresholdLowerHysteresis: 0,
+			Channel:                  psControl.triggerSetting.Source,
+			ThresholdMode:            genericps.Level,
+		}})
+		return psControl.sendSingleChannelLevelTrigger(channelProperties, dir, int32(at))
+	}
+	_ = psControl.applyDigitalTrigger() // Ensure digital trigger is cleared on the device
 	err = psControl.setSimpleTrigger(psControl.triggerSetting.Enabled,
 		psControl.triggerSetting.Source, psControl.triggerSetting.TriggerADC,
 		dir, 0, at)
@@ -360,14 +383,31 @@ func (psControl *PscDesc) getValidTriggerProperties() []genericps.TriggerChannel
 	return sanitizeTriggerChannelProperties(rawProps)
 }
 
-func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
+// alignLevelTriggerLowerThreshold sets ThresholdLower = ThresholdUpper and clears
+// ThresholdLowerHysteresis for Level-mode entries so ETS Falling-edge alignment in
+// libps2000a does not align against a stale or zero lower threshold.
+func alignLevelTriggerLowerThreshold(props []genericps.TriggerChannelProperties) {
+	for i := range props {
+		if props[i].ThresholdMode == genericps.Level {
+			props[i].ThresholdLower = props[i].ThresholdUpper
+			props[i].ThresholdLowerHysteresis = 0
+		}
+	}
+}
+
+// sendSingleChannelLevelTrigger configures a single-channel analog trigger (plus any
+// active digital trigger state) via SetTriggerChannelProperties/Conditions/Directions
+// and disables the Pulse Width Qualifier.
+func (psControl *PscDesc) sendSingleChannelLevelTrigger(
+	channelProperties []genericps.TriggerChannelProperties,
+	dir genericps.ThresholdDirection,
+	autoTriggerMs int32,
+) (err error) {
 	_ = psControl.applyDigitalTrigger()
-	at := psControl.autoTriggerMilliseconds32()
-	channelProperties := psControl.getValidTriggerProperties()
 	triggerConditions := psControl.buildTriggerConditions(genericps.CondTrue, genericps.CondDontCare)
 
 	slog.Debug("Prop", "prop", channelProperties)
-	err = psControl.setTriggerChannelProperties(channelProperties, false, at)
+	err = psControl.setTriggerChannelProperties(channelProperties, false, autoTriggerMs)
 	if err != nil {
 		slog.Error("runblock SetTriggerChannelProperties:", "error:", err, "channelProperties:", channelProperties)
 		return
@@ -377,19 +417,29 @@ func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
 		slog.Error("runblock SetTriggerChannelCondition:", "error:", err)
 		return
 	}
-	err = psControl.setTriggerChannelDirections(psControl.triggerSetting.ThresholdDirection)
+	err = psControl.setTriggerChannelDirections(dir)
 	if err != nil {
 		slog.Error("SetTriggerChannelDirections:", "error:", err)
 		return
 	}
 	pwqDir := genericps.TriggerRising
-	if psControl.triggerSetting.ThresholdDirection == genericps.TriggerFalling {
+	if dir == genericps.TriggerFalling {
 		pwqDir = genericps.TriggerFalling
 	}
 	if pwqErr := psControl.disablePwq(pwqDir); pwqErr != nil {
 		slog.Error("SetPulseWidthQualifier disable:", "error:", pwqErr)
 	}
 	return nil
+}
+
+func (psControl *PscDesc) sendAdvancedTrigger() (err error) {
+	channelProperties := psControl.getValidTriggerProperties()
+	alignLevelTriggerLowerThreshold(channelProperties)
+	return psControl.sendSingleChannelLevelTrigger(
+		channelProperties,
+		psControl.triggerSetting.ThresholdDirection,
+		psControl.autoTriggerMilliseconds32(),
+	)
 }
 
 func (psControl *PscDesc) sendWindowTrigger() (err error) {
@@ -674,6 +724,31 @@ func (psControl *PscDesc) sendDropOutTrigger() (err error) {
 	return
 }
 
+func channelTriggerDirection(dirs []TriggerDirections, ch genericps.ChannelId) genericps.ThresholdDirection {
+	if len(dirs) == 0 {
+		return genericps.TriggerNone
+	}
+	switch ch {
+	case genericps.ChA:
+		return dirs[0].ChannelA
+	case genericps.ChB:
+		return dirs[0].ChannelB
+	case genericps.ChC:
+		return dirs[0].ChannelC
+	case genericps.ChD:
+		return dirs[0].ChannelD
+	default:
+		return genericps.TriggerNone
+	}
+}
+
+func isLowerThresholdDirection(dir genericps.ThresholdDirection) bool {
+	return dir == genericps.TriggerAboveLower ||
+		dir == genericps.TriggerBelowLower ||
+		dir == genericps.TriggerRisingLower ||
+		dir == genericps.TriggerFallingLower
+}
+
 func (psControl *PscDesc) sendComplexTrigger() (err error) {
 	_ = psControl.applyDigitalTrigger()
 
@@ -682,7 +757,13 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		at = autoTriggerMs
 	}
 
+	dirs := psControl.triggerSetting.ComplexDirections
 	sanitizedProps := sanitizeTriggerChannelProperties(psControl.triggerSetting.ComplexProperties)
+	for i := range sanitizedProps {
+		if !isLowerThresholdDirection(channelTriggerDirection(dirs, sanitizedProps[i].Channel)) {
+			alignLevelTriggerLowerThreshold(sanitizedProps[i : i+1])
+		}
+	}
 	err = psControl.setTriggerChannelProperties(sanitizedProps, false, at)
 	if err != nil {
 		slog.Error("SetTriggerChannelProperties (Complex):", "error:", err, "properties:", sanitizedProps)
@@ -717,7 +798,6 @@ func (psControl *PscDesc) sendComplexTrigger() (err error) {
 		slog.Error("SetTriggerChannelCondition (Complex):", "error:", err)
 		return
 	}
-	dirs := psControl.triggerSetting.ComplexDirections
 	if len(dirs) > 0 {
 		err = psControl.Con.SetTriggerChannelDirections(dirs[0].ChannelA, dirs[0].ChannelB, dirs[0].ChannelC, dirs[0].ChannelD, dirs[0].Ext, dirs[0].Aux)
 	} else {

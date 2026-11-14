@@ -1,6 +1,7 @@
 package control
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -489,5 +490,270 @@ func TestPscDesc_applyDigitalTrigger(t *testing.T) {
 	err = ps.applyDigitalTrigger()
 	if err != nil {
 		t.Errorf("applyDigitalTrigger (disabled) failed: %v", err)
+	}
+}
+
+func captureDriverMessages(t *testing.T, id string) (*genericps.Connection, func() []genericps.Message) {
+	t.Helper()
+	con := genericps.NewConnection()
+	con.Handle = 1
+	con.ID = id
+	var mu sync.Mutex
+	var msgs []genericps.Message
+	done := make(chan struct{})
+	t.Cleanup(func() {
+		close(done)
+	})
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case msg := <-con.MsgCh:
+				mu.Lock()
+				msgs = append(msgs, msg)
+				mu.Unlock()
+				msg.RspCh() <- struct{}{}
+			}
+		}
+	}()
+	return con, func() []genericps.Message {
+		mu.Lock()
+		defer mu.Unlock()
+		out := make([]genericps.Message, len(msgs))
+		copy(out, msgs)
+		return out
+	}
+}
+
+func TestSendSimpleTrigger_ETSFallingUsesLevelWithAlignedLower(t *testing.T) {
+	tests := []struct {
+		name           string
+		driverID       string
+		mode           TriggerModes
+		enabled        bool
+		dir            genericps.ThresholdDirection
+		triggerADC     int16
+		wantSimple     bool
+		wantUpperHyst  uint16
+	}{
+		{
+			name:          "ETS falling non-demo negative threshold uses Level props with ThresholdLower==ThresholdUpper",
+			driverID:      "ps2000a",
+			mode:          ETS,
+			enabled:       true,
+			dir:           genericps.TriggerFalling,
+			triggerADC:    -3000,
+			wantSimple:    false,
+			wantUpperHyst: defaultSimpleTriggerHysteresisADC,
+		},
+		{
+			name:          "ETS falling near upper rail clamps hysteresis cleanly",
+			driverID:      "ps2000a",
+			mode:          ETS,
+			enabled:       true,
+			dir:           genericps.TriggerFalling,
+			triggerADC:    32700,
+			wantSimple:    false,
+			wantUpperHyst: 67,
+		},
+		{
+			name:          "ETS falling demo keeps zero hysteresis while aligning ThresholdLower",
+			driverID:      genericps.DemoId,
+			mode:          ETS,
+			enabled:       true,
+			dir:           genericps.TriggerFalling,
+			triggerADC:    -3000,
+			wantSimple:    false,
+			wantUpperHyst: 0,
+		},
+		{
+			name:       "Repeat mode still uses SetSimpleTrigger",
+			driverID:   "ps2000a",
+			mode:       Repeat,
+			enabled:    true,
+			dir:        genericps.TriggerFalling,
+			triggerADC: -3000,
+			wantSimple: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			con, collected := captureDriverMessages(t, tt.driverID)
+			ps := &PscDesc{
+				Con:        con,
+				ScopeModel: ScopeUnknown,
+			}
+			ps.triggerSetting = TriggerDesc{
+				Enabled:            tt.enabled,
+				Source:             genericps.ChA,
+				TriggerADC:         tt.triggerADC,
+				ThresholdDirection: tt.dir,
+				Mode:               tt.mode,
+				Type:               Simple,
+			}
+
+			if err := ps.sendSimpleTrigger(); err != nil {
+				t.Fatalf("sendSimpleTrigger failed: %v", err)
+			}
+
+			msgs := collected()
+			var gotSimple []*genericps.SetSimpleTriggerMsg
+			var gotProps []*genericps.SetTriggerChannelPropertiesMsg
+			var gotConds []*genericps.SetTriggerChannelConditionsMsg
+			var gotDirs []*genericps.SetTriggerChannelDirectionsMsg
+			var gotPwq []*genericps.SetPulseWidthQualifierMsg
+			for _, m := range msgs {
+				switch v := m.(type) {
+				case *genericps.SetSimpleTriggerMsg:
+					gotSimple = append(gotSimple, v)
+				case *genericps.SetTriggerChannelPropertiesMsg:
+					gotProps = append(gotProps, v)
+				case *genericps.SetTriggerChannelConditionsMsg:
+					gotConds = append(gotConds, v)
+				case *genericps.SetTriggerChannelDirectionsMsg:
+					gotDirs = append(gotDirs, v)
+				case *genericps.SetPulseWidthQualifierMsg:
+					gotPwq = append(gotPwq, v)
+				}
+			}
+
+			if tt.wantSimple {
+				if len(gotSimple) != 1 || len(gotProps) != 0 {
+					t.Fatalf("expected 1 SetSimpleTrigger and 0 SetTriggerChannelProperties, got %d simple, %d props", len(gotSimple), len(gotProps))
+				}
+				return
+			}
+
+			if len(gotSimple) != 0 {
+				t.Fatalf("expected 0 SetSimpleTrigger calls in ETS enabled mode, got %d", len(gotSimple))
+			}
+			if len(gotProps) != 1 || len(gotProps[0].ChannelProperties) != 1 {
+				t.Fatalf("expected 1 SetTriggerChannelProperties with 1 entry, got %+v", gotProps)
+			}
+			p := gotProps[0].ChannelProperties[0]
+			if p.ThresholdMode != genericps.Level {
+				t.Errorf("expected Level threshold mode, got %v", p.ThresholdMode)
+			}
+			if p.ThresholdUpper != tt.triggerADC || p.ThresholdLower != tt.triggerADC {
+				t.Errorf("expected ThresholdUpper=ThresholdLower=%d, got upper=%d lower=%d", tt.triggerADC, p.ThresholdUpper, p.ThresholdLower)
+			}
+			if p.ThresholdUpperHysteresis != tt.wantUpperHyst || p.ThresholdLowerHysteresis != 0 {
+				t.Errorf("expected hyst=(%d, 0), got (%d, %d)", tt.wantUpperHyst, p.ThresholdUpperHysteresis, p.ThresholdLowerHysteresis)
+			}
+			if gotProps[0].AutoTriggerMs != 0 {
+				t.Errorf("expected AutoTriggerMs=0 in ETS, got %d", gotProps[0].AutoTriggerMs)
+			}
+			if len(gotConds) != 1 || len(gotConds[0].TriggerConditions) != 1 || gotConds[0].TriggerConditions[0].ChannelA != genericps.CondTrue {
+				t.Errorf("expected ChannelA CondTrue trigger condition, got %+v", gotConds)
+			}
+			if len(gotDirs) != 1 || gotDirs[0].ChannelA != tt.dir {
+				t.Errorf("expected ChannelA direction %v, got %+v", tt.dir, gotDirs)
+			}
+			if len(gotPwq) != 1 || gotPwq[0].PwType != genericps.PwTypeNone {
+				t.Errorf("expected PWQ disabled with PwTypeNone, got %+v", gotPwq)
+			}
+		})
+	}
+}
+
+func TestSendAdvancedTrigger_LevelAlignsThresholdLower(t *testing.T) {
+	con, collected := captureDriverMessages(t, "ps2000a")
+	ps := &PscDesc{
+		Con:        con,
+		ScopeModel: ScopeUnknown,
+	}
+	ps.triggerSetting = TriggerDesc{
+		Enabled:            true,
+		Source:             genericps.ChA,
+		TriggerADC:         4500,
+		LowerTriggerADC:    0,
+		HysteresisADC:      200,
+		LowerHysteresisADC: 50,
+		ThresholdDirection: genericps.TriggerFalling,
+		ThresholdMode:      genericps.Level,
+		Mode:               ETS,
+		Type:               Advanced,
+	}
+
+	if err := ps.sendAdvancedTrigger(); err != nil {
+		t.Fatalf("sendAdvancedTrigger failed: %v", err)
+	}
+
+	var gotProps []*genericps.SetTriggerChannelPropertiesMsg
+	for _, m := range collected() {
+		if v, ok := m.(*genericps.SetTriggerChannelPropertiesMsg); ok {
+			gotProps = append(gotProps, v)
+		}
+	}
+	if len(gotProps) != 1 || len(gotProps[0].ChannelProperties) != 1 {
+		t.Fatalf("expected 1 SetTriggerChannelProperties with 1 entry, got %+v", gotProps)
+	}
+	p := gotProps[0].ChannelProperties[0]
+	if p.ThresholdUpper != 4500 || p.ThresholdLower != 4500 {
+		t.Errorf("expected ThresholdUpper=ThresholdLower=4500, got upper=%d lower=%d", p.ThresholdUpper, p.ThresholdLower)
+	}
+	if p.ThresholdUpperHysteresis != 200 || p.ThresholdLowerHysteresis != 0 {
+		t.Errorf("expected hyst=(200, 0), got (%d, %d)", p.ThresholdUpperHysteresis, p.ThresholdLowerHysteresis)
+	}
+}
+
+func TestSendComplexTrigger_LevelAlignsThresholdLower(t *testing.T) {
+	con, collected := captureDriverMessages(t, "ps2000a")
+	ps := &PscDesc{
+		Con:        con,
+		ScopeModel: ScopeUnknown,
+	}
+	ps.triggerSetting = TriggerDesc{
+		Enabled: true,
+		Mode:    ETS,
+		Type:    Complex,
+		ComplexProperties: []genericps.TriggerChannelProperties{
+			{
+				Channel:                  genericps.ChA,
+				ThresholdUpper:           -2500,
+				ThresholdUpperHysteresis: 150,
+				ThresholdLower:           0,
+				ThresholdLowerHysteresis: 50,
+				ThresholdMode:            genericps.Level,
+			},
+			{
+				Channel:                  genericps.ChB,
+				ThresholdUpper:           1200,
+				ThresholdUpperHysteresis: 100,
+				ThresholdLower:           -1200,
+				ThresholdLowerHysteresis: 80,
+				ThresholdMode:            genericps.Level,
+			},
+		},
+		ComplexDirections: []TriggerDirections{
+			{
+				ChannelA: genericps.TriggerFalling,
+				ChannelB: genericps.TriggerFallingLower,
+			},
+		},
+	}
+
+	if err := ps.sendComplexTrigger(); err != nil {
+		t.Fatalf("sendComplexTrigger failed: %v", err)
+	}
+
+	var gotProps []*genericps.SetTriggerChannelPropertiesMsg
+	for _, m := range collected() {
+		if v, ok := m.(*genericps.SetTriggerChannelPropertiesMsg); ok {
+			gotProps = append(gotProps, v)
+		}
+	}
+	if len(gotProps) != 1 || len(gotProps[0].ChannelProperties) != 2 {
+		t.Fatalf("expected 1 SetTriggerChannelProperties with 2 entries, got %+v", gotProps)
+	}
+	chA := gotProps[0].ChannelProperties[0]
+	if chA.ThresholdLower != -2500 || chA.ThresholdLowerHysteresis != 0 {
+		t.Errorf("ChA Level Falling expected ThresholdLower=-2500 hyst=0, got lower=%d hyst=%d", chA.ThresholdLower, chA.ThresholdLowerHysteresis)
+	}
+	chB := gotProps[0].ChannelProperties[1]
+	if chB.ThresholdLower != -1200 || chB.ThresholdLowerHysteresis != 80 {
+		t.Errorf("ChB FallingLower expected ThresholdLower=-1200 hyst=80 preserved, got lower=%d hyst=%d", chB.ThresholdLower, chB.ThresholdLowerHysteresis)
 	}
 }
