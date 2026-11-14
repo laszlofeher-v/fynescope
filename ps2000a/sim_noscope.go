@@ -327,6 +327,7 @@ func simRunBlock(handle int16, pre int32, post int32, timebase uint32, readyCall
 						}
 
 						decimateVal = calculateSampleLevelAtTime(rt, ch)
+						aggSum = decimateVal
 						aggMin = decimateVal
 						aggMax = decimateVal
 					} else {

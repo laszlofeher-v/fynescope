@@ -314,7 +314,7 @@ func runStreaming(m *genericps.RunStreamingMsg) {
 		err            error
 		sampleInterval uint32
 	)
-	sampleInterval, err = ps2000aRunStreaming(m.Handle(), m.ReqSampleInterval, TimeUnits(m.SampleIntervalTimeUnits), m.MaxPostTriggerSamples,
+	sampleInterval, err = ps2000aRunStreaming(m.Handle(), m.ReqSampleInterval, TimeUnits(m.SampleIntervalTimeUnits), m.MaxPreTriggerSamples,
 		m.MaxPostTriggerSamples, m.AutoStop, m.DownSampleRatio, RatioMode(m.DownSampleRatioMode), m.OverviewBufferSize)
 	response := m.Rsp().(*genericps.RunStreamingRsp)
 	response.SampleInterval = sampleInterval

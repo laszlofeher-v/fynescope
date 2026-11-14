@@ -4,8 +4,10 @@ package ps2000a
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPs2000a_SimParameterChecks(t *testing.T) {
@@ -84,11 +86,16 @@ func TestPs2000a_SimParameterChecks(t *testing.T) {
 		// Invalid wave type
 		assert.Error(t, ps2000aSetSigGenBuiltIn(handle, 0, 1000000, WaveTypeEnum(99), 1000, 1000, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
 
-		// Invalid frequency
+		// Invalid frequency on AC waveform
 		assert.Error(t, ps2000aSetSigGenBuiltIn(handle, 0, 1000000, Sine, 0, 0, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
+		assert.Error(t, ps2000aSetSigGenBuiltInV2(handle, 0, 1000000, Sine, -1, 1000, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
 
 		// Valid SigGen
 		assert.NoError(t, ps2000aSetSigGenBuiltIn(handle, 0, 1000000, Sine, 1000, 1000, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
+
+		// Turning generator off uses DcVoltage with 0 Hz / 0 Vpp
+		assert.NoError(t, ps2000aSetSigGenBuiltIn(handle, 0, 0, DcVoltage, 0, 0, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
+		assert.NoError(t, ps2000aSetSigGenBuiltInV2(handle, 0, 0, DcVoltage, 0, 0, 0, 0, SweepUp, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
 	})
 
 	// 5. Digital Port Checks
@@ -150,5 +157,63 @@ func TestPs2000a_SimParameterChecks(t *testing.T) {
 			{ThresholdUpper: 512, ThresholdLower: 0, Channel: ChA, ThresholdMode: Window},
 		}
 		assert.NoError(t, ps2000aSetTriggerChannelProperties(handle, p512, false, 0))
+	})
+
+	// 8. Normal mode (RatioModeNone) capture with generator on produces non-zero samples
+	t.Run("SimRunBlockRatioModeNonePopulatesSamples", func(t *testing.T) {
+		handle := int16(1)
+		simOpenUnit(handle)
+
+		require.NoError(t, ps2000aSetChannel(handle, ChA, true, Dc, Range_1v, 0))
+		require.NoError(t, ps2000aSetSigGenBuiltInV2(handle, 0, 2000000, Sine, 1000, 1000, 0, 1, SweepDown, EsOff, 0, 0, SigGenRising, SigGenNone, 0))
+		require.NoError(t, ps2000aSetSimpleTrigger(handle, true, ChA, 0, TriggerRising, 0, 1000))
+
+		buf := make([]int16, 1000)
+		require.NoError(t, ps2000aSetDataBuffer(handle, ChA, buf, 0, RatioModeNone))
+
+		_, err := ps2000aRunBlock(handle, 500, 500, 1000, 0, 0, nil, nil)
+		require.NoError(t, err)
+
+		deadline := time.Now().Add(2 * time.Second)
+		ready := int16(0)
+		for time.Now().Before(deadline) {
+			r, err := ps2000aIsReady(handle)
+			require.NoError(t, err)
+			if r != 0 {
+				ready = r
+				break
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		require.NotZero(t, ready, "simRunBlock did not finish in time")
+
+		hasNonZero := false
+		for _, v := range buf {
+			if v != 0 {
+				hasNonZero = true
+				break
+			}
+		}
+		assert.True(t, hasNonZero, "expected non-zero samples in RatioModeNone buffer when generator is on")
+	})
+
+	// 9. Streaming callback preserves triggered and autoStop parameter order
+	t.Run("StreamingCallbackOrder", func(t *testing.T) {
+		prevCb := regLpStreamingReadyGo
+		prevParam := regLpStreamingReadyParam
+		defer func() {
+			regLpStreamingReadyGo = prevCb
+			regLpStreamingReadyParam = prevParam
+		}()
+
+		var gotTriggered, gotAutoStop int16
+		regLpStreamingReadyGo = func(_ int16, _ int32, _ uint32, _ int16, _ uint32, triggered, autoStop int16, _ any) error {
+			gotTriggered = triggered
+			gotAutoStop = autoStop
+			return nil
+		}
+		lpStreamingReadyGo(1, 10, 0, 0, 5, 1, 0, nil)
+		assert.Equal(t, int16(1), gotTriggered)
+		assert.Equal(t, int16(0), gotAutoStop)
 	})
 }

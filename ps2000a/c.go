@@ -355,7 +355,7 @@ var (
 func lpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
 	triggeredAt uint32, triggered, autoStop int16, param unsafe.Pointer) {
 	if regLpStreamingReadyGo != nil {
-		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, autoStop, triggered, regLpStreamingReadyParam) // call registered go callback function
+		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, triggered, autoStop, regLpStreamingReadyParam) // call registered go callback function
 	}
 }
 

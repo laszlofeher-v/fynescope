@@ -320,7 +320,7 @@ func Gops2000aSetSigGenBuiltIn(handle C.int16_t, offsetVoltage C.int32_t, pkToPk
 	if totalV > 4000000 {
 		return picoSiggenOutputOverVoltage
 	}
-	if startFrequency <= 0 || stopFrequency <= 0 {
+	if startFrequency < 0 || stopFrequency < 0 || (WaveTypeEnum(waveType) != DcVoltage && (startFrequency == 0 || stopFrequency == 0)) {
 		return picoSigGenParam
 	}
 	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType), int(operation))
@@ -339,7 +339,7 @@ func Gops2000aSetSigGenBuiltInV2(handle C.int16_t, offsetVoltage C.int32_t, pkTo
 	if totalV > 4000000 {
 		return picoSiggenOutputOverVoltage
 	}
-	if startFrequency <= 0 || stopFrequency <= 0 {
+	if startFrequency < 0 || stopFrequency < 0 || (WaveTypeEnum(waveType) != DcVoltage && (startFrequency == 0 || stopFrequency == 0)) {
 		return picoSigGenParam
 	}
 	simSetSigGenBuiltIn(int16(handle), int32(offsetVoltage), uint32(pkToPk), int(waveType), float64(startFrequency), float64(stopFrequency), float64(increment), float64(dwellTime), int(sweepType), int(operation))

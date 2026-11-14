@@ -186,9 +186,10 @@ type (
 	PscDesc struct {
 		Con *genericps.Connection
 
-		hardwareMu   sync.Mutex
-		shutdownCh   chan struct{} // closed by Shutdown() to stop all monitor goroutines
-		shutdownOnce sync.Once
+		hardwareMu       sync.Mutex
+		shutdownCh       chan struct{} // closed by Shutdown() to stop all monitor goroutines
+		shutdownOnce     sync.Once
+		stateMachineDone chan struct{}
 
 		stateChannel   chan state
 		stopChannel    chan struct{}
@@ -293,12 +294,22 @@ func (g *GeneratorDesc) Equals(other *GeneratorDesc) bool {
 	return true
 }
 
-// Shutdown signals all monitor goroutines launched by NewControl to exit.
+// Shutdown signals all monitor goroutines launched by NewControl to exit
+// and waits briefly for the state machine to finish stopping the hardware.
 // It is safe to call multiple times.
 func (psControl *PscDesc) Shutdown() {
 	psControl.shutdownOnce.Do(func() {
+		_ = psControl.Stop()
 		close(psControl.shutdownCh)
 	})
+	if psControl.stateMachineDone != nil {
+		timer := time.NewTimer(250 * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-psControl.stateMachineDone:
+		case <-timer.C:
+		}
+	}
 }
 
 // NewControl creates a controller for the given connection, allocates all
@@ -307,6 +318,7 @@ func NewControl(con *genericps.Connection) *PscDesc {
 	slog.Debug("NewControl")
 	psControl := &PscDesc{Con: con}
 	psControl.shutdownCh = make(chan struct{})
+	psControl.stateMachineDone = make(chan struct{})
 	psControl.StreamEnabled.Store(true)
 	psControl.stateChannel = make(chan state, 1)
 	psControl.restartChannel = make(chan struct{}, 1) // non blocking

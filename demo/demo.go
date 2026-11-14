@@ -578,6 +578,7 @@ func simGetValues(handle int16, startIndex, reqNoOfSamples, downSampleRatio uint
 					}
 
 					decimateVal = levelFloat
+					aggSum = levelFloat
 					aggMin = levelFloat
 					aggMax = levelFloat
 				} else {

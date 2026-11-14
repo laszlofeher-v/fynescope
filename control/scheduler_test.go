@@ -1,11 +1,13 @@
 package control
 
 import (
+	_ "fynescope/demo"
 	"fynescope/genericps"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mockState(ps *PscDesc) state {
@@ -111,4 +113,46 @@ func TestRequestRestart(t *testing.T) {
 	// A second call should not block, despite channel capacity being 1
 	psControl.RequestRestart()
 	assert.Len(t, psControl.restartChannel, 1)
+}
+
+func TestIdle_DrainsStaleStopBeforeTransition(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		psControl := &PscDesc{
+			shutdownCh:     make(chan struct{}, 1),
+			restartChannel: make(chan struct{}, 1),
+			stateChannel:   make(chan state, 1),
+			stopChannel:    make(chan struct{}, 1),
+		}
+		psControl.stopChannel <- struct{}{}
+		psControl.restartChannel <- struct{}{}
+		psControl.stateChannel <- mockState
+
+		nextState := idle(psControl)
+		assert.Equal(t, functionName(mockState), functionName(nextState))
+		assert.Empty(t, psControl.stopChannel, "stale stop request leaked to next state on iter %d", i)
+		assert.Empty(t, psControl.restartChannel, "stale restart request leaked to next state on iter %d", i)
+	}
+}
+
+func TestQuit_CompletesStopBeforeReturning(t *testing.T) {
+	con := genericps.NewConnection()
+	handle, err := genericps.OpenDemo(con, genericps.DemoId)
+	require.NoError(t, err)
+	con.Handle = handle
+	defer con.CloseUnit()
+
+	psControl := &PscDesc{Con: con}
+
+	_, err = con.RunStreaming(1000, genericps.TuNs, 0, 100, false, 1, genericps.RatioModeNone, 100)
+	require.NoError(t, err)
+
+	require.NoError(t, psControl.quit())
+
+	// Streaming must already be stopped before quit() returns so a subsequent
+	// state's RunStreaming/RunBlock cannot be cancelled by an async Stop.
+	err = con.GetStreamingLatestValues(func(_ int16, _ int32, _ uint32, _ int16, _ uint32, _, _ int16, _ any) error {
+		return nil
+	}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "streaming not running")
 }
