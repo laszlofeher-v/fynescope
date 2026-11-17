@@ -1061,6 +1061,9 @@ func (scp *ScpDesc) build2000Gui() {
 			scp.fvRaster.Hide()
 			scp.ffRaster.Hide()
 			scp.dftRaster.Show()
+			if scp.dftBottomLabelViewer != nil {
+				scp.dftBottomLabelViewer.enableRefresh()
+			}
 			if scp.timeZoomButton != nil {
 				scp.timeZoomButton.Hide()
 			}
@@ -1496,7 +1499,6 @@ func (scp *ScpDesc) build2000Gui() {
 		xRoundError, samplingTimeInterval float64) {
 		scp.controlXRoundError = xRoundError
 		scp.controlTriggerTimeOffset = triggerTimeOffset
-		scp.controlSamplingTimeInterval = samplingTimeInterval
 
 		if scp.triggerSettingMsg.Mode == control.ETS && scp.etsSamplingRateDisp != nil && samplingTimeInterval > 0 {
 			rateGSs := (1.0 / samplingTimeInterval) / 1e9
@@ -1555,10 +1557,19 @@ func (scp *ScpDesc) build2000Gui() {
 		}
 
 		scp.screenLocker.Lock()
+		samplingIntervalChanged := scp.controlSamplingTimeInterval != samplingTimeInterval
+		scp.controlSamplingTimeInterval = samplingTimeInterval
 		scp.DecodeState = newDecodeState
 		scp.UpdateMeasurements(buffers, buffersMin, samplingTimeInterval)
+		if samplingIntervalChanged && scp.dftBottomLabelViewer != nil {
+			scp.dftBottomLabelViewer.enableRefresh()
+		}
 		scp.sendClientWaveforms()
 		scp.screenLocker.Unlock()
+		if samplingIntervalChanged {
+			scp.updateBinWidth()
+			scp.updateDftDataCollectionTime()
+		}
 
 		isSingle := scp.triggerSettingMsg.Mode == control.Single
 		if isSingle || atomic.CompareAndSwapInt32(&scp.refreshPending, 0, 1) {

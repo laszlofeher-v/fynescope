@@ -183,18 +183,22 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 
 	scp.dftMinFreqDisp.OnChanged = func(v float64) {
 		go func() {
+			scp.screenLocker.Lock()
 			scp.Settings.Dft.MinFreq = v / 100.0
+			adjustedMax := false
+			var newMax float64
 			if scp.Settings.Dft.MinFreq > scp.Settings.Dft.MaxFreq {
 				scp.Settings.Dft.MaxFreq = scp.Settings.Dft.MinFreq
-				if scp.dftMaxFreqDisp != nil {
-					scp.dftMaxFreqDisp.SetFloatValue(scp.Settings.Dft.MaxFreq, 2)
-				}
+				newMax = scp.Settings.Dft.MaxFreq
+				adjustedMax = true
 			}
 			scp.setDftHDivsX()
-			if scp.dftBottomLabelViewer != nil {
-				scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
-			}
 			scp.clearAllDftPersistentLayers()
+			scp.screenLocker.Unlock()
+
+			if adjustedMax && scp.dftMaxFreqDisp != nil {
+				scp.dftMaxFreqDisp.SetFloatValue(newMax, 2)
+			}
 			scp.refreshRasters()
 			scp.SaveSettings()
 		}()
@@ -202,18 +206,22 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 
 	scp.dftMaxFreqDisp.OnChanged = func(v float64) {
 		go func() {
+			scp.screenLocker.Lock()
 			scp.Settings.Dft.MaxFreq = v / 100.0
+			adjustedMin := false
+			var newMin float64
 			if scp.Settings.Dft.MaxFreq < scp.Settings.Dft.MinFreq {
 				scp.Settings.Dft.MinFreq = scp.Settings.Dft.MaxFreq
-				if scp.dftMinFreqDisp != nil {
-					scp.dftMinFreqDisp.SetFloatValue(scp.Settings.Dft.MinFreq, 2)
-				}
+				newMin = scp.Settings.Dft.MinFreq
+				adjustedMin = true
 			}
 			scp.setDftHDivsX()
-			if scp.dftBottomLabelViewer != nil {
-				scp.dftBottomLabelViewer.(*frqLabelViewer).enableRefresh()
-			}
 			scp.clearAllDftPersistentLayers()
+			scp.screenLocker.Unlock()
+
+			if adjustedMin && scp.dftMinFreqDisp != nil {
+				scp.dftMinFreqDisp.SetFloatValue(newMin, 2)
+			}
 			scp.refreshRasters()
 			scp.SaveSettings()
 		}()
@@ -224,14 +232,17 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	binLabels := []string{"128", "256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536", "131072", "262144", "524288", "1048576"}
 	binSelector := selectscroll.NewSelectScroll(binLabels, func(selected string, _ selectscroll.Exception) {
 		val, _ := strconv.Atoi(selected)
+		scp.screenLocker.Lock()
 		scp.Settings.Dft.Bins = val
 		m = scp.Settings.Dft.Bins * 2
 		fft = fourier.NewFFT(scp.Settings.Dft.Bins * 2)
 		samples = make([]float64, m)
 		fftResult = make([]complex128, fft.Len()/2+1)
+		scp.clearAllDftPersistentLayers()
+		scp.screenLocker.Unlock()
+
 		scp.updateBinWidth()
 		scp.updateAcquisitionParameters()
-		scp.clearAllDftPersistentLayers()
 		if scp.dftRaster != nil {
 			scp.dftRaster.Refresh()
 		}
@@ -316,8 +327,10 @@ func (scp *ScpDesc) newDftPanel(layout *fyne.Container) {
 	windowCol.Add(arbDbRefContainer)
 	windowCol.Add(scp.dftMinFreqDisp)
 	logXCheck := widget.NewCheck("Log X", func(b bool) {
+		scp.screenLocker.Lock()
 		scp.Settings.Dft.XAxisLog = b
 		scp.clearAllDftPersistentLayers()
+		scp.screenLocker.Unlock()
 		scp.refreshRasters()
 		scp.SaveSettings()
 	})

@@ -14,6 +14,7 @@ import (
 	"fynescope/settings"
 	"math"
 	"math/cmplx"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -58,8 +59,14 @@ var (
 type (
 	frqLabelViewer struct {
 		rasterPartition
-		scp      *ScpDesc
-		selected bool
+		scp             *ScpDesc
+		selected        bool
+		lastMinFreq     float64
+		lastMaxFreqPlot float64
+		lastXAxisLog    bool
+		lastBounds      image.Rectangle
+		lastLabelBounds image.Rectangle
+		hasLastDraw     bool
 	}
 )
 
@@ -189,10 +196,29 @@ func (frql *frqLabelViewer) clear() {
 	draw.Draw(frql.img, frql.rect(), &image.Uniform{theme.BackgroundColor()}, image.ZP, draw.Src)
 }
 
-func (frql *frqLabelViewer) draw() {
-	if !frql.refreshFlag {
-		return
+// linearAxisStep picks the smallest grid-aligned frequency step (gridStep * {1,2,5} * 10^k)
+// that keeps the number of label intervals within numDivs across span.
+func linearAxisStep(span float64, numDivs int) float64 {
+	if span <= 0 || math.IsNaN(span) || math.IsInf(span, 0) {
+		return 1
 	}
+	if numDivs < 1 {
+		numDivs = 1
+	}
+	gridStep := niceStep(span / 10.0)
+	for exp := 0; exp < 12; exp++ {
+		scale := math.Pow(10, float64(exp))
+		for _, mult := range []float64{1, 2, 5} {
+			step := gridStep * mult * scale
+			if span/step <= float64(numDivs)+1e-9 {
+				return step
+			}
+		}
+	}
+	return niceStep(span / float64(numDivs))
+}
+
+func (frql *frqLabelViewer) draw() {
 	if !frql.scp.shouldDrawRaster(dftTabIndex) {
 		return
 	}
@@ -202,10 +228,37 @@ func (frql *frqLabelViewer) draw() {
 		return
 	}
 	minFreq, maxFreqPlot := frql.scp.getDftFreqRange()
-	sampleLabel := formatFreq(maxFreqPlot)
-	l, t, r, b := frql.scp.boundString(sampleLabel)
-	maxLblWidth := float32(math.Max(float64(r-l), 45.0))
-	lblHeight := b - t
+	xAxisLog := frql.scp.Settings.Dft.XAxisLog
+	if !frql.refreshFlag && frql.hasLastDraw &&
+		minFreq == frql.lastMinFreq &&
+		maxFreqPlot == frql.lastMaxFreqPlot &&
+		xAxisLog == frql.lastXAxisLog &&
+		bounds == frql.lastBounds {
+		return
+	}
+
+	probeStep := 0.0
+	if !xAxisLog {
+		probeStep = linearAxisStep(maxFreqPlot, 10)
+	}
+	maxLblWidth := float32(45.0)
+	var lblHeight, lblAscent float32
+	for _, sampleFreq := range []float64{minFreq, minFreq + maxFreqPlot} {
+		sampleLabel := formatAxisFreq(sampleFreq, probeStep)
+		if xAxisLog {
+			sampleLabel = formatFreq(math.Max(sampleFreq, 1e-6))
+		}
+		l, t, r, b := frql.scp.boundString(sampleLabel)
+		if r-l > maxLblWidth {
+			maxLblWidth = r - l
+		}
+		if b-t > lblHeight {
+			lblHeight = b - t
+		}
+		if -t > lblAscent {
+			lblAscent = -t
+		}
+	}
 
 	// Frequency steps: avoid overlapping by calculating based on width
 	labelSpacing := maxLblWidth + 14.0 // padding between labels
@@ -218,25 +271,31 @@ func (frql *frqLabelViewer) draw() {
 	}
 	labelBounds := bounds
 	labelBounds.Min.Y = bounds.Max.Y
-	labelBounds.Max.Y += int(math.Ceil(float64(lblHeight))) + 8
+	if frql.imgRect.Max.Y > labelBounds.Max.Y {
+		labelBounds.Max.Y = frql.imgRect.Max.Y
+	} else {
+		labelBounds.Max.Y += int(math.Ceil(float64(lblHeight))) + 8
+	}
 	labelBounds.Min.X -= int(math.Ceil(float64(maxLblWidth)))
 	labelBounds.Max.X += int(math.Ceil(float64(maxLblWidth)))
-	draw.Draw(frql.scp.dftScopeFullScreen, labelBounds,
+	clearBounds := labelBounds
+	if !frql.lastLabelBounds.Empty() {
+		clearBounds = clearBounds.Union(frql.lastLabelBounds)
+	}
+	clearBounds = clearBounds.Intersect(frql.scp.dftScopeFullScreen.Bounds())
+	draw.Draw(frql.scp.dftScopeFullScreen, clearBounds,
 		&image.Uniform{frql.scp.theme.Color(ColorNameSignalBackground, 0)},
 		image.ZP, draw.Src)
 
-	if !frql.scp.Settings.Dft.XAxisLog {
-		if numDivs <= 0 {
-			numDivs = 1
-		}
-		step := niceStep(maxFreqPlot / float64(numDivs))
+	if !xAxisLog {
+		step := linearAxisStep(maxFreqPlot, numDivs)
 		firstFreq := math.Floor(minFreq/step) * step
 
 		lastLabelRight := float32(-100000.0)
 
 		for i := 0; ; i++ { // Draw labels until they go off-screen
 			freq := firstFreq + float64(i)*step
-			if freq < 0 {
+			if freq < -step*1e-9 {
 				continue
 			}
 
@@ -250,7 +309,7 @@ func (frql *frqLabelViewer) draw() {
 				break
 			}
 
-			label := formatFreq(freq)
+			label := formatAxisFreq(freq, step)
 			lblL, _, lblR, _ := frql.scp.boundString(label)
 			lblW := lblR - lblL
 			drawX := x - lblW/2
@@ -260,7 +319,7 @@ func (frql *frqLabelViewer) draw() {
 			}
 
 			frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(drawX),
-				bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+				bounds.Max.Y+int(math.Ceil(float64(lblAscent)))+4, label, theme.ForegroundColor())
 			lastLabelRight = drawX + lblW
 		}
 	} else {
@@ -318,11 +377,17 @@ func (frql *frqLabelViewer) draw() {
 				}
 
 				frql.scp.addLabel(frql.scp.dftScopeFullScreen, int(drawX),
-					bounds.Max.Y+int(math.Ceil(float64(-t)))+4, label, theme.ForegroundColor())
+					bounds.Max.Y+int(math.Ceil(float64(lblAscent)))+4, label, theme.ForegroundColor())
 				lastLabelRight = drawX + lblW
 			}
 		}
 	}
+	frql.lastMinFreq = minFreq
+	frql.lastMaxFreqPlot = maxFreqPlot
+	frql.lastXAxisLog = xAxisLog
+	frql.lastBounds = bounds
+	frql.lastLabelBounds = labelBounds
+	frql.hasLastDraw = true
 	frql.disableRefresh()
 }
 
@@ -1033,6 +1098,67 @@ func formatFreq(f float64) string {
 	return fmt.Sprintf("%.3g", f)
 }
 
+func unitForFreq(f float64) (string, float64) {
+	switch {
+	case f >= 1e9:
+		return "G", 1e9
+	case f >= 1e6:
+		return "M", 1e6
+	case f >= 1e3:
+		return "k", 1e3
+	default:
+		return "", 1.0
+	}
+}
+
+func decimalsForScaledStep(s float64) int {
+	if s <= 0 {
+		return -1
+	}
+	scale := 1.0
+	for d := 0; d < 6; d++ {
+		v := s * scale
+		if v >= 1-1e-6 && math.Abs(v-math.Round(v)) < 1e-5 {
+			return d
+		}
+		scale *= 10
+	}
+	d := int(math.Ceil(-math.Log10(s) + 1e-9))
+	if d < 0 {
+		return 0
+	}
+	if d > 6 {
+		return 6
+	}
+	return d
+}
+
+// formatAxisFreq formats frequency axis tick labels with enough decimal precision
+// to distinguish consecutive ticks separated by step without duplicate rounded labels.
+func formatAxisFreq(f, step float64) string {
+	if math.Abs(f) < 1e-12 || (step > 0 && math.Abs(f) < step*1e-6) {
+		return "0"
+	}
+	unit, div := unitForFreq(f)
+	val := f / div
+	dec := decimalsForScaledStep(step / div)
+	if dec < 0 {
+		return formatFreq(f)
+	}
+	s := strconv.FormatFloat(val, 'f', dec, 64)
+	if vRounded, err := strconv.ParseFloat(s, 64); err == nil && vRounded >= 1000 && unit != "G" {
+		unit, div = unitForFreq(f * 1.001)
+		val = f / div
+		dec = decimalsForScaledStep(step / div)
+		s = strconv.FormatFloat(val, 'f', dec, 64)
+	}
+	if strings.Contains(s, ".") {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimRight(s, ".")
+	}
+	return s + unit
+}
+
 func formatTime(t float64) string {
 	if math.Abs(t) >= 1.0 {
 		return fmt.Sprintf("%+.3gs", t)
@@ -1463,6 +1589,9 @@ func (scp *ScpDesc) dftRasterGenerator(wInt int, hInt int) image.Image {
 		scp.setDftHDivsX()
 	} else if getFlag(scp.themeChanged) {
 		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeFullScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
+		if scp.dftBottomLabelViewer != nil {
+			scp.dftBottomLabelViewer.enableRefresh()
+		}
 	} else {
 		draw.Draw(scp.dftScopeFullScreen, scp.dftScopeSignalScreen.Bounds(), &image.Uniform{scp.theme.Color(ColorNameSignalBackground, 0)}, image.ZP, draw.Src)
 	}
