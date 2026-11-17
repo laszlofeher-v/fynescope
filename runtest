@@ -2,13 +2,23 @@ echo "Use CTRL C to cancel"
 go clean -testcache
 #go test -timeout 99999s
 #go test -v
-if [ "$1" = "sim" ]; then
-    TAGS="sim,web"
-else
+if [ "$1" = "demo" ]; then
     TAGS="demo,web"
+    shift
+    FUZZER_PORT=20260 FUZZER_HOST=0.0.0.0 FUZZER_WEBPORT=8080 FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags="$TAGS" -v -run Test0 -timeout 105m "$@"
+else
+    TAGS="sim,web"
+    if [ "$1" = "sim" ]; then
+        shift
+    fi
+    SIM_NAME="2207BMSO"
+    if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
+        SIM_NAME="$1"
+        shift
+    fi
+    FUZZER_PORT=20260 FUZZER_HOST=0.0.0.0 FUZZER_SIM_NAME="$SIM_NAME" FUZZER_WEBPORT=8080 FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags="$TAGS" -v -run TestSimFuzzer -timeout 105m -sim="$SIM_NAME" "$@"
 fi
-FUZZER_PORT=20260 FUZZER_HOST=0.0.0.0 FUZZER_SIM_NAME="$2" FUZZER_WEBPORT=8080 FUZZER_COMMIT_ID=$(git rev-parse HEAD) go test -tags="$TAGS" -v -run Test0 -timeout 105m
-#go test -v -run Test0 -timeout 105m
+#go test -v -tags="sim,web" -run TestSimFuzzer -timeout 105m -sim=2207BMSO
 #time go test -v -timeout 99999s
 #go test -v -tags="sim,web" -run Test1 -timeout 120m
 

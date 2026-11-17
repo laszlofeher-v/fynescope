@@ -46,7 +46,7 @@ func maxDwellTimeTicks() int {
 	}
 	return int(maxTicks)
 }
-func (scp *ScpDesc) applyInternalGenSettings(on bool) {
+func (scp *ScpDesc) buildInternalGenMsg(on bool) *control.GeneratorDescMsg {
 	msg := &control.GeneratorDescMsg{}
 	if on {
 		if scp.Settings.GenPanel.Sweep == genericps.NoSweep {
@@ -86,11 +86,23 @@ func (scp *ScpDesc) applyInternalGenSettings(on bool) {
 	msg.TriggerType = genericps.SigGenRising
 	msg.TriggerSource = genericps.SigGenNone
 	msg.ExtInThreshold = 0
-	if scp.psControl != nil && true {
+	return msg
+}
+
+func (scp *ScpDesc) applyInternalGenSettingsSync(on bool, done chan struct{}) {
+	msg := scp.buildInternalGenMsg(on)
+	msg.Done = done
+	if scp.psControl != nil {
 		go func(m *control.GeneratorDescMsg) {
 			scp.psControl.SetGenerator(m)
 		}(msg)
+	} else if done != nil {
+		done <- struct{}{}
 	}
+}
+
+func (scp *ScpDesc) applyInternalGenSettings(on bool) {
+	scp.applyInternalGenSettingsSync(on, nil)
 }
 
 func (scp *ScpDesc) newGenPanel(cont *fyne.Container) (err error) {

@@ -31,10 +31,12 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 
 	// 2. In demo mode select channel A
 	fyne.Do(func() {
-		scp.Settings.Window.DemoGenActiveTab = 0
-		if len(scp.genLayout.Objects) > 0 {
-			if tabs, ok := scp.genLayout.Objects[0].(*container.AppTabs); ok {
-				tabs.SelectIndex(0)
+		if scp.psControl != nil && scp.psControl.IsDemo() {
+			scp.Settings.Window.DemoGenActiveTab = 0
+			if len(scp.genLayout.Objects) > 0 {
+				if tabs, ok := scp.genLayout.Objects[0].(*container.AppTabs); ok {
+					tabs.SelectIndex(0)
+				}
 			}
 		}
 	})
@@ -45,27 +47,31 @@ func (scp *ScpDesc) FunctionalTestUnit() error {
 	// 5. Switch the generator on
 	genDone := make(chan struct{}, 1)
 	fyne.Do(func() {
-		genSettings := &scp.Settings.DemoGenPanel[genericps.ChA]
+		if scp.psControl != nil && scp.psControl.IsDemo() {
+			genSettings := &scp.Settings.DemoGenPanel[genericps.ChA]
+			genSettings.WaveType = genericps.Sine
+			genSettings.Frequency = 1000
+			genSettings.Amplitude = 1000000 // 1V amplitude (pk-to-pk 2V = 2000000 uV)
+			genSettings.Sweep = genericps.NoSweep
+			genSettings.OffsetVoltage = 0
+			genSettings.Phase = 0
+			genSettings.NoiseAmplitude = 0
+			genSettings.PhaseNoiseDegree = 0
+			genSettings.Operation = genericps.EsOff
+			genSettings.On = true
+			scp.applyDemoGenSettingsSync(genericps.ChA, genSettings, genDone)
+			return
+		}
+
+		genSettings := &scp.Settings.GenPanel
 		genSettings.WaveType = genericps.Sine
 		genSettings.Frequency = 1000
 		genSettings.Amplitude = 1000000 // 1V amplitude (pk-to-pk 2V = 2000000 uV)
 		genSettings.Sweep = genericps.NoSweep
 		genSettings.OffsetVoltage = 0
-		genSettings.Phase = 0
-		genSettings.NoiseAmplitude = 0
-		genSettings.PhaseNoiseDegree = 0
 		genSettings.Operation = genericps.EsOff
 		genSettings.On = true
-		scp.applyDemoGenSettings(genericps.ChA, genSettings)
-
-		if scp.psControl != nil && true {
-			syncMsg := &control.GeneratorDescMsg{
-				Done: genDone,
-			}
-			go func() { scp.psControl.SetDemoGen(syncMsg) }()
-		} else {
-			genDone <- struct{}{}
-		}
+		scp.applyInternalGenSettingsSync(true, genDone)
 	})
 	<-genDone
 	wait()

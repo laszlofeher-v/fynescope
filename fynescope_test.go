@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"fynescope/gui"
 	"fynescope/settings"
@@ -9,7 +10,10 @@ import (
 	"image"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,8 +21,15 @@ import (
 	"fyne.io/fyne/v2/app"
 )
 
+const (
+	defaultSimScope  = "2207BMSO"
+	minFuzzerTimeout = 20 * time.Minute
+)
+
 var (
-	scp *gui.ScpDesc
+	scp           *gui.ScpDesc
+	fuzzTimeFlag  *time.Duration
+	fuzzerWebOnce sync.Once
 )
 
 func TestMain(m *testing.M) {
@@ -27,12 +38,45 @@ func TestMain(m *testing.M) {
 
 	log.SetFlags(log.Ltime | log.Lshortfile)
 
-	con, err := openSim(os.Getenv("FUZZER_SIM_NAME"))
+	if flag.Lookup("sim") == nil {
+		_ = registerSimFlag()
+	}
+	if flag.Lookup("fuzzduration") == nil {
+		fuzzTimeFlag = flag.Duration("fuzzduration", 0, "duration to run fuzzer test even when -timeout < 20m")
+	}
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+
+	simName := ""
+	if f := flag.Lookup("sim"); f != nil {
+		simName = f.Value.String()
+	}
+	if simName == "" {
+		simName = os.Getenv("FUZZER_SIM_NAME")
+	}
+	if isSimBuild && simName == "" {
+		simName = defaultSimScope
+	}
+
+	con, err := openSim(simName)
 	if err != nil {
 		log.Fatalf("failed to open simulator: %v", err)
 	}
 
-	if os.Getenv("FUZZER_COMMIT_ID") != "" {
+	_, hasExplicitDur, err := explicitFuzzerDuration()
+	if err != nil {
+		log.Fatalf("invalid fuzzer duration: %v", err)
+	}
+	isFuzzRun := os.Getenv("FUZZER_COMMIT_ID") != "" || hasExplicitDur
+	if !isFuzzRun {
+		if tf := flag.Lookup("test.timeout"); tf != nil {
+			if d, err := time.ParseDuration(tf.Value.String()); err == nil && d >= minFuzzerTimeout {
+				isFuzzRun = true
+			}
+		}
+	}
+	if isFuzzRun {
 		settingFileName = fmt.Sprintf("scopesettings_fuzzer_%d.yaml", time.Now().UnixNano())
 	}
 
@@ -101,78 +145,118 @@ func TestFunctional(t *testing.T) {
 	}
 }
 
-// Test0 runs the GUI fuzzer for the duration set by the -timeout flag.
-// Run with: go test -v -run Test0 -timeout 105m
-func Test0(t *testing.T) {
-	if deadline, ok := t.Deadline(); ok {
-		if time.Until(deadline) < 20*time.Minute {
-			t.Skip("Skipping fuzzer test")
+func explicitFuzzerDuration() (time.Duration, bool, error) {
+	if fuzzTimeFlag != nil && *fuzzTimeFlag > 0 {
+		return *fuzzTimeFlag, true, nil
+	}
+	if tf := flag.Lookup("test.fuzztime"); tf != nil && tf.Value.String() != "" {
+		if d, err := time.ParseDuration(tf.Value.String()); err == nil && d > 0 {
+			return d, true, nil
 		}
 	}
-	if scp == nil {
-		t.Fatal("scp is nil — app failed to initialize")
-	}
-	var timeout time.Duration
-	if deadline, ok := t.Deadline(); ok {
-		log.Printf("deadline: %v", deadline)
-		timeout = time.Until(deadline) - 10*time.Second
-		if timeout < 0 {
-			timeout = 0
+	if envDur := os.Getenv("FUZZER_DURATION"); envDur != "" {
+		d, err := time.ParseDuration(envDur)
+		if err != nil || d <= 0 {
+			return 0, false, fmt.Errorf("FUZZER_DURATION %q: %v", envDur, err)
 		}
+		return d, true, nil
 	}
-	log.Printf("timeout: %v", timeout)
-
-	portStr := os.Getenv("FUZZER_WEBPORT")
-	webportStr := ""
-	if portStr != "" {
-		if p, err := strconv.Atoi(portStr); err == nil && p > 0 {
-			web.StartServerNoVoice(p, "", "", func() image.Image {
-				if scp.Window == nil || scp.Window.Canvas() == nil {
-					return nil
-				}
-				return scp.Window.Canvas().Capture()
-			})
-			webportStr = fmt.Sprintf("%d", p)
-		}
-	}
-
-	scp.Random(timeout, Version, BuildDate, webportStr, settingFileName)
+	return 0, false, nil
 }
 
-// Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout flag.
-// Run with: go test -tags="web" -v -run Test1 -timeout 105m
-func Test1(t *testing.T) {
-	if deadline, ok := t.Deadline(); ok {
-		if time.Until(deadline) < 20*time.Minute {
-			t.Skip("Skipping fuzzer test")
-		}
+func resolveFuzzerTimeout(t *testing.T) (time.Duration, bool) {
+	t.Helper()
+	if d, ok, err := explicitFuzzerDuration(); err != nil {
+		t.Fatal(err)
+	} else if ok {
+		return d, true
+	}
+	deadline, ok := t.Deadline()
+	if !ok {
+		return 0, false
+	}
+	if time.Until(deadline) < minFuzzerTimeout {
+		return 0, false
+	}
+	log.Printf("deadline: %v", deadline)
+	timeout := time.Until(deadline) - 10*time.Second
+	if timeout < 0 {
+		timeout = 0
+	}
+	return timeout, true
+}
+
+func ensureFuzzerCommitID() {
+	if gui.FuzzerCommitID != "" || os.Getenv("FUZZER_COMMIT_ID") != "" {
+		return
+	}
+	out, err := exec.Command("git", "rev-parse", "HEAD").Output()
+	if err == nil {
+		gui.FuzzerCommitID = strings.TrimSpace(string(out))
+	}
+	if gui.FuzzerCommitID == "" {
+		gui.FuzzerCommitID = "unknown"
+	}
+}
+
+func runFuzzerTest(t *testing.T, defaultWebPort int, requireSim bool) {
+	t.Helper()
+	timeout, ok := resolveFuzzerTimeout(t)
+	if !ok {
+		t.Skip("Skipping fuzzer test")
 	}
 	if scp == nil {
 		t.Fatal("scp is nil — app failed to initialize")
 	}
-	var timeout time.Duration
-	if deadline, ok := t.Deadline(); ok {
-		log.Printf("deadline: %v", deadline)
-		timeout = time.Until(deadline) - 10*time.Second
-		if timeout < 0 {
-			timeout = 0
+	if requireSim {
+		if !isSimBuild {
+			t.Fatal("sim fuzzer test requires -tags=\"sim\" (got non-sim build)")
+		}
+		info, isDemo := scp.DeviceInfo()
+		if info == "" || isDemo || !strings.Contains(info, "SIM") {
+			t.Fatalf("sim fuzzer test must run on a simulated scope, not demo mode (device=%q, isDemo=%v)", info, isDemo)
 		}
 	}
-	log.Printf("timeout: %v", timeout)
 
-	port := 8080
+	log.Printf("timeout: %v", timeout)
+	ensureFuzzerCommitID()
+
+	port := defaultWebPort
 	if portStr := os.Getenv("FUZZER_WEBPORT"); portStr != "" {
 		if p, err := strconv.Atoi(portStr); err == nil {
 			port = p
 		}
 	}
-	webportStr := fmt.Sprintf("%d", port)
+	webportStr := ""
+	if port > 0 {
+		webportStr = fmt.Sprintf("%d", port)
+		fuzzerWebOnce.Do(func() {
+			web.StartServerNoVoice(port, "", "", func() image.Image {
+				if scp.Window == nil || scp.Window.Canvas() == nil {
+					return nil
+				}
+				return scp.Window.Canvas().Capture()
+			})
+		})
+	}
 
-	web.StartServerNoVoice(port, "", "", func() image.Image {
-		if scp.Window == nil || scp.Window.Canvas() == nil {
-			return nil
-		}
-		return scp.Window.Canvas().Capture()
-	})
 	scp.Random(timeout, Version, BuildDate, webportStr, settingFileName)
+}
+
+// TestSimFuzzer runs the GUI fuzzer using -sim (default 2207BMSO) and refuses demo mode.
+// Run with: go test -tags="sim,web" -v -run TestSimFuzzer -timeout 105m -sim=2207BMSO
+func TestSimFuzzer(t *testing.T) {
+	runFuzzerTest(t, 0, true)
+}
+
+// Test0 runs the GUI fuzzer for the duration set by the -timeout or -fuzztime flag.
+// Run with: go test -tags="sim,web" -v -run Test0 -timeout 105m -sim=2207BMSO
+func Test0(t *testing.T) {
+	runFuzzerTest(t, 0, false)
+}
+
+// Test1 runs the GUI fuzzer with webport=8080 for the duration set by the -timeout or -fuzztime flag.
+// Run with: go test -tags="sim,web" -v -run Test1 -timeout 105m -sim=2207BMSO
+func Test1(t *testing.T) {
+	runFuzzerTest(t, 8080, false)
 }

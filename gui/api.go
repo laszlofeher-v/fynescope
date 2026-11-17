@@ -329,6 +329,14 @@ func (scp *ScpDesc) GetInfo() ScopeInfo {
 	}
 }
 
+// DeviceInfo returns the active scope variant string and whether it is running in demo mode.
+func (scp *ScpDesc) DeviceInfo() (info string, isDemo bool) {
+	if scp.psControl == nil {
+		return "", false
+	}
+	return scp.psControl.GetInfo(), scp.psControl.IsDemo()
+}
+
 // GetSettings returns a pointer to the current application settings.
 func (scp *ScpDesc) GetSettings() *settings.PsSettings {
 	return scp.Settings

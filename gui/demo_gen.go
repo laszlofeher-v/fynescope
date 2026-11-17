@@ -25,7 +25,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *settings.GeneratorSettings) {
+func (scp *ScpDesc) applyDemoGenSettingsSync(ch genericps.ChannelId, genSettings *settings.GeneratorSettings, done chan struct{}) {
 	msg := &control.GeneratorDescMsg{}
 	msg.Channel = ch
 	msg.On = genSettings.On
@@ -70,6 +70,7 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 	msg.Phase = genSettings.Phase
 	msg.SpiDataValue = genSettings.SpiDataValue
 	msg.I2cAddressValue = genSettings.I2cAddressValue
+	msg.Done = done
 
 	if genSettings.On {
 		demo.SetNoiseAmplitude(int(ch), genSettings.NoiseAmplitude)
@@ -77,11 +78,17 @@ func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *se
 		demo.SetRaiseFallTimePercent(genSettings.RaiseFallTimePercent / 100.0)
 	}
 
-	if scp.psControl != nil && true {
+	if scp.psControl != nil {
 		msgCopy := msg
 		go func() { scp.psControl.SetDemoGen(msgCopy) }()
+	} else if done != nil {
+		done <- struct{}{}
 	}
 	go scp.SaveSettings()
+}
+
+func (scp *ScpDesc) applyDemoGenSettings(ch genericps.ChannelId, genSettings *settings.GeneratorSettings) {
+	scp.applyDemoGenSettingsSync(ch, genSettings, nil)
 }
 
 func (scp *ScpDesc) newDemoGenPanel(cont *fyne.Container, undockable bool) (err error) {

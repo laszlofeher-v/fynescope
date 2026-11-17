@@ -458,22 +458,25 @@ func openDemo(id string) (*genericps.Connection, error) {
 }
 
 // openSim is a helper function for tests to open a simulated connection.
-// It attempts to connect to the ps2000a simulator, falling back to demo mode if not compiled with -tags="sim".
+// When built with -tags="sim", it opens the ps2000a simulator without falling back to demo mode.
+// Otherwise, it opens demo mode directly when no simulator is requested and errors if a simulator name was given.
 func openSim(simName string) (*genericps.Connection, error) {
+	if !isSimBuild {
+		if simName != "" {
+			return nil, fmt.Errorf("simulated scope %q requested, but binary was built without -tags=sim", simName)
+		}
+		return openDemo(genericps.DemoId)
+	}
 	serial := "SIM"
 	if simName != "" {
 		serial = simName + "SIM"
 		demo.ScopeSimVariantInfo = serial
 	}
-	con, err := connectToDevice(&genericps.DeviceInfo{
+	return connectToDevice(&genericps.DeviceInfo{
 		Id:     "ps2000a",
 		Serial: serial,
 		IsDemo: false,
 	})
-	if err != nil {
-		return openDemo(genericps.DemoId)
-	}
-	return con, nil
 }
 
 // setupSettingsFile configures the settings filename based on device info.
