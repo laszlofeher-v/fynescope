@@ -29,6 +29,7 @@ import (
 	"fynescope/genericps"
 	"fynescope/psc"
 	"log/slog"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -175,6 +176,7 @@ func ps2000aFlashLed(handle int16, start int16) (err error) {
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
 var (
+	regLpDataReadyMu    sync.RWMutex
 	regLpDataReadyGo    DataReady // registered go callback function
 	regLpDataReadyParam any
 )
@@ -184,16 +186,22 @@ var (
 //
 //export lpDataReadyGo
 func lpDataReadyGo(handle int16, status uint32, noOfSamples uint32, overflow int16, param unsafe.Pointer) {
-	if regLpDataReadyGo != nil {
-		regLpDataReadyGo(handle, int(status), noOfSamples, overflow, regLpDataReadyParam) // call registered go callback function
+	regLpDataReadyMu.RLock()
+	cb := regLpDataReadyGo
+	cbParam := regLpDataReadyParam
+	regLpDataReadyMu.RUnlock()
+	if cb != nil {
+		cb(handle, int(status), noOfSamples, overflow, cbParam) // call registered go callback function
 	}
 }
 
 func ps2000aGetValuesAsync(handle int16, startIndex, noOfSamples, downSampleRatio uint32,
 	downSampleRatioMode RatioMode, lpDataReadyGoPar DataReady, segmentIndex uint32,
 	param interface{}) (err error) {
+	regLpDataReadyMu.Lock()
 	regLpDataReadyGo = lpDataReadyGoPar
 	regLpDataReadyParam = param
+	regLpDataReadyMu.Unlock()
 	slog.Debug("ps2000aGetValuesAsync", "handle", handle, "startIndex", startIndex, "noOfSamples", noOfSamples, "downSampleRatio", downSampleRatio, "downSampleRatioMode", downSampleRatioMode, "lpDataReadyGoPar", lpDataReadyGoPar, "segmentIndex", segmentIndex, "param", param)
 	stat := C.ps2000aGetValuesAsync((C.short)(handle),
 		(C.uint)(startIndex),
@@ -344,6 +352,7 @@ func ps2000aGetNumOfProcessedCaptures(handle int16) (nCaptures uint32, err error
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
 var (
+	regLpStreamingReadyMu    sync.RWMutex
 	regLpStreamingReadyGo    StreamingReady // registered go callback function
 	regLpStreamingReadyParam any
 )
@@ -354,14 +363,20 @@ var (
 //export lpStreamingReadyGo
 func lpStreamingReadyGo(handle int16, noOfSamples int32, startIndex uint32, overflow int16,
 	triggeredAt uint32, triggered, autoStop int16, param unsafe.Pointer) {
-	if regLpStreamingReadyGo != nil {
-		regLpStreamingReadyGo(handle, noOfSamples, startIndex, overflow, triggeredAt, triggered, autoStop, regLpStreamingReadyParam) // call registered go callback function
+	regLpStreamingReadyMu.RLock()
+	cb := regLpStreamingReadyGo
+	cbParam := regLpStreamingReadyParam
+	regLpStreamingReadyMu.RUnlock()
+	if cb != nil {
+		cb(handle, noOfSamples, startIndex, overflow, triggeredAt, triggered, autoStop, cbParam) // call registered go callback function
 	}
 }
 
 func ps2000aGetStreamingLatestValues(handle int16, lpStreamingReadyGoPar StreamingReady, param interface{}) (err error) {
+	regLpStreamingReadyMu.Lock()
 	regLpStreamingReadyGo = lpStreamingReadyGoPar
 	regLpStreamingReadyParam = param
+	regLpStreamingReadyMu.Unlock()
 	stat := C.ps2000aGetStreamingLatestValues((C.short)(handle),
 		(C.ps2000aStreamingReady)(C.lpStreamingReady), // C callback function in callbacks.go
 		nil)
@@ -533,6 +548,7 @@ func ps2000aRunStreaming(handle int16, reqSampleInterval uint32, sampleIntervalT
 // 4. Registered C callback function calls bridge go function
 // 5. Bridge go function calls registered go callback function
 var (
+	regLpBlockReadyMu    sync.RWMutex
 	regLpBlockReadyGo    BlockReady // registered go callback function
 	regLpBlockReadyParam any
 )
@@ -543,16 +559,22 @@ var (
 //export lpBlockReadyGo
 func lpBlockReadyGo(handle int16, status uint32, param unsafe.Pointer) {
 	slog.Debug("lpBlockReadyGo", "handle", handle, "status", status)
-	if regLpBlockReadyGo != nil {
-		regLpBlockReadyGo(handle, int(status), regLpBlockReadyParam) // call registered go callback function
+	regLpBlockReadyMu.RLock()
+	cb := regLpBlockReadyGo
+	cbParam := regLpBlockReadyParam
+	regLpBlockReadyMu.RUnlock()
+	if cb != nil {
+		cb(handle, int(status), cbParam) // call registered go callback function
 	}
 }
 
 func ps2000aRunBlock(handle int16, noOfPreTriggerSamples, noOfPostTriggerSamples int32,
 	timeBase uint32, overSample int16, segmentIndex uint32, lpBlockReadyGoPar BlockReady,
 	param interface{}) (timeIndisposedMs int32, err error) {
+	regLpBlockReadyMu.Lock()
 	regLpBlockReadyGo = lpBlockReadyGoPar
 	regLpBlockReadyParam = param
+	regLpBlockReadyMu.Unlock()
 	nSamples := noOfPreTriggerSamples + noOfPostTriggerSamples
 	if nSamples > 1<<29 { // avoid exception in cgo
 		err = fmt.Errorf("RunBlock:  too many required samples %d", nSamples)

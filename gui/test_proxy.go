@@ -394,6 +394,8 @@ func doEvent(fn func()) bool {
 	return doEventUnlocked(fn)
 }
 
+var uiTimedOut atomic.Bool
+
 // doEventUnlocked is doEvent for callers that already hold fuzzerEventMtx.
 func doEventUnlocked(fn func()) bool {
 	done := make(chan struct{})
@@ -406,6 +408,7 @@ func doEventUnlocked(fn func()) bool {
 		wait()
 		return true
 	case <-time.After(10 * time.Second):
+		uiTimedOut.Store(true)
 		log.Println("ERROR: doEvent timed out waiting for UI thread")
 		buf := make([]byte, 1<<20)
 		n := runtime.Stack(buf, true)
@@ -1121,6 +1124,7 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 	}
 
 	scp.CalibrateSleepTime()
+	uiTimedOut.Store(false)
 
 	var errorCount uint64
 	var eventCount uint64
@@ -1422,10 +1426,13 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 		// Remove the in-progress snapshot now that the final record is written.
 		os.Remove(inProgressPath)
 
-		scp.settingsLocker.Lock()
-		_ = settings.Save(settingsFileName, scp.Settings)
-		scp.SettingFileName = ""
-		scp.settingsLocker.Unlock()
+		if scp.settingsLocker.TryLock() {
+			_ = settings.Save(settingsFileName, scp.Settings)
+			scp.SettingFileName = ""
+			scp.settingsLocker.Unlock()
+		} else {
+			_ = settings.Save(settingsFileName, scp.Settings)
+		}
 
 		tarFileName := fmt.Sprintf("fuzzer_report_%s.tar.gz", startTime.Format("200601021504"))
 		cmd := exec.Command("tar", "-czf", tarFileName, fileName, settingsFileName)
@@ -1471,6 +1478,10 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				log.Println("Interrupted by signal")
 				return
 			case executed := <-ready:
+				if uiTimedOut.Load() {
+					log.Println("Stopping fuzzer: UI thread timed out")
+					return
+				}
 				if executed {
 					atomic.AddUint64(&eventCount, 1)
 					atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
@@ -1492,6 +1503,10 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 				log.Println("Interrupted by signal")
 				return
 			case executed := <-ready:
+				if uiTimedOut.Load() {
+					log.Println("Stopping fuzzer: UI thread timed out")
+					return
+				}
 				if executed {
 					atomic.AddUint64(&eventCount, 1)
 					atomic.StoreInt64(&lastEventTimeUnix, time.Now().UnixNano())
@@ -1561,6 +1576,10 @@ func (scp *ScpDesc) Random(duration time.Duration, programVersion string, buildD
 			log.Println("Interrupted by signal")
 			return
 		case executed := <-ready:
+			if uiTimedOut.Load() {
+				log.Println("Stopping fuzzer: UI thread timed out")
+				return
+			}
 			if !executed {
 				time.Sleep(5 * time.Millisecond)
 				continue

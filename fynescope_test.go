@@ -102,8 +102,13 @@ func TestMain(m *testing.M) {
 	go func() {
 		time.Sleep(2 * time.Second)
 		exitCode = m.Run()
-		fyne.Do(scp.App.Quit)
 		close(done)
+		go func() {
+			time.Sleep(5 * time.Second)
+			log.Println("WARN: App shutdown timed out after m.Run(); forcing exit")
+			os.Exit(exitCode)
+		}()
+		fyne.Do(scp.App.Quit)
 	}()
 
 	scp.App.Run()
@@ -179,7 +184,7 @@ func resolveFuzzerTimeout(t *testing.T) (time.Duration, bool) {
 		return 0, false
 	}
 	log.Printf("deadline: %v", deadline)
-	timeout := time.Until(deadline) - 10*time.Second
+	timeout := time.Until(deadline) - 45*time.Second
 	if timeout < 0 {
 		timeout = 0
 	}
